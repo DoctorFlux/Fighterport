@@ -12,11 +12,15 @@ namespace BrawlCrate.UI
 
         private void ToggleSimpleWorkspaceWorkflow()
         {
+            if (SimpleWorkspaceBusy) return;
             bool shown=_simpleWorkspaceTask.Visible;
+            if (!shown) _workspaceTaskOpener = _workspaceInvoker ?? CurrentWorkspaceFocus() ?? _simpleWorkspaceWorkflow;
             _simpleWorkspaceFocused=shown;
             _simpleWorkspaceDrawer=!shown;
             if(!shown && _libraryPane?.Visible==true)SetSimpleWorkspaceLibraryVisible(false);
             UpdateSimpleWorkspace();
+            if (shown) RestoreWorkspaceFocus(_workspaceTaskOpener);
+            else FocusWorkspaceRegion(_simpleWorkspaceTask, remember: false);
         }
 
         private void SetWorkspaceTextSize(int percent)
@@ -62,7 +66,7 @@ namespace BrawlCrate.UI
             string[] compact={"Workflow","Library",_simpleWorkspaceFocused?"Show tasks":"Focus","Tools","Open","New"};
             for(int i=0;i<commands.Length;i++)
             {
-                commands[i].Text=full[i];commands[i].AccessibleName=full[i];commands[i].ToolTipText=full[i];
+                commands[i].Text=full[i];commands[i].AccessibleName=full[i];commands[i].ToolTipText=full[i]+". F6 or Shift+F6 moves between workspace regions.";
                 commands[i].Overflow=ToolStripItemOverflow.Never;
             }
             int actionWidth=_simpleWorkspaceActions.Items.Cast<ToolStripItem>().Sum(i=>i.GetPreferredSize(Size.Empty).Width+i.Margin.Horizontal)+16;

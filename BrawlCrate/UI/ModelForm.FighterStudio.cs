@@ -163,7 +163,11 @@ namespace BrawlCrate.UI
         private static ToolStripButton AddFighterButton(ToolStrip toolbar, string text, string name, Action action)
         {
             ToolStripButton button = new ToolStripButton(text) {Name = name, DisplayStyle = ToolStripItemDisplayStyle.Text};
-            button.Click += (s, e) => action();
+            button.Click += (s, e) =>
+            {
+                var form = toolbar.FindForm() as ModelForm;
+                if (form == null) action(); else form.WithWorkspaceInvoker(button, action);
+            };
             toolbar.Items.Add(button);
             return button;
         }

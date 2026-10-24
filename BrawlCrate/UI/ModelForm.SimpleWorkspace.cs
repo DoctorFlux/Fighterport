@@ -75,7 +75,7 @@ namespace BrawlCrate.UI
                     DisplayStyle = ToolStripItemDisplayStyle.Text, AutoToolTip = false,
                     Margin = new Padding(2, 0, 7, 0)
                 };
-                button.Click += (sender, args) => SetSimpleWorkspaceStage(stage);
+                button.Click += (sender, args) => WithWorkspaceInvoker(button, () => SetSimpleWorkspaceStage(stage));
                 _simpleWorkspaceStages[index] = button;
                 _simpleWorkspaceNavigation.Items.Add(button);
             }
@@ -135,6 +135,7 @@ namespace BrawlCrate.UI
             DarkTheme.Apply(_simpleWorkspaceBody);
             DarkTheme.Apply(_simpleWorkspaceNavigation);
             ApplyWorkspaceTextSize();
+            InitializeWorkspaceKeyboard();
             UpdateSimpleWorkspace();
         }
 
@@ -142,12 +143,14 @@ namespace BrawlCrate.UI
         {
             if (stage < 0 || stage > 3) throw new ArgumentOutOfRangeException(nameof(stage));
             if (SimpleWorkspaceBusy) return;
+            _workspaceTaskOpener = _workspaceInvoker ?? CurrentWorkspaceFocus() ?? _simpleWorkspaceWorkflow;
             _simpleWorkspaceStage = stage;
             _simpleWorkspaceDrawer = true;
             _simpleWorkspaceFocused = false;
-            if (stage != 0 && _libraryPane?.Visible == true)
+            if (_libraryPane?.Visible == true)
                 SetSimpleWorkspaceLibraryVisible(false);
             UpdateSimpleWorkspace();
+            FocusWorkspaceRegion(_simpleWorkspaceTask, remember: false);
         }
 
         private void ResumeSimpleWorkspace()
@@ -159,11 +162,15 @@ namespace BrawlCrate.UI
 
         private void ToggleSimpleWorkspaceFocus()
         {
+            if (SimpleWorkspaceBusy) return;
+            _workspaceTaskOpener = _workspaceInvoker ?? CurrentWorkspaceFocus() ?? _simpleWorkspaceFocus;
             _simpleWorkspaceFocused = !_simpleWorkspaceFocused;
             _simpleWorkspaceDrawer = !_simpleWorkspaceFocused;
             if (_simpleWorkspaceFocused && _libraryPane?.Visible == true)
                 SetSimpleWorkspaceLibraryVisible(false);
             UpdateSimpleWorkspace();
+            if (_simpleWorkspaceFocused) FocusWorkspaceTarget(modelEditControl1.ModelPanel);
+            else FocusWorkspaceRegion(_simpleWorkspaceTask, remember: false);
         }
 
         private void SetSimpleWorkspaceLibraryVisible(bool visible)
@@ -477,7 +484,7 @@ namespace BrawlCrate.UI
                 }
                 int taskWidth=Math.Min(WorkspaceAppearance.Pixels(270),Math.Max(240,(width-120)/2));
                 bool fits=!libraryOverlay && width-(libraryVisible?libraryWidth:0)-taskWidth>=NativeWorkspaceMinimumWidth;
-                bool showTask=!_simpleWorkspaceFocused && (fits || _simpleWorkspaceDrawer && !libraryOverlay);
+                bool showTask=!_simpleWorkspaceFocused && (fits || _simpleWorkspaceDrawer && !libraryVisible);
                 _simpleWorkspaceTask.Visible=showTask;
                 _simpleWorkspaceTask.Dock=fits?DockStyle.Right:DockStyle.None;
                 _simpleWorkspaceTask.Width=taskWidth;
@@ -489,6 +496,7 @@ namespace BrawlCrate.UI
                 if(showTask && !fits)_simpleWorkspaceTask.BringToFront();
                 _simpleWorkspaceWorkflow.Checked=showTask;
                 _simpleWorkspaceWorkflow.ToolTipText=showTask?"Hide workflow tasks to make room for the native editor":"Show the current task and next action";
+                _simpleWorkspaceWorkflow.ToolTipText += ". F6 moves between regions; Escape closes tasks when they have focus.";
             }
             finally { _simpleWorkspaceLayingOut = false; }
         }

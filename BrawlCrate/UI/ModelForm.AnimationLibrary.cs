@@ -88,11 +88,16 @@ namespace BrawlCrate.UI
         }
         private void ToggleAnimationLibrary()
         {
+            if (SimpleWorkspaceBusy) return;
             if(_libraryPane==null)BuildLibraryPane();
+            bool opening = !_libraryPane.Visible;
+            if (opening) _workspaceLibraryOpener = _workspaceInvoker ?? CurrentWorkspaceFocus() ?? _simpleWorkspaceLibrary;
             _libraryPane.Visible=!_libraryPane.Visible;
             if(_libraryPane.Visible)RunFighterAction(()=>RefreshLibrary(LibrarySelection?.Clip.Id??SelectedFighterAsset()?.Retarget?.Library?.ClipId));else{++_librarySearchGeneration;CancelLibraryTreeWork();ReleaseLibraryPreview();}
             modelEditControl1.BringToFront();PerformLayout();
             UpdateSimpleWorkspace();
+            if (opening) FocusWorkspaceTarget(_librarySearch);
+            else RestoreWorkspaceFocus(_workspaceLibraryOpener);
         }
         private void BuildLibraryPane()
         {
@@ -154,7 +159,12 @@ namespace BrawlCrate.UI
                 if(_libraryTime>frames-1){if(_libraryLease.Animation.Loop)_libraryTime%=frames;else{_libraryTime=frames-1;_libraryTimer.Stop();_libraryPlay.Text="Play";}}
                 RenderLibraryFrame();
             };
-            _libraryPane.Controls.Add(layout);(_simpleWorkspaceBody?.Controls??Controls).Add(_libraryPane);modelEditControl1.BringToFront();
+            _libraryPane.Controls.Add(layout);
+            PrepareWorkspaceTabOrder(_libraryPane);
+            layout.GetControlFromPosition(0,1).TabIndex = 0;
+            _libraryList.TabIndex = 1;
+            header.TabIndex = 2;
+            _libraryPane.AccessibleDescription = "Search and select original source clips. Tab visits library actions. Escape closes this pane; F6 moves between regions.";(_simpleWorkspaceBody?.Controls??Controls).Add(_libraryPane);modelEditControl1.BringToFront();
             LayoutSimpleWorkspaceLibraryPreview();
         }
         private static string LibraryStateText(LibrarySourceState state)

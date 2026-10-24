@@ -1,6 +1,15 @@
 # Format support and evidence
 
-Current continuation: **preview.18-workspace-scaling**, with 1,848 scoped
+Current continuation: **preview.19-workspace-keyboard**, with 2,172 fresh scoped
+assertions and 55 inspected PNGs. F6/Shift+F6 regions, outer Tab order, visible
+focus and drawer/dialog recovery retain the same native editor and original Next
+v7/source-local control policy. No new format, schema or game support is added.
+See [acceptance and limits](WORKSPACE_KEYBOARD_ACCEPTANCE_2026-10-24.md),
+[source-only DPI audit](WORKSPACE_DPI_AUDIT_2026-10-24.md) and
+[unperformed human walkthrough](WORKSPACE_USER_WALKTHROUGH_2026-10-24.md).
+Physical input/monitor DPI and human task outcomes remain unverified; G1/M2 is open.
+
+The preceding continuation was **preview.18-workspace-scaling**, with 1,848 scoped
 assertions and 41 individually inspected PNGs. Workspace text presets (100–200%),
 compact Workflow/library drawers, pinned primary actions and readable scaled
 dialogs retain the complete native previewer, original Next v7 and source-local

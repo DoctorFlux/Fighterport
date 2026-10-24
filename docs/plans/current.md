@@ -5,7 +5,27 @@ with the simpler workspace while retaining the COMPLETE BrawlCrate Model Preview
 and original Next retargeter. This supersedes the earlier planning-only/contact-first
 ordering. M2 remains the ONE incomplete milestone; this is its sole executable queue.
 
-Latest continuation: workspace scaling and usability, retaining the complete native
+Latest authorized continuation: preview.19 keyboard/focus completion within G1/M2.
+Add F6/Shift+F6 regions, ordered outer Tab navigation, focus recovery for drawers/
+dialogs and keyboard hints without intercepting native editing or modal gestures.
+Run a new -WorkspaceKeyboard private-desktop case and relevant scaling/lifecycle/
+transfer/root-policy regressions; inspect fresh captures. Audit DPI only: retain
+process awareness and app text presets. Prepare a human walkthrough; physical
+input/DPI and human outcomes stay unverified until exercised.
+
+Preview.19 bounded acceptance: 2,172 fresh scoped assertions and all 55 final
+PNGs individually inspected; see [commands, findings and limits](../WORKSPACE_KEYBOARD_ACCEPTANCE_2026-10-24.md).
+Keyboard/focus cases pass on both authentic rigs at compact/wide sizes and 100/
+200% text, alongside fresh scaling, transfer/edit/export/reopen, save-lifecycle and
+bidirectional root-policy regressions. This accepts the bounded mechanical
+increment, not all G1/M2. [DPI audit](../WORKSPACE_DPI_AUDIT_2026-10-24.md) is source-only;
+[human task walkthrough](../WORKSPACE_USER_WALKTHROUGH_2026-10-24.md) is prepared, not performed.
+Next: exercise that user-driven supported workflow, recording completion/steps,
+repeat prompts, hidden commands and wrong-document errors. A future physical DPI
+migration needs its audit prerequisites and separate bounded scope. No desktop
+input automation or untested physical/human claim is authorized by these receipts.
+
+Preceding continuation: workspace scaling and usability, retaining the complete native
 previewer, original Next v7 and source-local control policy. ONE bounded G1
 increment: 100–200% workspace text, compact navigation, recoverable workflow/library
 drawers, readable disabled actions and primary action access in short windows.
@@ -184,7 +204,8 @@ and gameplay authoring remain deferred.
 
 ## Source baseline
 
-Public Fighterport main began preview.18 at 736c8e1fbee8cde5b9eab3c1a83cc78cf65469a1.
+Public Fighterport main began preview.19 at 906660b359938c6f896f798da2b96719e5db5568.
+The preceding preview.18 began at 736c8e1fbee8cde5b9eab3c1a83cc78cf65469a1.
 The preceding preview.17 began at 6bab2084b2bbc07eed48a3ab3a97c8322d988b95.
 The imported application is preview.14: private Next 1cc96940bb58a6bab2f5a5c6ab9fff03e3d4165d
 has the same source tree as historical evidence alias 07cb032. Its reported 655 scoped

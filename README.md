@@ -2,7 +2,7 @@
 
 This is the public unified source repository at https://github.com/DoctorFlux/Fighterport.
 It imports the BrawlCrate-based Next preview.14 source and integrated owned engine;
-the current implementation is **preview.18-workspace-scaling**.
+the current implementation is **preview.19-workspace-keyboard**.
 The two predecessor repositories are private preserved histories.
 Upstream copyrights, licenses and notices remain intact.
 
@@ -36,9 +36,19 @@ more room. Task details scroll while the primary action stays visible. Project
 and unsaved-change dialogs scale too. Native editor fonts remain original;
 physical/per-monitor DPI support is not qualified by this app text setting.
 
-Fresh preview.18 verification passes **1,848 scoped assertions**, with **41
-actually inspected PNGs**. See the [workspace scaling acceptance
-record](docs/WORKSPACE_SCALING_ACCEPTANCE_2026-10-24.md) for commands and limits.
+Use **F6 / Shift+F6** to move between workspace regions and **Tab / Shift+Tab**
+within outer panels. Opening the library focuses search; stage/Workflow opens
+tasks at their primary action. Escape closes a focused pane; cancelled dialogs
+return focus to their invoking control. Native editing shortcuts retain their
+existing routes. Compact drawers may overlay the editor; close them or use Focus
+editor for all native tools.
+
+Fresh preview.19 verification passes **2,172 scoped assertions**, with **55
+actually inspected PNGs**. See the [keyboard/focus acceptance
+record](docs/WORKSPACE_KEYBOARD_ACCEPTANCE_2026-10-24.md), [DPI audit](docs/WORKSPACE_DPI_AUDIT_2026-10-24.md)
+and [prepared human walkthrough](docs/WORKSPACE_USER_WALKTHROUGH_2026-10-24.md).
+Physical input/DPI and human outcomes remain unverified. Historical preview.18
+has its separate [scaling receipt](docs/WORKSPACE_SCALING_ACCEPTANCE_2026-10-24.md).
 Historical preview.17 has its separate [project and motion-control
 record](docs/PROJECT_MOTION_CONTROLS_ACCEPTANCE_2026-10-24.md).
 New/Open/Close share Save, Discard and Keep editing; failed/cancelled saves keep

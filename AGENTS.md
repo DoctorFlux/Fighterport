@@ -8,7 +8,15 @@ Record imported revisions and preserve upstream source authorship and notices.
 
 ## Plans and current work
 
-Latest 24 October request continues workspace scaling/usability. Preview.18 has
+Latest 24 October request authorizes preview.19 keyboard/focus completion and
+publication within the ONE G1/M2 slice. Fresh acceptance: 2,172 assertions and
+55 inspected PNGs; see docs/WORKSPACE_KEYBOARD_ACCEPTANCE_2026-10-24.md. Keep
+F6/outer Tab and focus recovery separate from original native editing shortcuts.
+The DPI audit changes no process awareness. Physical input/monitor DPI, user-config
+disk roundtrip and the prepared human walkthrough remain unverified. Preserve
+original Next, source-local protected controls and all queued gates.
+
+The preceding 24 October request continued workspace scaling/usability. Preview.18 has
 fresh bounded acceptance (1,848 assertions/41 inspected PNGs); see
 docs/WORKSPACE_SCALING_ACCEPTANCE_2026-10-24.md. Preserve the complete native
 previewer, original Next v7 and source-local root-control policy. App text presets

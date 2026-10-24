@@ -3,7 +3,15 @@
 24 October 2026. This is the sole master plan.
 [plans/current.md](plans/current.md) is the sole executable queue.
 
-Latest 24 October continuation implements preview.18 workspace scaling around
+Latest 24 October continuation implements preview.19 keyboard/focus completion
+inside G1/M2, retaining the full native editor, original Next and source-local
+root policy. [Fresh bounded acceptance](WORKSPACE_KEYBOARD_ACCEPTANCE_2026-10-24.md):
+2,172 scoped assertions / 55 inspected PNGs. F6 regions, outer Tab and dialog/
+drawer recovery are mechanically qualified; the DPI audit changes no awareness
+policy. The prepared human walkthrough remains unperformed. Physical input/DPI
+and broader G1/M2 acceptance stay open.
+
+The preceding 24 October continuation implements preview.18 workspace scaling around
 the full native previewer, original Next v7 and source-local root controls.
 Its [fresh bounded acceptance](WORKSPACE_SCALING_ACCEPTANCE_2026-10-24.md) records
 1,848 scoped assertions and 41 inspected PNGs. Workspace Text presets and compact

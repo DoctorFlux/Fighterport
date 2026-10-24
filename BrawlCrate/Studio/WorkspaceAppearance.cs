@@ -66,6 +66,8 @@ namespace BrawlCrate.Studio
     // paint disabled captions with readable contrast on the dark workspace.
     internal sealed class WorkspaceButton : Button
     {
+        protected override void OnGotFocus(EventArgs args) { base.OnGotFocus(args); Invalidate(); }
+        protected override void OnLostFocus(EventArgs args) { base.OnLostFocus(args); Invalidate(); }
         protected override void OnPaint(PaintEventArgs args)
         {
             Color surface = Enabled && (Focused || ClientRectangle.Contains(PointToClient(Cursor.Position)))
@@ -76,7 +78,7 @@ namespace BrawlCrate.Studio
             TextRenderer.DrawText(args.Graphics, Text, Font, Rectangle.Inflate(ClientRectangle, -6, -2),
                 Enabled ? Color.FromArgb(233, 237, 244) : Color.FromArgb(164, 173, 188),
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
-            if (Focused && ShowFocusCues) ControlPaint.DrawFocusRectangle(args.Graphics, Rectangle.Inflate(ClientRectangle, -4, -4));
+            if (Focused) ControlPaint.DrawFocusRectangle(args.Graphics, Rectangle.Inflate(ClientRectangle, -4, -4));
         }
     }
 }

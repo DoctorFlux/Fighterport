@@ -8,6 +8,13 @@ namespace BrawlCrate.Studio
 {
     internal sealed class WorkspaceFileDialog : Form
     {
+        public new DialogResult ShowDialog(IWin32Window owner)
+        {
+            Action restore = WorkspaceDialogFocus.Capture(owner);
+            try { return base.ShowDialog(owner); }
+            finally { restore(); }
+        }
+
         private readonly TextBox _path;
         private readonly Label _validation;
         private readonly Button _accept;
