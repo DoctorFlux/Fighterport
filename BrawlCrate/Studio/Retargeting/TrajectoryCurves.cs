@@ -16,7 +16,7 @@ namespace BrawlCrate.Studio.Retargeting
             foreach(var map in plan.Mapping.Where(plan.IsTrajectory))
             {
                 var input=source.Children.OfType<CHR0EntryNode>().FirstOrDefault(e=>e.Name==map.Source);
-                if(input==null)continue;
+                if(input==null || !Enumerable.Range(6,3).Any(c=>input.Keyframes[c].KeyCount>0))continue;
                 var target=(CHR0EntryNode)output.FindChild(map.Target,false);
                 var axes=new[]{Vector3.UnitX,Vector3.UnitY,Vector3.UnitZ}.Select(v=>plan.TransferTranslationDelta(map,v)).ToArray();
                 var sourceBind=plan.Source.Joints[map.SourceIndex].Bind.Translation;
@@ -80,5 +80,78 @@ namespace BrawlCrate.Studio.Retargeting
             }
         }
         private static float Component(Vector3 value,int axis)=>axis==0?value.X:axis==1?value.Y:value.Z;
+
+        private static KeyframeArray CopyControlCurve(KeyframeArray source, int limit, bool loop, float baseline, float factor, float offset)
+        {
+            var result = new KeyframeArray(limit, baseline) { Loop = loop };
+            // Traverse the actual linked keys: retain duplicate knots and turns.
+            foreach (var key in source.Entries)
+            {
+                result.SetFrameValue(key._index, offset + key._value * factor, true)._tangent = key._tangent * factor;
+            }
+            return result;
+        }
+
+        private static void PreserveMotionControls(HumanoidRetargeter plan, CHR0Node source, CHR0Node output, BrawlRig nativeSource, BrawlRig nativeTarget, int last)
+        {
+            foreach (int index in plan.SourceMotionControls)
+            {
+                var entry = source.Children.OfType<CHR0EntryNode>().FirstOrDefault(e => e.Name == plan.Source.Joints[index].Name);
+                if (entry != null && Enumerable.Range(0,9).Any(c => entry.Keyframes[c].KeyCount > 0) &&
+                    !plan.Mapping.Any(m => m.SourceIndex == index && plan.IsTrajectory(m)))
+                    throw new InvalidOperationException("An authored source motion control has no unambiguous target binding. Review the control hierarchy before retargeting.");
+            }
+            PreserveTrajectoryCurves(plan, source, output, last);
+            foreach (int index in plan.TargetMotionControls)
+            {
+                var target = (CHR0EntryNode)output.FindChild(plan.Target.Joints[index].Name, false);
+                var map = plan.Mapping.SingleOrDefault(m => m.TargetIndex == index && plan.IsTrajectory(m));
+                var input = map == null ? null : source.Children.OfType<CHR0EntryNode>().FirstOrDefault(e => e.Name == map.Source);
+                if (input == null || !Enumerable.Range(0,9).Any(c => input.Keyframes[c].KeyCount > 0))
+                { target?.Remove(); continue; }
+                var s = plan.Source.Joints[map.SourceIndex]; var t = plan.Target.Joints[index];
+                Quaternion a = s.Parent < 0 ? Quaternion.Identity : plan.Source.Rest.Orientation[s.Parent];
+                Quaternion b = t.Parent < 0 ? Quaternion.Identity : plan.Target.Rest.Orientation[t.Parent];
+                bool sameRotation = Math.Abs(Quaternion.Dot(a,b)) > 1-1e-7f &&
+                    Math.Abs(Quaternion.Dot(s.Bind.Rotation,t.Bind.Rotation)) > 1-1e-7f;
+                for (int group = 0; group < 3; group++)
+                {
+                    bool authored = Enumerable.Range(group*3,3).Any(c => input.Keyframes[c].KeyCount > 0);
+                    for (int axis = 0; axis < 3; axis++)
+                    {
+                        int channel = group*3+axis;
+                        float baseline = group == 0 ? Component(t.Bind.Scale,axis) : group == 2 ? Component(t.Bind.Translation,axis) : Component(Euler(t.Bind.Rotation),axis);
+                        if (!authored)
+                            target.Keyframes._keyArrays[channel] = new KeyframeArray(target.Keyframes.FrameLimit,baseline) { Loop=output.Loop };
+                        else if (group == 0 || group == 1 && sameRotation)
+                        {
+                            float factor = group == 0 ? Component(t.Bind.Scale,axis)/Component(s.Bind.Scale,axis) : 1;
+                            target.Keyframes._keyArrays[channel] = CopyControlCurve(input.Keyframes[channel],target.Keyframes.FrameLimit,output.Loop,baseline,factor,0);
+                        }
+                    }
+                }
+                target.UseModelScale = !Enumerable.Range(0,3).Any(c=>input.Keyframes[c].KeyCount>0);
+                target.UseModelRotate = !Enumerable.Range(3,3).Any(c=>input.Keyframes[c].KeyCount>0);
+                target.UseModelTranslate = !Enumerable.Range(6,3).Any(c=>input.Keyframes[c].KeyCount>0);
+                target.SignalPropertyChange();
+            }
+            // Converted Euler curves must meet a separate local-motion gate,
+            // including times not used by the native curve fitter.
+            foreach (float time in Enumerable.Range(0,last*4+1).Select(i=>i/4f)
+                .Concat(Enumerable.Range(0,last).SelectMany(i=>new[]{i+.37f,i+.73f})))
+            {
+                var expected = plan.Evaluate(Sample(nativeSource,source,time),false).Pose;
+                var actual = Sample(nativeTarget,output,time);
+                foreach (int index in plan.TargetMotionControls)
+                {
+                    var e=expected.Local[index]; var v=actual.Local[index];
+                    var difference = Quaternion.Normalize(e.Rotation * Quaternion.Inverse(v.Rotation));
+                    double angle = 2*Math.Atan2(new Vector3(difference.X,difference.Y,difference.Z).Length(),Math.Abs(difference.W))*180/Math.PI;
+                    if (Vector3.Distance(e.Translation,v.Translation)>.0002f || Vector3.Distance(e.Scale,v.Scale)>.00001f || angle>.01)
+                        throw new InvalidOperationException("Source-authored motion control conversion exceeds its numeric gate. Review native axes/curves; no result was applied.");
+                }
+            }
+        }
+
     }
 }

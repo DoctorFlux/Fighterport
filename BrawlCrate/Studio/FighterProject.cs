@@ -275,7 +275,7 @@ namespace BrawlCrate.Studio
                 string.Join("\n",map.Select(m=>m.Role+":"+m.Source+":"+m.Target))))).Replace("-","").ToLowerInvariant();
             reference.InitialBakeSha256=generated.ContentSha256;
             generated.RigIdentity=result.TargetRig;
-            generated.Retarget=new RetargetProvenance{Timing=timing,Algorithm=Retargeting.HumanoidRetargeter.Algorithm,SourceModelPath=sourceModelPath,
+            generated.Retarget=new RetargetProvenance{Timing=timing,Algorithm=Retargeting.HumanoidRetargeter.Algorithm,MotionControlPolicy=Retargeting.HumanoidRetargeter.MotionControlPolicy,SourceModelPath=sourceModelPath,
                 SourceModelSha256=reference.ModelContainerSha256,SourceRig=result.SourceRig,SourceAnimationId=reference.ClipId,
                 SourceClip=sourceName+"|"+reference.MotionKey,FromProfile=result.Plan.Source.Profile,ToProfile=result.Plan.Target.Profile,
                 LegScale=result.Plan.LegScale,ArmScale=result.Plan.ArmScale,MaximumLimbResidual=result.MaximumLimbResidual,ClampedLimbSamples=result.ClampedLimbSamples,
@@ -329,6 +329,7 @@ namespace BrawlCrate.Studio
                     RetargetProvenance p = asset.Retarget;
                     if(p.Timing!=null){if(p.Library==null)throw new InvalidDataException("A timing fit requires its authentic library source.");p.Timing.Validate(p.Library.FrameCount);}
                     bool engine=p.Algorithm=="native-body-surface-96.2";
+                    if(p.MotionControlPolicy!=null && p.MotionControlPolicy!=Retargeting.HumanoidRetargeter.MotionControlPolicy)throw new InvalidDataException("Unknown saved motion-control policy.");
                     if(p.IgnoredSourceBones==null||p.IgnoredSourceBones.Length>65536||p.IgnoredSourceBones.Any(n=>string.IsNullOrEmpty(n)||n.Length>256))throw new InvalidDataException("Invalid untransferred source-track report.");
                     if(engine&&(!p.ReviewDraft||string.IsNullOrEmpty(p.EngineReceipt)||p.EngineReceipt.Length>8*1024*1024))throw new InvalidDataException("Owned-engine drafts require their unresolved validation receipt.");
                     if (!Enum.IsDefined(typeof(Retargeting.GroundContactMode),p.GroundMode) || !asset.Generated || (!engine && p.Algorithm != Retargeting.HumanoidRetargeter.Algorithm && p.Algorithm != "bind-world-fk-body-contact-ik-v6" && p.Algorithm != "bind-world-fk-body-contact-ik-v5" && p.Algorithm != "bind-world-fk-body-contact-ik-v4" && p.Algorithm != "bind-world-fk-body-contact-ik-v3" && p.Algorithm != "bind-world-fk-contact-ik-v2" && p.Algorithm != "bind-world-fk-two-bone-ik-v1") ||
@@ -546,6 +547,7 @@ namespace BrawlCrate.Studio
         public string EngineReceipt {get;set;}
         public LibraryClipReference Library { get; set; }
         public string Algorithm { get; set; }
+        public string MotionControlPolicy { get; set; }
         public string SourceModelPath { get; set; }
         public string SourceModelSha256 { get; set; }
         public string SourceRig { get; set; }

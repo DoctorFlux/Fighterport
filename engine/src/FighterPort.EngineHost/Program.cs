@@ -93,12 +93,14 @@ sealed partial class ControlSession
                 d.CreateAnimation(r.Name??"NewAnimation",r.SampleCount,new(60,1),true);
                 return new{Ok=true,Name=d.Clip.Name,SampleCount=d.Clip.SampleCount,Loop=d.Clip.Loop,Tracks=d.Clip.Tracks.Select(t=>NativeTrack(d.Project.Scene,t)).ToArray(),State=State(),Pose=d.Evaluate().Local.Select(t=>t.Channels()).ToArray(),BoneNames=d.Project.Scene.Bones.Select(b=>b.Name).ToArray(),Pins=Pins()};
             case "pin":
+                GuardMotionControl(r.Bone);
                 d.Seek(r.Frame);var chain=setup!.Chains.FirstOrDefault(c=>c.Effector==r.Bone);
                 if(chain is null)d.AddBonePin(r.Bone);else d.PinControls(setup,[chain.Role],EditorPinBehavior.SoftReach,r.Follow);
                 return Reply();
             case "pin-limbs":d.Seek(r.Frame);if(setup!.Chains.Length==0)throw new InvalidOperationException("No unambiguous limb bindings. Attach individual FK pins or review the mapping first.");d.PinControls(setup,setup.Chains.Select(c=>c.Role).ToArray(),EditorPinBehavior.SoftReach,r.Follow);return Reply();
             case "remove":d.Seek(r.Frame);d.RemoveEditorPin(Guid.Parse(r.Pin!));return Reply();
             case "begin":
+                GuardMotionControl(r.Bone);
                 edit?.Cancel();d.Seek(r.Frame);d.SelectedBone=r.Bone;selectedPin=Guid.TryParse(r.Pin,out var id)?id:null;selectedIk=r.Pin?.StartsWith("ik:",StringComparison.Ordinal)==true;selectedPole=r.Pin?.StartsWith("pole:",StringComparison.Ordinal)==true;input=d.Evaluate();edit=d.BeginTransformEdit();changes=[];goals=[];return Reply();
             case "preview":
                 if(edit is null||input is null)throw new InvalidOperationException("Begin a gesture first.");
@@ -209,5 +211,11 @@ sealed partial class ControlSession
         PinView View(Guid id,int b,string name,bool soft){var q=PoseGeometry.Rotation(p.World[b]);var v=p.World[b].Translation;return new(id.ToString(),b,d.Project.Scene.Bones[b].Name,name,soft,[v.X,v.Y,v.Z],[q.X,q.Y,q.Z,q.W]);}
         return d.CurrentContacts.Where(p=>p.EditorBehavior==EditorPinBehavior.SoftReach).Select(p=>View(p.Id,p.Bone,p.Role,true)).Concat(d.CurrentBonePins.Select(p=>View(p.Id,p.Bone,d.Project.Scene.Bones[p.Bone].Name,false))).ToArray();
     }
-    object Reply(bool state=true)=>new{Ok=true,State=state?State():null,BoneNames=document!.Project.Scene.Bones.Select(b=>b.Name).ToArray(),Pose=document!.Evaluate().Local.Select(t=>t.Channels()).ToArray(),Pins=Pins(),Chains=setup!.Chains.Select(c=>new{c.Role,c.Root,c.Middle,c.Effector,c.Evidence,c.Reviewed,Pole=new[]{c.PoleDirection.X,c.PoleDirection.Y,c.PoleDirection.Z},PoleParent=c.Calibration is {} calibration?new[]{calibration.PoleInParentSpace.X,calibration.PoleInParentSpace.Y,calibration.PoleInParentSpace.Z}:null}),Roles=setup.BoneRoles.Select(r=>new{Role=r.SemanticRole,Bone=(int?)r.Bone,r.Reviewed,r.Evidence}).Concat((setup.UnassignedBoneRoles??[]).Select(r=>new{Role=r,Bone=(int?)null,Reviewed=true,Evidence="Explicitly unassigned"})),Diagnostics=setup.Diagnostics.Select(d=>d.Message).ToArray()};
+    void GuardMotionControl(int bone)
+    {
+        if(AnimationControls.ResolveBodyBone(document!.Project.Scene,setup!)<0)throw new InvalidOperationException("Review the body/pelvis binding before posing this rig. Motion-control identities are unresolved.");
+        if(AnimationControls.ProtectedMotionBones(document!.Project.Scene,setup!).Contains(bone))
+            throw new InvalidOperationException("Motion controls follow their own source animation. Use body bones for editing.");
+    }
+    object Reply(bool state=true)=>new{Ok=true,BodyBone=AnimationControls.ResolveBodyBone(document!.Project.Scene,setup!),ProtectedMotionBones=AnimationControls.ProtectedMotionBones(document!.Project.Scene,setup!),State=state?State():null,BoneNames=document!.Project.Scene.Bones.Select(b=>b.Name).ToArray(),Pose=document!.Evaluate().Local.Select(t=>t.Channels()).ToArray(),Pins=Pins(),Chains=setup!.Chains.Select(c=>new{c.Role,c.Root,c.Middle,c.Effector,c.Evidence,c.Reviewed,Pole=new[]{c.PoleDirection.X,c.PoleDirection.Y,c.PoleDirection.Z},PoleParent=c.Calibration is {} calibration?new[]{calibration.PoleInParentSpace.X,calibration.PoleInParentSpace.Y,calibration.PoleInParentSpace.Z}:null}),Roles=setup.BoneRoles.Select(r=>new{Role=r.SemanticRole,Bone=(int?)r.Bone,r.Reviewed,r.Evidence}).Concat((setup.UnassignedBoneRoles??[]).Select(r=>new{Role=r,Bone=(int?)null,Reviewed=true,Evidence="Explicitly unassigned"})),Diagnostics=setup.Diagnostics.Select(d=>d.Message).ToArray()};
 }

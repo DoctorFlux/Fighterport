@@ -49,6 +49,10 @@ internal static class BoundaryFittingChecks
         check(Reject(()=>BoundaryFitting.Prepare(project with{AuthoringContacts=[contact]},clip,entry,exit,options),"contact/soft-pin"),"Active authored contacts block FK-only fitting instead of being reset after the fit");
         var full=BoundaryFitting.Prepare(project,clip,entry,exit,options with{Bones=["root","joint"],Components=TransformComponents.All});
         check(ReferenceEquals(full.Clip.Tracks[0].Channels[6],root[6]),"Default root policy keeps native root trajectory untouched even in a whole-rig mask");
+        var bodySetup=new ControlRigSetup(Guid.NewGuid(),fingerprint,[],[]){BodyBone=1};
+        var bodyOnly=BoundaryFitting.Prepare(project with{ControlRigs=[bodySetup]},clip,entry,exit,options with{Bones=["root","joint"],Components=TransformComponents.All,PreserveRootTranslation=false});
+        check(ReferenceEquals(bodyOnly.Clip.Tracks[0],clip.Tracks[0])&&bodyOnly.Changed.All(t=>t.Bone!="root"),
+            "Reviewed body fitting retains every protected control channel even when the legacy root-translation option is disabled");
         // Same channels under unfamiliar names and a different storage order.
         var renamedScene=scene with{Bones=[scene.Bones[0] with{Name="a"},scene.Bones[1] with{Name="b"}]};
         var renamedClip=clip with{Tracks=[clip.Tracks[1] with{Bone="b"},clip.Tracks[0] with{Bone="a"}]};var renamedRef=reference with{Tracks=[reference.Tracks[0] with{Bone="b"}]};var renamedProject=project with{Scene=renamedScene,Clips=[renamedClip,renamedRef]};

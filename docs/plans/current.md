@@ -5,6 +5,34 @@ with the simpler workspace while retaining the COMPLETE BrawlCrate Model Preview
 and original Next retargeter. This supersedes the earlier planning-only/contact-first
 ordering. M2 remains the ONE incomplete milestone; this is its sole executable queue.
 
+Latest 24 October continuation explicitly authorizes the root tweak now, together
+with New project and unsaved-change handling. This overrides the deferral recorded
+below. ONE current bounded increment: preserve current native documents through
+Save/Discard/Cancel, failed/cancelled saves and project replacement; implement
+source-owned global/motion controls on the original Next path and body-only
+corrections without changing authentic skeletons, binds or weights.
+
+Freeze new policy expectations before tuning: protected controls are strict
+ancestors of the reviewed body/pelvis, independent of names. No source-authored
+control group means authentic target baseline and no generated native group.
+Authored translation/rotation/scale uses explicit fixed rest-coordinate conversion,
+never anatomical proportion or contact compensation. Each source control is
+considered separately: inherited parent/world movement
+is not motion authored on that control and cannot authorize target keys.
+Identical native coordinate frames retain source knots/tangents/discontinuities/
+full turns. Body corrections
+must not alter these controls. Verify native integer/quarter/withheld samples,
+rename/storage permutation, missing/unmatched controls, exported/project reopen,
+body editing and immutable inputs. New numeric gates: translation <=0.0002 native
+units, scale <=0.00001, converted orientation <=0.01 degrees; existing contact and
+other frozen gates remain unchanged. Report unsupported conversion/ambiguous
+mapping rather than generating compensation on a protected control.
+
+Run application-owned New/unsaved/save handlers on the private desktop with
+actual native edit/Undo state, and independent procedural/native policy checks.
+Record fresh commands/results/inspected images. Old TopN-authoring checks are
+historical and cannot validate the newly protected-control behavior.
+
 ## Recorded first increment
 
 Preview.15 implements Source -> Target -> Preview and fix -> Export around the
@@ -81,14 +109,21 @@ accepted in [its receipt](../WORKSPACE_FLOW_ACCEPTANCE_2026-10-24.md), with exac
 commands, test-build distinctions, development failures and limits. No physical/common-dialog
 input, DPI or first-time-human usability claim follows from handler automation.
 
-Next, continue the same G1 substep with remaining project/task usability:
-actual New project replacement and unsaved-change choices, readable scaling and
-first/repeat human task outcomes. The checked registration/repair, target-open,
-More tools and model-only resume handlers are implemented; do not treat their
-programmatic steps as human task completion. Preserve target/clip/frame ownership
-and explain readiness with current state. Measure steps, hidden commands and
-wrong-document errors before calling the workflow complete. Do not add unsupported operations, games, synchronized comparison or
-automatic model-port claims merely to populate the proposed layout.
+Preview.17 implements the requested New/unsaved lifecycle and source-owned
+motion controls. Fresh acceptance: 1,182 scoped assertions / 23 inspected PNGs in
+[the project/control receipt](../PROJECT_MOTION_CONTROLS_ACCEPTANCE_2026-10-24.md).
+Save/Discard/Keep editing, failed/cancelled saves, body Undo, native/project
+reopen, individual authored controls and inherited-motion exclusion pass the
+recorded bounded cases. Original Next v7 remains the base with separate policy
+provenance; legacy receipts do not qualify that new policy.
+
+Next, continue this SAME G1 substep with readable scaling and first/repeat human
+task outcomes. The mechanical registration/repair, target-open, New/unsaved,
+More tools and resume handlers are implemented. Measure steps, hidden commands
+and wrong-document errors before calling workflow usability complete. Keep
+arbitrary-axis/unmatched control qualification and broader held-out evidence
+explicitly open. Do not add unsupported operations/games or automatic model-port
+claims to populate the layout.
 
 Use background handler/capture evidence for the next bounded mechanical cases;
 physical pointer/keyboard, readable DPI/scaling and first-time-user outcomes
@@ -98,14 +133,11 @@ or unresolved concerns. Full native parity and all G1 usability remain incomplet
 
 ## Retained unresolved work
 
-24 October user follow-up queues a later body-bone-only correction policy:
-TopN/TransN/YRotN/XRotN and equivalent reviewed global/motion controls receive
-source-authored motion only, with no generated move/rotate/scale compensation.
-Use body bones for retarget fitting and corrections. Preserve genuine source
-motion on the corresponding target controls; identify roles structurally rather
-than by names alone. See MASTER_PLAN section 7. This is queued G2 work, not a
-solver change in the current G1 workspace increment. Existing preview.15 TopN
-pin checks do not validate this new policy.
+The previously deferred protected-motion policy is now implemented in preview.17
+under the latest explicit request. Broader nonidentity-axis, mismatched-chain,
+held-out/body-volume and batch qualification remains open; the accepted matching-
+frame cases do not establish generalization. Historical TopN manual-authoring
+checks cannot qualify the new policy.
 
 Full original native support timelines/context, coupled surface and moving-support
 placements/releases remain queued under MASTER_PLAN section 7 with legacy full-context

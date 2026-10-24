@@ -187,6 +187,14 @@ public static class AnimationControls
             if(legs.All(c=>PoseGeometry.Ancestor(scene,i,c.Root)))return i;
         return -1;
     }
+    public static int[] ProtectedMotionBones(Scene scene,ControlRigSetup setup)
+    {
+        int body=ResolveBodyBone(scene,setup);
+        var result=new List<int>();
+        if(body<0)return []; // No role claim can be inferred from a name alone.
+        for(int i=scene.Bones[body].Parent;i>=0;i=scene.Bones[i].Parent)result.Add(i);
+        return result.ToArray();
+    }
     public static Vector3 DefaultPole(Scene scene,EvaluatedPose pose,ControlChain chain)
     {
         var root=pose.World[chain.Root].Translation;var mid=pose.World[chain.Middle].Translation;var end=pose.World[chain.Effector].Translation;

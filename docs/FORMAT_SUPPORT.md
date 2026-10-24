@@ -1,8 +1,15 @@
 # Format support and evidence
 
+Current continuation: **preview.17-project-and-motion-controls**, with 1,182
+scoped assertions and 23 inspected PNGs. New/unsaved handling and the source-local
+protected-control policy are implemented around the same full native previewer
+and original Next v7 base. See [fresh evidence and limitations](PROJECT_MOTION_CONTROLS_ACCEPTANCE_2026-10-24.md).
+No other-game, broad contact/generalization or actual game acceptance is implied.
+The preview.16 text below records its preceding increment.
+
 ## 24 October 2026 workspace baseline
 
-The current implementation is **preview.16-workspace-flow**
+The preceding implementation was **preview.16-workspace-flow**
 (`2.0.0-preview.16-workspace-flow`). Its four stages reuse existing Brawl
 source-library/model/CHR0 operations and the complete native Model Previewer;
 the original Next v7 solver and native readers/writers are unchanged. Launch

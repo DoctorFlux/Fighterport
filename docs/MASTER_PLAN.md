@@ -3,12 +3,17 @@
 24 October 2026. This is the sole master plan.
 [plans/current.md](plans/current.md) is the sole executable queue.
 
+Latest 24 October continuation authorizes New project/unsaved-change handling
+and implementing the previously deferred root/motion-control tweak now. This
+supersedes deferral wording below while keeping ONE incomplete M2 increment,
+the full native previewer and original Next retargeter as the implementation base.
+
 24 October implementation follow-up: the user explicitly requested starting the
 simpler workspace now while preserving the full BrawlCrate Model Previewer and
 original Next retargeter. G1 is the ONE current substep of incomplete M2.
 Preview.16 implements contextual task flow and source setup/repair, with 257
 fresh scoped checks and 43 actually inspected PNGs. Broader human task usability,
-physical/common-dialog input and DPI remain open. The root tweak stays deferred.
+physical/common-dialog input and DPI remain open. The latest continuation now implements the previously deferred root tweak.
 Complete contact/context work stays queued with every existing failure and gate.
 
 ## 1 Product direction and request boundary
@@ -264,10 +269,11 @@ Translation/root/pelvis/fingers/accessories need explicit role-aware policies.
 Preserve arcs/gestures/action style as well as contact; keep unsupported helper/
 nonuniform-scale semantics visible.
 
-### Queued body-bone correction and source-owned motion controls
+### Body-bone correction and source-owned motion controls
 
-24 October follow-up: the user explicitly queued this tweak for later, rather
-than changing the current workspace increment. Retargeting adjustments and
+The latest 24 October request implements this previously deferred tweak now.
+Preview.17 records fresh bounded evidence in
+[its receipt](PROJECT_MOTION_CONTROLS_ACCEPTANCE_2026-10-24.md). Retargeting adjustments and
 correction/control operations must act on the body's deform hierarchy. Do not
 synthesize translation, rotation or scale on TopN, TransN, YRotN, XRotN, or
 equivalent global/root/motion controls on other rigs to solve body fitting,
@@ -283,7 +289,7 @@ freeze that deletes actual source root motion.
 
 Identify these roles from reviewed hierarchy, native control/deformation,
 rest/axis and structural evidence; names are examples, not the algorithm. Save
-the policy in exact rig/profile/recipe dependencies. Before implementation,
+the policy in exact rig/profile/recipe dependencies. Before further numerical changes,
 freeze independent expectations for source-animated and unanimated cases,
 permitted coordinate conversion, body correction, export/reopen and existing-rig
 controls, including renamed/permuted compatible rigs. Do not replace or normalize
@@ -292,7 +298,8 @@ the protected-control policy.
 
 Preview.15 does not implement this policy. Its TopN pin-authoring tests establish
 current native edit continuity only and are not acceptance for this queued tweak.
-Keep it in G2's later numerical/control work; G1 remains the sole current substep.
+Preview.17 implements it under the latest override; broader qualification stays
+open and G1 remains the sole current substep.
 
 Original Next v7 stays default. Advanced 96.2 output remains blocked until its
 motion/contact/native/display/missing-context gates pass; a repository import or
@@ -319,7 +326,7 @@ or height alone. Preserve moving-frame timing and continuous bounded-ledge motio
 Coordinate body pelvis/spine/clavicles/limbs, reachable bounds/joint limits,
 full foot/hand geometry, bend continuity and release phases. Contradictory goals
 produce explicit conflicts; never resize anatomy, move fixed anchors or quietly
-drop constraints to manufacture success. The queued protected-motion-control
+drop constraints to manufacture success. The protected-motion-control
 policy above permits actual source root motion, not generated global compensation.
 
 Manual bounds remain position <= 0.001 times reviewed limb scale and orientation

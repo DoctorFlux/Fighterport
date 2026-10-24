@@ -37,6 +37,12 @@ namespace BrawlCrate.UI
                 try{snapshot.Restore(clip);if(ReferenceEquals(modelEditControl1.SelectedCHR0,clip)){modelEditControl1.UpdateModel();modelEditControl1.RefreshControlCurveTarget();modelEditControl1.InterpolationEditor?.RootChanged();modelEditControl1.KeyframePanel?.UpdateKeyframes();}_curveBefore=NativeControlSnapshot.Capture(clip,new[]{bone});MarkFighterChanged();}
                 finally{_restoringCurve=false;}
             };
+            if(!CanEditBodyBone(bone))
+            {
+                restore(before);
+                _fighterStatus.Text="Motion controls follow source animation. Edit the body curves instead.";
+                return;
+            }
             modelEditControl1.RecordEditorCommand(()=>restore(before),()=>restore(after));
             _loadedControlKey=null;_controlEpoch++;modelEditControl1.ModelPanel.Invalidate();
         }

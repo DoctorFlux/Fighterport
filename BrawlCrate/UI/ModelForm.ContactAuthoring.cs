@@ -45,6 +45,7 @@ namespace BrawlCrate.UI
                             candidate.Name=source.Name+(options.Action=="Release"?" (released)":" (contact)");
                             foreach(var track in reply.Tracks)
                             {
+                                if(!CanEditBodyBone(track.Bone))continue;
                                 var entry=candidate.Children.OfType<CHR0EntryNode>().SingleOrDefault(e=>e.Name==track.Bone)??candidate.CreateEntry(track.Bone);var channels=entry.KeyArrays.Select(array=>array.Entries.Select(k=>new ControlKey{Frame=k._index,Value=k._value,Tangent=k._tangent}).ToArray()).ToArray();
                                 for(int c=3;c<6;c++){var exterior=channels[c].Where(k=>k.Frame<first||k.Frame>last).ToArray();channels[c]=exterior.Concat(track.Channels[c].Where(k=>k.Frame>=first&&k.Frame<=last)).OrderBy(k=>k.Frame).ToArray();}NativeControlSnapshot.Write(entry,channels);entry.UseModelRotate=false;
                             }

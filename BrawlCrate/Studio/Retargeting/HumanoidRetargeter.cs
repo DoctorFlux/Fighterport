@@ -28,6 +28,9 @@ namespace BrawlCrate.Studio.Retargeting
     public sealed class HumanoidRetargeter
     {
         public const string Algorithm = "bind-world-fk-body-contact-ik-v7";
+        public const string MotionControlPolicy = "source-local-controls-v1";
+        public int[] SourceMotionControls { get; }
+        public int[] TargetMotionControls { get; }
         public Rig Source { get; }
         public Rig Target { get; }
         public RetargetMap[] Mapping { get; }
@@ -64,6 +67,7 @@ namespace BrawlCrate.Studio.Retargeting
             // names. Pair only unambiguous equal-depth ancestor paths; anatomy
             // and confirmed semantic mappings always take precedence.
             int[] aPath=AncestorPath(source),bPath=AncestorPath(target);
+            SourceMotionControls=aPath;TargetMotionControls=bPath;
             var mapping=Mapping.ToList();
             if(aPath.Length==bPath.Length)for(int i=0;i<aPath.Length;i++)
                 if(!mapping.Any(m=>m.SourceIndex==aPath[i] || m.TargetIndex==bPath[i]))
@@ -129,6 +133,23 @@ namespace BrawlCrate.Studio.Retargeting
             {
                 if (!_byTarget.TryGetValue(joint, out RetargetMap map)) { target.UpdateJoint(joint); continue; }
                 int s = map.SourceIndex, t = map.TargetIndex;
+                if (TargetMotionControls.Contains(t))
+                {
+                    // Authored local motion only. A parent's animation is not
+                    // an edit of this control, and body calibration cannot
+                    // introduce a compensating rotation here.
+                    int sp = Source.Joints[s].Parent, tp = Target.Joints[t].Parent;
+                    Quaternion basis = Quaternion.Inverse(tp < 0 ? Quaternion.Identity : Target.Rest.Orientation[tp]) *
+                        (sp < 0 ? Quaternion.Identity : Source.Rest.Orientation[sp]);
+                    target.Local[t].Rotation = Quaternion.Normalize(basis *
+                        (source.Local[s].Rotation * Quaternion.Inverse(Source.Joints[s].Bind.Rotation)) *
+                        Quaternion.Inverse(basis) * Target.Joints[t].Bind.Rotation);
+                    target.Local[t].Scale = Target.Joints[t].Bind.Scale * (source.Local[s].Scale / Source.Joints[s].Bind.Scale);
+                    target.Local[t].Translation = Target.Joints[t].Bind.Translation +
+                        TransferTranslationDelta(map, source.Local[s].Translation - Source.Joints[s].Bind.Translation);
+                    target.UpdateJoint(t);
+                    continue;
+                }
                 Quaternion delta = Convert(source.Orientation[s] * Quaternion.Inverse(Source.Rest.Orientation[s]));
                 Quaternion desired = Quaternion.Normalize(delta * Target.Rest.Orientation[t]);
                 int parent = Target.Joints[t].Parent;

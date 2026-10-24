@@ -486,7 +486,9 @@ namespace BrawlCrate.UI
             if(_pinGesture!=null)throw new InvalidOperationException("Finish or cancel the active pin gesture before saving.");
             MarkFighterChanged();
             _fighterDirty = true;
+            int savedFrame = modelEditControl1.CurrentFrame;
             modelEditControl1.StopAnim();
+            modelEditControl1.SetFrame(savedFrame);
             _fighterProject.SelectedAnimation = SelectedFighterAnimationKey();
             _fighterProject.Frame = modelEditControl1.CurrentFrame;
             if (modelEditControl1.TargetModel is ResourceNode model)
@@ -521,24 +523,31 @@ namespace BrawlCrate.UI
             UpdateFighterStatus();
         }
 
+        private string _fighterSaveError;
         private bool SaveFighterFromUi(bool saveAs = false)
         {
             if(!saveAs&&_workspaceSceneId!=null){WorkspaceAction(SaveCharacterWorkspace);return false;}
             try
             {
+                _fighterSaveError = null;
                 string path = saveAs ? null : _fighterProject.ManifestPath;
                 if (string.IsNullOrEmpty(path))
                 {
-                    using (SaveFileDialog dialog = new SaveFileDialog
-                           {Title = "Save Fighter", Filter = "FighterPort Studio project (*.fpstudio)|*.fpstudio", DefaultExt = "fpstudio", AddExtension = true,
-                               FileName = _fighterProject.Name + ".fpstudio"})
+                    using (var dialog = new WorkspaceFileDialog("Save project", "Choose where to save this project's editable copies.",
+                        "Fighterport project (*.fpstudio)|*.fpstudio", "Save", null, true))
                     {
+                        dialog.CommitSelection = destination =>
+                        {
+                            if (File.Exists(destination) && !string.Equals(destination, _fighterProject.ManifestPath, StringComparison.OrdinalIgnoreCase))
+                                throw new IOException("A project already exists here. Choose a new filename to preserve it.");
+                            SaveFighterProject(destination);
+                        };
                         if (dialog.ShowDialog(this) != DialogResult.OK)
                         {
+                            _fighterSaveError = "Save cancelled. Your current project remains open.";
                             return false;
                         }
-
-                        path = dialog.FileName;
+                        return true;
                     }
                 }
 
@@ -547,7 +556,8 @@ namespace BrawlCrate.UI
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, ex.Message, "Could not save fighter", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                _fighterSaveError = "Could not save: " + ex.Message;
+                _fighterStatus.Text = _fighterSaveError;
                 return false;
             }
         }
@@ -851,7 +861,9 @@ namespace BrawlCrate.UI
 
         private bool PrepareFighterClose()
         {
+            int frame = modelEditControl1.CurrentFrame;
             modelEditControl1.StopAnim();
+            modelEditControl1.SetFrame(frame);
             bool contentChanged;
             try
             {
@@ -866,15 +878,19 @@ namespace BrawlCrate.UI
             }
             if (_fighterDirty || contentChanged)
             {
-                DialogResult choice = MessageBox.Show(this, "Save changes to " + _fighterProject.Name + "?", "Close Fighter",
-                    MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
-                if(choice==DialogResult.Yes&&_workspaceSceneId!=null)
+                using (var dialog = new UnsavedProjectDialog(_fighterProject.Name, async () =>
                 {
-                    WorkspaceAction(async()=>{await SaveCharacterWorkspace();BeginInvoke(new Action(Close));});return false;
-                }
-                if (choice == DialogResult.Cancel || choice == DialogResult.Yes && !SaveFighterFromUi())
+                    if (_workspaceSceneId == null)
+                        return SaveFighterFromUi() ? null : _fighterSaveError ?? "Save cancelled. Your current project remains open.";
+                    _workspaceBusy = true;
+                    modelEditControl1.Enabled = false;
+                    try { await SaveCharacterWorkspace(); return null; }
+                    catch (Exception error) { return "Could not save: " + error.Message; }
+                    finally { _workspaceBusy = false; modelEditControl1.Enabled = true; RefreshCharacterWorkspace(); }
+                }))
                 {
-                    return false;
+                    var choice = dialog.ShowDialog(this);
+                    if (choice != DialogResult.Yes && choice != DialogResult.No) return false;
                 }
             }
 

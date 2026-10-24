@@ -18,6 +18,15 @@ internal static class SemanticControlChecks
         check(Roles.All(r=>setup.BoneRoles.Single(m=>m.SemanticRole==r.Role) is {Reviewed:true} map&&map.Bone==r.Bone)&&
             setup.BodyBone==1&&AnimationControls.ResolveBodyBone(source,setup)==1,
             "Reviewed pelvis, waist, bust, neck, head, shoulders and additional channels use existing native bones with one saved mapping");
+        var nativePose=AnimationService.Evaluate(source,null,0);
+        check(AnimationControls.ProtectedMotionBones(source,setup).SequenceEqual(new[]{0}),
+            "Unfamiliar reviewed hierarchy protects strict body ancestors independently of names");
+        var prohibited=EditorControlPosing.Solve(source,nativePose,setup,new Dictionary<int,Transform>{{0,source.Bones[0].Rest with{Translation=new(3,2,1)}}},[]);
+        check(prohibited.Value is null&&prohibited.Diagnostics.Any(d=>d.Code=="SOURCE_MOTION_CONTROL"),
+            "Editor solver rejects root control movement before any contact/FK solve");
+        var permitted=EditorControlPosing.Solve(source,nativePose,setup,new Dictionary<int,Transform>{{1,source.Bones[1].Rest with{Translation=new(3,2,1)}}},[]);
+        check(permitted.Value is not null&&!permitted.Value.Transforms.ContainsKey(0),
+            "Body posing remains available without moving the protected source control");
         var noOp=AnimationControls.ReviewBoneRole(source,setup,"Chest",3,"Reconfirmed by selection").Value;
         check(ReferenceEquals(noOp,setup),"Selecting an already reviewed torso role preserves its setup identity and original evidence");
         var legacyBody=setup with{BodyBone=null};

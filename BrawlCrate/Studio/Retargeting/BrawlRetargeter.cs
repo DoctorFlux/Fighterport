@@ -306,8 +306,8 @@ namespace BrawlCrate.Studio.Retargeting
                         }
                     }
                 }
-                PreserveTrajectoryCurves(plan,clip,output,last);
                 FitContactCurves(target,output,result.Contacts,last,cancellation,progress);
+                PreserveMotionControls(plan,clip,output,source,target,last);
                 progress?.Invoke(100,"Animation ready");
                 return result;
             }

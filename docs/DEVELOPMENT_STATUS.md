@@ -1,6 +1,13 @@
 # Development status — 24 October 2026 workspace increment
 
-The current Fighterport implementation is **preview.16-workspace-flow**
+Current continuation: **preview.17-project-and-motion-controls**, with 1,182
+scoped assertions and 23 inspected PNGs. New/unsaved handling and the source-local
+protected-control policy are implemented around the same full native previewer
+and original Next v7 base. See [fresh evidence and limitations](PROJECT_MOTION_CONTROLS_ACCEPTANCE_2026-10-24.md).
+No other-game, broad contact/generalization or actual game acceptance is implied.
+The preview.16 text below records its preceding increment.
+
+The preceding Fighterport implementation was **preview.16-workspace-flow**
 (`2.0.0-preview.16-workspace-flow`). Source -> Target -> Preview and fix ->
 Export now surrounds the complete dark BrawlCrate Model Previewer. The existing
 source library and read-only donor audition, target loading, original Next v7

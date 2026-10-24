@@ -56,6 +56,8 @@ namespace BrawlCrate.Studio
         public bool Ok {get;set;} public string Error {get;set;} public string State {get;set;}
         public bool Committed {get;set;} public float[][] Pose {get;set;}
         public string[] BoneNames {get;set;}
+        public int[] ProtectedMotionBones {get;set;}
+        public int? BodyBone {get;set;}
         public ControlPin[] Pins {get;set;} public ControlChain[] Chains {get;set;} public ControlTrack[] Tracks {get;set;} public string[] Diagnostics {get;set;}
         public ControlRole[] Roles {get;set;}
         public string Algorithm {get;set;} public string Name {get;set;} public int SampleCount {get;set;} public bool Loop {get;set;} public bool Draft {get;set;}public string Receipt {get;set;}

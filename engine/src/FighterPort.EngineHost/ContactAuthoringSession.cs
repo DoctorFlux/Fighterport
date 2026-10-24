@@ -17,6 +17,8 @@ sealed partial class ControlSession
             return new{Ok=true};
         }
         var options=request.ContactEdit??throw new InvalidDataException("Choose contact placement/release settings.");
+        if(AnimationControls.ProtectedMotionBones(project.Scene,state.Setup).Any(i=>project.Scene.Bones[i].Name==options.Bone))
+            throw new InvalidDataException("Motion controls retain their source animation. Choose an existing body bone for contact correction.");
         AnimationClip? reference=null;if(options.Action=="Release")reference=(await adapter.ImportAsync(request.Model!,request.Path!)).Clips.Single();
         ContactBakeResult result;try{result=await Task.Run(()=>ContactAuthoring.Prepare(project,clip,state.Setup,options,request.ContactProtection??[],reference));}catch(Exception error){throw new InvalidDataException("Contact preparation: "+error.Message,error);}
         var copied=state with{Clip=result.Clip.Id,Contacts=result.Contacts,BonePins=state.BonePins?.Select(p=>p.Clip==clip.Id?p with{Clip=result.Clip.Id}:p).ToArray()};

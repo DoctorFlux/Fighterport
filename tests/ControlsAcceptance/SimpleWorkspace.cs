@@ -132,7 +132,7 @@ internal static partial class Program
             Check(progressSeen && project.Animations.Count == 1,
                 "The workspace primary action adds exactly one independent target animation");
             var generated = project.Animations.Single();
-            Check(generated.Retarget.Algorithm == HumanoidRetargeter.Algorithm && string.IsNullOrEmpty(generated.Retarget.EngineReceipt) &&
+            Check(generated.Retarget.Algorithm == HumanoidRetargeter.Algorithm && generated.Retarget.MotionControlPolicy == HumanoidRetargeter.MotionControlPolicy && string.IsNullOrEmpty(generated.Retarget.EngineReceipt) &&
                 generated.Retarget.Library.ClipId == sourceItem.Clip.Id && generated.Retarget.Library.ModelContainerSha256 == inputHashes[donor],
                 "Workspace transfer uses original Next v7 with authentic library provenance");
             using (var expected = NodeFactory.FromFile(null, expectedPath) as CHR0Node)
@@ -207,7 +207,8 @@ internal static partial class Program
 
             // Numeric authoring checks use the retained native command and Undo routes.
             await SimpleControlsReady(form);
-            editor.SelectedBone = target._linker.BoneCache.First();
+            var bodyRig = BrawlRetargeter.Capture(target);
+            editor.SelectedBone = bodyRig.Bones[bodyRig.Rig.Roles["pelvis"]];
             await (Task)Call(form, "AttachControlPin", false);
             var loaded = await Await<ControlReply>(Call(form, "LoadControls"));
             var pin = editor.AnimationPins.Single();
@@ -221,8 +222,13 @@ internal static partial class Program
             await Wait(() => Field(form, "_pinGesture") == null);
             var bone = target._linker.BoneCache.Single(b => b.Name == pin.BoneName);
             var moved = bone.FrameState;
-            Check(Math.Abs(moved._translate._x - before[6] - .5f) < .0002f && Math.Abs(moved._rotate._y - before[4] - 15) < .002f,
-                "Workspace result retains native pin translation and rotation authoring with independent numeric expectations");
+            var movedPose = BrawlRetargeter.Sample(bodyRig,clip,0);
+            int bodyIndex = Array.FindIndex(bodyRig.Bones,b=>b.Name==pin.BoneName);
+            var requestedPosition = new System.Numerics.Vector3(pin.Position[0]+.5f,pin.Position[1],pin.Position[2]);
+            var orientationError = System.Numerics.Quaternion.Normalize(movedPose.Orientation[bodyIndex]*System.Numerics.Quaternion.Inverse(q));
+            double requestedAngleError = 2*Math.Atan2(new System.Numerics.Vector3(orientationError.X,orientationError.Y,orientationError.Z).Length(),Math.Abs(orientationError.W))*180/Math.PI;
+            Check(System.Numerics.Vector3.Distance(movedPose.Point(bodyIndex),requestedPosition)<.0002f && requestedAngleError<.002,
+                "Workspace body pin reaches the independently requested world translation and orientation");
             editor.Undo();
             await SimpleControlsReady(form);
             Check(Math.Abs(bone.FrameState._translate._x - before[6]) < .0002f, "Native Undo restores the workspace result before its pin edit");

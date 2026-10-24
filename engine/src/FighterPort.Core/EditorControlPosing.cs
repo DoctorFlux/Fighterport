@@ -9,6 +9,9 @@ public static class EditorControlPosing
     public static OperationResult<ContactSolution> Solve(Scene scene,EvaluatedPose input,ControlRigSetup setup,IReadOnlyDictionary<int,Transform> edits,ContactPin[] pins)
     {
         OperationResult<ContactSolution> Fail(string code,string message)=>new(null,[new(code,message)],[]);
+        if(AnimationControls.ResolveBodyBone(scene,setup)<0)return Fail("BODY_REVIEW_REQUIRED","Review the body/pelvis binding before posing; motion-control identities are unresolved.");
+        if(AnimationControls.ProtectedMotionBones(scene,setup).Any(edits.ContainsKey))
+            return Fail("SOURCE_MOTION_CONTROL","Motion controls follow their own source animation. Pose the existing body bones instead.");
         var soft=pins.Where(p=>p.EditorBehavior==EditorPinBehavior.SoftReach).ToArray();var fixedPins=pins.Where(p=>p.EditorBehavior!=EditorPinBehavior.SoftReach).ToArray();
         if(soft.Length==0)return ContactSolver.Solve(scene,input,setup,edits,pins);
         if(setup.SkeletonFingerprint!=AnimationControls.Fingerprint(scene))return Fail("RIG_CHANGED","Editor pins belong to another native rig revision.");

@@ -852,8 +852,9 @@ namespace BrawlLib.Internal.Windows.Controls.ModelViewer.Editors
             {
                 _mainWindow.ControlChannelEdited?.Invoke((int)field.Tag,field.Value);return;
             }
-            if (TargetBone == null)
+            if (TargetBone == null || _mainWindow.CanEditAnimationBone?.Invoke(TargetBone.Name) == false)
             {
+                UpdatePropDisplay();
                 return;
             }
 
@@ -870,8 +871,9 @@ namespace BrawlLib.Internal.Windows.Controls.ModelViewer.Editors
 
         public unsafe void BoxChanged(object sender, EventArgs e)
         {
-            if (TargetBone == null)
+            if (TargetBone == null || _mainWindow.CanEditAnimationBone?.Invoke(TargetBone.Name) == false)
             {
+                UpdatePropDisplay();
                 return;
             }
 
@@ -1040,7 +1042,7 @@ namespace BrawlLib.Internal.Windows.Controls.ModelViewer.Editors
             List<IBoneNode> o = new List<IBoneNode>();
             foreach (MDL0BoneNode bone in TargetModel.BoneCache)
             {
-                if (_copyAllState.ContainsKey(bone._name))
+                if (_copyAllState.ContainsKey(bone._name) && _mainWindow.CanEditAnimationBone?.Invoke(bone.Name) != false)
                 {
                     o.Add(bone);
                 }
@@ -1098,6 +1100,7 @@ namespace BrawlLib.Internal.Windows.Controls.ModelViewer.Editors
             {
                 foreach (string name in _copyAllState.Keys)
                 {
+                    if (_mainWindow.CanEditAnimationBone?.Invoke(name) == false) continue;
                     CHR0EntryNode entry = null;
                     if ((entry = SelectedAnimation.FindChild(name, false) as CHR0EntryNode) == null)
                     {
@@ -1152,6 +1155,7 @@ namespace BrawlLib.Internal.Windows.Controls.ModelViewer.Editors
 
             foreach (CHR0EntryNode entry in SelectedAnimation.Children)
             {
+                if (_mainWindow.CanEditAnimationBone?.Invoke(entry.Name) == false) continue;
                 if (AllTrans.Checked)
                 {
                     entry.RemoveKeyframeOnlyTrans(CurrentFrame - 1);
@@ -1183,6 +1187,7 @@ namespace BrawlLib.Internal.Windows.Controls.ModelViewer.Editors
             List<CHR0EntryNode> badNodes = new List<CHR0EntryNode>();
             foreach (CHR0EntryNode entry in SelectedAnimation.Children)
             {
+                if (_mainWindow.CanEditAnimationBone?.Invoke(entry.Name) == false) continue;
                 if (group.FindChild(entry._name, true) == null)
                 {
                     badNodes.Add(entry);

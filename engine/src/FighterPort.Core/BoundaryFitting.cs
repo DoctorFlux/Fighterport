@@ -23,6 +23,9 @@ public static class BoundaryFitting
     public static BoundaryFitResult Prepare(FighterProject project,AnimationClip source,BoundaryAnchor? entry,BoundaryAnchor? exit,BoundaryFitSettings settings)
     {
         string fingerprint=AnimationControls.Fingerprint(project.Scene);int last=source.SampleCount-1;
+        var controls=project.ControlRigs.FirstOrDefault(r=>r.SkeletonFingerprint==fingerprint);
+        var protectedMotion=controls is null?new HashSet<string>(StringComparer.Ordinal):
+            AnimationControls.ProtectedMotionBones(project.Scene,controls).Select(i=>project.Scene.Bones[i].Name).ToHashSet(StringComparer.Ordinal);
         if(source.SampleCount<3||source.SampleCount>100000)throw new InvalidDataException("Boundary fitting requires 3–100000 existing samples.");
         if(entry is null&&exit is null)throw new InvalidDataException("Choose an entry or exit reference.");
         if(settings.Components==TransformComponents.None||(settings.Components&~TransformComponents.All)!=0)throw new InvalidDataException("Choose supported transform components.");
@@ -44,6 +47,7 @@ public static class BoundaryFitting
         var tracks=source.Tracks.ToList();var changed=new List<BoneTrack>();int changedChannels=0;
         foreach(string name in settings.Bones)
         {
+            if(protectedMotion.Contains(name))continue;
             if(contactBones.Contains(name))continue;
             var bone=project.Scene.Bones.Single(b=>b.Name==name);var rest=bone.Rest.Channels();
             var original=source.Tracks.SingleOrDefault(t=>t.Bone==name)??new BoneTrack(name,new Curve?[9]);
@@ -80,6 +84,7 @@ public static class BoundaryFitting
         if(changed.Count==0)throw new InvalidDataException("The mask, root policy and protected contact paths leave no eligible channels to fit. Choose unprotected bones; repositioning these contacts needs a coupled solver. Protected: "+string.Join(", ",contactBones));
         string[] limits=["FK component curves only; no contact, clearance, joint-limit, world-trajectory or game-state acceptance.","Existing duration, rate, loop flag, middle curves and unselected channels are retained; inspect the loop seam.",settings.NearestEquivalentAngles?"Reference Euler angles use the nearest equivalent turn at each original join.":"Reference Euler channel values retain their authored turn counts, including full spins.","Native companion resources are not copied into this independent body animation."];
         string version=settings.PreserveContacts?ContactVersion:Version;
+        if(protectedMotion.Count>0)limits=[..limits,"Source-authored motion controls retain their original curves: "+string.Join(", ",protectedMotion.Order(StringComparer.Ordinal))];
         if(settings.PreserveContacts)limits=[..limits,"Existing contact trajectories are preserved by retaining ALL original curves on their complete bone dependency paths for the whole clip. These protected bones are excluded from endpoint matching. No new contact, release, anchor correction or coupled IK solve is inferred.","Protected contact bones: "+string.Join(", ",contactBones)];
         var receipt=new BoundaryFitReceipt(version,RetargetDependencies.Hash(source),entry is null?null:RetargetDependencies.Hash(entry),exit is null?null:RetargetDependencies.Hash(exit),source.SampleCount,source.Loop,settings,changedChannels,limits){ProtectedContactBones=contactBones};
         TransitionReference? Ref(BoundaryAnchor? a)=>a is null?null:new(a.Clip.Revision,project.Scene.SkeletonRevision,a.Frame,a.Rate,a.Frozen);

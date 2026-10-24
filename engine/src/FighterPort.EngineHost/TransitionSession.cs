@@ -24,6 +24,8 @@ sealed partial class ControlSession
         }
         var entry=await Reference(options.EntryMotion,options.EntryFrame,options.EntryFrozen,options.EntryRate);
         var exit=await Reference(options.ExitMotion,options.ExitFrame,options.ExitFrozen,options.ExitRate);
+        state??=new(fingerprint,clip.Id,BrawlControlProfiles.SetUp(source),[],[],null,[]);
+        source=source with{ControlRigs=[state.Setup]};
         var fit=await Task.Run(()=>BoundaryFitting.Prepare(source,clip,entry,exit,options.Settings));
         state??=new(fingerprint,clip.Id,BrawlControlProfiles.SetUp(source),[],[],null,[]);
         string copiedState=JsonSerializer.Serialize(state with{Clip=fit.Clip.Id,Contacts=state.Contacts.Select(c=>c.Clip==clip.Id?c with{Clip=fit.Clip.Id}:c).ToArray(),BonePins=state.BonePins?.Select(p=>p.Clip==clip.Id?p with{Clip=fit.Clip.Id}:p).ToArray()},ProjectStore.Json);

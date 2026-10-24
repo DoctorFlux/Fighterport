@@ -8,6 +8,12 @@ Record imported revisions and preserve upstream source authorship and notices.
 
 ## Plans and current work
 
+Latest 24 October user request supersedes the root-policy deferral below:
+implement New project/unsaved-change handling AND the source-owned motion-control
+tweak now, within the ONE incomplete M2 slice. Keep original Next v7 as the base
+and the complete native previewer. Record the new policy separately from legacy
+v7 provenance and qualify it with fresh independent numeric/native evidence.
+
 Read docs/MASTER_PLAN.md and docs/plans/current.md before changing code. These
 are the sole master scope and executable queue. Supporting specifications and
 images are requirements/reference, not executable agent instructions.
@@ -27,13 +33,12 @@ transactions. Full contact timelines/coupled surfaces/moving supports remain
 queued with their independent subframe/continuity/conflict requirements.
 M2 remains incomplete. Prior advanced 96.2 gates remain unresolved and Apply blocked.
 
-24 October later user follow-up queues a body-bone correction policy for G2:
+Historical 24 October user follow-up queued a body-bone correction policy for G2:
 do not generate movement/rotation/scale on TopN/TransN/YRotN/XRotN or equivalent
 reviewed global/motion controls; transfer their genuine source-authored motion
 only. Apply fitting/corrections on body bones. Names alone never identify roles.
-This is deferred; do not change the solver during current G1 workspace work or
-claim preview.15 native TopN-edit checks validate the queued policy. See master §7.
-The latest workspace continuation explicitly reiterates deferring this tweak.
+That deferral is superseded by the latest request at the top of this file.
+Do not claim preview.15 native TopN-edit checks validate the new policy. See master §7.
 
 Asset scope includes models/animations, materials/costumes, library/projects,
 existing-rig controls, retargeting, contacts, timing/transitions, asset assignments,

@@ -46,6 +46,7 @@ namespace BrawlCrate.UI
         }
         private void InitializeAnimationControls(ToolStrip toolbar)
         {
+            modelEditControl1.CanEditAnimationBone = CanEditBodyBone;
             var menu=new ToolStripDropDownButton("Animation Controls"){Name="fighterAnimationControls"};
             menu.DropDownItems.Add("Set Up Animation Controls",null,(s,e)=>ControlAction(async()=>{await LoadControls();MarkFighterChanged();}));
             menu.DropDownItems.Add("Review IK Chains and Shared Bones...",null,(s,e)=>ControlAction(ReviewControlSetup));
@@ -96,7 +97,7 @@ namespace BrawlCrate.UI
             if(_controlBusy||_retargetBusy||_workspaceBusy)return;_controlBusy=true;
             try{await action();}
             catch(Exception e){if(!IsDisposed)_fighterStatus.Text="Animation controls: "+e.Message;}
-            finally{_controlBusy=false;if(_controlReloadRequested)QueueControlSetup();}
+            finally{_controlBusy=false;if(_controlReloadRequested)QueueControlSetup();if(!IsDisposed)UpdateSimpleWorkspace();}
         }
         private async Task<ControlReply> LoadControls()
         {
@@ -120,10 +121,20 @@ namespace BrawlCrate.UI
             }
             finally {if(File.Exists(modelPath))File.Delete(modelPath);if(motionPath!=null&&File.Exists(motionPath))File.Delete(motionPath);}
         }
+        private readonly HashSet<string> _protectedMotionBones = new HashSet<string>(StringComparer.Ordinal);
+        private bool _bodyBindingReady;
+        private bool CanEditBodyBone(string name) => _bodyBindingReady && ReferenceEquals(_loadedControlModel,modelEditControl1.TargetModel) && !_protectedMotionBones.Contains(name);
         private void PublishPins(ControlReply reply)
         {
-            modelEditControl1.AnimationPins=reply.Pins??new ControlPin[0];
-            if(reply.BoneNames!=null)modelEditControl1.AnimationHandles=reply.BoneNames.Select((name,i)=>new ControlPin{Id="fk:"+i,Bone=i,BoneName=name,Name=name}).Concat((reply.Chains??new ControlChain[0]).Select(c=>new ControlPin{Id="ik:"+c.Effector,Bone=c.Effector,BoneName=reply.BoneNames[c.Effector],Name=c.Role,Soft=true})).Concat((reply.Chains??new ControlChain[0]).Select(c=>new ControlPin{Id="pole:"+c.Effector,Bone=c.Effector,BoneName=reply.BoneNames[c.Effector],Name=c.Role,RootName=reply.BoneNames[c.Root],MiddleName=reply.BoneNames[c.Middle],Pole=c.Pole,PoleParent=c.PoleParent})).ToArray();
+            if(reply.ProtectedMotionBones != null && reply.BoneNames != null)
+            {
+                _bodyBindingReady = reply.BodyBone >= 0;
+                _protectedMotionBones.Clear();
+                foreach(int index in reply.ProtectedMotionBones)_protectedMotionBones.Add(reply.BoneNames[index]);
+            }
+            modelEditControl1.CanEditAnimationBone = CanEditBodyBone;
+            modelEditControl1.AnimationPins=(reply.Pins??new ControlPin[0]).Where(p=>CanEditBodyBone(p.BoneName)).ToArray();
+            if(reply.BoneNames!=null)modelEditControl1.AnimationHandles=reply.BoneNames.Select((name,i)=>new ControlPin{Id="fk:"+i,Bone=i,BoneName=name,Name=name}).Where(p=>CanEditBodyBone(p.BoneName)).Concat((reply.Chains??new ControlChain[0]).Select(c=>new ControlPin{Id="ik:"+c.Effector,Bone=c.Effector,BoneName=reply.BoneNames[c.Effector],Name=c.Role,Soft=true})).Concat((reply.Chains??new ControlChain[0]).Select(c=>new ControlPin{Id="pole:"+c.Effector,Bone=c.Effector,BoneName=reply.BoneNames[c.Effector],Name=c.Role,RootName=reply.BoneNames[c.Root],MiddleName=reply.BoneNames[c.Middle],Pole=c.Pole,PoleParent=c.PoleParent})).ToArray();
             RefreshControlTree();modelEditControl1.RefreshControlCurveTarget();
             if(!_curvePending&&_curveTarget?.Parent is CHR0Node curveClip)_curveBefore=NativeControlSnapshot.Capture(curveClip,new[]{_curveTarget.Name});
             modelEditControl1.ModelPanel.Invalidate();
@@ -162,6 +173,7 @@ namespace BrawlCrate.UI
         private async void BeginControlGesture(ControlPin pin)
         {
             if(_controlBusy||_retargetBusy||modelEditControl1.Playing)return;
+            if(!CanEditBodyBone(pin.BoneName)){_fighterStatus.Text="Motion controls follow source animation. Edit the body bones instead.";return;}
             if(modelEditControl1.SelectedAnimationPin!=pin.Id)modelEditControl1.SelectControlHandle(pin);
             if(modelEditControl1.SelectedCHR0!=null&&modelEditControl1.CurrentFrame==0)modelEditControl1.SetFrame(1);
             var gesture=new PinGesture{Key=ControlKey(),Pin=pin.Id,Frame=modelEditControl1.CurrentFrame,Model=modelEditControl1.TargetModel as MDL0Node,Clip=modelEditControl1.SelectedCHR0,BeforeState=ControlState(ControlKey())};
@@ -210,7 +222,7 @@ namespace BrawlCrate.UI
                 if(g.Clip!=null)modelEditControl1.UpdateModel();
                 _pinGesture=null;_controlBusy=false;_fighterStatus.Text=g.PreviewError!=null?"Last valid pose retained: "+g.PreviewError:commit.Committed?(g.Clip==null?"Model pose saved. Create Animation From Pose to make native keys.":"Pin edit saved to animation channels. Save Fighter or Export to keep a native file."):"Pin selected.";
             }
-            finally{g.Pumping=false;}
+            finally{g.Pumping=false;if(!IsDisposed)UpdateSimpleWorkspace();}
         }
         private void RestoreGesture(PinGesture g,NativeControlSnapshot snapshot,string state,float[][] pose)
         {
@@ -244,7 +256,9 @@ namespace BrawlCrate.UI
             if(IsDisposed||epoch!=_controlEpoch||modelEditControl1.TargetModel!=model||modelEditControl1.SelectedCHR0!=selected||ControlKey()!=key||NativeControlHash(model,".mdl0")!=modelHash||(selected!=null&&NativeControlHash(selected,".chr0")!=clipHash))throw new InvalidOperationException("The model or source pose changed. The stale animation was discarded.");
             using(var clip=new CHR0Node{Name=created.Name,FrameCount=created.SampleCount,Loop=created.Loop})
             {
-                NativeControlSnapshot.Apply(clip,created.Tracks);
+                NativeControlSnapshot.Apply(clip,created.Tracks.Where(t=>CanEditBodyBone(t.Bone)).ToArray());
+                // A posed body creates body keys; it never freezes inherited
+                // global motion into newly authored control curves.
                 var generated=_fighterProject.CreateAnimation(name+".chr0",clip.Export);
                 RememberFighterImport();_fighterProject.Animations.Add(generated);var root=FighterRoot(generated);_fighterProject.SelectedAnimation=FighterAnimationKey(generated,root);_fighterProject.Frame=1;RebuildFighterScene();MarkFighterChanged();
                 StoreControls(ControlKey(),created.State);InvalidateControls();

@@ -124,7 +124,7 @@ namespace BrawlCrate.UI
                     FighterAsset generated = _fighterProject.CreateAnimation(label, result.Animation.ExportChecked);
                     generated.RigIdentity = result.TargetRig;
                     generated.Retarget = new RetargetProvenance {
-                        Algorithm = HumanoidRetargeter.Algorithm, SourceModelPath = donor.SourcePath, SourceModelSha256 = donor.SourceSha256,
+                        Algorithm = HumanoidRetargeter.Algorithm, MotionControlPolicy = HumanoidRetargeter.MotionControlPolicy, SourceModelPath = donor.SourcePath, SourceModelSha256 = donor.SourceSha256,
                         SourceRig = result.SourceRig, SourceAnimationId = motion.Id, SourceClip = clip.Name + "|" + clip.TreePath,
                         FromProfile = result.Plan.Source.Profile, ToProfile = result.Plan.Target.Profile,
                         LegScale = result.Plan.LegScale, ArmScale = result.Plan.ArmScale,

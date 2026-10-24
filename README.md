@@ -2,7 +2,7 @@
 
 This is the public unified source repository at https://github.com/DoctorFlux/Fighterport.
 It imports the BrawlCrate-based Next preview.14 source and integrated owned engine;
-the current implementation is **preview.16-workspace-flow**.
+the current implementation is **preview.17-project-and-motion-controls**.
 The two predecessor repositories are private preserved histories. New commits use
 the DoctorFlux identity without Codex author, committer or coauthor attribution;
 upstream copyrights, licenses and notices remain intact.
@@ -31,15 +31,17 @@ The source library collapses, **Focus editor** restores editing room, and
 the Bones panel, camera/materials, transform tools, autokeys, interpolation,
 timeline and Undo remain together in the original native control.
 
-Fresh preview.16 verification passes **257 scoped checks** with **43 actually
-inspected PNGs**. The
-[workspace-flow acceptance record](docs/WORKSPACE_FLOW_ACCEPTANCE_2026-10-24.md)
-records actual commands, outcomes and limits. Historical preview.15 passed
-**163 scoped checks** with **25 inspected PNGs**, as recorded in
-[its workspace receipt](docs/SIMPLE_WORKSPACE_ACCEPTANCE_2026-10-24.md); those
-results do not qualify preview.16. Broader M2/G1 usability, physical input/DPI and
-game acceptance remain incomplete. Original Next v7 is unchanged; contact-context
-work and the later body-bone/protected-motion-control policy remain queued.
+Fresh preview.17 verification passes **1,182 scoped assertions**, with **23
+actually inspected PNGs**. See the [project and motion-control acceptance
+record](docs/PROJECT_MOTION_CONTROLS_ACCEPTANCE_2026-10-24.md) for commands and limits.
+New/Open/Close share Save, Discard and Keep editing; failed/cancelled saves keep
+the current document and Undo available. Untitled Save accepts a pasted path.
+Original Next v7 remains the base with a separately recorded source-local control
+policy: protected controls follow only their own source animation, while fitting
+and manual corrections use body bones. Names are examples; reviewed hierarchy
+identifies equivalent controls. Prior preview.16/15 receipts remain historical.
+M2/G1 human usability, physical input/DPI, broad contact quality and game acceptance
+remain incomplete.
 
 Use **Animation Controls** to set up an existing rig, add pins to selected bones,
 soft-pin hands/feet, follow an existing animation, or create an animation from a

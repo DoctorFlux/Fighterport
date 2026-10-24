@@ -96,10 +96,11 @@ namespace BrawlCrate.UI
                 client?.Dispose();foreach(var root in roots)root.Dispose();string path=Path.GetFullPath(stage),parent=Path.GetFullPath(_controlStage);if(Path.GetDirectoryName(path)==parent&&Path.GetFileName(path).StartsWith("transition-",StringComparison.Ordinal))try{Directory.Delete(path,true);}catch(IOException){}
             }
         }
-        private static void ApplyBoundaryTracks(CHR0Node clip,ControlTrack[] tracks,TransitionFitOptions options,MDL0Node model)
+        private void ApplyBoundaryTracks(CHR0Node clip,ControlTrack[] tracks,TransitionFitOptions options,MDL0Node model)
         {
             foreach(var track in tracks)
             {
+                if(!CanEditBodyBone(track.Bone))continue;
                 var bone=model._linker.BoneCache.Single(b=>b.Name==track.Bone);var entry=clip.Children.OfType<CHR0EntryNode>().SingleOrDefault(e=>e.Name==track.Bone)??clip.CreateEntry(track.Bone);
                 bool scale=entry.UseModelScale,rotate=entry.UseModelRotate,translate=entry.UseModelTranslate;
                 var channels=entry.KeyArrays.Select(array=>array.Entries.Select(k=>new ControlKey{Frame=k._index,Value=k._value,Tangent=k._tangent}).ToArray()).ToArray();
