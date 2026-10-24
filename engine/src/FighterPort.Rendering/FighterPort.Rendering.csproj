@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><AllowUnsafeBlocks>true</AllowUnsafeBlocks><AvaloniaAccessUnstablePrivateApis>true</AvaloniaAccessUnstablePrivateApis></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../FighterPort.Core/FighterPort.Core.csproj" />
+    <PackageReference Include="Avalonia" Version="11.3.9" />
+    <PackageReference Include="Silk.NET.OpenGL" Version="2.23.0" />
+  </ItemGroup>
+</Project>

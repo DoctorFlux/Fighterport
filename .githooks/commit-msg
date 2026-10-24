@@ -1,0 +1,12 @@
+#!/bin/sh
+# Enforce the owner's requested attribution policy for this repository.
+set -eu
+author=$(git var GIT_AUTHOR_IDENT)
+committer=$(git var GIT_COMMITTER_IDENT)
+case "$(printf '%s\n%s' "$author" "$committer" | tr '[:upper:]' '[:lower:]')" in
+  *codex*) printf '%s\n' 'Commit rejected: Codex author/committer attribution is forbidden.' >&2; exit 1 ;;
+esac
+trailers=$(git interpret-trailers --parse "$1" | tr '[:upper:]' '[:lower:]')
+case "$trailers" in
+  *codex*) printf '%s\n' 'Commit rejected: Codex attribution trailers are forbidden.' >&2; exit 1 ;;
+esac

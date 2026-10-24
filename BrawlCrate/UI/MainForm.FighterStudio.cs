@@ -1,0 +1,152 @@
+using BrawlCrate.Studio;
+using System;
+using System.IO;
+using System.Windows.Forms;
+
+namespace BrawlCrate.UI
+{
+    public partial class MainForm
+    {
+        private ModelForm _fighterForm;
+        private bool _replacingFighter;
+        internal static ApplicationContext StartViewerApplication()
+        {
+            var context=new ApplicationContext();
+            Instance.FormClosed+=(s,e)=>context.ExitThread();
+            if(!Instance.NewFighterProject()){context.Dispose();throw new InvalidOperationException("The model viewer could not start.");}
+            return context;
+        }
+
+        private void InitializeFighterMenu()
+        {
+            ToolStripMenuItem fighter = new ToolStripMenuItem("Fighter") {Name = "fighterMenu"};
+            fighter.DropDownItems.Add(new ToolStripMenuItem("New Fighter", null,
+                (s, e) => NewFighterProject()) {Name = "newFighterMenu"});
+            fighter.DropDownItems.Add(new ToolStripMenuItem("Open Fighter...", null,
+                (s, e) => ChooseFighterProject()) {Name = "openFighterMenu"});
+            menuStrip1.Items.Insert(0, fighter);
+            Shown += (s, e) =>
+            {
+                if (_fighterForm != null && !_fighterForm.IsDisposed)
+                {
+                    Hide();
+                    _fighterForm.Activate();
+                }
+            };
+        }
+
+        internal bool NewFighterProject()
+        {
+            return StartFighterProject(FighterProject.Create("New Fighter"));
+        }
+        internal bool OpenWorkspaceScene(FighterProject project,string scene)
+        {
+            if(!StartFighterProject(project))return false;_fighterForm.BindWorkspaceScene(scene);return true;
+        }
+
+        internal bool ChooseFighterProject()
+        {
+            using (OpenFileDialog dialog = new OpenFileDialog
+                   {Title = "Open Fighter", Filter = "FighterPort Studio project (*.fpstudio)|*.fpstudio"})
+            {
+                return dialog.ShowDialog(this) == DialogResult.OK && OpenFighterProject(dialog.FileName);
+            }
+        }
+
+        internal bool OpenFighterProject(string path)
+        {
+            FighterProject project = null;
+            try
+            {
+                project = FighterProject.Open(path);
+                ModelForm.ValidateFighterProjectAssets(project);
+                return StartFighterProject(project);
+            }
+            catch (Exception ex)
+            {
+                project?.Dispose();
+                MessageBox.Show(this, ex.Message, "Could not open fighter", MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+                return false;
+            }
+        }
+
+        internal bool TrySaveFighterResource(BrawlLib.SSBB.ResourceNodes.ResourceNode root, bool saveAs, out bool result)
+        {
+            result = false;
+            if (_fighterForm == null || _fighterForm.IsDisposed || !_fighterForm.OwnsFighterRoot(root))
+            {
+                return false;
+            }
+
+            result = _fighterForm.SaveOwnedFighterResource(root, saveAs);
+            return true;
+        }
+
+        internal bool IsBorrowedFighterResource(Model_Previewer.ModelEditControl.ModelEditControl editor,
+            BrawlLib.SSBB.ResourceNodes.ResourceNode node)
+        {
+            return _fighterForm != null && !_fighterForm.IsDisposed && _fighterForm.FighterEditor != editor &&
+                _fighterForm.RetainsFighterRoot(node);
+        }
+
+        internal bool ValidateFighterOutputDestination(string path, BrawlLib.SSBB.ResourceNodes.ResourceNode resource = null,
+            bool folder = false)
+        {
+            if (_fighterForm == null || _fighterForm.IsDisposed || !_fighterForm.OwnsFighterRoot(resource ?? Program.RootNode))
+            {
+                return true;
+            }
+
+            try
+            {
+                _fighterForm.ProtectFighterNativeOutput(path, folder);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(_fighterForm, ex.Message, "Protected fighter source", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return false;
+            }
+        }
+
+        private bool StartFighterProject(FighterProject project)
+        {
+            _replacingFighter=true;
+            try
+            {
+            if (_fighterForm != null && !_fighterForm.IsDisposed)
+            {
+                _fighterForm.Close();
+                if (_fighterForm != null && !_fighterForm.IsDisposed)
+                {
+                    project.Dispose();
+                    return false;
+                }
+            }
+
+            // Native resource documents keep their own unsaved-change handling.
+            if (!Program.Close())
+            {
+                project.Dispose();
+                return false;
+            }
+
+            ModelForm form = new ModelForm();
+            form.InitializeFighterProject(project);
+            _fighterForm = form;
+            form.FormClosed += (s, e) =>
+            {
+                if (_fighterForm == form)
+                {
+                    _fighterForm = null;
+                    if(!_replacingFighter) BeginInvoke(new Action(Close));
+                }
+            };
+            form.Show(this);
+            return true;
+            }
+            finally { _replacingFighter=false; }
+        }
+    }
+}

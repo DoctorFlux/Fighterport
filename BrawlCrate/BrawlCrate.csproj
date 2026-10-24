@@ -1,0 +1,421 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <ProductVersion>9.0.30729</ProductVersion>
+    <OutputType>WinExe</OutputType>
+    <PlatformTarget>x86</PlatformTarget>
+    <IsWebBootstrapper>false</IsWebBootstrapper>
+    <TargetFramework>net472</TargetFramework>
+    <PublishUrl>publish\</PublishUrl>
+    <Install>true</Install>
+    <InstallFrom>Disk</InstallFrom>
+    <UpdateEnabled>false</UpdateEnabled>
+    <UpdateMode>Foreground</UpdateMode>
+    <UpdateInterval>7</UpdateInterval>
+    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
+    <UpdatePeriodically>false</UpdatePeriodically>
+    <UpdateRequired>false</UpdateRequired>
+    <MapFileExtensions>true</MapFileExtensions>
+    <ApplicationRevision>0</ApplicationRevision>
+    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
+    <UseApplicationTrust>false</UseApplicationTrust>
+    <BootstrapperEnabled>true</BootstrapperEnabled>
+    <AssemblyName>FighterPortStudioV2</AssemblyName>
+    <AssemblyTitle>FighterPort Studio V2</AssemblyTitle>
+    <Product>FighterPort Studio V2</Product>
+    <Description>This program is provided as-is without any warranty, implied or otherwise. By using this program, the end user agrees to take full responsibility regarding its proper and lawful use. The authors/hosts/distributors cannot be held responsible for any damage resulting in the use of this program, nor can they be held accountable for the manner in which it is used.</Description>
+    <Copyright>
+      Copyright © 2018 - 2024 soopercool101, NuclearNecrosis, Simon381
+      BrawlBox Copyright © 2009 - 2019 Bryan Moulton, BlackJax96, libertyernie, Sammi Husky
+      Super Smash Bros. Brawl © 2008 Nintendo and HAL Laboratory
+    </Copyright>
+    <AssemblyVersion>2.0.0.0</AssemblyVersion>
+    <FileVersion>2.0.0.14</FileVersion>
+    <InformationalVersion>2.0.0-preview.14-contact-authoring</InformationalVersion>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Platforms>AnyCPU;x64;x86</Platforms>
+    <Configurations>Debug;Release;Mono;Canary;Doxygen;Documentation</Configurations>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
+    <DefineConstants>DEBUG</DefineConstants>
+    <UseVSHostingProcess>false</UseVSHostingProcess>
+    <PlatformTarget>x86</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
+    <DefineConstants />
+    <Prefer32Bit>true</Prefer32Bit>
+    <RunCodeAnalysis>false</RunCodeAnalysis>
+    <PlatformTarget>x86</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Documentation|x86'">
+    <DefineConstants />
+    <Prefer32Bit>true</Prefer32Bit>
+    <RunCodeAnalysis>false</RunCodeAnalysis>
+    <PlatformTarget>x86</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Doxygen|x86'">
+    <DefineConstants />
+    <Prefer32Bit>true</Prefer32Bit>
+    <RunCodeAnalysis>false</RunCodeAnalysis>
+    <PlatformTarget>x86</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Canary|x86'">
+    <DefineConstants />
+    <Prefer32Bit>true</Prefer32Bit>
+    <RunCodeAnalysis>false</RunCodeAnalysis>
+    <PlatformTarget>x86</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Mono|x86'">
+    <DefineConstants />
+    <Prefer32Bit>true</Prefer32Bit>
+    <RunCodeAnalysis>false</RunCodeAnalysis>
+    <PlatformTarget>x86</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
+    <DefineConstants>TRACE;DEBUG</DefineConstants>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <Prefer32Bit>true</Prefer32Bit>
+    <RunCodeAnalysis>false</RunCodeAnalysis>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
+    <DefineConstants>TRACE;DEBUG</DefineConstants>
+    <PlatformTarget>x86</PlatformTarget>
+    <Prefer32Bit>true</Prefer32Bit>
+    <RunCodeAnalysis>false</RunCodeAnalysis>
+    <WarningLevel>4</WarningLevel>
+    <OutputPath>bin\$(Platform)\$(Configuration)\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <DefineConstants>DEBUG</DefineConstants>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <Prefer32Bit>true</Prefer32Bit>
+    <RunCodeAnalysis>false</RunCodeAnalysis>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|AnyCPU'">
+    <DefineConstants />
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <Prefer32Bit>true</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Documentation|AnyCPU'">
+    <DefineConstants />
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <Prefer32Bit>true</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Doxygen|AnyCPU'">
+    <DefineConstants />
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <Prefer32Bit>true</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Canary|AnyCPU'">
+    <DefineConstants>CANARY</DefineConstants>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <Prefer32Bit>true</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Mono|AnyCPU'">
+    <DefineConstants>MONO</DefineConstants>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <Prefer32Bit>true</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x86'">
+    <DefineConstants />
+    <PlatformTarget>x86</PlatformTarget>
+    <Prefer32Bit>true</Prefer32Bit>
+    <WarningLevel>4</WarningLevel>
+    <OutputPath>bin\$(Platform)\$(Configuration)\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Documentation|x86'">
+    <DefineConstants />
+    <PlatformTarget>x86</PlatformTarget>
+    <Prefer32Bit>true</Prefer32Bit>
+    <WarningLevel>4</WarningLevel>
+    <OutputPath>bin\$(Platform)\$(Configuration)\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Doxygen|x86'">
+    <DefineConstants />
+    <PlatformTarget>x86</PlatformTarget>
+    <Prefer32Bit>true</Prefer32Bit>
+    <WarningLevel>0</WarningLevel>
+    <OutputPath>bin\$(Platform)\$(Configuration)\</OutputPath>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningsAsErrors />
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Canary|x86'">
+    <DefineConstants>CANARY</DefineConstants>
+    <PlatformTarget>x86</PlatformTarget>
+    <Prefer32Bit>true</Prefer32Bit>
+    <WarningLevel>4</WarningLevel>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\$(Platform)\$(Configuration)\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Mono|x86'">
+    <DefineConstants>MONO</DefineConstants>
+    <PlatformTarget>x86</PlatformTarget>
+    <Prefer32Bit>true</Prefer32Bit>
+    <WarningLevel>4</WarningLevel>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\$(Platform)\$(Configuration)\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <DefineConstants />
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <Prefer32Bit>true</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Documentation|x64'">
+    <DefineConstants />
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <Prefer32Bit>true</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Doxygen|x64'">
+    <DefineConstants />
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <Prefer32Bit>true</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Canary|x64'">
+    <DefineConstants />
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <Prefer32Bit>true</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Mono|x64'">
+    <DefineConstants />
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <Prefer32Bit>true</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'!='Canary'">
+    <ApplicationIcon>BrawlCrate.ico</ApplicationIcon>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Canary'">
+    <ApplicationIcon>BrawlCrateCanary.ico</ApplicationIcon>
+  </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject>BrawlCrate.Program</StartupObject>
+    <Version>42.0.1</Version>
+    <Authors>soopercool101, NuclearNecrosis, Simon381, Onium, Bryan Moulton, BlackJax96, libertyernie, Sammi Husky</Authors>
+    <Company>DoctorFlux</Company>
+    <RunPostBuildEvent>Never</RunPostBuildEvent>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
+    <OutputPath>bin\$(Platform)\$(Configuration)\</OutputPath>
+    <DefineConstants>TRACE;DEBUG</DefineConstants>
+    <PlatformTarget>x64</PlatformTarget>
+    <Prefer32Bit>true</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
+    <OutputPath>bin\$(Platform)\$(Configuration)\</OutputPath>
+    <DefineConstants />
+    <PlatformTarget>x64</PlatformTarget>
+    <Prefer32Bit>true</Prefer32Bit>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Documentation|x64'">
+    <OutputPath>bin\$(Platform)\$(Configuration)\</OutputPath>
+    <DefineConstants />
+    <PlatformTarget>x64</PlatformTarget>
+    <Prefer32Bit>true</Prefer32Bit>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Doxygen|x64'">
+    <OutputPath>bin\x64\Doxygen\</OutputPath>
+    <DefineConstants />
+    <PlatformTarget>x64</PlatformTarget>
+    <Prefer32Bit>true</Prefer32Bit>
+    <WarningLevel>0</WarningLevel>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningsAsErrors />
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Canary|x64'">
+    <OutputPath>bin\$(Platform)\$(Configuration)\</OutputPath>
+    <DefineConstants>CANARY</DefineConstants>
+    <PlatformTarget>x64</PlatformTarget>
+    <Prefer32Bit>true</Prefer32Bit>
+    <WarningLevel>4</WarningLevel>
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Mono|x64'">
+    <OutputPath>bin\$(Platform)\$(Configuration)\</OutputPath>
+    <DefineConstants>MONO</DefineConstants>
+    <PlatformTarget>x64</PlatformTarget>
+    <Prefer32Bit>true</Prefer32Bit>
+    <WarningLevel>4</WarningLevel>
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <WarningLevel>4</WarningLevel>
+    <OutputPath>bin\$(Platform)\$(Configuration)\</OutputPath>
+    <DocumentationFile></DocumentationFile>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <WarningLevel>4</WarningLevel>
+    <OutputPath>bin\$(Platform)\$(Configuration)\</OutputPath>
+    <DocumentationFile></DocumentationFile>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Documentation|AnyCPU'">
+    <WarningLevel>4</WarningLevel>
+    <OutputPath>bin\$(Platform)\$(Configuration)\</OutputPath>
+    <DocumentationFile />
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Doxygen|AnyCPU'">
+    <WarningLevel>0</WarningLevel>
+    <OutputPath>bin\$(Platform)\$(Configuration)\</OutputPath>
+    <DocumentationFile />
+    <Optimize>false</Optimize>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningsAsErrors />
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Canary|AnyCPU'">
+    <WarningLevel>4</WarningLevel>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\$(Platform)\$(Configuration)\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Mono|AnyCPU'">
+    <WarningLevel>4</WarningLevel>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\$(Platform)\$(Configuration)\</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Doxygen" Version="1.8.14">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="IronPython" Version="3.4.1" />
+    <PackageReference Include="IronPython.StdLib" Version="3.4.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="OpenTK">
+      <HintPath>..\BrawlLib\OpenTK.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Configuration" />
+    <Reference Include="System.Web.Extensions" />
+    <Reference Include="System.Numerics" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+    <Reference Include="WindowsBase" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Update="Properties\Settings.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+    </Compile>
+    <Compile Update="UI\TreeViewMS.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <Compile Update="UI\AboutForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="UI\AboutForm.designer.cs">
+      <DependentUpon>AboutForm.cs</DependentUpon>
+    </Compile>
+    <Compile Update="UI\CloneSoundDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="UI\CollisionEditor.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="UI\CollisionForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="UI\IssueDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="UI\IssueDialog.Designer.cs">
+      <DependentUpon>IssueDialog.cs</DependentUpon>
+    </Compile>
+    <Compile Update="UI\Model Previewer\ModelEditControl\Animation.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="UI\Model Previewer\ModelEditControl\ButtonClick.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="UI\Model Previewer\ModelEditControl\MiscFunctions.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="UI\Model Previewer\ModelEditControl\Designer.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="UI\Model Previewer\ModelEditControl\Rendering.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="UI\Model Previewer\ModelEditControl\Variables.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="UI\Model Previewer\ModelViewerHelp.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="UI\Model Previewer\LeftPanel.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="UI\Model Previewer\ModelViewerSettings.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="UI\SettingsDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="UI\MainForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="UI\ModelForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="UI\ResourceTree.cs">
+      <SubType>Component</SubType>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Update="Properties\Resources.resx">
+      <Generator>PublicResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Update="UI\CollisionEditor.resx">
+      <DependentUpon>CollisionEditor.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Update="UI\IssueDialog.resx">
+      <DependentUpon>IssueDialog.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Update="UI\Model Previewer\ModelEditControl\Designer.resx">
+      <DependentUpon>Designer.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Update="UI\Model Previewer\ModelViewerHelp.resx">
+      <DependentUpon>ModelViewerHelp.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Update="UI\Model Previewer\LeftPanel.resx">
+      <DependentUpon>LeftPanel.cs</DependentUpon>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Changelog.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\BrawlLib\BrawlLib.csproj" />
+    <None Include="..\licenses\**\*" Link="licenses\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\THIRD_PARTY_NOTICES.md" Link="licenses\THIRD_PARTY_NOTICES.md" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\LICENSE" Link="licenses\BrawlCrate-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="discord-rpc.dll">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </None>
+    <None Update="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+  <Target Name="PreBuild" BeforeTargets="PreBuildEvent" Condition=" '$(FighterPortLegacyBuildHooks)'=='true' And '$(Configuration)'!='Mono' ">
+    <Exec Command="if EXIST &quot;$(TargetDir)Updater.exe&quot; (&#xD;&#xA;  &quot;$(TargetDir)Updater.exe&quot; -killAll&#xD;&#xA;)&#xD;&#xA;if not '$(ConfigurationName)' == 'Documentation' (&#xD;&#xA;  if not '$(ConfigurationName)' == 'Doxygen' (&#xD;&#xA;    if not '$(ConfigurationName)' == 'Mono' (&#xD;&#xA;      cd $(SolutionDir)ColorSmash\&#xD;&#xA;      cargo build --release --target i686-pc-windows-msvc&#xD;&#xA;    )&#xD;&#xA;  )&#xD;&#xA;)&#xD;&#xA;if not '$(ConfigurationName)' == 'Debug' (&#xD;&#xA;  RD /S /Q &quot;$(TargetDir)&quot;&#xD;&#xA;)" />
+  </Target>
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition=" '$(FighterPortLegacyBuildHooks)'=='true' And '$(Configuration)'!='Mono' ">
+    <Exec Command="cd &quot;$(TargetDir)&quot;&#xD;&#xA;%25windir%25\system32\xcopy &quot;$(ProjectDir)API\Lib\*&quot; &quot;$(TargetDir)\BrawlAPI\Lib\&quot; /Y /I /S&#xD;&#xA;%25windir%25\system32\xcopy &quot;$(ProjectDir)API\Lib\*&quot; &quot;$(TargetDir)\BrawlAPI\Lib\&quot; /Y /I /S&#xD;&#xA;%25windir%25\system32\xcopy &quot;$(ProjectDir)API\Plugins\*&quot; &quot;$(TargetDir)\BrawlAPI\Plugins\&quot; /Y /I /S&#xD;&#xA;%25windir%25\system32\xcopy &quot;$(ProjectDir)API\Loaders\*&quot; &quot;$(TargetDir)\BrawlAPI\Loaders\&quot; /Y /I /S&#xD;&#xA;%25windir%25\system32\xcopy &quot;$(ProjectDir)API\Resources\*&quot; &quot;$(TargetDir)\BrawlAPI\Resources\&quot; /Y /I /S&#xD;&#xA;%25windir%25\system32\xcopy &quot;$(SolutionDir)Updater\$(OutDir)*.dll&quot; &quot;$(TargetDir)&quot; /Y /I&#xD;&#xA;%25windir%25\system32\xcopy &quot;$(SolutionDir)Updater\$(OutDir)*.exe&quot; &quot;$(TargetDir)&quot; /Y /I&#xD;&#xA;%25windir%25\system32\xcopy &quot;$(TargetDir)lib&quot; &quot;$(TargetDir)\BrawlAPI\Lib\Python&quot; /Y /I /S&#xD;&#xA;RD /S /Q &quot;$(TargetDir)lib&quot;&#xD;&#xA;if EXIST &quot;$(SolutionDir)ColorSmash\target\i686-pc-windows-msvc\release\color_smash.exe&quot; (&#xD;&#xA;  %25windir%25\system32\xcopy &quot;$(SolutionDir)ColorSmash\target\i686-pc-windows-msvc\release\color_smash.exe&quot; &quot;$(TargetDir)&quot; /Y /I&#xD;&#xA;)&#xD;&#xA;if not '$(ConfigurationName)' == 'Debug' (&#xD;&#xA;  del *.pdb&#xD;&#xA;  del *.config&#xD;&#xA;)&#xD;&#xA;if '$(ConfigurationName)' == 'Documentation' (&#xD;&#xA;  RD /S /Q &quot;$(TargetDir)&quot;&#xD;&#xA;)&#xD;&#xA;%25windir%25\system32\xcopy &quot;$(SolutionDir)BrawlLib\InternalDocumentation\*&quot; &quot;$(TargetDir)\InternalDocumentation\&quot; /Y /I /S&#xD;&#xA;if '$(ConfigurationName)' == 'Doxygen' (&#xD;&#xA;  RD /S /Q &quot;$(TargetDir)&quot;&#xD;&#xA;  RD /S /Q &quot;$(SolutionDir)docs\&quot;&#xD;&#xA;  cd &quot;$(SolutionDir)&quot;&#xD;&#xA;  doxygen -u &quot;$(SolutionDir)\doxygen.conf&quot;&#xD;&#xA;  doxygen &quot;$(SolutionDir)\doxygen.conf&quot;&#xD;&#xA;)" />
+  </Target>
+</Project>

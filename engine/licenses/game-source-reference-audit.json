@@ -1,0 +1,107 @@
+{
+  "ReferenceRepository": "DoctorFlux/fighterport-studio-next",
+  "Revision": "96a4e0e81b1ad79837c307d57197ecd4c756179b",
+  "Files": [
+    {
+      "File": "BrawlCrate_UI_ModelForm.LibraryBrowsing.cs",
+      "Length": 12006,
+      "Sha256": "393569E088F5C40B36DCA09C9AE26910B7D79514E5963369B84E100AEA9301FD"
+    },
+    {
+      "File": "BrawlCrate_UI_LibraryGameBrowserDialog.cs",
+      "Length": 2268,
+      "Sha256": "C48B92962A647E078FC331E3FCE7621943D172A612BA933D53FD4D7C1297E8C6"
+    },
+    {
+      "File": "BrawlCrate_Studio_BrawlGameSource.cs",
+      "Length": 21313,
+      "Sha256": "365DD53C744EA9AD06BC671550B3B224400BBF453E56567CB01EE25B3A192ACA"
+    },
+    {
+      "File": "LICENSE",
+      "Length": 7426,
+      "Sha256": "B9C4E5F7A6FD075E42427C89BCA7DDF342B54D1DC771E9A88BAA517BE9AF8CC9"
+    },
+    {
+      "File": "BrawlCrate_Studio_Retargeting_ContactCurveFitter.cs",
+      "Length": 17766,
+      "Sha256": "E424972EEC1BFEEED5FD64AE30B8B43B598AF29FC1446896FE0F303689848B07"
+    },
+    {
+      "File": "BrawlCrate_Studio_Retargeting_StanceSupport.cs",
+      "Length": 5463,
+      "Sha256": "B3CC6A4E2BF0C2DE1D98A2B7883227F838A3BE13EF9D3EDAE9BD254C86794392"
+    },
+    {
+      "File": "BrawlCrate_Studio_Retargeting_HumanoidRetargeter.cs",
+      "Length": 14665,
+      "Sha256": "DEB76077CF894F570F9298FC383FF2F7BC3C230C6D43223A3F6AA17D6AE60A18"
+    },
+    {
+      "File": "BrawlCrate_Studio_Retargeting_ContactMotion.cs",
+      "Length": 25558,
+      "Sha256": "B60E3762AA65AA10EC489AA3C5D88AB6767CA55120D6CB698AD7529042E15C25"
+    },
+    {
+      "File": "BrawlCrate_Studio_Retargeting_BodyContactSolver.cs",
+      "Length": 23801,
+      "Sha256": "93624626306AE46B03CEDDC899253768EC876486A1DBFB9833B7110C5D3532D2"
+    },
+    {
+      "File": "BrawlCrate_Studio_Retargeting_SuspendedSupport.cs",
+      "Length": 6077,
+      "Sha256": "99203068A31469982EEF25E13AA74669B2A4DCCD081A31E93FA7D99CBE872EE9"
+    },
+    {
+      "File": "BrawlCrate_Studio_Retargeting_BrawlRetargeter.cs",
+      "Length": 27189,
+      "Sha256": "1ED7C51D30977FBB03C12D343C7CA31211497FF6999E7EE12D2FA19B1617C28A"
+    },
+    {
+      "File": "BrawlCrate_Studio_Retargeting_ContactPoseCache.cs",
+      "Length": 2173,
+      "Sha256": "C773FD5B2697D4FD7D8DB65CB0B0250F915377F2809334F84929CE46672C2BDF"
+    }
+  ],
+  "ReferenceLicense": "LGPL-3.0",
+  "Decision": "Behavior reference only; no upstream code copied",
+  "ExternalTool": {
+    "Name": "WIT",
+    "Version": "2.31a r6005 cygwin",
+    "Date": "2015-02-08",
+    "ExecutableSha256": "E473272C9A75D653BB737AB900599E389ADC9D90A223E8BCAA95EDE07CC9D7E5",
+    "License": "GPL-2.0",
+    "LicenseSha256": "AB15FD526BD8DD18A9E77EBC139656BF4D33E97FC7238CD11BF60E2B9B8666C6",
+    "InstalledDependencies": [
+      "cygwin1.dll",
+      "cyggcc_s-1.dll",
+      "cygz.dll"
+    ],
+    "Decision": "User-configured external executable; not copied, linked or distributed",
+    "Documentation": [
+      "https://wit.wiimm.de/wit/cmd-files.html",
+      "https://wit.wiimm.de/wit/cmd-extract.html"
+    ]
+  },
+  "FocusedRetargetReview": {
+    "Purpose": "Read-only comparison against observed 28-clip displayed failures",
+    "UsefulContracts": [
+      "Body-relative free-limb goals follow corrected parent frames",
+      "Source-derived bend directions and reach preparation",
+      "Fixed integer values with destination-Hermite tangent refinement",
+      "Fresh complete skin in candidate acceptance"
+    ],
+    "Decision": "Develop owned general solver; no upstream code copied or linked",
+    "AssumptionsNotAdopted": [
+      "Fixed required humanoid roles and two-segment limbs",
+      "Initial-pose suspended-support detection",
+      "Floor/reference-plane heuristics as finite scene geometry",
+      "Older numerical tolerances as current acceptance"
+    ],
+    "RuntimeComparison": "Reference code inspected; old application was not run in this review",
+    "DependenciesObserved": [
+      "System.Numerics",
+      "BrawlLib native resource/math types in adapter and curve fitter"
+    ]
+  }
+}

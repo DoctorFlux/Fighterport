@@ -1,0 +1,861 @@
+﻿using BrawlCrate.UI;
+using BrawlLib.Internal.Windows.Forms;
+using BrawlLib.Modeling;
+using BrawlLib.SSBB;
+using BrawlLib.SSBB.ResourceNodes;
+using BrawlLib.SSBB.ResourceNodes.ProjectPlus;
+using BrawlLib.SSBB.Types;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Linq;
+using System.Windows.Forms;
+
+namespace BrawlCrate.NodeWrappers
+{
+    [NodeWrapper(ResourceType.ARC)]
+    public class ARCWrapper : GenericWrapper
+    {
+        #region Menu
+
+        private static readonly ContextMenuStrip _menu;
+
+        private static readonly ToolStripMenuItem DuplicateToolStripMenuItem =
+            new ToolStripMenuItem("&Duplicate", null, DuplicateAction, Keys.Control | Keys.D);
+
+        private static readonly ToolStripMenuItem ReplaceToolStripMenuItem =
+            new ToolStripMenuItem("&Replace", null, ReplaceAction, Keys.Control | Keys.R);
+
+        private static readonly ToolStripMenuItem RestoreToolStripMenuItem =
+            new ToolStripMenuItem("Res&tore", null, RestoreAction, Keys.Control | Keys.T);
+
+        private static readonly ToolStripMenuItem MoveUpToolStripMenuItem =
+            new ToolStripMenuItem("Move &Up", null, MoveUpAction, Keys.Control | Keys.Up);
+
+        private static readonly ToolStripMenuItem MoveDownToolStripMenuItem =
+            new ToolStripMenuItem("Move D&own", null, MoveDownAction, Keys.Control | Keys.Down);
+
+        private static readonly ToolStripMenuItem DeleteToolStripMenuItem =
+            new ToolStripMenuItem("&Delete", null, DeleteAction, Keys.Control | Keys.Delete);
+
+        static ARCWrapper()
+        {
+            _menu = new ContextMenuStrip();
+            _menu.Items.Add(new ToolStripMenuItem("Ne&w", null,
+                new ToolStripMenuItem("ARChive", null, NewARCAction),
+                new ToolStripMenuItem("BLOC", null, NewBLOCAction),
+                new ToolStripMenuItem("BRResource Pack", null, NewBRESAction),
+                new ToolStripMenuItem("Collision", null, NewCollisionAction),
+                new ToolStripMenuItem("Item Override", null, NewITOVAction),
+                new ToolStripMenuItem("MSBin", null, NewMSBinAction),
+                new ToolStripMenuItem("Redirect", null, NewRedirectAction),
+                new ToolStripMenuItem("Stage Collision Attributes", null, NewSCLAAction),
+                new ToolStripMenuItem("Stage Parameters", null, NewSTPMAction),
+                new ToolStripMenuItem("STDT", null, NewStageTableAction<STDTNode>),
+                new ToolStripMenuItem("Stepjump", null, NewADSJAction)
+            ));
+            _menu.Items.Add(new ToolStripMenuItem("&Import", null,
+                new ToolStripMenuItem("ARChive", null, ImportARCAction),
+                new ToolStripMenuItem("BLOC", null, ImportBLOCAction),
+                new ToolStripMenuItem("BRResource Pack", null, ImportBRESAction),
+                new ToolStripMenuItem("Collision", null, ImportCollisionAction),
+                new ToolStripMenuItem("Havok Data", null, ImportHavokAction),
+                new ToolStripMenuItem("Item Override", null, ImportITOVAction),
+                new ToolStripMenuItem("MSBin", null, ImportMSBinAction),
+                new ToolStripMenuItem("Raw Binary Data", null, ImportBinaryAction),
+                new ToolStripMenuItem("Stage Collision Attributes", null, ImportSCLAAction),
+                new ToolStripMenuItem("Stage Parameters", null, ImportSTPMAction),
+                new ToolStripMenuItem("STDT", null, ImportSTDTAction),
+                new ToolStripMenuItem("Stepjump", null, ImportADSJAction)
+            ));
+            _menu.Items.Add(new ToolStripSeparator());
+            _menu.Items.Add(new ToolStripMenuItem("Preview All Models", null, PreviewAllAction));
+            _menu.Items.Add(new ToolStripMenuItem("Export All", null, ExportAllAction, Keys.Control | Keys.Shift | Keys.E));
+            _menu.Items.Add(new ToolStripMenuItem("Replace All", null, ReplaceAllAction, Keys.Control | Keys.Shift | Keys.R));
+            _menu.Items.Add(new ToolStripSeparator());
+            _menu.Items.Add(new ToolStripMenuItem("&Export", null, ExportAction, Keys.Control | Keys.E));
+            _menu.Items.Add(DuplicateToolStripMenuItem);
+            _menu.Items.Add(ReplaceToolStripMenuItem);
+            _menu.Items.Add(RestoreToolStripMenuItem);
+            _menu.Items.Add(new ToolStripSeparator());
+            _menu.Items.Add(MoveUpToolStripMenuItem);
+            _menu.Items.Add(MoveDownToolStripMenuItem);
+            _menu.Items.Add(new ToolStripMenuItem("Re&name", null, RenameAction, Keys.Control | Keys.N));
+            _menu.Items.Add(new ToolStripSeparator());
+            _menu.Items.Add(DeleteToolStripMenuItem);
+            _menu.Opening += MenuOpening;
+            _menu.Closing += MenuClosing;
+        }
+
+        protected static void NewBRESAction(object sender, EventArgs e)
+        {
+            GetInstance<ARCWrapper>().NewBRES();
+        }
+
+        protected static void NewARCAction(object sender, EventArgs e)
+        {
+            GetInstance<ARCWrapper>().NewARC();
+        }
+
+        protected static void NewMSBinAction(object sender, EventArgs e)
+        {
+            GetInstance<ARCWrapper>().NewMSBin();
+        }
+
+        protected static void NewCollisionAction(object sender, EventArgs e)
+        {
+            GetInstance<ARCWrapper>().NewCollision();
+        }
+
+        protected static void NewBLOCAction(object sender, EventArgs e)
+        {
+            GetInstance<ARCWrapper>().NewBLOC();
+        }
+
+        protected static void NewSCLAAction(object sender, EventArgs e)
+        {
+            GetInstance<ARCWrapper>().NewSCLA();
+        }
+
+        protected static void NewSTPMAction(object sender, EventArgs e)
+        {
+            GetInstance<ARCWrapper>().NewSTPM();
+        }
+
+        protected static void NewADSJAction(object sender, EventArgs e)
+        {
+            GetInstance<ARCWrapper>().NewADSJ();
+        }
+
+        protected static void NewITOVAction(object sender, EventArgs e)
+        {
+            GetInstance<ARCWrapper>().NewITOV();
+        }
+
+        protected static void NewStageTableAction<T>(object sender, EventArgs e) where T : StageTableNode, new()
+        {
+            using (NumericInputForm entryCount = new NumericInputForm())
+            {
+                if (entryCount.ShowDialog($"{typeof(T).Name} Generation", "Number of Entries:") == DialogResult.OK)
+                {
+                    GetInstance<ARCWrapper>().NewStageTable<T>(entryCount.NewValue);
+                }
+            }
+        }
+
+        protected static void NewRedirectAction(object sender, EventArgs e)
+        {
+            GetInstance<ARCWrapper>().NewRedirect();
+        }
+
+        protected static void ImportBRESAction(object sender, EventArgs e)
+        {
+            GetInstance<ARCWrapper>().ImportBRES();
+        }
+
+        protected static void ImportARCAction(object sender, EventArgs e)
+        {
+            GetInstance<ARCWrapper>().ImportARC();
+        }
+
+        protected static void ImportBLOCAction(object sender, EventArgs e)
+        {
+            GetInstance<ARCWrapper>().ImportBLOC();
+        }
+
+        protected static void ImportCollisionAction(object sender, EventArgs e)
+        {
+            GetInstance<ARCWrapper>().ImportCollision();
+        }
+
+        protected static void ImportMSBinAction(object sender, EventArgs e)
+        {
+            GetInstance<ARCWrapper>().ImportMSBin();
+        }
+
+        protected static void ImportBinaryAction(object sender, EventArgs e)
+        {
+            GetInstance<ARCWrapper>().ImportBinary();
+        }
+
+        protected static void ImportSCLAAction(object sender, EventArgs e)
+        {
+            GetInstance<ARCWrapper>().ImportSCLA();
+        }
+
+        protected static void ImportSTDTAction(object sender, EventArgs e)
+        {
+            GetInstance<ARCWrapper>().ImportSTDT();
+        }
+
+        protected static void ImportSTPMAction(object sender, EventArgs e)
+        {
+            GetInstance<ARCWrapper>().ImportSTPM();
+        }
+
+        protected static void ImportADSJAction(object sender, EventArgs e)
+        {
+            GetInstance<ARCWrapper>().ImportADSJ();
+        }
+
+        protected static void ImportTBCLAction(object sender, EventArgs e)
+        {
+            GetInstance<ARCWrapper>().ImportTBCL();
+        }
+
+        protected static void ImportTBGCAction(object sender, EventArgs e)
+        {
+            GetInstance<ARCWrapper>().ImportTBGC();
+        }
+
+        protected static void ImportTBGDAction(object sender, EventArgs e)
+        {
+            GetInstance<ARCWrapper>().ImportTBGD();
+        }
+
+        protected static void ImportTBGMAction(object sender, EventArgs e)
+        {
+            GetInstance<ARCWrapper>().ImportTBGM();
+        }
+
+        protected static void ImportTBLVAction(object sender, EventArgs e)
+        {
+            GetInstance<ARCWrapper>().ImportTBLV();
+        }
+
+        protected static void ImportTBRMAction(object sender, EventArgs e)
+        {
+            GetInstance<ARCWrapper>().ImportTBRM();
+        }
+
+        protected static void ImportTBSTAction(object sender, EventArgs e)
+        {
+            GetInstance<ARCWrapper>().ImportTBST();
+        }
+
+        protected static void ImportHavokAction(object sender, EventArgs e)
+        {
+            GetInstance<ARCWrapper>().ImportHavok();
+        }
+
+        protected static void ImportITOVAction(object sender, EventArgs e)
+        {
+            GetInstance<ARCWrapper>().ImportITOV();
+        }
+
+        protected static void PreviewAllAction(object sender, EventArgs e)
+        {
+            GetInstance<ARCWrapper>().PreviewAll();
+        }
+
+        protected static void ExportAllAction(object sender, EventArgs e)
+        {
+            GetInstance<ARCWrapper>().ExportAll();
+        }
+
+        protected static void ReplaceAllAction(object sender, EventArgs e)
+        {
+            GetInstance<ARCWrapper>().ReplaceAll();
+        }
+
+        private static void MenuClosing(object sender, ToolStripDropDownClosingEventArgs e)
+        {
+            DuplicateToolStripMenuItem.Enabled = true;
+            ReplaceToolStripMenuItem.Enabled = true;
+            RestoreToolStripMenuItem.Enabled = true;
+            MoveUpToolStripMenuItem.Enabled = true;
+            MoveDownToolStripMenuItem.Enabled = true;
+            DeleteToolStripMenuItem.Enabled = true;
+        }
+
+        private static void MenuOpening(object sender, CancelEventArgs e)
+        {
+            ARCWrapper w = GetInstance<ARCWrapper>();
+
+            DuplicateToolStripMenuItem.Enabled = w.Parent != null;
+            ReplaceToolStripMenuItem.Enabled = w.Parent != null;
+            RestoreToolStripMenuItem.Enabled = w._resource.IsDirty || w._resource.IsBranch;
+            MoveUpToolStripMenuItem.Enabled = w.PrevNode != null;
+            MoveDownToolStripMenuItem.Enabled = w.NextNode != null;
+            DeleteToolStripMenuItem.Enabled = w.Parent != null;
+        }
+
+        #endregion
+
+        public override string ExportFilter => FileFilters.ARCExport;
+        public override string ImportFilter => FileFilters.ARCImport;
+
+        public ARCWrapper()
+        {
+            ContextMenuStrip = _menu;
+        }
+
+        public ARCNode NewARC()
+        {
+            ARCNode node = new ARCNode {Name = _resource.FindName("NewARChive"), FileType = ARCFileType.MiscData};
+            _resource.AddChild(node);
+
+            BaseWrapper w = FindResource(node, false);
+            w.EnsureVisible();
+            w.TreeView.SelectedNode = w;
+            return node;
+        }
+
+        public BRRESNode NewBRES()
+        {
+            BRRESNode node = new BRRESNode {FileType = ARCFileType.MiscData};
+            _resource.AddChild(node);
+            node.UpdateName();
+
+            BaseWrapper w = FindResource(node, false);
+            w.EnsureVisible();
+            w.TreeView.SelectedNode = w;
+            return node;
+        }
+
+        public CollisionNode NewCollision()
+        {
+            CollisionNode node = new CollisionNode {FileType = ARCFileType.MiscData};
+            _resource.AddChild(node);
+            node.UpdateName();
+
+            BaseWrapper w = FindResource(node, false);
+            w.EnsureVisible();
+            w.TreeView.SelectedNode = w;
+            return node;
+        }
+
+        public BLOCNode NewBLOC()
+        {
+            BLOCNode node = new BLOCNode {FileType = ARCFileType.MiscData};
+            _resource.AddChild(node);
+            node.UpdateName();
+
+            BaseWrapper w = FindResource(node, false);
+            w.EnsureVisible();
+            w.TreeView.SelectedNode = w;
+            return node;
+        }
+
+        public MSBinNode NewMSBin()
+        {
+            MSBinNode node = new MSBinNode {FileType = ARCFileType.MiscData};
+            _resource.AddChild(node);
+            node.UpdateName();
+
+            BaseWrapper w = FindResource(node, false);
+            w.EnsureVisible();
+            w.TreeView.SelectedNode = w;
+            return node;
+        }
+
+        public SCLANode NewSCLA()
+        {
+            SCLANode node = new SCLANode {FileType = ARCFileType.MiscData};
+            _resource.AddChild(node);
+            node.UpdateName();
+
+            BaseWrapper w = FindResource(node, false);
+            w.EnsureVisible();
+            w.TreeView.SelectedNode = w;
+            return node;
+        }
+
+        public STPMNode NewSTPM()
+        {
+            STPMNode node = new STPMNode {FileType = ARCFileType.MiscData};
+            _resource.AddChild(node);
+            node.UpdateName();
+
+            BaseWrapper w = FindResource(node, false);
+            w.EnsureVisible();
+            w.TreeView.SelectedNode = w;
+            return node;
+        }
+
+        public ADSJNode NewADSJ()
+        {
+            ADSJNode node = new ADSJNode { FileType = ARCFileType.MiscData };
+            _resource.AddChild(node);
+            node.UpdateName();
+
+            BaseWrapper w = FindResource(node, false);
+            w.EnsureVisible();
+            w.TreeView.SelectedNode = w;
+            return node;
+        }
+
+        public ITOVNode NewITOV()
+        {
+            ITOVNode node = new ITOVNode { FileType = ARCFileType.MiscData, FileIndex = 20000 };
+            _resource.AddChild(node);
+            node.UpdateName();
+
+            BaseWrapper w = FindResource(node, false);
+            w.EnsureVisible();
+            w.TreeView.SelectedNode = w;
+            return node;
+        }
+
+        public T NewStageTable<T>() where T : StageTableNode, new()
+        {
+            return NewStageTable<T>(0);
+        }
+
+        public T NewStageTable<T>(int numEntries) where T : StageTableNode, new()
+        {
+            T node = new T {FileType = ARCFileType.MiscData};
+            while (node.NumEntries < numEntries)
+            {
+                node.EntryList.Add(0);
+            }
+
+            _resource.AddChild(node);
+
+            BaseWrapper w = FindResource(node, false);
+            w.EnsureVisible();
+            w.TreeView.SelectedNode = w;
+            return node;
+        }
+
+        public HavokNode NewHavok()
+        {
+            HavokNode node = new HavokNode {Name = _resource.FindName("NewHavokData"), FileType = ARCFileType.MiscData};
+            _resource.AddChild(node);
+
+            BaseWrapper w = FindResource(node, false);
+            w.EnsureVisible();
+            w.TreeView.SelectedNode = w;
+            return node;
+        }
+
+        public ARCEntryNode NewRedirect()
+        {
+            ARCEntryNode node = new ARCEntryNode
+                {FileType = ARCFileType.MiscData, _resourceType = ResourceType.Redirect};
+            _resource.AddChild(node);
+            node.RedirectIndex = 0;
+
+            BaseWrapper w = FindResource(node, false);
+            w.EnsureVisible();
+            w.TreeView.SelectedNode = w;
+            return node;
+        }
+
+        public void ImportARC()
+        {
+            if (Program.OpenFiles(FileFilters.ARCImport, out string[] paths) > 0)
+            {
+                foreach (string path in paths)
+                {
+                    NewARC().Replace(path);
+                }
+            }
+        }
+
+        public void ImportBRES()
+        {
+            if (Program.OpenFiles(FileFilters.BRES, out string[] paths) > 0)
+            {
+                foreach (string path in paths)
+                {
+                    NewBRES().Replace(path);
+                }
+            }
+        }
+
+        public void ImportBLOC()
+        {
+            if (Program.OpenFiles(FileFilters.BLOC, out string[] paths) > 0)
+            {
+                foreach (string path in paths)
+                {
+                    NewBLOC().Replace(path);
+                }
+            }
+        }
+
+        public void ImportCollision()
+        {
+            if (Program.OpenFiles(FileFilters.CollisionDef, out string[] paths) > 0)
+            {
+                foreach (string path in paths)
+                {
+                    NewCollision().Replace(path);
+                }
+            }
+        }
+
+        public void ImportMSBin()
+        {
+            if (Program.OpenFiles(FileFilters.MSBin, out string[] paths) > 0)
+            {
+                foreach (string path in paths)
+                {
+                    NewMSBin().Replace(path);
+                }
+            }
+        }
+
+        public void ImportBinary()
+        {
+            if (Program.OpenFiles(FileFilters.Raw, out string[] paths) > 0)
+            {
+                foreach (string path in paths)
+                {
+                    ResourceNode n = NodeFactory.FromFile(null, path);
+                    if (n is ARCEntryNode r)
+                    {
+                        r.FileType = ARCFileType.MiscData;
+                    }
+                    else
+                    {
+                        n.Dispose();
+                        n = NodeFactory.FromFile(null, path, typeof(ARCEntryNode));
+                        ((ARCEntryNode)n).FileType = ARCFileType.MiscData;
+                    }
+                    Resource.AddChild(n);
+                    n.Name = ((ARCEntryNode) n).GetName();
+
+                    BaseWrapper w = FindResource(n, false);
+                    w.EnsureVisible();
+                    w.TreeView.SelectedNode = w;
+                }
+            }
+        }
+
+        public void ImportSCLA()
+        {
+            if (Program.OpenFiles(FileFilters.SCLA, out string[] paths) > 0)
+            {
+                foreach (string path in paths)
+                {
+                    NewSCLA().Replace(path);
+                }
+            }
+        }
+
+        public void ImportSTPM()
+        {
+            if (Program.OpenFiles(FileFilters.STPM, out string[] paths) > 0)
+            {
+                foreach (string path in paths)
+                {
+                    NewSTPM().Replace(path);
+                }
+            }
+        }
+
+        public void ImportSTDT()
+        {
+            if (Program.OpenFiles(FileFilters.STDT, out string[] paths) > 0)
+            {
+                foreach (string path in paths)
+                {
+                    NewStageTable<STDTNode>().Replace(path);
+                }
+            }
+        }
+
+        public void ImportTBCL()
+        {
+            if (Program.OpenFiles(FileFilters.TBCL, out string[] paths) > 0)
+            {
+                foreach (string path in paths)
+                {
+                    //NewStageTable<TBCLNode>().Replace(path);
+                }
+            }
+        }
+
+        public void ImportTBGC()
+        {
+            if (Program.OpenFiles(FileFilters.TBGC, out string[] paths) > 0)
+            {
+                foreach (string path in paths)
+                {
+                    //NewStageTable<TBGCNode>().Replace(path);
+                }
+            }
+        }
+
+        public void ImportTBGD()
+        {
+            if (Program.OpenFiles(FileFilters.TBGD, out string[] paths) > 0)
+            {
+                foreach (string path in paths)
+                {
+                    //NewStageTable<TBGDNode>().Replace(path);
+                }
+            }
+        }
+
+        public void ImportTBGM()
+        {
+            if (Program.OpenFiles(FileFilters.TBGM, out string[] paths) > 0)
+            {
+                foreach (string path in paths)
+                {
+                    //NewStageTable<TBGMNode>().Replace(path);
+                }
+            }
+        }
+
+        public void ImportTBLV()
+        {
+            if (Program.OpenFiles(FileFilters.TBLV, out string[] paths) > 0)
+            {
+                foreach (string path in paths)
+                {
+                    //NewStageTable<TBLVNode>().Replace(path);
+                }
+            }
+        }
+
+        public void ImportTBRM()
+        {
+            if (Program.OpenFiles(FileFilters.TBRM, out string[] paths) > 0)
+            {
+                foreach (string path in paths)
+                {
+                    //NewStageTable<TBRMNode>().Replace(path);
+                }
+            }
+        }
+
+        public void ImportTBST()
+        {
+            if (Program.OpenFiles(FileFilters.TBST, out string[] paths) > 0)
+            {
+                foreach (string path in paths)
+                {
+                    //NewStageTable<TBSTNode>().Replace(path);
+                }
+            }
+        }
+
+        public void ImportHavok()
+        {
+            if (Program.OpenFiles(FileFilters.Havok, out string[] paths) > 0)
+            {
+                foreach (string path in paths)
+                {
+                    NewHavok().Replace(path);
+                }
+            }
+        }
+
+        public void ImportADSJ()
+        {
+            if (Program.OpenFiles(FileFilters.ADSJ, out string[] paths) > 0)
+            {
+                foreach (string path in paths)
+                {
+                    NewADSJ().Replace(path);
+                }
+            }
+        }
+
+        public void ImportITOV()
+        {
+            if (Program.OpenFiles(FileFilters.ITOV, out string[] paths) > 0)
+            {
+                foreach (string path in paths)
+                {
+                    NewITOV().Replace(path);
+                }
+            }
+        }
+
+        public void LoadModels(ResourceNode node, List<IModel> models, List<CollisionNode> collisions)
+        {
+            switch (node.ResourceFileType)
+            {
+                case ResourceType.ARC:
+                case ResourceType.MRG:
+                case ResourceType.U8:
+                case ResourceType.U8Folder:
+                case ResourceType.BRES:
+                case ResourceType.BRESGroup:
+                    foreach (ResourceNode n in node.Children)
+                    {
+                        LoadModels(n, models, collisions);
+                    }
+
+                    break;
+                case ResourceType.MDL0:
+                    models.Add((IModel) node);
+                    break;
+                case ResourceType.CollisionDef:
+                    collisions.Add((CollisionNode) node);
+                    break;
+            }
+        }
+
+        public void PreviewAll()
+        {
+            List<IModel> models = new List<IModel>();
+            List<CollisionNode> collisions = new List<CollisionNode>();
+            LoadModels(_resource, models, collisions);
+            new ModelForm().Show(_owner, models, collisions);
+        }
+
+        public void ExportAll()
+        {
+            string path = Program.ChooseFolder();
+            if (path == null)
+            {
+                return;
+            }
+
+            if (!MainForm.Instance.ValidateFighterOutputDestination(path, _resource, true))
+            {
+                return;
+            }
+            var hasTextures = Resource.GetChildrenRecursive().Any(c => c is TEX0Node);
+            if (hasTextures)
+            {
+                ExportAllFormatDialog dialog =
+                    new ExportAllFormatDialog("Export All", typeof(TEX0Node), FileFilters.TEX0);
+
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    ((ARCNode)_resource).ExtractToFolder(path, dialog.SelectedExtension);
+                }
+            }
+            else
+            {
+                ((ARCNode)_resource).ExtractToFolder(path);
+            }
+        }
+        
+        public void SortChildrenByFileIndex()
+        {
+            ((ARCNode)_resource).SortChildrenByFileIndex();
+            RefreshView(_resource);
+        }
+
+        public void ReplaceAll()
+        {
+            string path = Program.ChooseFolder();
+            if (path == null)
+            {
+                return;
+            }
+
+            ((ARCNode) _resource).ReplaceFromFolder(path);
+        }
+    }
+
+    [NodeWrapper(ResourceType.Redirect)]
+    public class RedirectWrapper : GenericWrapper
+    {
+        #region Menu
+
+        private static readonly ContextMenuStrip _menu;
+
+        private static readonly ToolStripMenuItem DuplicateToolStripMenuItem =
+            new ToolStripMenuItem("&Duplicate", null, DuplicateAction, Keys.Control | Keys.D);
+
+        private static readonly ToolStripMenuItem ReplaceToolStripMenuItem =
+            new ToolStripMenuItem("&Replace", null, ReplaceAction, Keys.Control | Keys.R);
+
+        private static readonly ToolStripMenuItem RestoreToolStripMenuItem =
+            new ToolStripMenuItem("Res&tore", null, RestoreAction, Keys.Control | Keys.T);
+
+        private static readonly ToolStripMenuItem MoveUpToolStripMenuItem =
+            new ToolStripMenuItem("Move &Up", null, MoveUpAction, Keys.Control | Keys.Up);
+
+        private static readonly ToolStripMenuItem MoveDownToolStripMenuItem =
+            new ToolStripMenuItem("Move D&own", null, MoveDownAction, Keys.Control | Keys.Down);
+
+        private static readonly ToolStripMenuItem DeleteToolStripMenuItem =
+            new ToolStripMenuItem("&Delete", null, DeleteAction, Keys.Control | Keys.Delete);
+
+        private static readonly ToolStripMenuItem ExportSelectedToolStripMenuItem =
+            new ToolStripMenuItem("&Export Selected", null, ExportSelectedAction, Keys.Control | Keys.E);
+
+        private static readonly ToolStripMenuItem DeleteSelectedToolStripMenuItem =
+            new ToolStripMenuItem("&Delete Selected", null, DeleteSelectedAction, Keys.Control | Keys.Delete);
+
+        static RedirectWrapper()
+        {
+            _menu = new ContextMenuStrip();
+            _menu.Items.Add(new ToolStripMenuItem("Go To", null, GoToAction, Keys.Control | Keys.G));
+            _menu.Items.Add(new ToolStripSeparator());
+            _menu.Items.Add(DuplicateToolStripMenuItem);
+            _menu.Items.Add(ReplaceToolStripMenuItem);
+            _menu.Items.Add(RestoreToolStripMenuItem);
+            _menu.Items.Add(new ToolStripSeparator());
+            _menu.Items.Add(MoveUpToolStripMenuItem);
+            _menu.Items.Add(MoveDownToolStripMenuItem);
+            _menu.Items.Add(new ToolStripMenuItem("Re&name", null, RenameAction, Keys.Control | Keys.N));
+            _menu.Items.Add(new ToolStripSeparator());
+            _menu.Items.Add(DeleteToolStripMenuItem);
+            _menu.Opening += MenuOpening;
+            _menu.Closing += MenuClosing;
+        }
+
+        protected static void GoToAction(object sender, EventArgs e)
+        {
+            GetInstance<RedirectWrapper>().GoTo();
+        }
+
+        private static void MenuOpening(object sender, CancelEventArgs e)
+        {
+            RedirectWrapper w = GetInstance<RedirectWrapper>();
+
+            DuplicateToolStripMenuItem.Enabled = w.Parent != null;
+            ReplaceToolStripMenuItem.Enabled = w.Parent != null;
+            RestoreToolStripMenuItem.Enabled = w._resource.IsDirty || w._resource.IsBranch;
+            MoveUpToolStripMenuItem.Enabled = w.PrevNode != null;
+            MoveDownToolStripMenuItem.Enabled = w.NextNode != null;
+            DeleteToolStripMenuItem.Enabled = w.Parent != null;
+        }
+
+        private static void MenuClosing(object sender, ToolStripDropDownClosingEventArgs e)
+        {
+            DuplicateToolStripMenuItem.Enabled = true;
+            ReplaceToolStripMenuItem.Enabled = true;
+            RestoreToolStripMenuItem.Enabled = true;
+            MoveUpToolStripMenuItem.Enabled = true;
+            MoveDownToolStripMenuItem.Enabled = true;
+            DeleteToolStripMenuItem.Enabled = true;
+        }
+
+        #endregion
+
+        public RedirectWrapper()
+        {
+            ContextMenuStrip = _menu;
+        }
+
+        public BaseWrapper GoTo()
+        {
+            try
+            {
+                BaseWrapper w = (Parent as BaseWrapper).FindResource((Resource as ARCEntryNode).RedirectNode, false);
+                w.EnsureVisible();
+                w.TreeView.SelectedNode = w;
+                return w;
+            }
+            catch
+            {
+                MessageBox.Show("The redirect target could not be found", "Error", MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+                return null;
+            }
+        }
+
+        public override ResourceNode Duplicate()
+        {
+            ARCNode parentArc = (Parent as ARCWrapper).Resource as ARCNode;
+            ARCEntryNode node = new ARCEntryNode
+                {FileType = ARCFileType.MiscData, _resourceType = ResourceType.Redirect};
+            parentArc.InsertChild(node, _resource.Index + 1);
+            node.RedirectTarget = (Resource as ARCEntryNode).RedirectTarget;
+            node.Name = Resource.Name;
+            return node;
+        }
+    }
+}

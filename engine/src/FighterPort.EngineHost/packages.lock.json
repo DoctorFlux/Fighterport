@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0": {
+      "fighterport.adapters.brawl": {
+        "type": "Project",
+        "dependencies": {
+          "FighterPort.Core": "[1.0.0, )"
+        }
+      },
+      "fighterport.core": {
+        "type": "Project"
+      }
+    },
+    "net10.0/win-x64": {}
+  }
+}

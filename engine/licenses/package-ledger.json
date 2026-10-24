@@ -1,0 +1,1458 @@
+[
+  {
+    "LicenseType": "expression",
+    "Version": "11.3.9",
+    "RepositoryCommit": "4e302560fc9f84de1fe64360e29165574cf2ea65",
+    "LicenseUrl": "https://licenses.nuget.org/MIT",
+    "RepositoryUrl": "https://github.com/AvaloniaUI/Avalonia/",
+    "Authors": "Avalonia Team",
+    "Dependencies": [
+      {
+        "Id": "Avalonia.BuildServices",
+        "Version": "11.3.2"
+      },
+      {
+        "Id": "Avalonia.Remote.Protocol",
+        "Version": "11.3.9"
+      },
+      {
+        "Id": "System.Diagnostics.DiagnosticSource",
+        "Version": "8.0.1"
+      },
+      {
+        "Id": "MicroCom.Runtime",
+        "Version": "0.11.0"
+      },
+      {
+        "Id": "Avalonia.BuildServices",
+        "Version": "11.3.2"
+      },
+      {
+        "Id": "Avalonia.Remote.Protocol",
+        "Version": "11.3.9"
+      },
+      {
+        "Id": "MicroCom.Runtime",
+        "Version": "0.11.0"
+      },
+      {
+        "Id": "Avalonia.BuildServices",
+        "Version": "11.3.2"
+      },
+      {
+        "Id": "Avalonia.Remote.Protocol",
+        "Version": "11.3.9"
+      },
+      {
+        "Id": "Microsoft.Bcl.AsyncInterfaces",
+        "Version": "6.0.0"
+      },
+      {
+        "Id": "System.ComponentModel.Annotations",
+        "Version": "4.5.0"
+      },
+      {
+        "Id": "System.Diagnostics.DiagnosticSource",
+        "Version": "8.0.1"
+      },
+      {
+        "Id": "System.Memory",
+        "Version": "4.5.5"
+      },
+      {
+        "Id": "MicroCom.Runtime",
+        "Version": "0.11.0"
+      }
+    ],
+    "License": "MIT",
+    "Id": "Avalonia"
+  },
+  {
+    "LicenseType": "file",
+    "Version": "2.1.25547.20250602",
+    "RepositoryCommit": "cb8b4e1307a9d8f5ff56b8c5973bea4158ffead8",
+    "LicenseUrl": "https://aka.ms/deprecateLicenseUrl",
+    "RepositoryUrl": "https://github.com/AvaloniaUI/angle/",
+    "Authors": "Avalonia Team",
+    "Dependencies": [
+      {
+        "Id": "",
+        "Version": ""
+      }
+    ],
+    "License": "// Copyright 2018 The ANGLE Project Authors.\r\n// All rights reserved.\r\n//\r\n// Redistribution and use in source and binary forms, with or without\r\n// modification, are permitted provided that the following conditions\r\n// are met:\r\n//\r\n//     Redistributions of source code must retain the above copyright\r\n//     notice, this list of conditions and the following disclaimer.\r\n//\r\n//     Redistributions in binary form must reproduce the above\r\n//     copyright notice, this list of conditions and the following\r\n//     disclaimer in the documentation and/or other materials provided\r\n//     with the distribution.\r\n//\r\n//     Neither the name of TransGaming Inc., Google Inc., 3DLabs Inc.\r\n//     Ltd., nor the names of their contributors may be used to endorse\r\n//     or promote products derived from this software without specific\r\n//     prior written permission.\r\n//\r\n// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS\r\n// \"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT\r\n// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS\r\n// FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE\r\n// COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,\r\n// INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,\r\n// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;\r\n// LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER\r\n// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT\r\n// LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN\r\n// ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE\r\n// POSSIBILITY OF SUCH DAMAGE.\r\n",
+    "Id": "Avalonia.Angle.Windows.Natives"
+  },
+  {
+    "LicenseType": "expression",
+    "Version": "11.3.2",
+    "RepositoryCommit": "777f975b0a0cecf0311273711d56697212c558c0",
+    "LicenseUrl": "https://licenses.nuget.org/MIT",
+    "RepositoryUrl": "https://github.com/AvaloniaUI/Avalonia.BuildServices",
+    "Authors": "Avalonia Team",
+    "Dependencies": [
+      {
+        "Id": "",
+        "Version": ""
+      }
+    ],
+    "License": "MIT",
+    "Id": "Avalonia.BuildServices"
+  },
+  {
+    "LicenseType": "expression",
+    "Version": "11.3.9",
+    "RepositoryCommit": "4e302560fc9f84de1fe64360e29165574cf2ea65",
+    "LicenseUrl": "https://licenses.nuget.org/MIT",
+    "RepositoryUrl": "https://github.com/AvaloniaUI/Avalonia/",
+    "Authors": "Avalonia Team",
+    "Dependencies": [
+      {
+        "Id": "Avalonia.Native",
+        "Version": "11.3.9"
+      },
+      {
+        "Id": "Avalonia",
+        "Version": "11.3.9"
+      },
+      {
+        "Id": "Avalonia.X11",
+        "Version": "11.3.9"
+      },
+      {
+        "Id": "Avalonia.Skia",
+        "Version": "11.3.9"
+      },
+      {
+        "Id": "Avalonia.Win32",
+        "Version": "11.3.9"
+      },
+      {
+        "Id": "Avalonia.Native",
+        "Version": "11.3.9"
+      },
+      {
+        "Id": "Avalonia",
+        "Version": "11.3.9"
+      },
+      {
+        "Id": "Avalonia.X11",
+        "Version": "11.3.9"
+      },
+      {
+        "Id": "Avalonia.Skia",
+        "Version": "11.3.9"
+      },
+      {
+        "Id": "Avalonia.Win32",
+        "Version": "11.3.9"
+      },
+      {
+        "Id": "Avalonia.Native",
+        "Version": "11.3.9"
+      },
+      {
+        "Id": "Avalonia",
+        "Version": "11.3.9"
+      },
+      {
+        "Id": "Avalonia.X11",
+        "Version": "11.3.9"
+      },
+      {
+        "Id": "Avalonia.Skia",
+        "Version": "11.3.9"
+      },
+      {
+        "Id": "Avalonia.Win32",
+        "Version": "11.3.9"
+      }
+    ],
+    "License": "MIT",
+    "Id": "Avalonia.Desktop"
+  },
+  {
+    "LicenseType": "expression",
+    "Version": "11.3.9",
+    "RepositoryCommit": "4e302560fc9f84de1fe64360e29165574cf2ea65",
+    "LicenseUrl": "https://licenses.nuget.org/MIT",
+    "RepositoryUrl": "https://github.com/AvaloniaUI/Avalonia/",
+    "Authors": "Avalonia Team",
+    "Dependencies": [
+      {
+        "Id": "Tmds.DBus.Protocol",
+        "Version": "0.21.2"
+      },
+      {
+        "Id": "Avalonia",
+        "Version": "11.3.9"
+      },
+      {
+        "Id": "Tmds.DBus.Protocol",
+        "Version": "0.21.2"
+      },
+      {
+        "Id": "Avalonia",
+        "Version": "11.3.9"
+      },
+      {
+        "Id": "Tmds.DBus.Protocol",
+        "Version": "0.21.2"
+      },
+      {
+        "Id": "Avalonia",
+        "Version": "11.3.9"
+      }
+    ],
+    "License": "MIT",
+    "Id": "Avalonia.FreeDesktop"
+  },
+  {
+    "LicenseType": "expression",
+    "Version": "11.3.9",
+    "RepositoryCommit": "4e302560fc9f84de1fe64360e29165574cf2ea65",
+    "LicenseUrl": "https://licenses.nuget.org/MIT",
+    "RepositoryUrl": "https://github.com/AvaloniaUI/Avalonia/",
+    "Authors": "Avalonia Team",
+    "Dependencies": [
+      {
+        "Id": "Avalonia",
+        "Version": "11.3.9"
+      },
+      {
+        "Id": "Avalonia",
+        "Version": "11.3.9"
+      },
+      {
+        "Id": "Avalonia",
+        "Version": "11.3.9"
+      }
+    ],
+    "License": "MIT",
+    "Id": "Avalonia.Native"
+  },
+  {
+    "LicenseType": "expression",
+    "Version": "11.3.9",
+    "RepositoryCommit": "4e302560fc9f84de1fe64360e29165574cf2ea65",
+    "LicenseUrl": "https://licenses.nuget.org/MIT",
+    "RepositoryUrl": "https://github.com/AvaloniaUI/Avalonia/",
+    "Authors": "Avalonia Team",
+    "Dependencies": [
+      {
+        "Id": "",
+        "Version": ""
+      },
+      {
+        "Id": "",
+        "Version": ""
+      },
+      {
+        "Id": "",
+        "Version": ""
+      }
+    ],
+    "License": "MIT",
+    "Id": "Avalonia.Remote.Protocol"
+  },
+  {
+    "LicenseType": "expression",
+    "Version": "11.3.9",
+    "RepositoryCommit": "4e302560fc9f84de1fe64360e29165574cf2ea65",
+    "LicenseUrl": "https://licenses.nuget.org/MIT",
+    "RepositoryUrl": "https://github.com/AvaloniaUI/Avalonia/",
+    "Authors": "Avalonia Team",
+    "Dependencies": [
+      {
+        "Id": "HarfBuzzSharp",
+        "Version": "8.3.1.1"
+      },
+      {
+        "Id": "HarfBuzzSharp.NativeAssets.Linux",
+        "Version": "8.3.1.1"
+      },
+      {
+        "Id": "HarfBuzzSharp.NativeAssets.WebAssembly",
+        "Version": "8.3.1.1"
+      },
+      {
+        "Id": "SkiaSharp",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "SkiaSharp.NativeAssets.Linux",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "SkiaSharp.NativeAssets.WebAssembly",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "Avalonia",
+        "Version": "11.3.9"
+      },
+      {
+        "Id": "HarfBuzzSharp",
+        "Version": "8.3.1.1"
+      },
+      {
+        "Id": "HarfBuzzSharp.NativeAssets.Linux",
+        "Version": "8.3.1.1"
+      },
+      {
+        "Id": "HarfBuzzSharp.NativeAssets.WebAssembly",
+        "Version": "8.3.1.1"
+      },
+      {
+        "Id": "SkiaSharp",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "SkiaSharp.NativeAssets.Linux",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "SkiaSharp.NativeAssets.WebAssembly",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "Avalonia",
+        "Version": "11.3.9"
+      },
+      {
+        "Id": "HarfBuzzSharp",
+        "Version": "8.3.1.1"
+      },
+      {
+        "Id": "HarfBuzzSharp.NativeAssets.Linux",
+        "Version": "8.3.1.1"
+      },
+      {
+        "Id": "HarfBuzzSharp.NativeAssets.WebAssembly",
+        "Version": "8.3.1.1"
+      },
+      {
+        "Id": "SkiaSharp",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "SkiaSharp.NativeAssets.Linux",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "SkiaSharp.NativeAssets.WebAssembly",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "Avalonia",
+        "Version": "11.3.9"
+      }
+    ],
+    "License": "MIT",
+    "Id": "Avalonia.Skia"
+  },
+  {
+    "LicenseType": "expression",
+    "Version": "11.3.9",
+    "RepositoryCommit": "4e302560fc9f84de1fe64360e29165574cf2ea65",
+    "LicenseUrl": "https://licenses.nuget.org/MIT",
+    "RepositoryUrl": "https://github.com/AvaloniaUI/Avalonia/",
+    "Authors": "Avalonia Team",
+    "Dependencies": [
+      {
+        "Id": "Avalonia",
+        "Version": "11.3.9"
+      },
+      {
+        "Id": "Avalonia",
+        "Version": "11.3.9"
+      },
+      {
+        "Id": "Avalonia",
+        "Version": "11.3.9"
+      }
+    ],
+    "License": "MIT",
+    "Id": "Avalonia.Themes.Fluent"
+  },
+  {
+    "LicenseType": "expression",
+    "Version": "11.3.9",
+    "RepositoryCommit": "4e302560fc9f84de1fe64360e29165574cf2ea65",
+    "LicenseUrl": "https://licenses.nuget.org/MIT",
+    "RepositoryUrl": "https://github.com/AvaloniaUI/Avalonia/",
+    "Authors": "Avalonia Team",
+    "Dependencies": [
+      {
+        "Id": "Avalonia.Angle.Windows.Natives",
+        "Version": "2.1.25547.20250602"
+      },
+      {
+        "Id": "Avalonia",
+        "Version": "11.3.9"
+      },
+      {
+        "Id": "Avalonia.Angle.Windows.Natives",
+        "Version": "2.1.25547.20250602"
+      },
+      {
+        "Id": "Avalonia",
+        "Version": "11.3.9"
+      },
+      {
+        "Id": "Avalonia.Angle.Windows.Natives",
+        "Version": "2.1.25547.20250602"
+      },
+      {
+        "Id": "System.Numerics.Vectors",
+        "Version": "4.5.0"
+      },
+      {
+        "Id": "System.Runtime.CompilerServices.Unsafe",
+        "Version": "6.0.0"
+      },
+      {
+        "Id": "Avalonia",
+        "Version": "11.3.9"
+      }
+    ],
+    "License": "MIT",
+    "Id": "Avalonia.Win32"
+  },
+  {
+    "LicenseType": "expression",
+    "Version": "11.3.9",
+    "RepositoryCommit": "4e302560fc9f84de1fe64360e29165574cf2ea65",
+    "LicenseUrl": "https://licenses.nuget.org/MIT",
+    "RepositoryUrl": "https://github.com/AvaloniaUI/Avalonia/",
+    "Authors": "Avalonia Team",
+    "Dependencies": [
+      {
+        "Id": "Avalonia",
+        "Version": "11.3.9"
+      },
+      {
+        "Id": "Avalonia.FreeDesktop",
+        "Version": "11.3.9"
+      },
+      {
+        "Id": "Avalonia.Skia",
+        "Version": "11.3.9"
+      },
+      {
+        "Id": "Avalonia",
+        "Version": "11.3.9"
+      },
+      {
+        "Id": "Avalonia.FreeDesktop",
+        "Version": "11.3.9"
+      },
+      {
+        "Id": "Avalonia.Skia",
+        "Version": "11.3.9"
+      },
+      {
+        "Id": "Avalonia",
+        "Version": "11.3.9"
+      },
+      {
+        "Id": "Avalonia.FreeDesktop",
+        "Version": "11.3.9"
+      },
+      {
+        "Id": "Avalonia.Skia",
+        "Version": "11.3.9"
+      }
+    ],
+    "License": "MIT",
+    "Id": "Avalonia.X11"
+  },
+  {
+    "LicenseType": "expression",
+    "Version": "8.3.1.1",
+    "RepositoryCommit": "64f24b1cddb68d30ec0ac6b661964178fc21d5ec",
+    "LicenseUrl": "https://licenses.nuget.org/MIT",
+    "RepositoryUrl": "https://go.microsoft.com/fwlink/?linkid=868515",
+    "Authors": "Microsoft",
+    "Dependencies": [
+      {
+        "Id": "HarfBuzzSharp.NativeAssets.macOS",
+        "Version": "8.3.1.1"
+      },
+      {
+        "Id": "HarfBuzzSharp.NativeAssets.Win32",
+        "Version": "8.3.1.1"
+      },
+      {
+        "Id": "System.Memory",
+        "Version": "4.5.5"
+      },
+      {
+        "Id": "HarfBuzzSharp.NativeAssets.macOS",
+        "Version": "8.3.1.1"
+      },
+      {
+        "Id": "HarfBuzzSharp.NativeAssets.Win32",
+        "Version": "8.3.1.1"
+      },
+      {
+        "Id": "HarfBuzzSharp.NativeAssets.macOS",
+        "Version": "8.3.1.1"
+      },
+      {
+        "Id": "HarfBuzzSharp.NativeAssets.Win32",
+        "Version": "8.3.1.1"
+      },
+      {
+        "Id": "HarfBuzzSharp.NativeAssets.Android",
+        "Version": "8.3.1.1"
+      },
+      {
+        "Id": "HarfBuzzSharp.NativeAssets.iOS",
+        "Version": "8.3.1.1"
+      },
+      {
+        "Id": "HarfBuzzSharp.NativeAssets.MacCatalyst",
+        "Version": "8.3.1.1"
+      },
+      {
+        "Id": "HarfBuzzSharp.NativeAssets.macOS",
+        "Version": "8.3.1.1"
+      },
+      {
+        "Id": "HarfBuzzSharp.NativeAssets.Tizen",
+        "Version": "8.3.1.1"
+      },
+      {
+        "Id": "HarfBuzzSharp.NativeAssets.tvOS",
+        "Version": "8.3.1.1"
+      },
+      {
+        "Id": "HarfBuzzSharp.NativeAssets.Win32",
+        "Version": "8.3.1.1"
+      },
+      {
+        "Id": "HarfBuzzSharp.NativeAssets.macOS",
+        "Version": "8.3.1.1"
+      },
+      {
+        "Id": "HarfBuzzSharp.NativeAssets.Win32",
+        "Version": "8.3.1.1"
+      },
+      {
+        "Id": "System.Memory",
+        "Version": "4.5.5"
+      },
+      {
+        "Id": "HarfBuzzSharp.NativeAssets.macOS",
+        "Version": "8.3.1.1"
+      },
+      {
+        "Id": "HarfBuzzSharp.NativeAssets.Win32",
+        "Version": "8.3.1.1"
+      },
+      {
+        "Id": "System.Runtime.CompilerServices.Unsafe",
+        "Version": "4.5.3"
+      }
+    ],
+    "License": "MIT",
+    "Id": "HarfBuzzSharp"
+  },
+  {
+    "LicenseType": "expression",
+    "Version": "8.3.1.1",
+    "RepositoryCommit": "64f24b1cddb68d30ec0ac6b661964178fc21d5ec",
+    "LicenseUrl": "https://licenses.nuget.org/MIT",
+    "RepositoryUrl": "https://go.microsoft.com/fwlink/?linkid=868515",
+    "Authors": "Microsoft",
+    "Dependencies": [
+      {
+        "Id": "",
+        "Version": ""
+      },
+      {
+        "Id": "",
+        "Version": ""
+      },
+      {
+        "Id": "",
+        "Version": ""
+      },
+      {
+        "Id": "",
+        "Version": ""
+      },
+      {
+        "Id": "",
+        "Version": ""
+      }
+    ],
+    "License": "MIT",
+    "Id": "HarfBuzzSharp.NativeAssets.Linux"
+  },
+  {
+    "LicenseType": "expression",
+    "Version": "8.3.1.1",
+    "RepositoryCommit": "64f24b1cddb68d30ec0ac6b661964178fc21d5ec",
+    "LicenseUrl": "https://licenses.nuget.org/MIT",
+    "RepositoryUrl": "https://go.microsoft.com/fwlink/?linkid=868515",
+    "Authors": "Microsoft",
+    "Dependencies": [
+      {
+        "Id": "",
+        "Version": ""
+      },
+      {
+        "Id": "",
+        "Version": ""
+      },
+      {
+        "Id": "",
+        "Version": ""
+      },
+      {
+        "Id": "",
+        "Version": ""
+      },
+      {
+        "Id": "",
+        "Version": ""
+      },
+      {
+        "Id": "",
+        "Version": ""
+      }
+    ],
+    "License": "MIT",
+    "Id": "HarfBuzzSharp.NativeAssets.macOS"
+  },
+  {
+    "LicenseType": "expression",
+    "Version": "8.3.1.1",
+    "RepositoryCommit": "64f24b1cddb68d30ec0ac6b661964178fc21d5ec",
+    "LicenseUrl": "https://licenses.nuget.org/MIT",
+    "RepositoryUrl": "https://go.microsoft.com/fwlink/?linkid=868515",
+    "Authors": "Microsoft",
+    "Dependencies": [
+      {
+        "Id": "",
+        "Version": ""
+      },
+      {
+        "Id": "",
+        "Version": ""
+      },
+      {
+        "Id": "",
+        "Version": ""
+      },
+      {
+        "Id": "",
+        "Version": ""
+      },
+      {
+        "Id": "",
+        "Version": ""
+      }
+    ],
+    "License": "MIT",
+    "Id": "HarfBuzzSharp.NativeAssets.WebAssembly"
+  },
+  {
+    "LicenseType": "expression",
+    "Version": "8.3.1.1",
+    "RepositoryCommit": "64f24b1cddb68d30ec0ac6b661964178fc21d5ec",
+    "LicenseUrl": "https://licenses.nuget.org/MIT",
+    "RepositoryUrl": "https://go.microsoft.com/fwlink/?linkid=868515",
+    "Authors": "Microsoft",
+    "Dependencies": [
+      {
+        "Id": "",
+        "Version": ""
+      },
+      {
+        "Id": "",
+        "Version": ""
+      },
+      {
+        "Id": "",
+        "Version": ""
+      },
+      {
+        "Id": "",
+        "Version": ""
+      },
+      {
+        "Id": "",
+        "Version": ""
+      },
+      {
+        "Id": "",
+        "Version": ""
+      },
+      {
+        "Id": "",
+        "Version": ""
+      }
+    ],
+    "License": "MIT",
+    "Id": "HarfBuzzSharp.NativeAssets.Win32"
+  },
+  {
+    "LicenseType": "expression",
+    "Version": "0.11.0",
+    "RepositoryCommit": "",
+    "LicenseUrl": "https://licenses.nuget.org/MIT",
+    "RepositoryUrl": "https://github.com/kekekeks/MicroCom",
+    "Authors": "MicroCom.Runtime",
+    "Dependencies": [
+      {
+        "Id": "",
+        "Version": ""
+      },
+      {
+        "Id": "",
+        "Version": ""
+      }
+    ],
+    "License": "MIT",
+    "Id": "MicroCom.Runtime"
+  },
+  {
+    "LicenseType": "file",
+    "Version": "3.1.6",
+    "RepositoryCommit": "3acd9b0cd16596bad450c82be08780875a73c05c",
+    "LicenseUrl": "https://aka.ms/deprecateLicenseUrl",
+    "RepositoryUrl": "git://github.com/dotnet/core-setup",
+    "Authors": "Microsoft",
+    "Dependencies": [
+      {
+        "Id": "System.Runtime.InteropServices.RuntimeInformation",
+        "Version": "4.0.0"
+      },
+      {
+        "Id": "System.AppContext",
+        "Version": "4.1.0"
+      },
+      {
+        "Id": "System.Collections",
+        "Version": "4.0.11"
+      },
+      {
+        "Id": "System.IO",
+        "Version": "4.1.0"
+      },
+      {
+        "Id": "System.IO.FileSystem",
+        "Version": "4.0.1"
+      },
+      {
+        "Id": "System.Reflection.TypeExtensions",
+        "Version": "4.1.0"
+      },
+      {
+        "Id": "System.Runtime.Extensions",
+        "Version": "4.1.0"
+      },
+      {
+        "Id": "System.Runtime.InteropServices",
+        "Version": "4.1.0"
+      },
+      {
+        "Id": "System.Runtime.InteropServices.RuntimeInformation",
+        "Version": "4.0.0"
+      },
+      {
+        "Id": "",
+        "Version": ""
+      }
+    ],
+    "License": "The MIT License (MIT)\r\n\r\nCopyright (c) .NET Foundation and Contributors\r\n\r\nAll rights reserved.\r\n\r\nPermission is hereby granted, free of charge, to any person obtaining a copy\r\nof this software and associated documentation files (the \"Software\"), to deal\r\nin the Software without restriction, including without limitation the rights\r\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\r\ncopies of the Software, and to permit persons to whom the Software is\r\nfurnished to do so, subject to the following conditions:\r\n\r\nThe above copyright notice and this permission notice shall be included in all\r\ncopies or substantial portions of the Software.\r\n\r\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\r\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\r\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\r\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\r\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\r\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\r\nSOFTWARE.\r\n",
+    "Id": "Microsoft.DotNet.PlatformAbstractions"
+  },
+  {
+    "LicenseType": "expression",
+    "Version": "9.0.9",
+    "RepositoryCommit": "893c2ebbd49952ca49e93298148af2d95a61a0a4",
+    "LicenseUrl": "https://licenses.nuget.org/MIT",
+    "RepositoryUrl": "https://github.com/dotnet/runtime",
+    "Authors": "Microsoft",
+    "Dependencies": [
+      {
+        "Id": "System.Text.Encodings.Web",
+        "Version": "9.0.9"
+      },
+      {
+        "Id": "System.Text.Json",
+        "Version": "9.0.9"
+      },
+      {
+        "Id": "System.Buffers",
+        "Version": "4.5.1"
+      },
+      {
+        "Id": "System.Memory",
+        "Version": "4.5.5"
+      },
+      {
+        "Id": "System.Text.Encodings.Web",
+        "Version": "9.0.9"
+      },
+      {
+        "Id": "System.Text.Json",
+        "Version": "9.0.9"
+      },
+      {
+        "Id": "",
+        "Version": ""
+      },
+      {
+        "Id": "System.Text.Encodings.Web",
+        "Version": "9.0.9"
+      },
+      {
+        "Id": "System.Text.Json",
+        "Version": "9.0.9"
+      },
+      {
+        "Id": "System.Buffers",
+        "Version": "4.5.1"
+      },
+      {
+        "Id": "System.Memory",
+        "Version": "4.5.5"
+      }
+    ],
+    "License": "MIT",
+    "Id": "Microsoft.Extensions.DependencyModel"
+  },
+  {
+    "LicenseType": "expression",
+    "Version": "10.0.13",
+    "RepositoryCommit": "4099f83977f4d29604a9aeb971fb0a7bc1d5f699",
+    "LicenseUrl": "https://licenses.nuget.org/MIT",
+    "RepositoryUrl": "https://github.com/dotnet/dotnet",
+    "Authors": "Microsoft",
+    "Dependencies": [
+      {
+        "Id": "",
+        "Version": ""
+      }
+    ],
+    "License": "MIT",
+    "Id": "Microsoft.NETCore.App.Runtime.win-x64"
+  },
+  {
+    "LicenseType": "",
+    "Version": "1.0.3",
+    "RepositoryCommit": "",
+    "LicenseUrl": "https://github.com/Microsoft/dotnet/blob/master/LICENSE",
+    "RepositoryUrl": "",
+    "Authors": "Microsoft",
+    "Dependencies": [
+      {
+        "Id": "Microsoft.NETFramework.ReferenceAssemblies.net20",
+        "Version": "1.0.3"
+      },
+      {
+        "Id": "Microsoft.NETFramework.ReferenceAssemblies.net35",
+        "Version": "1.0.3"
+      },
+      {
+        "Id": "Microsoft.NETFramework.ReferenceAssemblies.net40",
+        "Version": "1.0.3"
+      },
+      {
+        "Id": "Microsoft.NETFramework.ReferenceAssemblies.net45",
+        "Version": "1.0.3"
+      },
+      {
+        "Id": "Microsoft.NETFramework.ReferenceAssemblies.net451",
+        "Version": "1.0.3"
+      },
+      {
+        "Id": "Microsoft.NETFramework.ReferenceAssemblies.net452",
+        "Version": "1.0.3"
+      },
+      {
+        "Id": "Microsoft.NETFramework.ReferenceAssemblies.net46",
+        "Version": "1.0.3"
+      },
+      {
+        "Id": "Microsoft.NETFramework.ReferenceAssemblies.net461",
+        "Version": "1.0.3"
+      },
+      {
+        "Id": "Microsoft.NETFramework.ReferenceAssemblies.net462",
+        "Version": "1.0.3"
+      },
+      {
+        "Id": "Microsoft.NETFramework.ReferenceAssemblies.net47",
+        "Version": "1.0.3"
+      },
+      {
+        "Id": "Microsoft.NETFramework.ReferenceAssemblies.net471",
+        "Version": "1.0.3"
+      },
+      {
+        "Id": "Microsoft.NETFramework.ReferenceAssemblies.net472",
+        "Version": "1.0.3"
+      },
+      {
+        "Id": "Microsoft.NETFramework.ReferenceAssemblies.net48",
+        "Version": "1.0.3"
+      },
+      {
+        "Id": "Microsoft.NETFramework.ReferenceAssemblies.net481",
+        "Version": "1.0.3"
+      }
+    ],
+    "License": "",
+    "Id": "Microsoft.NETFramework.ReferenceAssemblies"
+  },
+  {
+    "LicenseType": "",
+    "Version": "1.0.3",
+    "RepositoryCommit": "",
+    "LicenseUrl": "https://github.com/Microsoft/dotnet/blob/master/LICENSE",
+    "RepositoryUrl": "",
+    "Authors": "Microsoft",
+    "Dependencies": [
+      {
+        "Id": "",
+        "Version": ""
+      }
+    ],
+    "License": "",
+    "Id": "Microsoft.NETFramework.ReferenceAssemblies.net472"
+  },
+  {
+    "LicenseType": "expression",
+    "Version": "2.23.0",
+    "RepositoryCommit": "94605142f7b7bd6e69c9201e8e721d245c69eb7e",
+    "LicenseUrl": "https://licenses.nuget.org/MIT",
+    "RepositoryUrl": "https://github.com/dotnet/Silk.NET.git",
+    "Authors": ".NET Foundation and Contributors",
+    "Dependencies": [
+      {
+        "Id": "Microsoft.CSharp",
+        "Version": "4.7.0"
+      },
+      {
+        "Id": "Microsoft.DotNet.PlatformAbstractions",
+        "Version": "3.1.6"
+      },
+      {
+        "Id": "Microsoft.Extensions.DependencyModel",
+        "Version": "9.0.9"
+      },
+      {
+        "Id": "System.Memory",
+        "Version": "4.6.3"
+      },
+      {
+        "Id": "System.Numerics.Vectors",
+        "Version": "4.6.1"
+      },
+      {
+        "Id": "System.Runtime.CompilerServices.Unsafe",
+        "Version": "6.1.2"
+      },
+      {
+        "Id": "Microsoft.CSharp",
+        "Version": "4.7.0"
+      },
+      {
+        "Id": "Microsoft.DotNet.PlatformAbstractions",
+        "Version": "3.1.6"
+      },
+      {
+        "Id": "Microsoft.Extensions.DependencyModel",
+        "Version": "9.0.9"
+      },
+      {
+        "Id": "System.Memory",
+        "Version": "4.6.3"
+      },
+      {
+        "Id": "System.Numerics.Vectors",
+        "Version": "4.6.1"
+      },
+      {
+        "Id": "System.Runtime.CompilerServices.Unsafe",
+        "Version": "6.1.2"
+      },
+      {
+        "Id": "Microsoft.CSharp",
+        "Version": "4.7.0"
+      },
+      {
+        "Id": "Microsoft.DotNet.PlatformAbstractions",
+        "Version": "3.1.6"
+      },
+      {
+        "Id": "Microsoft.Extensions.DependencyModel",
+        "Version": "9.0.9"
+      },
+      {
+        "Id": "System.Memory",
+        "Version": "4.6.3"
+      },
+      {
+        "Id": "System.Numerics.Vectors",
+        "Version": "4.6.1"
+      },
+      {
+        "Id": "System.Runtime.CompilerServices.Unsafe",
+        "Version": "6.1.2"
+      },
+      {
+        "Id": "Microsoft.Bcl.HashCode",
+        "Version": "6.0.0"
+      },
+      {
+        "Id": "Microsoft.CSharp",
+        "Version": "4.7.0"
+      },
+      {
+        "Id": "Microsoft.DotNet.PlatformAbstractions",
+        "Version": "3.1.6"
+      },
+      {
+        "Id": "Microsoft.Extensions.DependencyModel",
+        "Version": "9.0.9"
+      },
+      {
+        "Id": "System.Memory",
+        "Version": "4.6.3"
+      },
+      {
+        "Id": "System.Numerics.Vectors",
+        "Version": "4.6.1"
+      },
+      {
+        "Id": "System.Runtime.CompilerServices.Unsafe",
+        "Version": "6.1.2"
+      },
+      {
+        "Id": "Microsoft.CSharp",
+        "Version": "4.7.0"
+      },
+      {
+        "Id": "Microsoft.DotNet.PlatformAbstractions",
+        "Version": "3.1.6"
+      },
+      {
+        "Id": "Microsoft.Extensions.DependencyModel",
+        "Version": "9.0.9"
+      },
+      {
+        "Id": "System.Memory",
+        "Version": "4.6.3"
+      },
+      {
+        "Id": "System.Numerics.Vectors",
+        "Version": "4.6.1"
+      },
+      {
+        "Id": "System.Runtime.CompilerServices.Unsafe",
+        "Version": "6.1.2"
+      }
+    ],
+    "License": "MIT",
+    "Id": "Silk.NET.Core"
+  },
+  {
+    "LicenseType": "expression",
+    "Version": "2.23.0",
+    "RepositoryCommit": "94605142f7b7bd6e69c9201e8e721d245c69eb7e",
+    "LicenseUrl": "https://licenses.nuget.org/MIT",
+    "RepositoryUrl": "https://github.com/dotnet/Silk.NET.git",
+    "Authors": ".NET Foundation and Contributors",
+    "Dependencies": [
+      {
+        "Id": "Ultz.Bcl.Half",
+        "Version": "1.0.0"
+      },
+      {
+        "Id": "",
+        "Version": ""
+      },
+      {
+        "Id": "Ultz.Bcl.Half",
+        "Version": "1.0.0"
+      },
+      {
+        "Id": "Ultz.Bcl.Half",
+        "Version": "1.0.0"
+      },
+      {
+        "Id": "Microsoft.Bcl.HashCode",
+        "Version": "6.0.0"
+      },
+      {
+        "Id": "Ultz.Bcl.Half",
+        "Version": "1.0.0"
+      },
+      {
+        "Id": "Ultz.Bcl.Half",
+        "Version": "1.0.0"
+      }
+    ],
+    "License": "MIT",
+    "Id": "Silk.NET.Maths"
+  },
+  {
+    "LicenseType": "expression",
+    "Version": "2.23.0",
+    "RepositoryCommit": "94605142f7b7bd6e69c9201e8e721d245c69eb7e",
+    "LicenseUrl": "https://licenses.nuget.org/MIT",
+    "RepositoryUrl": "https://github.com/dotnet/Silk.NET.git",
+    "Authors": ".NET Foundation and Contributors",
+    "Dependencies": [
+      {
+        "Id": "Silk.NET.Core",
+        "Version": "2.23.0"
+      },
+      {
+        "Id": "Silk.NET.Maths",
+        "Version": "2.23.0"
+      },
+      {
+        "Id": "Ultz.Bcl.Half",
+        "Version": "1.0.0"
+      },
+      {
+        "Id": "Silk.NET.Core",
+        "Version": "2.23.0"
+      },
+      {
+        "Id": "Silk.NET.Maths",
+        "Version": "2.23.0"
+      },
+      {
+        "Id": "Silk.NET.Core",
+        "Version": "2.23.0"
+      },
+      {
+        "Id": "Silk.NET.Maths",
+        "Version": "2.23.0"
+      },
+      {
+        "Id": "Ultz.Bcl.Half",
+        "Version": "1.0.0"
+      },
+      {
+        "Id": "Silk.NET.Core",
+        "Version": "2.23.0"
+      },
+      {
+        "Id": "Silk.NET.Maths",
+        "Version": "2.23.0"
+      },
+      {
+        "Id": "Ultz.Bcl.Half",
+        "Version": "1.0.0"
+      }
+    ],
+    "License": "MIT",
+    "Id": "Silk.NET.OpenGL"
+  },
+  {
+    "LicenseType": "expression",
+    "Version": "2.88.9",
+    "RepositoryCommit": "9699cdf046a989423a5e5eca68e7fd813486d81c",
+    "LicenseUrl": "https://licenses.nuget.org/MIT",
+    "RepositoryUrl": "https://github.com/mono/SkiaSharp",
+    "Authors": "Microsoft",
+    "Dependencies": [
+      {
+        "Id": "SkiaSharp.NativeAssets.Win32",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "SkiaSharp.NativeAssets.macOS",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "System.Memory",
+        "Version": "4.5.5"
+      },
+      {
+        "Id": "SkiaSharp.NativeAssets.Win32",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "SkiaSharp.NativeAssets.macOS",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "System.IO.UnmanagedMemoryStream",
+        "Version": "4.3.0"
+      },
+      {
+        "Id": "System.Memory",
+        "Version": "4.5.5"
+      },
+      {
+        "Id": "SkiaSharp.NativeAssets.Win32",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "SkiaSharp.NativeAssets.macOS",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "System.Memory",
+        "Version": "4.5.5"
+      },
+      {
+        "Id": "SkiaSharp.NativeAssets.Win32",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "SkiaSharp.NativeAssets.macOS",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "SkiaSharp.NativeAssets.Android",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "SkiaSharp.NativeAssets.iOS",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "SkiaSharp.NativeAssets.tvOS",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "SkiaSharp.NativeAssets.watchOS",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "SkiaSharp.NativeAssets.macOS",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "SkiaSharp.NativeAssets.UWP",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "System.Memory",
+        "Version": "4.5.5"
+      },
+      {
+        "Id": "SkiaSharp.NativeAssets.UWP",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "System.Memory",
+        "Version": "4.5.5"
+      },
+      {
+        "Id": "SkiaSharp.NativeAssets.Tizen",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "System.Memory",
+        "Version": "4.5.5"
+      },
+      {
+        "Id": "SkiaSharp.NativeAssets.Win32",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "SkiaSharp.NativeAssets.macOS",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "SkiaSharp.NativeAssets.Win32",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "SkiaSharp.NativeAssets.macOS",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "SkiaSharp.NativeAssets.iOS",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "SkiaSharp.NativeAssets.MacCatalyst",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "SkiaSharp.NativeAssets.tvOS",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "SkiaSharp.NativeAssets.macOS",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "SkiaSharp.NativeAssets.Android",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "SkiaSharp.NativeAssets.Tizen",
+        "Version": "2.88.9"
+      }
+    ],
+    "License": "MIT",
+    "Id": "SkiaSharp"
+  },
+  {
+    "LicenseType": "expression",
+    "Version": "2.88.9",
+    "RepositoryCommit": "9699cdf046a989423a5e5eca68e7fd813486d81c",
+    "LicenseUrl": "https://licenses.nuget.org/MIT",
+    "RepositoryUrl": "https://github.com/mono/SkiaSharp",
+    "Authors": "Microsoft",
+    "Dependencies": [
+      {
+        "Id": "SkiaSharp",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "SkiaSharp",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "SkiaSharp",
+        "Version": "2.88.9"
+      },
+      {
+        "Id": "SkiaSharp",
+        "Version": "2.88.9"
+      }
+    ],
+    "License": "MIT",
+    "Id": "SkiaSharp.NativeAssets.Linux"
+  },
+  {
+    "LicenseType": "expression",
+    "Version": "2.88.9",
+    "RepositoryCommit": "9699cdf046a989423a5e5eca68e7fd813486d81c",
+    "LicenseUrl": "https://licenses.nuget.org/MIT",
+    "RepositoryUrl": "https://github.com/mono/SkiaSharp",
+    "Authors": "Microsoft",
+    "Dependencies": [
+      {
+        "Id": "",
+        "Version": ""
+      },
+      {
+        "Id": "",
+        "Version": ""
+      },
+      {
+        "Id": "",
+        "Version": ""
+      },
+      {
+        "Id": "",
+        "Version": ""
+      },
+      {
+        "Id": "",
+        "Version": ""
+      },
+      {
+        "Id": "",
+        "Version": ""
+      }
+    ],
+    "License": "MIT",
+    "Id": "SkiaSharp.NativeAssets.macOS"
+  },
+  {
+    "LicenseType": "expression",
+    "Version": "2.88.9",
+    "RepositoryCommit": "9699cdf046a989423a5e5eca68e7fd813486d81c",
+    "LicenseUrl": "https://licenses.nuget.org/MIT",
+    "RepositoryUrl": "https://github.com/mono/SkiaSharp",
+    "Authors": "Microsoft",
+    "Dependencies": [
+      {
+        "Id": "",
+        "Version": ""
+      }
+    ],
+    "License": "MIT",
+    "Id": "SkiaSharp.NativeAssets.WebAssembly"
+  },
+  {
+    "LicenseType": "expression",
+    "Version": "2.88.9",
+    "RepositoryCommit": "9699cdf046a989423a5e5eca68e7fd813486d81c",
+    "LicenseUrl": "https://licenses.nuget.org/MIT",
+    "RepositoryUrl": "https://github.com/mono/SkiaSharp",
+    "Authors": "Microsoft",
+    "Dependencies": [
+      {
+        "Id": "",
+        "Version": ""
+      },
+      {
+        "Id": "",
+        "Version": ""
+      },
+      {
+        "Id": "",
+        "Version": ""
+      },
+      {
+        "Id": "",
+        "Version": ""
+      }
+    ],
+    "License": "MIT",
+    "Id": "SkiaSharp.NativeAssets.Win32"
+  },
+  {
+    "LicenseType": "expression",
+    "Version": "0.21.3",
+    "RepositoryCommit": "8cb04f66c330b64244e996ff68f685f27f7381a0",
+    "LicenseUrl": "https://licenses.nuget.org/MIT",
+    "RepositoryUrl": "https://github.com/tmds/Tmds.DBus.git",
+    "Authors": "Tom Deseyn",
+    "Dependencies": [
+      {
+        "Id": "System.IO.Pipelines",
+        "Version": "8.0.0"
+      },
+      {
+        "Id": "System.IO.Pipelines",
+        "Version": "8.0.0"
+      },
+      {
+        "Id": "Microsoft.Bcl.AsyncInterfaces",
+        "Version": "8.0.0"
+      },
+      {
+        "Id": "System.IO.Pipelines",
+        "Version": "8.0.0"
+      },
+      {
+        "Id": "System.Threading.Channels",
+        "Version": "8.0.0"
+      },
+      {
+        "Id": "Microsoft.Bcl.AsyncInterfaces",
+        "Version": "8.0.0"
+      },
+      {
+        "Id": "System.IO.Pipelines",
+        "Version": "8.0.0"
+      },
+      {
+        "Id": "System.Threading.Channels",
+        "Version": "8.0.0"
+      }
+    ],
+    "License": "MIT",
+    "Id": "Tmds.DBus.Protocol"
+  }
+]

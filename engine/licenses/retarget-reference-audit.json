@@ -1,0 +1,1365 @@
+{
+  "Purpose": "Read-only research before retarget-v2; no third-party algorithm source adopted or runtime dependency added. Governing plans: docs/MASTER_PLAN.md and docs/plans/current.md.",
+  "Files": [
+    {
+      "Component": "godot",
+      "Revision": "ed1daf0bf001b61586d9930840f2f1394092c079",
+      "File": "LICENSE.txt",
+      "Url": "https://raw.githubusercontent.com/godotengine/godot/ed1daf0bf001b61586d9930840f2f1394092c079/LICENSE.txt",
+      "Bytes": 1149,
+      "Sha256": "b0435e3b3e4e55238f05f4b306f30524a1b2e20147810d436eaa554fa6855c80",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "godot",
+      "Revision": "ed1daf0bf001b61586d9930840f2f1394092c079",
+      "File": "scene/3d/retarget_modifier_3d.cpp",
+      "Url": "https://raw.githubusercontent.com/godotengine/godot/ed1daf0bf001b61586d9930840f2f1394092c079/scene/3d/retarget_modifier_3d.cpp",
+      "Bytes": 18254,
+      "Sha256": "daad068929640911f5eac28bdcb501dab3c26d8ed40b8ee5d02bf23061160f08",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "godot",
+      "Revision": "ed1daf0bf001b61586d9930840f2f1394092c079",
+      "File": "scene/resources/bone_map.cpp",
+      "Url": "https://raw.githubusercontent.com/godotengine/godot/ed1daf0bf001b61586d9930840f2f1394092c079/scene/resources/bone_map.cpp",
+      "Bytes": 7214,
+      "Sha256": "229179a27f91cddcbf18900c5c9b7b14fc72d317491f0eb9bf4bfd9f2fedfe39",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "godot",
+      "Revision": "ed1daf0bf001b61586d9930840f2f1394092c079",
+      "File": "scene/resources/skeleton_profile.cpp",
+      "Url": "https://raw.githubusercontent.com/godotengine/godot/ed1daf0bf001b61586d9930840f2f1394092c079/scene/resources/skeleton_profile.cpp",
+      "Bytes": 33735,
+      "Sha256": "ae4c282b4f966d58f6a1adbbd8906cc46b3a53b30aaa86cf4fb0f2949f840354",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "godot",
+      "Revision": "ed1daf0bf001b61586d9930840f2f1394092c079",
+      "File": "editor/import/3d/post_import_plugin_skeleton_rest_fixer.cpp",
+      "Url": "https://raw.githubusercontent.com/godotengine/godot/ed1daf0bf001b61586d9930840f2f1394092c079/editor/import/3d/post_import_plugin_skeleton_rest_fixer.cpp",
+      "Bytes": 44784,
+      "Sha256": "b61db369460edd737d32f4b1695cf65098494a88da67278308907bb98d400ec8",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "godot",
+      "Revision": "ed1daf0bf001b61586d9930840f2f1394092c079",
+      "File": "scene/3d/two_bone_ik_3d.cpp",
+      "Url": "https://raw.githubusercontent.com/godotengine/godot/ed1daf0bf001b61586d9930840f2f1394092c079/scene/3d/two_bone_ik_3d.cpp",
+      "Bytes": 36774,
+      "Sha256": "e9490a6ad6f6b3fcf6bc3fefbbd43d3b28092cd0243aef0c561aa0bf94831d44",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "godot",
+      "Revision": "ed1daf0bf001b61586d9930840f2f1394092c079",
+      "File": "scene/3d/iterate_ik_3d.cpp",
+      "Url": "https://raw.githubusercontent.com/godotengine/godot/ed1daf0bf001b61586d9930840f2f1394092c079/scene/3d/iterate_ik_3d.cpp",
+      "Bytes": 28860,
+      "Sha256": "329d187635960d2fcdb1bf7b5bbd6dfa48e8ce12de8325cd4ccb8d493f6afd3e",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "ozz",
+      "Revision": "744eb9d99f606eda849acb0b1204f7a3dc20bca1",
+      "File": "LICENSE.md",
+      "Url": "https://raw.githubusercontent.com/guillaumeblanc/ozz-animation/744eb9d99f606eda849acb0b1204f7a3dc20bca1/LICENSE.md",
+      "Bytes": 1183,
+      "Sha256": "3ddd93e9888fe70b9d61675ceb1c4278a579dc67171678f015de114efe815852",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "ozz",
+      "Revision": "744eb9d99f606eda849acb0b1204f7a3dc20bca1",
+      "File": "src/animation/runtime/ik_two_bone_job.cc",
+      "Url": "https://raw.githubusercontent.com/guillaumeblanc/ozz-animation/744eb9d99f606eda849acb0b1204f7a3dc20bca1/src/animation/runtime/ik_two_bone_job.cc",
+      "Bytes": 16492,
+      "Sha256": "c528e016951e507589c661fa8a03b9d478022a0c63fc710bb0e6c6851888ccaa",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "ozz",
+      "Revision": "744eb9d99f606eda849acb0b1204f7a3dc20bca1",
+      "File": "test/animation/runtime/ik_two_bone_job_tests.cc",
+      "Url": "https://raw.githubusercontent.com/guillaumeblanc/ozz-animation/744eb9d99f606eda849acb0b1204f7a3dc20bca1/test/animation/runtime/ik_two_bone_job_tests.cc",
+      "Bytes": 34042,
+      "Sha256": "be3c37bf0680a66b9ba8baca2a0d1773fd12e0dcd85f3af2938d8c171111da65",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "ozz",
+      "Revision": "744eb9d99f606eda849acb0b1204f7a3dc20bca1",
+      "File": "samples/foot_ik/sample_foot_ik.cc",
+      "Url": "https://raw.githubusercontent.com/guillaumeblanc/ozz-animation/744eb9d99f606eda849acb0b1204f7a3dc20bca1/samples/foot_ik/sample_foot_ik.cc",
+      "Bytes": 28061,
+      "Sha256": "a09fcb135c88d834381c0b598362bccca47856eaf711e0c2dbddf6bf718d135e",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "ozz",
+      "Revision": "744eb9d99f606eda849acb0b1204f7a3dc20bca1",
+      "File": "src/animation/offline/animation_optimizer.cc",
+      "Url": "https://raw.githubusercontent.com/guillaumeblanc/ozz-animation/744eb9d99f606eda849acb0b1204f7a3dc20bca1/src/animation/offline/animation_optimizer.cc",
+      "Bytes": 12354,
+      "Sha256": "94e7621c3968f50e5c3173329a7734bcab160b6504c62ff7510b51019d62a4d0",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "hsd",
+      "Revision": "85567e40797de3c820a55476eca54c704921a848",
+      "File": "LICENSE",
+      "Url": "https://raw.githubusercontent.com/Ploaj/HSDLib/85567e40797de3c820a55476eca54c704921a848/LICENSE",
+      "Bytes": 1062,
+      "Sha256": "a4f9f4dd2b4c6628c424ffa30c3bce8cac98f9b2a9f3dfce0daefb2e610b061c",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "hsd",
+      "Revision": "85567e40797de3c820a55476eca54c704921a848",
+      "File": "HSDRawViewer/Tools/Animation/RetargetUtil.cs",
+      "Url": "https://raw.githubusercontent.com/Ploaj/HSDLib/85567e40797de3c820a55476eca54c704921a848/HSDRawViewer/Tools/Animation/RetargetUtil.cs",
+      "Bytes": 10232,
+      "Sha256": "b9d3e9da5f743ddd0972027198a5030e73f4fa678c177c0e0f0ddd81d0cd1977",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "hsd",
+      "Revision": "85567e40797de3c820a55476eca54c704921a848",
+      "File": "HSDRawViewer/Tools/Animation/AnimationRemapper.cs",
+      "Url": "https://raw.githubusercontent.com/Ploaj/HSDLib/85567e40797de3c820a55476eca54c704921a848/HSDRawViewer/Tools/Animation/AnimationRemapper.cs",
+      "Bytes": 9985,
+      "Sha256": "cc3b7c7cf8fd1a4a0f32818c525c1c81deac715b3c145a73b9c53c869f593a4e",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "hsd",
+      "Revision": "85567e40797de3c820a55476eca54c704921a848",
+      "File": "HSDRawViewer/Tools/Animation/IKSolver.cs",
+      "Url": "https://raw.githubusercontent.com/Ploaj/HSDLib/85567e40797de3c820a55476eca54c704921a848/HSDRawViewer/Tools/Animation/IKSolver.cs",
+      "Bytes": 5389,
+      "Sha256": "62affc4f5243a270ddb8cb12f617633bac5139bc5bbeb126684ff5a7a9c1bce0",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "hsd",
+      "Revision": "85567e40797de3c820a55476eca54c704921a848",
+      "File": "HSDRawViewer/Tools/Animation/AnimationBakery.cs",
+      "Url": "https://raw.githubusercontent.com/Ploaj/HSDLib/85567e40797de3c820a55476eca54c704921a848/HSDRawViewer/Tools/Animation/AnimationBakery.cs",
+      "Bytes": 3685,
+      "Sha256": "e0ae6a8027f3ea9f958ec07b2b966225a0262bee75f9d22bd5e449f354f4f9bc",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "hsd",
+      "Revision": "85567e40797de3c820a55476eca54c704921a848",
+      "File": "HSDRaw/Tools/FOBJ_Encoder.cs",
+      "Url": "https://raw.githubusercontent.com/Ploaj/HSDLib/85567e40797de3c820a55476eca54c704921a848/HSDRaw/Tools/FOBJ_Encoder.cs",
+      "Bytes": 4536,
+      "Sha256": "4c57c3e65130943f460359b72dab73486cdda610a5a18fc87b6c89b3cb067fe4",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "wicked",
+      "Revision": "4f93f3fd4f337aeb38dbfe410701b83024ccdd42",
+      "File": "LICENSE.txt",
+      "Url": "https://raw.githubusercontent.com/turanszkij/WickedEngine/4f93f3fd4f337aeb38dbfe410701b83024ccdd42/LICENSE.txt",
+      "Bytes": 1084,
+      "Sha256": "5c48360ddec789b6333413d2e52a1f3b45174dfd9f8d8575c78dc64a6d877f9f",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "wicked",
+      "Revision": "4f93f3fd4f337aeb38dbfe410701b83024ccdd42",
+      "File": "WickedEngine/wiScene.cpp",
+      "Url": "https://raw.githubusercontent.com/turanszkij/WickedEngine/4f93f3fd4f337aeb38dbfe410701b83024ccdd42/WickedEngine/wiScene.cpp",
+      "Bytes": 366528,
+      "Sha256": "bf2eba47ea609dbec90b18ab732945d7d4f4b43a762defcead78a8bf39e24b3b",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "meshret",
+      "Revision": "96ccd8c8b5ee102a1b067780c0300c30da7d925d",
+      "File": "LICENSE",
+      "Url": "https://raw.githubusercontent.com/abcyzj/MeshRet/96ccd8c8b5ee102a1b067780c0300c30da7d925d/LICENSE",
+      "Bytes": 1065,
+      "Sha256": "729fe249974adc8e36c76a136e1f6e6f62a8e4c1a2ebccb063c92fa1e994edb4",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "meshret",
+      "Revision": "96ccd8c8b5ee102a1b067780c0300c30da7d925d",
+      "File": "model/retnet.py",
+      "Url": "https://raw.githubusercontent.com/abcyzj/MeshRet/96ccd8c8b5ee102a1b067780c0300c30da7d925d/model/retnet.py",
+      "Bytes": 31037,
+      "Sha256": "ec9fff73ee2942d1a76b0a70f2155fc4922f83c54f12b4c7942f3b0a3e513dd2",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "meshret",
+      "Revision": "96ccd8c8b5ee102a1b067780c0300c30da7d925d",
+      "File": "utils/body_armatures.py",
+      "Url": "https://raw.githubusercontent.com/abcyzj/MeshRet/96ccd8c8b5ee102a1b067780c0300c30da7d925d/utils/body_armatures.py",
+      "Bytes": 34121,
+      "Sha256": "4761ce06e72931735c0486abb7f68530629d6dd8fe5efabb926a27d00aa04b95",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "meshret",
+      "Revision": "96ccd8c8b5ee102a1b067780c0300c30da7d925d",
+      "File": "README.md",
+      "Url": "https://raw.githubusercontent.com/abcyzj/MeshRet/96ccd8c8b5ee102a1b067780c0300c30da7d925d/README.md",
+      "Bytes": 4978,
+      "Sha256": "9d9016ee8e846fc579a7b7b3039e54f265353ae02e4b2621025fb125291d341e",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "ssbh",
+      "Revision": "08f8bc4470a7d480dfc9b64d7e08e97f3820fed7",
+      "File": "LICENSE",
+      "Url": "https://raw.githubusercontent.com/ultimate-research/ssbh_lib/08f8bc4470a7d480dfc9b64d7e08e97f3820fed7/LICENSE",
+      "Bytes": 1086,
+      "Sha256": "f17fdacc9941e192371fa31302e63b4776b7a2fda64eda9276bee0001757dd9d",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "ssbh",
+      "Revision": "08f8bc4470a7d480dfc9b64d7e08e97f3820fed7",
+      "File": "ssbh_data/src/anim_data.rs",
+      "Url": "https://raw.githubusercontent.com/ultimate-research/ssbh_lib/08f8bc4470a7d480dfc9b64d7e08e97f3820fed7/ssbh_data/src/anim_data.rs",
+      "Bytes": 17748,
+      "Sha256": "f229e5a504bcd667928c7e68afb524e3d2755397a1a3d92f930662401b7a159a",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "ssbh",
+      "Revision": "08f8bc4470a7d480dfc9b64d7e08e97f3820fed7",
+      "File": "ssbh_data/Cargo.toml",
+      "Url": "https://raw.githubusercontent.com/ultimate-research/ssbh_lib/08f8bc4470a7d480dfc9b64d7e08e97f3820fed7/ssbh_data/Cargo.toml",
+      "Bytes": 1239,
+      "Sha256": "ea5f6fad48e90d44a21416a43d7034b6f29da5981c21d6c070b1e64e0d828240",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "brawl",
+      "Revision": "d56cbac89dc2cd0e5c3f923e1d03041b16902add",
+      "File": "LICENSE",
+      "Url": "https://raw.githubusercontent.com/soopercool101/BrawlCrate/d56cbac89dc2cd0e5c3f923e1d03041b16902add/LICENSE",
+      "Bytes": 7370,
+      "Sha256": "dbcd19ea5a26de8ad07b566291bab225318cc218e0f1f0d522ce47baa1f3c319",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "hoi-retarget",
+      "File": "LICENSE",
+      "Revision": "b341dadde3fc745ef5ea606eaacbde9a0cbb916f",
+      "Status": "read-only reference; not adopted",
+      "Url": "https://raw.githubusercontent.com/leggedrobotics/hoi-retarget/b341dadde3fc745ef5ea606eaacbde9a0cbb916f/LICENSE",
+      "Sha256": "84b6aa452e67b54bfc575d98be50649fa4bc3d29cc30c03c4be9e9078878b365",
+      "Bytes": 1580
+    },
+    {
+      "Component": "hoi-retarget",
+      "File": "THIRD_PARTY_NOTICES.md",
+      "Revision": "b341dadde3fc745ef5ea606eaacbde9a0cbb916f",
+      "Status": "read-only reference; not adopted",
+      "Url": "https://raw.githubusercontent.com/leggedrobotics/hoi-retarget/b341dadde3fc745ef5ea606eaacbde9a0cbb916f/THIRD_PARTY_NOTICES.md",
+      "Sha256": "64214a6d5f0f33fd93aec7ac10ca5227515f0756cdae467e2a7f2c9f00b34c09",
+      "Bytes": 2240
+    },
+    {
+      "Component": "hoi-retarget",
+      "File": "pyproject.toml",
+      "Revision": "b341dadde3fc745ef5ea606eaacbde9a0cbb916f",
+      "Status": "read-only reference; not adopted",
+      "Url": "https://raw.githubusercontent.com/leggedrobotics/hoi-retarget/b341dadde3fc745ef5ea606eaacbde9a0cbb916f/pyproject.toml",
+      "Sha256": "6c0a7ac4825486f6c7c93f134fee36766d0845d218b09a6bb95e58c9f48dfbaa",
+      "Bytes": 3560
+    },
+    {
+      "Component": "hoi-retarget",
+      "File": "docs/DATA.md",
+      "Revision": "b341dadde3fc745ef5ea606eaacbde9a0cbb916f",
+      "Status": "read-only reference; not adopted",
+      "Url": "https://raw.githubusercontent.com/leggedrobotics/hoi-retarget/b341dadde3fc745ef5ea606eaacbde9a0cbb916f/docs/DATA.md",
+      "Sha256": "68029dfb6e6e30a1dd7631137e5970e608a68a7b57ad0ba65568d4785f1f910b",
+      "Bytes": 7095
+    },
+    {
+      "Component": "hoi-retarget",
+      "File": "hoi_retarget/config.py",
+      "Revision": "b341dadde3fc745ef5ea606eaacbde9a0cbb916f",
+      "Status": "read-only reference; not adopted",
+      "Url": "https://raw.githubusercontent.com/leggedrobotics/hoi-retarget/b341dadde3fc745ef5ea606eaacbde9a0cbb916f/hoi_retarget/config.py",
+      "Sha256": "53b7930e0d53d3e6b706089d219d43fcff9c44671733586d505ba80f69232b9b",
+      "Bytes": 13393
+    },
+    {
+      "Component": "hoi-retarget",
+      "File": "hoi_retarget/optimization/window.py",
+      "Revision": "b341dadde3fc745ef5ea606eaacbde9a0cbb916f",
+      "Status": "read-only reference; not adopted",
+      "Url": "https://raw.githubusercontent.com/leggedrobotics/hoi-retarget/b341dadde3fc745ef5ea606eaacbde9a0cbb916f/hoi_retarget/optimization/window.py",
+      "Sha256": "513741ce79ad55803db1d8014d8738ea10006be6d95055a8a9d22579ec773dec",
+      "Bytes": 18932
+    },
+    {
+      "Component": "hoi-retarget",
+      "File": "hoi_retarget/optimization/projector.py",
+      "Revision": "b341dadde3fc745ef5ea606eaacbde9a0cbb916f",
+      "Status": "read-only reference; not adopted",
+      "Url": "https://raw.githubusercontent.com/leggedrobotics/hoi-retarget/b341dadde3fc745ef5ea606eaacbde9a0cbb916f/hoi_retarget/optimization/projector.py",
+      "Sha256": "92c8aa7f5d5068bbe5e350859b8b325810034916d8acf2e712b94d8db0062568",
+      "Bytes": 12602
+    },
+    {
+      "Component": "hoi-retarget",
+      "File": "hoi_retarget/retargeting/object_scaling.py",
+      "Revision": "b341dadde3fc745ef5ea606eaacbde9a0cbb916f",
+      "Status": "read-only reference; not adopted",
+      "Url": "https://raw.githubusercontent.com/leggedrobotics/hoi-retarget/b341dadde3fc745ef5ea606eaacbde9a0cbb916f/hoi_retarget/retargeting/object_scaling.py",
+      "Sha256": "679d36019c008ddaab06c2acfd58f74662d5b702dcd7a5413dbf39e183f147de",
+      "Bytes": 6052
+    },
+    {
+      "Component": "hoi-retarget",
+      "File": "hoi_retarget/contact/shifts.py",
+      "Revision": "b341dadde3fc745ef5ea606eaacbde9a0cbb916f",
+      "Status": "read-only reference; not adopted",
+      "Url": "https://raw.githubusercontent.com/leggedrobotics/hoi-retarget/b341dadde3fc745ef5ea606eaacbde9a0cbb916f/hoi_retarget/contact/shifts.py",
+      "Sha256": "53bdae2bb67b73e5d5cb12ed9ae9536d8101e3cd2ff45b6fde56e0dac5ec83e3",
+      "Bytes": 5170
+    },
+    {
+      "Component": "umr",
+      "File": "LICENSE",
+      "Revision": "d1cdaedaf67a827198da71c5fa831f48b2e51f91",
+      "Status": "read-only reference; not adopted",
+      "Url": "https://raw.githubusercontent.com/hanyang9/UMR/d1cdaedaf67a827198da71c5fa831f48b2e51f91/LICENSE",
+      "Sha256": "7976e004a50466e0ac0c03dac800ac78dd3d4aa483f0545a04e98deb9150b8ee",
+      "Bytes": 1076
+    },
+    {
+      "Component": "umr",
+      "File": "README.md",
+      "Revision": "d1cdaedaf67a827198da71c5fa831f48b2e51f91",
+      "Status": "read-only reference; not adopted",
+      "Url": "https://raw.githubusercontent.com/hanyang9/UMR/d1cdaedaf67a827198da71c5fa831f48b2e51f91/README.md",
+      "Sha256": "f7ed0975726c898214534702f492df33b8165097da001b3ed6b75492812ca8cd",
+      "Bytes": 12900
+    },
+    {
+      "Component": "umr",
+      "File": "requirements-umr.txt",
+      "Revision": "d1cdaedaf67a827198da71c5fa831f48b2e51f91",
+      "Status": "read-only reference; not adopted",
+      "Url": "https://raw.githubusercontent.com/hanyang9/UMR/d1cdaedaf67a827198da71c5fa831f48b2e51f91/requirements-umr.txt",
+      "Sha256": "79a5cebc052d39f66ba94a2ec9631a830ef75f2347094b78b028381d32b909a4",
+      "Bytes": 629
+    },
+    {
+      "Component": "umr",
+      "File": "scripts/source_self_contact.py",
+      "Revision": "d1cdaedaf67a827198da71c5fa831f48b2e51f91",
+      "Status": "read-only reference; not adopted",
+      "Url": "https://raw.githubusercontent.com/hanyang9/UMR/d1cdaedaf67a827198da71c5fa831f48b2e51f91/scripts/source_self_contact.py",
+      "Sha256": "4e4afc770f868eae536d322ccd0c1d52ba65a385dc0dad6fd1f58f2c19d66985",
+      "Bytes": 7649
+    },
+    {
+      "Component": "umr",
+      "File": "scripts/retarget_body_segment_surface.py",
+      "Revision": "d1cdaedaf67a827198da71c5fa831f48b2e51f91",
+      "Status": "read-only reference; not adopted",
+      "Url": "https://raw.githubusercontent.com/hanyang9/UMR/d1cdaedaf67a827198da71c5fa831f48b2e51f91/scripts/retarget_body_segment_surface.py",
+      "Sha256": "d9b918f06f769ceb8acc42a726fa105d64947fa2f7c9fb5da0e7687161ab4a84",
+      "Bytes": 55987
+    },
+    {
+      "Component": "umr",
+      "File": "scripts/retarget_smpl_to_humanoid_surface_vector.py",
+      "Revision": "d1cdaedaf67a827198da71c5fa831f48b2e51f91",
+      "Status": "read-only reference; not adopted",
+      "Url": "https://raw.githubusercontent.com/hanyang9/UMR/d1cdaedaf67a827198da71c5fa831f48b2e51f91/scripts/retarget_smpl_to_humanoid_surface_vector.py",
+      "Sha256": "d767f5ca84866ed17efac811545a7e6603c9dd678a68e3a6e14f0e86a0753a6f",
+      "Bytes": 140132
+    },
+    {
+      "Component": "umr",
+      "File": "scripts/shared_smplx_correspondence.py",
+      "Revision": "d1cdaedaf67a827198da71c5fa831f48b2e51f91",
+      "Status": "read-only reference; not adopted",
+      "Url": "https://raw.githubusercontent.com/hanyang9/UMR/d1cdaedaf67a827198da71c5fa831f48b2e51f91/scripts/shared_smplx_correspondence.py",
+      "Sha256": "0251c48e71ad4ae58889b31f7049b65594148792ea5004c1a417014f71240928",
+      "Bytes": 4853
+    },
+    {
+      "Bytes": 468071,
+      "Status": "paper-only reference; implementation license unverified; not adopted",
+      "File": "arxiv-2502.21207v1.html",
+      "Sha256": "3b6e73feba441fdda4745eb2d7ab46e6a6ecd16e2f960f365fe1214520352ea0",
+      "Revision": "arXiv:2502.21207v1 (2025-02-28)",
+      "Component": "reconform-paper",
+      "Url": "https://arxiv.org/html/2502.21207v1"
+    },
+    {
+      "Bytes": 41957,
+      "Status": "paper-only reference; implementation license unverified; not adopted",
+      "File": "arxiv-2502.21207v1-abstract.html",
+      "Sha256": "ede2d5002c25395c7a9d693af4d60c107a17372e5667b3a409a8b4170e69fb07",
+      "Revision": "arXiv:2502.21207v1 (2025-02-28)",
+      "Component": "reconform-paper",
+      "Url": "https://arxiv.org/abs/2502.21207v1"
+    },
+    {
+      "Component": "pyroki",
+      "Revision": "388e43e1fc0d0ee382968d3dd72970fd62a0450c",
+      "File": "LICENSE",
+      "Url": "https://raw.githubusercontent.com/chungmin99/pyroki/388e43e1fc0d0ee382968d3dd72970fd62a0450c/LICENSE",
+      "Bytes": 1070,
+      "Sha256": "34e977226cf6a0ee7b35c61dcbe8bff0b5d84c5aeb3fecd0f3b41b2416601eb3",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "pyroki",
+      "Revision": "388e43e1fc0d0ee382968d3dd72970fd62a0450c",
+      "File": "pyproject.toml",
+      "Url": "https://raw.githubusercontent.com/chungmin99/pyroki/388e43e1fc0d0ee382968d3dd72970fd62a0450c/pyproject.toml",
+      "Bytes": 2147,
+      "Sha256": "708eaaa0f690c0930e6103046371d9ce7481551615ca670acc27c79efb676669",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "pyroki",
+      "Revision": "388e43e1fc0d0ee382968d3dd72970fd62a0450c",
+      "File": "src/pyroki/costs.py",
+      "Url": "https://raw.githubusercontent.com/chungmin99/pyroki/388e43e1fc0d0ee382968d3dd72970fd62a0450c/src/pyroki/costs.py",
+      "Bytes": 2182,
+      "Sha256": "b6cd8a28b7ee7e58b0aaa0474abc9e45fe7679ac3e2262bdaba6f288ffd66a43",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "pyroki",
+      "Revision": "388e43e1fc0d0ee382968d3dd72970fd62a0450c",
+      "File": "examples/12_humanoid_retargeting_fancy.py",
+      "Url": "https://raw.githubusercontent.com/chungmin99/pyroki/388e43e1fc0d0ee382968d3dd72970fd62a0450c/examples/12_humanoid_retargeting_fancy.py",
+      "Bytes": 18737,
+      "Sha256": "272388faa45de14b98933ae9e0993cd3e555050988688db9393aabf7a2c01ec2",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "mink",
+      "Revision": "ae6759602593113ed7e5431ac7c65726ea27dc29",
+      "File": "LICENSE",
+      "Url": "https://raw.githubusercontent.com/kevinzakka/mink/ae6759602593113ed7e5431ac7c65726ea27dc29/LICENSE",
+      "Bytes": 11357,
+      "Sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "mink",
+      "Revision": "ae6759602593113ed7e5431ac7c65726ea27dc29",
+      "File": "pyproject.toml",
+      "Url": "https://raw.githubusercontent.com/kevinzakka/mink/ae6759602593113ed7e5431ac7c65726ea27dc29/pyproject.toml",
+      "Bytes": 3763,
+      "Sha256": "ac00d1492aa3d6504e878f6410073714d656eac3693ba3d59cf3ef4f7fbcb6a2",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "mink",
+      "Revision": "ae6759602593113ed7e5431ac7c65726ea27dc29",
+      "File": "src/mink/solve_ik.py",
+      "Url": "https://raw.githubusercontent.com/kevinzakka/mink/ae6759602593113ed7e5431ac7c65726ea27dc29/src/mink/solve_ik.py",
+      "Bytes": 7105,
+      "Sha256": "6812037b9f15b2a55cc6a6fe5344201f0d2c7f1fecec57f6a6a72bc3036f0ceb",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "mink",
+      "Revision": "ae6759602593113ed7e5431ac7c65726ea27dc29",
+      "File": "src/mink/tasks/relative_frame_task.py",
+      "Url": "https://raw.githubusercontent.com/kevinzakka/mink/ae6759602593113ed7e5431ac7c65726ea27dc29/src/mink/tasks/relative_frame_task.py",
+      "Bytes": 10438,
+      "Sha256": "2a83f9cc66ad49017d4bb4fce0b24f0bf649412512030acbe135c098ef35fb4f",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "pink",
+      "Revision": "2c333161fc260de93fb7be1dd8d6519d2ecc2df2",
+      "File": "LICENSE",
+      "Url": "https://raw.githubusercontent.com/pink-kinematics/pink/2c333161fc260de93fb7be1dd8d6519d2ecc2df2/LICENSE",
+      "Bytes": 11357,
+      "Sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "pink",
+      "Revision": "2c333161fc260de93fb7be1dd8d6519d2ecc2df2",
+      "File": "NOTICE",
+      "Url": "https://raw.githubusercontent.com/pink-kinematics/pink/2c333161fc260de93fb7be1dd8d6519d2ecc2df2/NOTICE",
+      "Bytes": 240,
+      "Sha256": "620709f3f7b38ef308a586b2fabb29c3439e2fe7e648de1cf04dc2106b319614",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "pink",
+      "Revision": "2c333161fc260de93fb7be1dd8d6519d2ecc2df2",
+      "File": "pyproject.toml",
+      "Url": "https://raw.githubusercontent.com/pink-kinematics/pink/2c333161fc260de93fb7be1dd8d6519d2ecc2df2/pyproject.toml",
+      "Bytes": 5399,
+      "Sha256": "7916d37da9bc599a12a5d89020da75579675d45895626e9523c149ba133fae75",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "pink",
+      "Revision": "2c333161fc260de93fb7be1dd8d6519d2ecc2df2",
+      "File": "pink/solve_ik.py",
+      "Url": "https://raw.githubusercontent.com/pink-kinematics/pink/2c333161fc260de93fb7be1dd8d6519d2ecc2df2/pink/solve_ik.py",
+      "Bytes": 9997,
+      "Sha256": "540aa1579ea6636de02e8acd602d7335b96c98aa3e84279f896b2257e0751129",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "pink",
+      "Revision": "2c333161fc260de93fb7be1dd8d6519d2ecc2df2",
+      "File": "pink/tasks/relative_frame_task.py",
+      "Url": "https://raw.githubusercontent.com/pink-kinematics/pink/2c333161fc260de93fb7be1dd8d6519d2ecc2df2/pink/tasks/relative_frame_task.py",
+      "Bytes": 10070,
+      "Sha256": "72d726e7480239d99f3d3a5994dce5d2281ab094c7a7d200345ed702f8ee28fb",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "sata",
+      "Revision": "9858f4df2322bc796c5dcf56e9c8eae01969518c",
+      "File": "LICENSE",
+      "Url": "https://raw.githubusercontent.com/zzysteve/SATA/9858f4df2322bc796c5dcf56e9c8eae01969518c/LICENSE",
+      "Bytes": 10172,
+      "Sha256": "59899c6091b540582ed617e8eeaac4919dc985ccfc35459ee9752b699be5205b",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "sata",
+      "Revision": "9858f4df2322bc796c5dcf56e9c8eae01969518c",
+      "File": "NOTICE",
+      "Url": "https://raw.githubusercontent.com/zzysteve/SATA/9858f4df2322bc796c5dcf56e9c8eae01969518c/NOTICE",
+      "Bytes": 1342,
+      "Sha256": "65c43662f7535e27c0b3cd92e880b914ba5e08f80b79acb150483f86dd48045d",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "sata",
+      "Revision": "9858f4df2322bc796c5dcf56e9c8eae01969518c",
+      "File": "README.md",
+      "Url": "https://raw.githubusercontent.com/zzysteve/SATA/9858f4df2322bc796c5dcf56e9c8eae01969518c/README.md",
+      "Bytes": 12849,
+      "Sha256": "c883181f8086900aa277c5a6a57c913380cea20bfd81053af9bf3fb78063d1ff",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "sata",
+      "Revision": "9858f4df2322bc796c5dcf56e9c8eae01969518c",
+      "File": "src/sata/mymodel.py",
+      "Url": "https://raw.githubusercontent.com/zzysteve/SATA/9858f4df2322bc796c5dcf56e9c8eae01969518c/src/sata/mymodel.py",
+      "Bytes": 58353,
+      "Sha256": "2ebf08fca0b2af4506537afe88f4e76c8570906297538c29b4e58d14411f42f5",
+      "Status": "read-only reference; not adopted"
+    },
+    {
+      "Component": "sata",
+      "Revision": "9858f4df2322bc796c5dcf56e9c8eae01969518c",
+      "File": "src/eval/retarget.py",
+      "Url": "https://raw.githubusercontent.com/zzysteve/SATA/9858f4df2322bc796c5dcf56e9c8eae01969518c/src/eval/retarget.py",
+      "Bytes": 10237,
+      "Sha256": "61fb076b67b74ed1448b0a2a10fddee5d7f1f5d0b723d3abab9f448e031aca67",
+      "Status": "read-only reference; not adopted"
+    }
+  ],
+  "MissingPaths": [
+    {
+      "Component": "meshret",
+      "File": "utils/metric.py",
+      "Url": "https://raw.githubusercontent.com/abcyzj/MeshRet/96ccd8c8b5ee102a1b067780c0300c30da7d925d/utils/metric.py",
+      "Error": "HTTP Error 404: Not Found"
+    },
+    {
+      "Component": "meshret",
+      "File": "utils/skinning.py",
+      "Url": "https://raw.githubusercontent.com/abcyzj/MeshRet/96ccd8c8b5ee102a1b067780c0300c30da7d925d/utils/skinning.py",
+      "Error": "HTTP Error 404: Not Found"
+    },
+    {
+      "Component": "brawl",
+      "File": "BrawlLib/Internal/IO/Animations/AnimationConverter.cs",
+      "Url": "https://raw.githubusercontent.com/soopercool101/BrawlCrate/d56cbac89dc2cd0e5c3f923e1d03041b16902add/BrawlLib/Internal/IO/Animations/AnimationConverter.cs",
+      "Error": "HTTP Error 404: Not Found"
+    }
+  ],
+  "NativePrecisionReferences": [
+    {
+      "File": "BrawlLib/Wii/Models/AnimationCode.cs",
+      "Url": "https://raw.githubusercontent.com/soopercool101/BrawlCrate/d56cbac89dc2cd0e5c3f923e1d03041b16902add/BrawlLib/Wii/Models/AnimationCode.cs",
+      "Sha256": "4228ee9215ad6eab2b116d1dcac22b5750a3d84ce3c5e1e888bef4002cd76db1",
+      "Decision": "Read-only native flag reference; no source copied; existing LGPL-3.0 worker boundary and notices retained."
+    },
+    {
+      "File": "BrawlLib/Wii/Animations/AnimationConverter.cs",
+      "Url": "https://raw.githubusercontent.com/soopercool101/BrawlCrate/d56cbac89dc2cd0e5c3f923e1d03041b16902add/BrawlLib/Wii/Animations/AnimationConverter.cs",
+      "Sha256": "8d2407a3d806f7a17ecbfa8090e9de97b1eb77937be110188abe02e53f49eeed",
+      "Decision": "Read-only native flag reference; no source copied; existing LGPL-3.0 worker boundary and notices retained."
+    }
+  ],
+  "InteractionResearch": [
+    {
+      "Component": "hoi-retarget",
+      "Repository": "https://github.com/leggedrobotics/hoi-retarget",
+      "Revision": "b341dadde3fc745ef5ea606eaacbde9a0cbb916f",
+      "Inspected": "2026-10-20",
+      "SelectedFunctions": [
+        "hoi_retarget/optimization/window.py: PinocchioMotionProjectorWindow._solve_window and _unified_pass",
+        "hoi_retarget/optimization/projector.py: BasePinocchioProjector._preprocess_motion",
+        "hoi_retarget/retargeting/object_scaling.py: resolve_object_scale and apply_object_scaling",
+        "hoi_retarget/contact/shifts.py: object-frame contact edits"
+      ],
+      "CodeLicense": "Actual root LICENSE: BSD-3-Clause, Copyright 2026 ETH Zurich; retained copyright, conditions, disclaimer and non-endorsement requirement if copied. No implementation copied.",
+      "Dependencies": "Python>=3.10; NumPy/SciPy/Torch; Pinocchio; CasADi/IPOPT; MuJoCo/Mink; SMPL-X pinned1265df7; trimesh; Viser; visualization packages. Dependencies not adopted or fully redistribution-audited.",
+      "AssetAndDataTerms": "Inspected THIRD_PARTY_NOTICES and docs/DATA: vendored GMR MIT with separate NVIDIA BSD torch_utils; Unitree descriptions BSD3; object assets MIT notices for InterMimic/OMOMO. SMPL-X/SMPL-H require their own accepted terms; motion corpora require separate permissions, including InterAct redistribution authorization. No models, meshes, motions or weights downloaded/adopted.",
+      "Assumptions": "Supplied source contact labels and SMPL body models; robot URDF/MJCF joint/velocity limits; fixed object trajectory during NLP; configurable mesh/trajectory scaling by embodiment. Contact terms are weighted costs, not exact socket constraints. Overlap pins preserve previous q samples, not proof of native derivative continuity; mixed failed windows can retain initialization.",
+      "Decision": "Develop owned support-local anchor/grip representation and bounded temporal windows with explicit overlap boundary constraints. Keep required contacts separately verified under frozen bounds, preserve failed-window states and native validation. Do not copy robot-specific scaling, frame heuristics, fixed humanoid links or assume weighted contact is hard feasibility. No runtime integration."
+    },
+    {
+      "Component": "umr",
+      "Repository": "https://github.com/hanyang9/UMR",
+      "Revision": "d1cdaedaf67a827198da71c5fa831f48b2e51f91",
+      "Inspected": "2026-10-20",
+      "SelectedFunctions": [
+        "scripts/source_self_contact.py: compute_source_self_contact_map_groups",
+        "scripts/retarget_body_segment_surface.py: bind_source_slots_with_normals, slot_points_from_binding, triangle_frames, transport_tpose_robot_normals",
+        "scripts/retarget_smpl_to_humanoid_surface_vector.py: solve_frame_body_segment_qp and update_ground_contact_anchors",
+        "scripts/shared_smplx_correspondence.py: source correspondence cache configuration"
+      ],
+      "CodeLicense": "Actual root LICENSE: MIT, Copyright 2026 Hanyang Cao and UMR contributors; copyright/permission notice required on copied substantial code. No implementation copied.",
+      "Dependencies": "Python3.12; Torch2.4.1; MuJoCo; Warp; Clarabel/cholespy; SciPy/NumPy; trimesh/Embree; SMPL-X fork; py-soma-x; visualization packages. Requirements includes an unpinned SMPL-X git dependency; no stack installed/adopted.",
+      "AssetAndDataTerms": "README separates user-licensed SMPL-X models and says derived baked GRAIL SMPL-X weights are not distributed. Other sample corpora, robot models, learned correspondence checkpoints and SOMA assets have not received a complete independent rights audit; repository MIT is not blanket permission for them. No assets, motions or trained weights adopted.",
+      "Assumptions": "Learned source-template/target correspondence reused for that pair; canonical T-pose robot configuration. Inspected body segmentation uses SMPL/SMPL-X vertex counts and17/19 region schemas. Source self-contact is per-frame distance/top-k evidence with adjacency masks, not temporally verified sticking/grip modes. Runtime target representation is robot/MuJoCo; alternate source adapters do not prove arbitrary native skeleton/channel preservation.",
+      "Decision": "Develop owned stable deforming-surface/barycentric correspondences and normal/relative-position evidence, with confidence and temporal relationship persistence. Separate automatic correspondence tests from supplied-binding transfer. Do not impose SMPL segmentation or copy threshold/top-k candidates as required contacts. Keep native full graph and channels; no learned runtime or dataset adopted."
+    },
+    {
+      "Component": "reconform-paper",
+      "Repository": "https://arxiv.org/abs/2502.21207v1",
+      "Revision": "arXiv:2502.21207v1 (2025-02-28)",
+      "Inspected": "2026-10-20",
+      "SelectedFunctions": [
+        "Paper sections3.1-3.2: shape correspondence and pairwise surface descriptors",
+        "Paper sections4.1-4.2: adaptive weighting and whole-animation objective",
+        "Paper sections5.6 and7.1: failure modes/limitations"
+      ],
+      "CodeLicense": "Paper HTML/abstract declares CC-BY-4.0. No implementation repository/revision or code license established in this bounded review. Paper-only mathematical reference, not a reusable software component.",
+      "Dependencies": "Described implementation uses PyTorch/Adam and entropy-regularized optimal transport; no code/dependency/runtime adopted.",
+      "AssetAndDataTerms": "SMPL-based template and Mixamo evaluation assets have independent terms; paper license does not license those assets or trained/model files. None downloaded/adopted.",
+      "Assumptions": "Supplied bone correspondence and common T-pose; 41/96 template surface samples. Proximity-weighted soft objectives preserve distances/directions/normals and ground motion across time. This is not exact hard-contact feasibility, complete-skin continuous collision proof, native curve encoding or automatic arbitrary-anatomy binding.",
+      "Decision": "Develop original sparse surface-relative action objectives alongside hard support constraints and independent full-skin/native checks. Retain uncertainty and source defects. Do not copy its canonical template, sampled coverage claim, adaptive soft-weighting as required pins, or relaxed metric thresholds."
+    }
+  ],
+  "TrajectoryResearch": [
+    {
+      "Component": "pyroki",
+      "Repository": "chungmin99/pyroki",
+      "License": "MIT",
+      "Dependencies": "Python>=3.10; JAX/JAXlib/JAXlie/JAXLS, yourdfpy, trimesh, viser and robot_descriptions (not installed; dependency licenses not transitively approved)",
+      "Files": [
+        "LICENSE",
+        "pyproject.toml",
+        "src/pyroki/costs.py",
+        "examples/12_humanoid_retargeting_fancy.py"
+      ],
+      "Selection": "costs: explicit limit/world-collision constraints distinct from soft costs; trajectory finite-difference objectives",
+      "Decision": "Read-only design reference. Develop original C# constrained trajectory math; no JAX runtime adopted.",
+      "Assumptions": "The inspected humanoid example uses supplied left/right foot masks, named robot links, SMPL keypoints and optimized source scale; these do not establish automatic arbitrary-rig contacts or native authored channels.",
+      "Assets": "Example npy/pkl, robot URDF, body models and external assets are not admitted or relicensed by this audit.",
+      "Notices": "If code is later copied, preserve the MIT copyright/permission notice; audit each dependency separately.",
+      "Revision": "388e43e1fc0d0ee382968d3dd72970fd62a0450c",
+      "Status": "Read-only reference; not adopted",
+      "IntendedUse": "Full retarget rewrite decisions under docs/MASTER_PLAN.md and docs/plans/current.md"
+    },
+    {
+      "Component": "mink",
+      "Repository": "kevinzakka/mink",
+      "License": "Apache-2.0",
+      "Dependencies": "Python>=3.10; MuJoCo>=3.10; qpsolvers[daqp]>=4.12; typing_extensions; compiled helper support. Not installed.",
+      "Files": [
+        "LICENSE",
+        "pyproject.toml",
+        "src/mink/solve_ik.py",
+        "src/mink/tasks/relative_frame_task.py"
+      ],
+      "Selection": "build_ik/_compute_qp_equalities/_compute_qp_inequalities and RelativeFrameTask error/Jacobian",
+      "Decision": "Read-only organization reference: separate equality/inequality constraints from weighted preferences and express tasks in relative frames. Original C# implementation, no runtime or code adoption.",
+      "Assumptions": "Differential local IK on MuJoCo configurations does not itself solve a whole native animation, infer contacts or prove global feasibility.",
+      "Assets": "Example robot assets have separate per-asset licenses and are excluded.",
+      "Notices": "Any later source reuse requires Apache license/copyright preservation, modification notices and applicable upstream notices; no such reuse made.",
+      "Revision": "ae6759602593113ed7e5431ac7c65726ea27dc29",
+      "Status": "Read-only reference; not adopted",
+      "IntendedUse": "Full retarget rewrite decisions under docs/MASTER_PLAN.md and docs/plans/current.md"
+    },
+    {
+      "Component": "pink",
+      "Repository": "pink-kinematics/pink",
+      "License": "Apache-2.0",
+      "Dependencies": "Python>=3.10; numpy, pin>=2.6.3, qpsolvers>=4.3.1 and typing-extensions. Not installed.",
+      "Files": [
+        "LICENSE",
+        "NOTICE",
+        "pyproject.toml",
+        "pink/solve_ik.py",
+        "pink/tasks/relative_frame_task.py"
+      ],
+      "Selection": "build_ik equality/inequality assembly and RelativeFrameTask",
+      "Decision": "Read-only mathematical/API reference, not an alternative engine. Preserve explicit required constraints and relative frames in original Core implementation.",
+      "Assumptions": "Local differential solver and rigid frame Jacobians; deforming surfaces, native curves and source semantics need FighterPort ownership.",
+      "Assets": "No robot descriptions or external model data admitted.",
+      "Notices": "Root NOTICE records Caron, Inria, Domrachev/Nedelchev and CNRS contributors; retain applicable notices/license and mark modifications if code is ever adopted.",
+      "Revision": "2c333161fc260de93fb7be1dd8d6519d2ecc2df2",
+      "Status": "Read-only reference; not adopted",
+      "IntendedUse": "Full retarget rewrite decisions under docs/MASTER_PLAN.md and docs/plans/current.md"
+    },
+    {
+      "Component": "sata",
+      "Repository": "zzysteve/SATA",
+      "License": "Apache-2.0 for original code; submodules and external artifacts have separate terms",
+      "Dependencies": "PyTorch, torch_geometric/scatter, vector_quantize_pytorch; fairmotion, MDM and MoMask submodules. Not installed or transitively audited.",
+      "Files": [
+        "LICENSE",
+        "NOTICE",
+        "README.md",
+        "src/sata/mymodel.py",
+        "src/eval/retarget.py"
+      ],
+      "Selection": "Topology-aware graph/temporal model; process_with_sliding_window",
+      "Decision": "Defer learned initialization. It does not establish hard geometric/native constraints and adds weights/data/runtime prerequisites without a measured FighterPort benefit.",
+      "Assumptions": "Inspected retarget evaluation loads paired dataset graphs/checkpoints and concatenates windows after discarding overlaps; it is not a constraint-preserving native curve solve.",
+      "Assets": "NOTICE explicitly excludes checkpoints, datasets, demo assets and body models from automatic root-license coverage; no weight/data rights assumed.",
+      "Notices": "Apache license/NOTICE and separate upstream submodule/asset terms apply; nothing adopted.",
+      "Revision": "9858f4df2322bc796c5dcf56e9c8eae01969518c",
+      "Status": "Read-only reference; not adopted",
+      "IntendedUse": "Full retarget rewrite decisions under docs/MASTER_PLAN.md and docs/plans/current.md"
+    }
+  ],
+  "AdapterResearch": {
+    "schemaVersion": 1,
+    "auditedAt": "2026-10-20",
+    "scope": "Bounded primary-source adapter research supporting the existing M2 retarget rewrite. This is supporting evidence, not a new plan.",
+    "authority": [
+      "docs/MASTER_PLAN.md",
+      "docs/plans/current.md",
+      "docs/LICENSE_AUDIT.md",
+      "licenses/retarget-reference-audit.json"
+    ],
+    "execution": {
+      "codeAdopted": false,
+      "dependenciesInstalled": false,
+      "buildOrRuntimeTestsRun": false,
+      "assetsOrWeightsDownloaded": false,
+      "method": "Read exact public commit metadata, selected source/header/manifest/test-code files and actual license text. Store files and SHA256/length receipts only in ignored .local research cache. Source inspection establishes candidate API behavior, not FighterPort adapter support or game acceptance."
+    },
+    "entries": [
+      {
+        "component": "ufbx",
+        "repository": "https://github.com/ufbx/ufbx",
+        "revision": "5955c5c0b042ac2dc6f32955ab206aaec0620cfc",
+        "revisionSelection": "Public upstream HEAD resolved on 2026-10-20; commit date 2026-10-01T23:13:10Z. Pinned here rather than referring to mutable HEAD.",
+        "license": {
+          "path": "LICENSE",
+          "actualTerms": "Alternative A MIT OR Alternative B Unlicense; actual copyright is Copyright (c) 2020 Samuli Raivio.",
+          "intendedChoiceIfAdopted": "MIT, retaining the actual copyright and permission notice in redistributed copies or substantial portions.",
+          "noticeActivatedNow": false
+        },
+        "dependencies": {
+          "implementation": "ufbx.c and ufbx.h; portable C/C++ compilation, C runtime allocation/stdio/string/math by default. Actual source has configurable external allocation/stdio/math/string interfaces and freestanding options. No FBX SDK or Autodesk runtime dependency was found in the inspected implementation.",
+          "integration": "A C# use would require an audited native x64 library/ABI wrapper or separate data-only worker and measured deployment costs; no wrapper or binary is adopted.",
+          "dependencyAuditLimit": "No build/link dependency graph or binary provenance was produced."
+        },
+        "assetWeightDataTerms": "No models, textures, trained weights, datasets or external test assets are required or adopted by this decision. Read test source only. Root code-license inspection is not a separate provenance audit of every upstream example/test FBX or donor game asset; do not redistribute those assets under an assumed grant.",
+        "evidence": [
+          {
+            "path": "ufbx.h",
+            "symbols": [
+              "ufbx_element",
+              "ufbx_node",
+              "ufbx_scene_settings"
+            ],
+            "lines": "761-766; 848-984; 3900-3931",
+            "observation": "Nodes expose explicit element IDs, parent/child links, local/geometric transforms, matrices, native Euler order and inherit modes. element_id is stable when loading the same file, not after re-export. Scene settings expose original axes, unit_meters and frames_per_second. Scope identities to the immutable file revision; names are labels."
+          },
+          {
+            "path": "ufbx.h",
+            "symbols": [
+              "ufbx_space_conversion",
+              "ufbx_geometry_transform_handling",
+              "ufbx_inherit_mode_handling",
+              "ufbx_load_opts"
+            ],
+            "lines": "3621-3711; 4810-4845",
+            "observation": "Conversion modes may modify root transforms, add scale/geometry helpers, compensate inherits or modify geometry. PRESERVE modes expose the originals and require proper special-inheritance evaluation. FighterPort must retain original native hierarchy and binds, and treat converted/evaluated representations as explicitly derived views; do not invoke helper-generation or geometry modification as invisible canonicalization."
+          },
+          {
+            "path": "ufbx.h",
+            "symbols": [
+              "ufbx_skin_vertex",
+              "ufbx_skin_deformer",
+              "ufbx_skin_cluster"
+            ],
+            "lines": "1935-2045",
+            "observation": "Per-vertex weight_begin/num_weights address a variable-length weight array; max_weights_per_vertex is reported. There is no four/eight-influence representation ceiling in these arrays. Raw weights need not sum to one. Clusters expose geometry_to_bone, mesh_node_to_bone, bind_to_world and current geometry_to_world. Skinning methods include rigid, linear, dual-quaternion and blended DQ/linear."
+          },
+          {
+            "path": "ufbx.c",
+            "symbols": [
+              "ufbx_catch_get_skin_vertex_matrix"
+            ],
+            "lines": "31936-32030",
+            "observation": "The evaluator loops every listed influence, handles DQ/linear blending, and normalizes the accumulated result by total_weight. Preserve raw source weights separately; evaluating its specified normalized skin policy does not authorize rewriting weights or silently truncating to FighterPort's current four slots."
+          },
+          {
+            "path": "ufbx.h",
+            "symbols": [
+              "ufbx_anim",
+              "ufbx_anim_layer",
+              "ufbx_keyframe",
+              "ufbx_bake_opts"
+            ],
+            "lines": "3040-3140; 3153-3209; 5012-5114",
+            "observation": "Raw animated properties/layers and double-second key times expose constant-previous, constant-next, linear and cubic Bezier segments with split time/value tangents plus extrapolation modes. Bake options include step handling and key reduction; rotation reduction assumes spherical interpolation. Preserve original Euler winding/layers/curves separately; a quaternion bake is not a lossless native curve copy."
+          },
+          {
+            "path": "ufbx.c",
+            "symbols": [
+              "ufbx_evaluate_curve_flags",
+              "ufbx_evaluate_transform_flags",
+              "ufbx_bake_anim"
+            ],
+            "lines": "30840-30930; 31070-31200; 31250",
+            "observation": "Concrete curve and transform evaluators and an animation bake entry point exist; use them offline behind a provider. They are not a retarget/contact solver and must not become decode/evaluation preparation in playback ticks."
+          },
+          {
+            "path": "ufbx.h",
+            "symbols": [
+              "ufbx_rotation_order"
+            ],
+            "lines": "340-353",
+            "observation": "SPHERIC rotation order remains accompanied by a TODO about its meaning. Do not claim every native rotation mode; detect and independently test unusual modes instead of relabeling them supported."
+          }
+        ],
+        "decision": {
+          "status": "Candidate future FBX/OBJ source provider; read-only reference now.",
+          "selectedUse": "Prefer a narrow offline decoder retaining raw bytes, all native nodes and skin clusters, native property curves, axis/unit/timebase metadata and explicit evaluated derivatives. Reuse loader/evaluator APIs rather than copying parsing algorithms into universal Core.",
+          "excludedUse": "No FBX writer is established by this loader API audit. It does not implement any Smash/Rivals native reader/writer, general retargeting, gameplay, attachments or contact correctness. Do not adopt its optional topology/geometry simplification modes into authoritative native rigs.",
+          "requiredBeforeSupport": [
+            "Independent FBX fixtures for nonuniform inherited scale, geometric transforms, duplicate names, >4 and >8 influences, morphs, layers, negative axes/units and held/full-turn curves.",
+            "Retain native arrays/weights and diagnose unsupported Core skinning or affine behavior instead of coercing them.",
+            "Pin wrapper/compiler/binary and licenses before deployment; measure source-to-Core and fresh destination-native geometry/curve losses."
+          ]
+        },
+        "files": [
+          {
+            "path": "LICENSE",
+            "url": "https://raw.githubusercontent.com/ufbx/ufbx/5955c5c0b042ac2dc6f32955ab206aaec0620cfc/LICENSE",
+            "bytes": 2631,
+            "sha256": "0dd48ebadf52273c736256325c8f078c03c8bb4facee22a4122de0ad3f615391"
+          },
+          {
+            "path": "ufbx.h",
+            "url": "https://raw.githubusercontent.com/ufbx/ufbx/5955c5c0b042ac2dc6f32955ab206aaec0620cfc/ufbx.h",
+            "bytes": 223898,
+            "sha256": "f787be529af577efc04f3e3e735844a08556718dbb613d1211c2b313d72895dc"
+          },
+          {
+            "path": "ufbx.c",
+            "url": "https://raw.githubusercontent.com/ufbx/ufbx/5955c5c0b042ac2dc6f32955ab206aaec0620cfc/ufbx.c",
+            "bytes": 1181511,
+            "sha256": "4a956c26a708e40d82ecb0aeaee54da709d5ba7c144c9642174970059bda7e1d"
+          },
+          {
+            "path": "test/test_animation.h",
+            "url": "https://raw.githubusercontent.com/ufbx/ufbx/5955c5c0b042ac2dc6f32955ab206aaec0620cfc/test/test_animation.h",
+            "bytes": 137767,
+            "sha256": "bec98fa942f3c7e63d1deb3502b30787d2b6e91d2dd52cbf23213e133e2fedec"
+          },
+          {
+            "path": "test/test_skin.h",
+            "url": "https://raw.githubusercontent.com/ufbx/ufbx/5955c5c0b042ac2dc6f32955ab206aaec0620cfc/test/test_skin.h",
+            "bytes": 46137,
+            "sha256": "dd15336191bfa087f7788aee4b4122ab1f75409560d05d459bb23bfc1cb5482b"
+          },
+          {
+            "path": "README.md",
+            "url": "https://raw.githubusercontent.com/ufbx/ufbx/5955c5c0b042ac2dc6f32955ab206aaec0620cfc/README.md",
+            "bytes": 6582,
+            "sha256": "8dd2c07df381fe461f75c447e10da8e10aca76da857fd7bfa6d407e0c936276c"
+          }
+        ]
+      },
+      {
+        "component": "SharpGLTF",
+        "repository": "https://github.com/vpenades/SharpGLTF",
+        "revision": "acbc151e70d65ceb8bec24fa95f0067d0e5ed933",
+        "revisionSelection": "Public upstream HEAD resolved on 2026-10-20; commit date 2026-09-12T16:15:34Z.",
+        "license": {
+          "path": "LICENSE",
+          "actualTerms": "MIT License, Copyright (c) 2019 Vicente Penades.",
+          "requiredIfAdopted": "Retain actual copyright and permission notice in redistributed copies/substantial portions; package and any selected dependencies need exact distribution records.",
+          "noticeActivatedNow": false
+        },
+        "dependencies": {
+          "core": "Inspected Core csproj targets netstandard2.0/2.1 and net6.0/8.0/10.0. System.Text.Json is a package only for netstandard targets (central declaration 10.0.12); modern targets use framework APIs/System.Numerics.",
+          "runtimeToolkit": "SharpGLTF.Runtime references Core. Toolkit references Runtime and shared source. These are distinct convenience/evaluation layers, not necessary reasons to adopt a renderer or application shell.",
+          "buildOnly": "src/Directory.Build.props adds ErrorProne.NET.Structs with PrivateAssets=all for net10; central declaration 0.6.1-beta.1. Broader central package declarations such as Avalonia, MonoGame, ImageSharp, codegen and test tools are not automatically runtime dependencies of the inspected Core net10 target.",
+          "dependencyAuditLimit": "No restore/lock graph or package/binary was produced; actual selected package graph must be audited at adoption."
+        },
+        "assetWeightDataTerms": "No example models/textures/test assets or datasets were downloaded or adopted. Upstream code MIT and format specification do not establish rights to arbitrary glTF contents or donor assets. Preserve source asset copyright/identity and audit any redistributable fixture separately.",
+        "formatReference": {
+          "url": "https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html",
+          "reportedSpecificationVersion": "2.0.1; page reports commit 8e798b02d254cea97659a333cfcb20875b62bdd4",
+          "scope": "Normative indices/names, coordinate system/units, skins and animation sections. glTF uses indexed identities, right-handed metre coordinates and animation seconds; this does not supply missing units for another game format."
+        },
+        "evidence": [
+          {
+            "path": "src/SharpGLTF.Core/Schema2/gltf.Node.cs",
+            "symbols": [
+              "LocalTransform",
+              "LocalMatrix",
+              "WorldMatrix",
+              "LocalMatrixPrecise",
+              "GetCurveSamplers",
+              "ApplyBasisTransform"
+            ],
+            "lines": "196-279; 337-361; 518-533; 695-751",
+            "observation": "Native indexed nodes retain hierarchy and matrix or TRS local representations. System.Numerics evaluation uses local*parent; precise world accumulation uses double matrices internally. Matrix-setting on animated TRS nodes is restricted. ApplyBasisTransform can add a parent node, so it is not an acceptable hidden rewrite of an imported native graph."
+          },
+          {
+            "path": "src/SharpGLTF.Core/Schema2/gltf.Skin.cs",
+            "symbols": [
+              "Joints",
+              "InverseBindMatrices",
+              "GetJoint",
+              "BindJoints"
+            ],
+            "lines": "35-190",
+            "observation": "Skin joints reference indexed Node objects and correspond to IBM accessor entries; missing IBMs are identity via GetJoint. BindJoints convenience overloads recompute inverse bindings from current worlds, and the supplied-IBM overload validates/sanitizes affine matrix entries. Read original accessors and preserve bytes; do not invoke rebind/sanitization as preservation of exact imported native bind data."
+          },
+          {
+            "path": "src/SharpGLTF.Core/Schema2/gltf.AnimationSampler.cs",
+            "symbols": [
+              "IAnimationSampler<T>",
+              "GetLinearKeys",
+              "GetCubicKeys",
+              "CreateCurveSampler"
+            ],
+            "lines": "20-80; 569-775; 776 onward",
+            "observation": "STEP/LINEAR and CUBICSPLINE APIs retain input key times, quaternion/vector values and separate incoming/outgoing cubic tangents. Morphs have both a bounded SparseWeight8 API and an unlimited float[]/ArraySegment API. Use original typed arrays/curves for provenance; glTF quaternion animation is not an authored Euler-turn history."
+          },
+          {
+            "path": "src/SharpGLTF.Core/Schema2/gltf.AnimationChannelTarget.cs",
+            "symbols": [
+              "GetNodeIndex",
+              "GetNodePath",
+              "GetPointerPath"
+            ],
+            "lines": "25-115",
+            "observation": "The pinned implementation also represents animation pointer targets beyond ordinary node TRS. Merely retaining a pointer is not proof that FighterPort can evaluate/edit the target material/camera/property or encode it into another game."
+          },
+          {
+            "path": "src/SharpGLTF.Core/Transforms/SparseWeight8.cs",
+            "symbols": [
+              "SparseWeight8.Create"
+            ],
+            "lines": "11-18; 49-114",
+            "observation": "Explicitly capped at eight nonzero weights; constructors retain the eight heaviest/most representative values when input is larger. This convenience representation cannot be used as the lossless source skin/morph store."
+          },
+          {
+            "path": "src/SharpGLTF.Toolkit/Geometry/VertexTypes/VertexSkinning.cs",
+            "symbols": [
+              "VertexJoints4",
+              "VertexJoints8"
+            ],
+            "observation": "Toolkit vertex skinning representations are explicitly four/eight influence variants. Do not silently reduce full source weights through these builders."
+          },
+          {
+            "path": "src/SharpGLTF.Core/Schema2/gltf.MeshPrimitive.cs",
+            "symbols": [
+              "VertexAccessors",
+              "GetVertexAccessor"
+            ],
+            "lines": "73; 132",
+            "observation": "Raw attribute dictionaries/accessors permit retaining original JOINTS_n/WEIGHTS_n data independent of convenience vertex structs. Full-influence interpretation still needs a verified adapter path."
+          },
+          {
+            "path": "src/SharpGLTF.Core/Schema2/gltf.Accessors.cs",
+            "symbols": [
+              "ValidateVertexAttributes",
+              "_ValidateWeights"
+            ],
+            "lines": "563-585; 664-670",
+            "observation": "The inspected skin validation explicitly checks JOINTS_0/1 and WEIGHTS_0/1 only. Do not infer complete >8 influence validation from the general attribute dictionary or from successful load."
+          }
+        ],
+        "decision": {
+          "status": "Candidate future glTF/GLB interchange/source adapter; no adoption now.",
+          "selectedUse": "Use Core raw schema/accessor/curve APIs if selected after fixture validation; preserve full original nodes, matrices, attributes, extensions and buffers beside editable data. Prefer the existing FighterPort evaluator/renderer over adopting Runtime/Toolkit as a second editor.",
+          "excludedUse": "Do not make glTF a mandatory universal interchange or canonical substitute for native Brawl/Melee/Ultimate/Rivals assets. Do not equate material pointers or extras preservation with active cross-game behavior. Avoid SparseWeight8/VertexJoints4/8 for lossless intake.",
+          "requiredBeforeSupport": [
+            "Independently encoded glTF/GLB with duplicate names, indexed hierarchy, exact IBMs, >8 influences, sparse buffers, held/cubic/quaternion tracks and full morph weights.",
+            "Verify optional/missing IBM semantics, matrix versus animated TRS, basis conversion and radians/metres/seconds against independent expectations.",
+            "Audit extensions individually and emit explicit unsupported/loss results; retain all original buffers.",
+            "Fresh cross-format output/reopen tests through real destination adapters; a synthetic Scene or successful GLB write is not a native game-pair pass."
+          ]
+        },
+        "files": [
+          {
+            "path": "LICENSE",
+            "url": "https://raw.githubusercontent.com/vpenades/SharpGLTF/acbc151e70d65ceb8bec24fa95f0067d0e5ed933/LICENSE",
+            "bytes": 1072,
+            "sha256": "5e720094b3423cc2c1aef53325f2b99145d45155e36b81adb9063d18a552e469"
+          },
+          {
+            "path": "Directory.Packages.props",
+            "url": "https://raw.githubusercontent.com/vpenades/SharpGLTF/acbc151e70d65ceb8bec24fa95f0067d0e5ed933/Directory.Packages.props",
+            "bytes": 2732,
+            "sha256": "5e734067dfd71713248d361ef0f85fa97fba989ebb025e45e5310f08a383f876"
+          },
+          {
+            "path": "src/SharpGLTF.Core/SharpGLTF.Core.csproj",
+            "url": "https://raw.githubusercontent.com/vpenades/SharpGLTF/acbc151e70d65ceb8bec24fa95f0067d0e5ed933/src/SharpGLTF.Core/SharpGLTF.Core.csproj",
+            "bytes": 980,
+            "sha256": "f29aeff472f51c12c49d43eaf6a67ed15be6cd71ec0760081075ea8c7ca6d454"
+          },
+          {
+            "path": "src/SharpGLTF.Runtime/SharpGLTF.Runtime.csproj",
+            "url": "https://raw.githubusercontent.com/vpenades/SharpGLTF/acbc151e70d65ceb8bec24fa95f0067d0e5ed933/src/SharpGLTF.Runtime/SharpGLTF.Runtime.csproj",
+            "bytes": 614,
+            "sha256": "f1c80336eab182717b2eea8656637a78979d88a168fa3008162f1561490f04fc"
+          },
+          {
+            "path": "src/SharpGLTF.Toolkit/SharpGLTF.Toolkit.csproj",
+            "url": "https://raw.githubusercontent.com/vpenades/SharpGLTF/acbc151e70d65ceb8bec24fa95f0067d0e5ed933/src/SharpGLTF.Toolkit/SharpGLTF.Toolkit.csproj",
+            "bytes": 2015,
+            "sha256": "7bba5a3b4f0d4bc61ac997ca1f34a463dc539962a791107bb1ad1d4378dfa0a5"
+          },
+          {
+            "path": "src/SharpGLTF.Core/Schema2/gltf.Node.cs",
+            "url": "https://raw.githubusercontent.com/vpenades/SharpGLTF/acbc151e70d65ceb8bec24fa95f0067d0e5ed933/src/SharpGLTF.Core/Schema2/gltf.Node.cs",
+            "bytes": 34367,
+            "sha256": "e3b33f8dc82940c7f6890d70e8d2db58ae2ea332b1ebf2265a53d307cec2fd0e"
+          },
+          {
+            "path": "src/SharpGLTF.Core/Schema2/gltf.Skin.cs",
+            "url": "https://raw.githubusercontent.com/vpenades/SharpGLTF/acbc151e70d65ceb8bec24fa95f0067d0e5ed933/src/SharpGLTF.Core/Schema2/gltf.Skin.cs",
+            "bytes": 14377,
+            "sha256": "2d8e7e57a51602a5e8a6b304fefa018f58d06bce73ab32748d064dac06b61c84"
+          },
+          {
+            "path": "src/SharpGLTF.Core/Schema2/gltf.AnimationSampler.cs",
+            "url": "https://raw.githubusercontent.com/vpenades/SharpGLTF/acbc151e70d65ceb8bec24fa95f0067d0e5ed933/src/SharpGLTF.Core/Schema2/gltf.AnimationSampler.cs",
+            "bytes": 40307,
+            "sha256": "e8fbc00e4f214ca3430d289836808b29328f36e872789ee1dda581b830553e0e"
+          },
+          {
+            "path": "src/SharpGLTF.Core/Schema2/gltf.AnimationChannelTarget.cs",
+            "url": "https://raw.githubusercontent.com/vpenades/SharpGLTF/acbc151e70d65ceb8bec24fa95f0067d0e5ed933/src/SharpGLTF.Core/Schema2/gltf.AnimationChannelTarget.cs",
+            "bytes": 6868,
+            "sha256": "6cc05a21f521bd059120ee006edb78e7a696a00a69c5f8869baecc5208c48343"
+          },
+          {
+            "path": "src/SharpGLTF.Core/Schema2/gltf.MeshPrimitive.cs",
+            "url": "https://raw.githubusercontent.com/vpenades/SharpGLTF/acbc151e70d65ceb8bec24fa95f0067d0e5ed933/src/SharpGLTF.Core/Schema2/gltf.MeshPrimitive.cs",
+            "bytes": 17004,
+            "sha256": "3066128d0b6b64bc4de2916ae3a38da79e1cd4d1878f83bf8023b9cc4128b770"
+          },
+          {
+            "path": "src/SharpGLTF.Core/Transforms/SparseWeight8.cs",
+            "url": "https://raw.githubusercontent.com/vpenades/SharpGLTF/acbc151e70d65ceb8bec24fa95f0067d0e5ed933/src/SharpGLTF.Core/Transforms/SparseWeight8.cs",
+            "bytes": 32606,
+            "sha256": "4b99e23ec6bc21a68137f4c074a027896ca8932d9023f017b76570fd97b90edc"
+          },
+          {
+            "path": "src/SharpGLTF.Core/Transforms/AffineTransform.cs",
+            "url": "https://raw.githubusercontent.com/vpenades/SharpGLTF/acbc151e70d65ceb8bec24fa95f0067d0e5ed933/src/SharpGLTF.Core/Transforms/AffineTransform.cs",
+            "bytes": 29627,
+            "sha256": "8b11c2dce97a45acee8f30eafa077530bc026dab00b2fdf9e69d029f8952a0b9"
+          },
+          {
+            "path": "src/SharpGLTF.Core/Transforms/MeshTransforms.cs",
+            "url": "https://raw.githubusercontent.com/vpenades/SharpGLTF/acbc151e70d65ceb8bec24fa95f0067d0e5ed933/src/SharpGLTF.Core/Transforms/MeshTransforms.cs",
+            "bytes": 20069,
+            "sha256": "785ee0e623e5d5a3d90ca46e0025252cd70e734290de60d3f94ea49e872374d7"
+          },
+          {
+            "path": "src/SharpGLTF.Toolkit/Geometry/VertexTypes/VertexSkinning.cs",
+            "url": "https://raw.githubusercontent.com/vpenades/SharpGLTF/acbc151e70d65ceb8bec24fa95f0067d0e5ed933/src/SharpGLTF.Toolkit/Geometry/VertexTypes/VertexSkinning.cs",
+            "bytes": 16092,
+            "sha256": "0c8e135f96fcf1228d3e6ebf9da8e2b675bc0928ef102f97c24e60f7497d9796"
+          },
+          {
+            "path": "src/SharpGLTF.Core/Animations/CurveSamplers.Cubic.cs",
+            "url": "https://raw.githubusercontent.com/vpenades/SharpGLTF/acbc151e70d65ceb8bec24fa95f0067d0e5ed933/src/SharpGLTF.Core/Animations/CurveSamplers.Cubic.cs",
+            "bytes": 2877,
+            "sha256": "50006d39176858246f9a3a1b7f0fa75f5f53582a617935054c1e731c65127d84"
+          },
+          {
+            "path": "src/SharpGLTF.Core/Animations/CurveSamplers.Linear.cs",
+            "url": "https://raw.githubusercontent.com/vpenades/SharpGLTF/acbc151e70d65ceb8bec24fa95f0067d0e5ed933/src/SharpGLTF.Core/Animations/CurveSamplers.Linear.cs",
+            "bytes": 2259,
+            "sha256": "875352a22dbb0efc6b70ab05e3faac3ed5c185792e96f9c396cb3d0f4f2c07d6"
+          },
+          {
+            "path": "src/SharpGLTF.Core/Animations/CurveSamplers.Step.cs",
+            "url": "https://raw.githubusercontent.com/vpenades/SharpGLTF/acbc151e70d65ceb8bec24fa95f0067d0e5ed933/src/SharpGLTF.Core/Animations/CurveSamplers.Step.cs",
+            "bytes": 2237,
+            "sha256": "7411fd0b67fc07e29c483032b0c9c5a4d38a8102d871ea955237429090cbb286"
+          },
+          {
+            "path": "src/Directory.Build.props",
+            "url": "https://raw.githubusercontent.com/vpenades/SharpGLTF/acbc151e70d65ceb8bec24fa95f0067d0e5ed933/src/Directory.Build.props",
+            "bytes": 5178,
+            "sha256": "91c8c2b1df44e1674762cdd935d9c5494351bbdb90f8fa76d34c2e98d3fd6960"
+          },
+          {
+            "path": "src/SharpGLTF.Core/Schema2/gltf.Accessors.cs",
+            "url": "https://raw.githubusercontent.com/vpenades/SharpGLTF/acbc151e70d65ceb8bec24fa95f0067d0e5ed933/src/SharpGLTF.Core/Schema2/gltf.Accessors.cs",
+            "bytes": 30550,
+            "sha256": "fa2368753c8f307a833b2eabdef3f506a5cb9b16a75c57fc53f2a419c825aad9"
+          },
+          {
+            "path": "src/SharpGLTF.Core/Schema2/gltf.Accessors.Arrays.cs",
+            "url": "https://raw.githubusercontent.com/vpenades/SharpGLTF/acbc151e70d65ceb8bec24fa95f0067d0e5ed933/src/SharpGLTF.Core/Schema2/gltf.Accessors.Arrays.cs",
+            "bytes": 6056,
+            "sha256": "98accde774f42661ac0bdd08446c7b91d1e9158762c29349ccebb21103be9f32"
+          },
+          {
+            "path": "src/SharpGLTF.Core/IO/UnknownNode.cs",
+            "url": "https://raw.githubusercontent.com/vpenades/SharpGLTF/acbc151e70d65ceb8bec24fa95f0067d0e5ed933/src/SharpGLTF.Core/IO/UnknownNode.cs",
+            "bytes": 2578,
+            "sha256": "88df32122bfe5fbfbbbf488cb174b2a12db4243d5dc8e841d73d27ef3417f8e9"
+          }
+        ]
+      },
+      {
+        "component": "ssbh_lib and ssbh_data",
+        "repository": "https://github.com/ultimate-research/ssbh_lib",
+        "revision": "08f8bc4470a7d480dfc9b64d7e08e97f3820fed7",
+        "revisionSelection": "Retains the exact already-audited project pin; this extends its source-level codec/storage audit without silently upgrading.",
+        "license": {
+          "path": "LICENSE",
+          "actualTerms": "MIT License, Copyright (c) 2020 Smash Ultimate Research Group.",
+          "requiredIfAdopted": "Retain copyright/permission notice; audit selected Rust crates, worker/binary and any modifications separately before distribution.",
+          "noticeActivatedNow": false
+        },
+        "dependencies": {
+          "packages": "ssbh_lib and ssbh_data are version 0.19.0, Rust edition 2024. ssbh_lib uses ssbh_write, binrw 0.15.0, bilge 0.3.0, thiserror 2.0 and glam 0.30.9 plus optional serde/arbitrary/serde_bytes/hex/strum.",
+          "highLevel": "ssbh_data additionally uses half 2.1.0, itertools 0.14, bitvec 1.0, ahash 0.8.8, glam approx support and geometry_tools at declared git revision d3d4d4a.",
+          "geometryDependency": {
+            "repository": "https://github.com/ScanMountGoat/geometry_tools",
+            "revision": "d3d4d4a364155068764a0a2e693c5e4e39334c31",
+            "actualLicense": "MIT License, Copyright (c) 2021 SMG.",
+            "manifest": "geometry_tools 0.6.0, Rust edition 2021; runtime dependencies glam 0.30.5 and thiserror 2.0. rlib/cdylib output declaration.",
+            "files": [
+              {
+                "path": "LICENSE",
+                "url": "https://raw.githubusercontent.com/ScanMountGoat/geometry_tools/d3d4d4a364155068764a0a2e693c5e4e39334c31/LICENSE",
+                "bytes": 1060,
+                "sha256": "cd83da83844981d899c12c807e3af0275063e99e576c0cefac44a8b55bff9444"
+              },
+              {
+                "path": "Cargo.toml",
+                "url": "https://raw.githubusercontent.com/ScanMountGoat/geometry_tools/d3d4d4a364155068764a0a2e693c5e4e39334c31/Cargo.toml",
+                "bytes": 819,
+                "sha256": "7e7133180831f441cfc9aaa709979af9a58e70fa8d21e68e0d6730e51e166052"
+              }
+            ]
+          },
+          "dependencyAuditLimit": "Manifest-level audit only; no cargo resolution, downloaded crate graph, compiler build, binary or deployment introduced. Semver manifest ranges are not exact restored transitive pins."
+        },
+        "assetWeightDataTerms": "No Smash assets, game textures, animation dumps, model datasets or learned weights are supplied or authorized by the code MIT license audit. None were fetched for this research. Keep private native fixtures and their original identities separate from redistributed source.",
+        "evidence": [
+          {
+            "path": "ssbh_lib/src/formats/skel.rs",
+            "symbols": [
+              "Skel::V10",
+              "SkelBoneEntry"
+            ],
+            "lines": "17-69",
+            "observation": "The low-level v1.0 skeleton retains ordered bone entries, u16 index/i16 parent, flags and all four native local/world/inverse matrix arrays. Native names are strings; low-level numeric IDs/order must remain asset scoped."
+          },
+          {
+            "path": "ssbh_data/src/skel_data.rs",
+            "symbols": [
+              "BoneData",
+              "TryFrom<SkelData>",
+              "From<Skel>",
+              "calculate_world_transform"
+            ],
+            "lines": "42-55; 150-188; 207-227; 258-280",
+            "observation": "The high-level representation retains only local transform/parent/name/billboard data and regenerates world and inverse arrays during output. It is not a lossless substitute for the low-level/original native skeleton. Explicit noncommuting-parent tests are required for matrix conventions; no runtime math acceptance was run here."
+          },
+          {
+            "path": "ssbh_data/src/mesh_data.rs",
+            "symbols": [
+              "BoneInfluence",
+              "MeshObjectData",
+              "calculate_max_influences",
+              "create_rigging_buffers",
+              "create_vertex_weights_v10"
+            ],
+            "lines": "480-486; 586-590; 769-866",
+            "observation": "High-level weights are variable-length per-bone Vec<VertexWeight>, not four influences. Writer counts per-vertex influences then casts max count to u8; v1.10 writes u16 vertex indices with an explicit overflow error and f32 weights. No automatic four/eight-weight truncation is established here; adapter must validate true format budgets and duplicates."
+          },
+          {
+            "path": "ssbh_data/src/mesh_data.rs",
+            "symbols": [
+              "create_rigging_buffers"
+            ],
+            "lines": "792-821",
+            "observation": "A source TODO states rigging unk1 is not preserved for some single-bound meshes; writer sets unk1=1 and sorts rigging groups. This high-level path cannot support a blanket unrelated-resource/byte-preservation claim."
+          },
+          {
+            "path": "ssbh_data/src/anim_data.rs",
+            "symbols": [
+              "AnimData",
+              "TrackData",
+              "TransformFlags",
+              "TrackValues"
+            ],
+            "lines": "60-75; 204-236; 278-311",
+            "observation": "Animation versions 1.2/2.0/2.1 expose final_frame_index, groups/nodes/tracks, quaternion TRS, UV transforms, Float, PatternIndex, Boolean and Vector4 channels. Frame arrays store one value per frame; one value repeats through final_frame_index. Scale compensation and override flags are separate native semantics. No native rational FPS/unit convention is established by these data structures; obtain game/provider context rather than assuming Brawl semantics."
+          },
+          {
+            "path": "ssbh_data/src/anim_data.rs",
+            "symbols": [
+              "AnimData::to_anim",
+              "AnimData::to_anim_uncompressed"
+            ],
+            "lines": "25-35; 81-107",
+            "observation": "The ordinary writer implements supported versions with codec selection. to_anim_uncompressed implements v1.2 but v2.0 and v2.1 are literal todo!() branches. Do not call that API for those versions or claim an implemented guaranteed-uncompressed path. Non-Boolean compressed tracks are documented lossy."
+          },
+          {
+            "path": "ssbh_data/src/anim_data/v2.rs",
+            "symbols": [
+              "final_frame_index",
+              "create_track",
+              "infer_optimal_compression_type",
+              "read_track_values_v2"
+            ],
+            "lines": "79-85; 114-161; 221-228",
+            "observation": "Real v2 codec entry points select compression based on data type/frame count and preserve separate frame count/transform flags. final_frame_index must be nonnegative and at least max track count minus one. Decode success is not exact transform/channel preservation after lossy encoding."
+          },
+          {
+            "path": "ssbh_data/src/anim_data/v2/compression.rs",
+            "symbols": [
+              "compressed track implementation"
+            ],
+            "observation": "Read the pinned compression implementation as the native codec boundary, not a universal curve/retarget algorithm. Existing Brawl integer-float and I12 corrections remain separate and unchanged."
+          }
+        ],
+        "decision": {
+          "status": "Retain as a future Ultimate native data-layer/codec candidate and independent encoding reference; no Rust dependency or Ultimate writer support added.",
+          "selectedUse": "Preserve low-level native SSBH/original bytes and use high-level arrays as bounded editable/evaluation views. A future audited data-only worker may expose native skeleton/mesh/typed animation channels and real encoding capabilities without native types in Core.",
+          "excludedUse": "No claim of exact uncompressed 2.x output, full native byte preservation through ssbh_data reconstruction, active game-material behavior, actor/articles/gameplay, model porting or in-game acceptance. Do not relabel all sampled tracks as generic CHR0 curves.",
+          "requiredBeforeSupport": [
+            "Independent v1.2/2.0/2.1 encoded fixtures with supported typed tracks, flags, constant/final-frame semantics, noncommuting rest matrices, authored scale compensation and full weights.",
+            "Exact precision/error policy for lossy codec output; fresh destination-native decode plus full-skin withheld fractional/contact checks.",
+            "Keep all original skeleton matrix arrays and unrelated native flags/resources when applying narrow edits; audit high-level field rebuilding losses.",
+            "Declare game units/timebase and attachment/material/event capabilities separately, with genuine source-format-to-destination-format pair evidence."
+          ]
+        },
+        "files": [
+          {
+            "path": "LICENSE",
+            "url": "https://raw.githubusercontent.com/ultimate-research/ssbh_lib/08f8bc4470a7d480dfc9b64d7e08e97f3820fed7/LICENSE",
+            "bytes": 1086,
+            "sha256": "f17fdacc9941e192371fa31302e63b4776b7a2fda64eda9276bee0001757dd9d"
+          },
+          {
+            "path": "Cargo.toml",
+            "url": "https://raw.githubusercontent.com/ultimate-research/ssbh_lib/08f8bc4470a7d480dfc9b64d7e08e97f3820fed7/Cargo.toml",
+            "bytes": 343,
+            "sha256": "af26b75ad85e903bc2894cf7cbeed49cf263e5aced67d82762d0d99eab3f9a41"
+          },
+          {
+            "path": "ssbh_lib/Cargo.toml",
+            "url": "https://raw.githubusercontent.com/ultimate-research/ssbh_lib/08f8bc4470a7d480dfc9b64d7e08e97f3820fed7/ssbh_lib/Cargo.toml",
+            "bytes": 899,
+            "sha256": "6efd9828dad323b877d176fe0443e778cafb13589e731ec3328b3ac28ef5687c"
+          },
+          {
+            "path": "ssbh_data/Cargo.toml",
+            "url": "https://raw.githubusercontent.com/ultimate-research/ssbh_lib/08f8bc4470a7d480dfc9b64d7e08e97f3820fed7/ssbh_data/Cargo.toml",
+            "bytes": 1239,
+            "sha256": "ea5f6fad48e90d44a21416a43d7034b6f29da5981c21d6c070b1e64e0d828240"
+          },
+          {
+            "path": "ssbh_data/src/anim_data.rs",
+            "url": "https://raw.githubusercontent.com/ultimate-research/ssbh_lib/08f8bc4470a7d480dfc9b64d7e08e97f3820fed7/ssbh_data/src/anim_data.rs",
+            "bytes": 17748,
+            "sha256": "f229e5a504bcd667928c7e68afb524e3d2755397a1a3d92f930662401b7a159a"
+          },
+          {
+            "path": "ssbh_data/src/anim_data/v2.rs",
+            "url": "https://raw.githubusercontent.com/ultimate-research/ssbh_lib/08f8bc4470a7d480dfc9b64d7e08e97f3820fed7/ssbh_data/src/anim_data/v2.rs",
+            "bytes": 18922,
+            "sha256": "bd929bcee66dd6b7e00aafa757066ee68bdcbf9e0fe8f49035dcc8304c44a7d0"
+          },
+          {
+            "path": "ssbh_data/src/anim_data/v2/compression.rs",
+            "url": "https://raw.githubusercontent.com/ultimate-research/ssbh_lib/08f8bc4470a7d480dfc9b64d7e08e97f3820fed7/ssbh_data/src/anim_data/v2/compression.rs",
+            "bytes": 46817,
+            "sha256": "6473f56bc4871f9ee49577550f686d34c26178ccd64a25196f7019f249cdd02f"
+          },
+          {
+            "path": "ssbh_data/src/skel_data.rs",
+            "url": "https://raw.githubusercontent.com/ultimate-research/ssbh_lib/08f8bc4470a7d480dfc9b64d7e08e97f3820fed7/ssbh_data/src/skel_data.rs",
+            "bytes": 27519,
+            "sha256": "50581a6609859dbcd4c89808c299e850944a64620563a08bcf57c6b03ab58072"
+          },
+          {
+            "path": "ssbh_data/src/mesh_data.rs",
+            "url": "https://raw.githubusercontent.com/ultimate-research/ssbh_lib/08f8bc4470a7d480dfc9b64d7e08e97f3820fed7/ssbh_data/src/mesh_data.rs",
+            "bytes": 78030,
+            "sha256": "59c8e20088792549b484be087d96dbe7d6adc9d69cd088ed9084243c7c31a12e"
+          },
+          {
+            "path": "ssbh_lib/src/formats/anim.rs",
+            "url": "https://raw.githubusercontent.com/ultimate-research/ssbh_lib/08f8bc4470a7d480dfc9b64d7e08e97f3820fed7/ssbh_lib/src/formats/anim.rs",
+            "bytes": 10566,
+            "sha256": "b45aae863a1b288e9383d86a5df7ebc67d9a648977db44d376f94831155dc325"
+          },
+          {
+            "path": "ssbh_lib/src/formats/skel.rs",
+            "url": "https://raw.githubusercontent.com/ultimate-research/ssbh_lib/08f8bc4470a7d480dfc9b64d7e08e97f3820fed7/ssbh_lib/src/formats/skel.rs",
+            "bytes": 5760,
+            "sha256": "0a8a109cf7ba1d16f4a9cb4d3991c47dc96af10c938091621dd8faee1d682a30"
+          },
+          {
+            "path": "ssbh_lib/src/formats/mesh.rs",
+            "url": "https://raw.githubusercontent.com/ultimate-research/ssbh_lib/08f8bc4470a7d480dfc9b64d7e08e97f3820fed7/ssbh_lib/src/formats/mesh.rs",
+            "bytes": 16575,
+            "sha256": "4902bacd142b189bd8d48acfab85537678a45e39dce343b56f78d8ec55f82922"
+          }
+        ]
+      }
+    ]
+  },
+  "ExistingChrPrecisionAudit": {
+    "Revision": "d56cbac89dc2cd0e5c3f923e1d03041b16902add",
+    "File": "BrawlLib/SSBB/ResourceNodes/Animations/CHR0Node.cs",
+    "Sha256": "218F16CB55F3383DCDC9EFD008C433F442B1D22AD731D66C690F34A1E36C64E3",
+    "Bytes": 45286,
+    "License": "Existing audited BrawlLib LGPL-3.0",
+    "Dependencies": "Existing data-only worker, BrawlLib/OpenTK/.NET Framework; no new runtime",
+    "Inspected": "CHR0EntryNode.Keyframes, six semantic flag properties, OnCalculateSize/OnRebuild; ResourceNode.Remove/InsertChild existing audited APIs",
+    "Decision": "Develop an owned precise-entry promotion in the original CHR0 container; reuse existing exact-float encoder policy and preserve native entry order/key collections/semantic flags. No upstream algorithm or application source copied.",
+    "Distribution": "Existing native worker remains local-only; existing notice/source correspondence obligations unchanged"
+  }
+}

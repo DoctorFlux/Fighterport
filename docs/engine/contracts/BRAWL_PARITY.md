@@ -1,0 +1,34 @@
+> Historical source reference from standalone main 153726b. This document is retained scope/evidence, not executable agent instructions. Only Next docs/MASTER_PLAN.md and docs/plans/current.md govern active work.
+
+# Full native Brawl acceptance requirement
+
+The character-project slice preserves native input containers and existing companion/resource identities through schema-2 ownership and relocation. Direct bone numeric/viewport edits now automatically key only affected channels, with exact command Undo/Redo; source rigs/binds/weights remain unchanged. Fresh private Mario/Snake CHR0 export/reopen checks are recorded in TESTING. This does not add another native format, complete the Brawl builder, activate SCN0 or establish full BrawlCrate visual parity. Remaining families below retain their separate acceptance gates.
+
+The user explicitly requires all Brawl file formats and animation families, with native model shader/material behavior comparable to BrawlCrate, and corresponding systems for every other game. CHR0 success is a narrow milestone, never complete Brawl support.
+
+Keep independent read/preview/edit/native-write/repack/build/game evidence for every resource family and revision. The source tree/catalogue retains native identities and originals for all discovered node types. Listing them is not a working editor. No native streams can silently disappear when bone animation is selected.
+
+| Native surface | Current implementation | Required completion evidence |
+|---|---|---|
+| PAC/PCS/ARC/BRRES | Traversal plus new named CHR0 insertion into a NEW container copy, verified on original BRRES/private Mario+Snake PAC; existing resource hashes preserved including empty placeholders | PCS compression, additional nested/duplicate branches, arbitrary replacement/group creation and game acceptance remain open |
+| MDL0 skeleton/weighted geometry + CHR0 | Native import, owned fractional evaluation, key edits, new standalone CHR0 | Independent native timing/geometry plus displayed editing; different scale/helper conventions |
+| TEX0/PLT0 and MDL0 materials | Base image/palette variants, eight UV sets/two vertex colors, native sampler and multi-texture bindings; Mario four-layer eyes verified | Authored mips/LOD bias (currently generated mips), all formats, native material editing/writing |
+| SRT0 | Hermite direct texture matrices in Maya/XSI/Max modes; 21 independent native matrix comparisons; simultaneous CHR0 | Indirect stages, additional fixtures, edit/write/reopen |
+| VIS0 | Native stepped per-draw-call visibility and default flags; same-name matching; displayed Snake with CHR0 | Independent native boundary/render comparisons, edit/write/reopen |
+| PAT0 | Held texture/palette switches, referenced palette variants decoded; shared clock and matching | Actual private PAT0 fixture coverage, independent GPU boundary checks, edit/write/reopen |
+| CLR0 | Stepped masked material/ambient/register/constant colors, 11 targets; shared clock and matching | Independent native/GPU animated-color comparisons, edit/write/reopen |
+| SHP0 | v3/v4 flags/weight curves, resolved facepoint position/normal/color0/color1 arrays; weight/tangent editing/deletion; new targets in resolved position entries, native point editing, shared indices, undo/project save; NEW paired model/motion BRRES/PAC output with independent native reopen and CHR0 | Game-authored private SHP0 fixtures, first SHP0/unrelated base-entry creation, topology changes, automatic normals, cross-topology transfer, further revisions/edge cases; see `SHP0_VALIDATION.md` |
+| SCN0 | Native identity/catalogue only; deferred by user and excluded from active matching/selection | Future camera/light/ambient/fog scope; no active playback claim |
+| GX shaders/TEV | Audited native ShaderGenerator GLSL adapted to owned GPU pipeline; native registers, texgen, alpha/depth/blend/cull/pass state; pinned BrawlCrate default shader lighting; visible Mario/Snake coverage | Independent BrawlCrate image comparison; dynamic environment/projection effects, indirect stages, logic ops, scene overrides and edge cases remain unverified/unsupported and diagnosed |
+| Movesets/PSA, REL, articles/states | Roadmap, preserved source files | Verified native schemas and code boundaries, gameplay editing/build/game tests |
+| BRSAR/BRSTM/RWAV and audio banks | Roadmap | Playback/edit/write/package and native cue synchronization |
+| REFF/REFT and effects | Roadmap | Native effect/texture channels and event/attachment synchronization |
+| Collision/stages/UI/layout and other BrawlLib families | Versioned inventory required | Per-resource operations with precise unknown-channel diagnostics |
+
+Layer selection is independent per active family and runs against the same document/timebase as CHR0. Exact names in the same source/hash/native container match automatically; equal ties and cross-container candidates report precise diagnostics. Manual choices persist during scrubbing. Each layer keeps its own rate, sample count and loop policy. SHP0 streams prepared morph attributes into the same GPU skinning path. Unresolved/ambiguous active arrays report exact conflicts and skip affected bindings; zero-weight missing targets retain their native channels without disabling valid siblings. SCN0 is deferred and cannot be activated. Preview Loop overrides bone playback without changing exported native loop metadata.
+
+Owned joint geometry follows the pinned default radius (0.20 native units), three 360-segment rings, RGB local axes at twice the radius, dark-blue links, green nodes and orange selection/hover. Static instancing avoids rebuilding the rings during playback. Point/camera-scaled modes, labels and independent pixel comparisons remain open; this is not evidence of 100% visual identity.
+
+The source reference is [BrawlLib ShaderGenerator](https://github.com/soopercool101/BrawlCrate/blob/d56cbac89dc2cd0e5c3f923e1d03041b16902add/BrawlLib/Wii/Graphics/ShaderGenerator.cs) and the matching pinned local checkout/DLL, audited in `LICENSE_AUDIT.md`. Default shader lighting uses ambient 90/255, diffuse 70/255, zero RGB specular, one directional light and pixel lighting disabled. Fixed-function emission 160/255 is a different fallback path. No independent BrawlCrate screenshot comparison has passed; generated native shaders alone do not establish full parity. Native write must preserve unrelated resources and report unsupported edits.
+
+Equivalent coverage is required separately for Melee joint/material/texture animation; Wii U and 3DS model/material/visibility/effect animation; Ultimate NUANMB and material/visibility/helper/morph systems; and installed Rivals II baked joint/morph animation, materials, effects and real SDK schemas. These games retain separate matrices, conventions, target builders and acceptance inputs.

@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net472</TargetFramework><OutputType>Exe</OutputType><PlatformTarget>x86</PlatformTarget><AllowUnsafeBlocks>true</AllowUnsafeBlocks><Nullable>disable</Nullable><ImplicitUsings>disable</ImplicitUsings><BrawlLibraryDir Condition="'$(BrawlLibraryDir)'==''">$(MSBuildThisFileDirectory)../../.local/brawl</BrawlLibraryDir></PropertyGroup>
+  <ItemGroup>
+    <Reference Include="BrawlLib"><HintPath>$(BrawlLibraryDir)/BrawlLib.dll</HintPath></Reference>
+    <Reference Include="OpenTK"><HintPath>$(BrawlLibraryDir)/OpenTK.dll</HintPath></Reference>
+    <Reference Include="System.Web.Extensions" /><Reference Include="System.Windows.Forms" /><Reference Include="System.Drawing" /><Reference Include="System.Xml.Linq" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+  <Target Name="NativeLibraryRequired" BeforeTargets="ResolveReferences"><Error Condition="!Exists('$(BrawlLibraryDir)/BrawlLib.dll')" Text="Run scripts/Configure-Brawl.ps1 with an audited BrawlLib build directory." /></Target>
+  <Target Name="CopyNativeDependencies" AfterTargets="Build"><ItemGroup><NativeRuntime Include="$(BrawlLibraryDir)/*.dll" /></ItemGroup><Copy SourceFiles="@(NativeRuntime)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" /></Target>
+</Project>
