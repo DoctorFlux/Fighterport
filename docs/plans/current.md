@@ -7,12 +7,16 @@ ordering. M2 remains the ONE incomplete milestone; this is its sole executable q
 
 Latest authorized continuation: reviewed animation batches (preview.25), then
 atomic verified set export (preview.26). Preview.25 bounded acceptance is complete: 1,925 assertions and 81 inspected PNGs.
-See [commands and limits](../BATCH_REVIEW_ACCEPTANCE_2026-10-24.md). Preview.26 is
-queued until this verified source is published. Remain inside ONE incomplete G1/M2.
+See [commands and limits](../BATCH_REVIEW_ACCEPTANCE_2026-10-24.md). Preview.25 was published as 62a18a50fa922688d1d56a35fa9c9c34afec6b4c.
+Preview.26 (`2.0.0-preview.26-verified-set-export`) has fresh bounded acceptance:
+2,229 assertions across 15 passing runs and all 97 PNGs inspected. See
+[commands and limits](../VERIFIED_SET_EXPORT_ACCEPTANCE_2026-10-24.md).
+Both requested increments are accepted. No further feature increment is active;
+remain inside ONE incomplete G1/M2 for the human/input/DPI/contact/game gates.
 Use session-only exact-content approval, original Next, existing native selection/
 Undo, 64-clip/two-million-key bounds and background-only private desktop evidence.
 Review results is recoverable and interoperates with recorded source comparison.
-Set export later stages/independently verifies all CHR0s, then renames a sibling
+Set export stages/independently verifies all CHR0s, then renames a sibling
 folder to a new nonexistent destination; no partial set or project-format change.
 Keep root controls source-local, full native editor and all human/DPI/game gates.
 
@@ -21,8 +25,8 @@ source/target comparison (preview.23), then favorites and typed library filters
 (preview.24), sequentially inside this ONE incomplete G1/M2 milestone. All three
 bounded increments are accepted; no other feature increment is active.
 Preview.22 was published as 00739db23ed957353aa2a62720db2efe12bcea67;
-preview.23 as 412b1dfc595c848a2ec9161bd2c1489a54466158. Preview.24 is the
-current qualified source/launcher package. Preserve preferences separately from
+preview.23 as 412b1dfc595c848a2ec9161bd2c1489a54466158. Preview.24 was the
+qualified source/launcher package for that increment. Preserve preferences separately from
 catalogue/project schemas, async/lazy browsing and filters before counts/paging.
 
 Preview.22 bounded acceptance: 1,644 scoped assertions and all 43 final PNGs

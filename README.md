@@ -2,7 +2,7 @@
 
 This is the public unified source repository at https://github.com/DoctorFlux/Fighterport.
 It imports the BrawlCrate-based Next preview.14 source and integrated owned engine;
-the current implementation is **preview.25-batch-review**.
+the current implementation is **preview.26-verified-set-export**.
 The two predecessor repositories are private preserved histories.
 Upstream copyrights, licenses and notices remain intact.
 
@@ -57,7 +57,16 @@ review again. Removing a row keeps the project animation. Native cross-clip
 Undo/Redo retains its original history. Save keeps unchanged exact approval;
 reopen starts a fresh review session. See the
 [batch review acceptance record](docs/BATCH_REVIEW_ACCEPTANCE_2026-10-24.md).
-Verified set export follows in preview.26; single-clip export remains available.
+In Export, **Export reviewed set** freezes the approved clips and shows their
+exact identities, frames, filenames and target content hash. Choose a **new folder**;
+every precise CHR0 is independently decoded and compared before the complete folder
+is published in one rename. A receipt records identities and verified hashes.
+Duplicate clip names get distinct stable filenames. Cancellation or failed
+validation publishes no set; existing folders are preserved. Export works before
+project Save and retains native selection, frame and Undo. Single-clip export keeps
+its existing overwrite confirmation. See the
+[verified set acceptance record](docs/VERIFIED_SET_EXPORT_ACCEPTANCE_2026-10-24.md).
+Fresh preview.26 qualification passes **2,229 scoped assertions / 97 inspected PNGs**.
 
 The source library now has **Favorite / Favorited**, **Favorites only**, and
 combinable game/build, character/model, availability and channel filters alongside

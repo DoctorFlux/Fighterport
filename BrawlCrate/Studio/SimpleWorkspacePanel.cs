@@ -22,6 +22,7 @@ namespace BrawlCrate.Studio
         private readonly Button _audition;
         private readonly Button _compare;
         private readonly Button _review;
+        private readonly Button _exportSet;
         private readonly Button _controls;
         private readonly Button _motions;
         private readonly Button _transitions;
@@ -106,6 +107,9 @@ namespace BrawlCrate.Studio
             _repairSource = AddAction("workspaceRepairSourceAction", "Repair source...", "repair-source");
             _changeTarget = AddAction("workspaceChangeTargetAction", "Change target model", "target");
             _audition = AddAction("workspaceAuditionAction", "Preview original", "audition");
+            _exportSet = AddAction("workspaceExportSetAction", "Export reviewed set", "export-set");
+            _exportSet.AccessibleDescription = "Export the exact clips approved in Review results to a new folder after independent verification. Review approval lasts for this session.";
+            _tooltips.SetToolTip(_exportSet, _exportSet.AccessibleDescription);
             _review = AddAction("workspaceReviewResultsAction", "Review results", "review-results");
             _compare = AddAction("workspaceCompareSourceAction", "Compare source", "compare");
             _controls = AddAction("workspaceControlsAction", "Set up controls", "controls");
@@ -212,6 +216,8 @@ namespace BrawlCrate.Studio
 
                 _audition.Visible = _stage == 0;
                 _audition.Enabled = _hasSource && !_busy;
+                _exportSet.Visible = _stage == 3;
+                _exportSet.Enabled = _hasTarget && !_busy;
                 _review.Visible = _stage == 2 || _stage == 3;
                 _review.Enabled = _hasTarget && !_busy;
                 _compare.Visible = _stage == 2;

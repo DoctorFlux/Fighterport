@@ -257,6 +257,9 @@ namespace BrawlCrate.UI
                         throw new InvalidOperationException("Choose a source animation before fitting its timing.");
                     ShowLibraryBatch();
                     break;
+                case "export-set":
+                    ChooseWorkspaceSetExport();
+                    break;
                 case "export":
                     ChooseSimpleWorkspaceExport();
                     break;

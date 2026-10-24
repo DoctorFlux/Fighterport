@@ -33,10 +33,16 @@ namespace BrawlCrate.UI
 
         private Chr0ExportSnapshot FreezeWorkspaceExport()
         {
+            return FreezeOwnedWorkspaceExport(SelectedFighterAsset(), modelEditControl1.TargetAnimation as CHR0Node, true);
+        }
+
+        private Chr0ExportSnapshot FreezeOwnedWorkspaceExport(FighterAsset asset, CHR0Node clip, bool requireSelection, Func<bool> ownBusy = null)
+        {
             var target = modelEditControl1.TargetModel as MDL0Node;
-            var clip = modelEditControl1.TargetAnimation as CHR0Node;
-            var asset = SelectedFighterAsset();
-            if (SimpleWorkspaceBusy || target == null || clip == null || !OwnsFighterRoot(clip))
+            bool Busy() => _controlBusy || _retargetBusy || _pinGesture != null || _workspaceBusy && ownBusy?.Invoke() != true;
+            bool Registered() => asset != null && RegisteredFighterAssets().Contains(asset) && _fighterRoots.TryGetValue(asset.Id, out var owner) &&
+                ReferenceEquals(owner, clip?.RootNode) && DiscoverFighterAnimations(owner).Any(n => ReferenceEquals(n, clip));
+            if (Busy() || target == null || clip == null || !OwnsFighterRoot(clip) || !Registered())
                 throw new InvalidOperationException("Select an animation on the current target model.");
             if (asset?.Retarget?.ReviewDraft == true)
                 throw new InvalidOperationException("This advanced review draft is blocked and cannot be exported as an accepted result.");
@@ -53,11 +59,11 @@ namespace BrawlCrate.UI
             NativeControlSnapshot.Capture(clip, clip.Children.Select(c => c.Name)).Restore(copy);
             PreciseCHR0EntryNode.Promote(copy);
             return new Chr0ExportSnapshot { Clip = clip, ExpectedContent = content, Candidate = copy, Validate = () => {
-                if (SimpleWorkspaceBusy || !ReferenceEquals(project, _fighterProject) ||
-                    !ReferenceEquals(target, modelEditControl1.TargetModel) || !ReferenceEquals(clip, modelEditControl1.TargetAnimation) ||
+                if (Busy() || !ReferenceEquals(project, _fighterProject) || !Registered() ||
+                    !ReferenceEquals(target, modelEditControl1.TargetModel) || requireSelection && !ReferenceEquals(clip, modelEditControl1.TargetAnimation) ||
                     !ReferenceEquals(root, clip.RootNode) || !OwnsFighterRoot(clip) || content != ExportContent(clip) ||
                     rig != BrawlRetargeter.SkeletonFingerprint(target) ||
-                    provenance != new JavaScriptSerializer().Serialize(SelectedFighterAsset()?.Retarget))
+                    provenance != new JavaScriptSerializer().Serialize(asset?.Retarget))
                     throw new InvalidOperationException("Export dependencies changed. Select Export again to review the current target and animation.");
             } };
         }

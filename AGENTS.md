@@ -1,5 +1,16 @@
 # Fighterport
 
+Latest authorized continuation: preview.26-verified-set-export extends the
+published preview.25 review workspace with exact approved-set snapshots, independent
+full CHR0 verification and same-volume directory publication to a new folder.
+Keep full native ownership/Undo, original Next and source-local protected controls.
+Session approval is never persisted; no project-format migration is included.
+Fresh acceptance: 2,229 scoped assertions / all 97 PNGs inspected. See docs/VERIFIED_SET_EXPORT_ACCEPTANCE_2026-10-24.md.
+Both requested bounded increments are accepted; no further feature is active.
+Keep ONE incomplete G1/M2. Human/input/DPI,
+broad contacts and game gates remain open. Publish verified source only under
+DoctorFlux attribution to public Fighterport/main.
+
 24 October 2026 user decision: DoctorFlux/Fighterport is the new PUBLIC product
 repository. Use main and the BrawlCrate/BrawlLib-based source application with
 its integrated owned engine. The private fighterport-studio-next and
@@ -8,7 +19,7 @@ Record imported revisions and preserve upstream source authorship and notices.
 
 ## Plans and current work
 
-Latest 24 October continuation: preview.25-batch-review adds recoverable exact
+Preceding 24 October continuation: preview.25-batch-review adds recoverable exact
 result navigation and session-only content/target/recipe approval around the full
 native editor. Batch preparation retains original Next, filters, loss review,
 64-clip/two-million-key bounds and one import transaction. Preserve native cross-
