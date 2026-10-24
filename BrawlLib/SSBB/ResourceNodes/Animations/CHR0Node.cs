@@ -313,6 +313,7 @@ namespace BrawlLib.SSBB.ResourceNodes
         {
             base.PostProcess(bresAddress, dataAddress, dataLength, stringTable);
 
+            VoidPtr animationAddress = dataAddress;
             ResourceGroup* group;
             if (_version == 5)
             {
@@ -350,7 +351,7 @@ namespace BrawlLib.SSBB.ResourceNodes
 
             if (_version == 5)
             {
-                _userEntries.PostProcess(((CHR0v5*) dataAddress)->UserData, stringTable);
+                _userEntries.PostProcess(((CHR0v5*) animationAddress)->UserData, stringTable);
             }
         }
 

@@ -1,6 +1,15 @@
 # Fighterport master plan
 
-Latest 24 October continuation: preview.21-workspace-recent implements recent
+Latest 24 October continuation: preview.22-verified-export has fresh bounded
+background acceptance: 1,644 scoped assertions and 43 reviewed final PNGs. See
+VERIFIED_EXPORT_ACCEPTANCE_2026-10-24.md. Preserve snapshot-only CHR0 export,
+independent exact candidate decoding, atomic publication and live native Undo.
+CHR0 v5 user-data post-processing retains the animation header; float user data
+uses round-trip decoding. Original Next, full editor and source-local roots remain.
+Linked comparison and favorites/filters follow sequentially in the same ONE G1/M2.
+Human/input/DPI/contact/game gates remain open.
+
+Preceding 24 October continuation: preview.21-workspace-recent implements recent
 project selection inside Open project and exact native project resume. Fresh
 background-only acceptance passes 2,398 scoped assertions with all 87 final PNGs
 individually inspected; see [commands and limits](WORKSPACE_RECENT_PROJECTS_ACCEPTANCE_2026-10-24.md).

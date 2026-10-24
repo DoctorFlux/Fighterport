@@ -1,4 +1,4 @@
-﻿using BrawlLib.Internal;
+using BrawlLib.Internal;
 using BrawlLib.SSBB.ResourceNodes;
 using BrawlLib.SSBB.Types;
 using System;
@@ -89,7 +89,7 @@ namespace BrawlLib.SSBB
                         switch (entry->Type)
                         {
                             case UserValueType.Float:
-                                d._entries.Add(((float) *(bfloat*) addr).ToString());
+                                d._entries.Add(((float) *(bfloat*) addr).ToString("R"));
                                 addr += 4;
                                 break;
                             case UserValueType.Int:

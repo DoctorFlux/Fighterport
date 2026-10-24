@@ -232,7 +232,9 @@ namespace BrawlCrate.Studio
             }
         }
 
-        public void ProtectOutputPath(string outputPath)
+        public void ProtectOutputPath(string outputPath) => ProtectOutputPath(outputPath, false);
+
+        internal void ProtectOutputPath(string outputPath, bool atomicReplacement)
         {
             ThrowIfDisposed();
             string path = LocalPath(outputPath);
@@ -242,7 +244,7 @@ namespace BrawlCrate.Studio
                 (!string.IsNullOrEmpty(ManifestPath) && IsWithin(path, ManifestPath + ".assets")))
                 throw new InvalidOperationException("Choose a new native output outside the project's saved assets.");
             // A new filename also protects originals reachable through hard-link aliases.
-            if (File.Exists(path) || Directory.Exists(path))
+            if ((!atomicReplacement && File.Exists(path)) || Directory.Exists(path))
                 throw new InvalidOperationException("Native export needs a new filename. The existing file has been preserved.");
         }
 

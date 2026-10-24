@@ -2,7 +2,7 @@
 
 This is the public unified source repository at https://github.com/DoctorFlux/Fighterport.
 It imports the BrawlCrate-based Next preview.14 source and integrated owned engine;
-the current implementation is **preview.21-workspace-recent**.
+the current implementation is **preview.22-verified-export**.
 The two predecessor repositories are private preserved histories.
 Upstream copyrights, licenses and notices remain intact.
 
@@ -49,7 +49,14 @@ return focus to their invoking control. Native editing shortcuts retain their
 existing routes. Compact drawers may overlay the editor; close them or use Focus
 editor for all native tools.
 
-Fresh preview.21 background verification passes **2,398 scoped assertions**, with
+Workspace **Export** now reviews the exact CHR0 selection and destination, stages
+an exact snapshot, independently decodes all curves/metadata, then publishes
+atomically. Existing destinations require confirmation; originals and working
+files remain protected. Export works before project Save and keeps native Undo.
+Fresh preview.22 qualification passes **1,644 scoped assertions / 43 reviewed PNGs**;
+see the [verified-export record](docs/VERIFIED_EXPORT_ACCEPTANCE_2026-10-24.md).
+
+Historical preview.21 background verification passes **2,398 scoped assertions**, with
 **87 individually inspected PNGs**. Recent-project persistence/recovery, exact
 native body Undo/save/reopen, both workflow directions and relevant workspace/root
 regressions pass. See the [recent-project acceptance record](docs/WORKSPACE_RECENT_PROJECTS_ACCEPTANCE_2026-10-24.md).

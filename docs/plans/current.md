@@ -5,7 +5,27 @@ with the simpler workspace while retaining the COMPLETE BrawlCrate Model Preview
 and original Next retargeter. This supersedes the earlier planning-only/contact-first
 ordering. M2 remains the ONE incomplete milestone; this is its sole executable queue.
 
-Latest authorized continuation: preview.21 recent-project resume within the same
+Latest authorized continuation: implement verified export (preview.22), linked
+source/target comparison (preview.23), then favorites and typed library filters
+(preview.24), sequentially inside this ONE incomplete G1/M2 milestone. Only
+preview.22 is active until its fresh background acceptance and source publication.
+Preview.22 bounded acceptance is complete: 1,644 scoped assertions and all 43
+final PNGs reviewed. See [commands, findings and limits](../VERIFIED_EXPORT_ACCEPTANCE_2026-10-24.md).
+The launcher selects its qualified package. Publish this verified source before
+promoting comparison. G1/M2 remains incomplete; remaining increments are queued.
+
+Use the app-owned path dialog, exact frozen native CHR0 snapshots, independent
+candidate decode and atomic publication. Preserve live curves, native Undo and
+source/working-file protections. Comparison then resolves recorded result source
+identity/hashes and timing once, drives a read-only native source from the editable
+target timeline, and never loads/hashes/bakes during playback. Library preferences
+remain separate per-library local state; combined filters precede counts/paging.
+Qualify each increment with dedicated private-desktop cases and fresh relevant
+regressions/capture inspection before promotion. Full native editor, original Next
+and source-local protected controls remain. Human/input/DPI/game/contact gates
+stay open. Publish source only with DoctorFlux author and committer attribution.
+
+Preceding continuation: preview.21 recent-project resume within the same
 G1/M2 slice, with background-only testing. Add a bounded full-path recent list to
 Open project, recording only successful native project saves/opens. Choosing a
 recent item fills the existing path field; acceptance keeps original validation,

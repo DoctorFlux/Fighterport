@@ -8,7 +8,16 @@ Record imported revisions and preserve upstream source authorship and notices.
 
 ## Plans and current work
 
-Latest 24 October continuation is preview.21-workspace-recent. Fresh background-only
+Latest 24 October continuation: preview.22-verified-export has fresh bounded
+background acceptance: 1,644 scoped assertions and 43 reviewed final PNGs. See
+docs/VERIFIED_EXPORT_ACCEPTANCE_2026-10-24.md. Preserve snapshot-only CHR0 export,
+independent exact candidate decoding, atomic publication and live native Undo.
+CHR0 v5 user-data post-processing retains the animation header; float user data
+uses round-trip decoding. Original Next, full editor and source-local roots remain.
+Linked comparison and favorites/filters follow sequentially in the same ONE G1/M2.
+Human/input/DPI/contact/game gates remain open.
+
+Preceding 24 October continuation is preview.21-workspace-recent. Fresh background-only
 acceptance: 2,398 scoped assertions and 87 individually inspected PNGs; see
 docs/WORKSPACE_RECENT_PROJECTS_ACCEPTANCE_2026-10-24.md. Keep recent history outside
 project formats and capture tests isolated from real profile history. Publish

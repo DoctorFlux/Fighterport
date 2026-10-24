@@ -383,37 +383,36 @@ namespace BrawlCrate.UI
 
         private void ChooseSimpleWorkspaceExport()
         {
-            var selected = modelEditControl1.TargetAnimation as CHR0Node;
-            if (selected == null) throw new InvalidOperationException("Select a target skeletal animation to export.");
-            using (var dialog = new SaveFileDialog
+            if (SimpleWorkspaceBusy) throw new InvalidOperationException("Finish the current edit before exporting.");
+            modelEditControl1.StopAnim();
+            FinishControlCurveEdit();
+            using (var frozen = FreezeWorkspaceExport())
+            using (var dialog = new WorkspaceFileDialog("Export verified animation",
+                "Project: " + _fighterProject.Name + "\nTarget: " + ((MDL0Node)modelEditControl1.TargetModel).Name +
+                "\nAnimation: " + frozen.Clip.Name + " · " + frozen.Clip.FrameCount + " frames" +
+                "\nResource: " + Path.GetFileName(SelectedFighterAsset()?.SourcePath) + " | " + frozen.Clip.TreePath + "\nVerified native Brawl CHR0 export",
+                "Native Brawl animation (*.chr0)|*.chr0", "Export", frozen.Clip.Name + ".chr0", true, extension: "chr0"))
             {
-                Title = "Export Target Animation", Filter = "Native Brawl animation (*.chr0)|*.chr0",
-                DefaultExt = "chr0", AddExtension = true, FileName = selected.Name + ".chr0"
-            })
-            {
-                if (dialog.ShowDialog(this) != DialogResult.OK) return;
-                if (!ReferenceEquals(selected, modelEditControl1.TargetAnimation))
-                    throw new InvalidOperationException("The selected animation changed. Review the current result before exporting.");
-                ExportSimpleWorkspaceResult(dialog.FileName);
+                dialog.CommitSelection = path =>
+                {
+                    frozen.Validate();
+                    if (File.Exists(path))
+                    {
+                        using (var confirm = new WorkspaceOverwriteDialog(path))
+                            if (confirm.ShowDialog(dialog) != DialogResult.Yes) throw new OperationCanceledException("Export cancelled. Existing destination was kept.");
+                    }
+                    ExportWorkspaceSnapshot(frozen, path);
+                };
+                dialog.ShowDialog(this);
             }
         }
 
         internal void ExportSimpleWorkspaceResult(string destination)
         {
             if (SimpleWorkspaceBusy) throw new InvalidOperationException("Finish the current edit before exporting.");
-            var target = modelEditControl1.TargetModel as MDL0Node;
-            var clip = modelEditControl1.TargetAnimation as CHR0Node;
-            var asset = SelectedFighterAsset();
-            if (target == null || clip == null || !OwnsFighterRoot(clip))
-                throw new InvalidOperationException("Select an animation on the current target model.");
-            if (asset?.Retarget?.ReviewDraft == true)
-                throw new InvalidOperationException("This advanced review draft is blocked and cannot be exported as an accepted result.");
-            if (!string.Equals(Path.GetExtension(destination), ".chr0", StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException("This workspace action exports native CHR0. Other qualified resource exports remain in the native menus.");
             modelEditControl1.StopAnim();
-            if (asset?.Retarget != null && BrawlRetargeter.SkeletonFingerprint(target) != asset.RigIdentity)
-                throw new InvalidOperationException("The target rig changed. Review the animation on its original target before export.");
-            ExportFighterNode(clip, destination);
+            FinishControlCurveEdit();
+            using (var frozen = FreezeWorkspaceExport()) ExportWorkspaceSnapshot(frozen, destination);
         }
 
         private void UpdateSimpleWorkspace()

@@ -21,17 +21,18 @@ namespace BrawlCrate.Studio
         private readonly string _filter;
         private string _candidatePath;
         private readonly bool _save;
+        private readonly string _extension;
         internal Action<string> CommitSelection { get; set; }
 
         internal string SelectedPath { get; private set; }
 
         internal WorkspaceFileDialog(string title, string description, string filter,
-            string actionText, string initialPath = null, bool save = false, WorkspaceRecentProjects recent = null)
+            string actionText, string initialPath = null, bool save = false, WorkspaceRecentProjects recent = null, string extension = "fpstudio")
         {
             Name = "workspaceFileDialog";
             Text = title;
             AccessibleName = title;
-            ClientSize = new Size(650, recent == null ? 210 : 300);
+            ClientSize = new Size(650, recent == null ? (extension == "chr0" ? 270 : 210) : 300);
             FormBorderStyle = FormBorderStyle.FixedDialog;
             StartPosition = FormStartPosition.CenterParent;
             ShowInTaskbar = false;
@@ -40,6 +41,7 @@ namespace BrawlCrate.Studio
             AutoScaleMode = AutoScaleMode.Font;
             _filter = string.IsNullOrWhiteSpace(filter) ? "All files (*.*)|*.*" : filter;
             _save = save;
+            _extension = extension.TrimStart('.');
 
             var layout = new TableLayoutPanel
             {
@@ -221,7 +223,7 @@ namespace BrawlCrate.Studio
             if (_save)
             {
                 using (var dialog = new SaveFileDialog { Title = Text, Filter = _filter,
-                    DefaultExt = "fpstudio", AddExtension = true, OverwritePrompt = true, RestoreDirectory = true })
+                    DefaultExt = _extension, AddExtension = true, OverwritePrompt = true, RestoreDirectory = true })
                 {
                     if (ValidatePath()) dialog.FileName = _candidatePath;
                     if (dialog.ShowDialog(this) == DialogResult.OK) _path.Text = dialog.FileName;
@@ -251,18 +253,18 @@ namespace BrawlCrate.Studio
             if (entered.Length >= 2 && entered[0] == '"' && entered[entered.Length - 1] == '"')
                 entered = entered.Substring(1, entered.Length - 2).Trim();
             if (entered.Length == 0)
-                return ShowValidation(_save ? "Choose a project filename in an existing folder." : "Paste a file path or choose Browse to select an existing file.", false);
+                return ShowValidation(_save ? "Choose a filename in an existing folder." : "Paste a file path or choose Browse to select an existing file.", false);
             try
             {
                 string fullPath = Path.GetFullPath(entered);
                 if (_save)
                 {
-                    if (!string.Equals(Path.GetExtension(fullPath), ".fpstudio", StringComparison.OrdinalIgnoreCase))
-                        return ShowValidation("Choose a Fighterport project filename ending in .fpstudio.", false);
+                    if (!string.Equals(Path.GetExtension(fullPath), "." + _extension, StringComparison.OrdinalIgnoreCase))
+                        return ShowValidation("Choose a filename ending in ." + _extension + ".", false);
                     if (Directory.Exists(fullPath) || !Directory.Exists(Path.GetDirectoryName(fullPath)))
-                        return ShowValidation("Choose a project filename in an existing folder.", false);
+                        return ShowValidation("Choose a filename in an existing folder.", false);
                     _candidatePath = fullPath;
-                    return ShowValidation("Ready to save the project to this file.", true);
+                    return ShowValidation("Ready to " + _accept.Text.ToLowerInvariant() + " to this file.", true);
                 }
                 if (!File.Exists(fullPath))
                     return ShowValidation("File not found or unavailable. Check the path or choose Browse.", false);
@@ -290,7 +292,7 @@ namespace BrawlCrate.Studio
         {
             if (!ValidatePath()) return;
             try { CommitSelection?.Invoke(_candidatePath); }
-            catch (Exception error) { ShowValidation("Could not save: " + error.Message, true); _validation.ForeColor = Color.LightSalmon; return; }
+            catch (Exception error) { ShowValidation((_extension == "chr0" ? "Could not export: " : "Could not save: ") + error.Message, true); _validation.ForeColor = Color.LightSalmon; return; }
             SelectedPath = _candidatePath;
             DialogResult = DialogResult.OK;
             Close();
