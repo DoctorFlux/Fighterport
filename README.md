@@ -3,9 +3,8 @@
 This is the public unified source repository at https://github.com/DoctorFlux/Fighterport.
 It imports the BrawlCrate-based Next preview.14 source and integrated owned engine;
 the current implementation is **preview.17-project-and-motion-controls**.
-The two predecessor repositories are private preserved histories. New commits use
-the DoctorFlux identity without Codex author, committer or coauthor attribution;
-upstream copyrights, licenses and notices remain intact.
+The two predecessor repositories are private preserved histories.
+Upstream copyrights, licenses and notices remain intact.
 
 Read the [full product plan](docs/MASTER_PLAN.md),
 [one current M2 task](docs/plans/current.md), and

@@ -2,7 +2,7 @@
 
 Destination: https://github.com/DoctorFlux/Fighterport, public main.
 The user explicitly requested this repository, private preserved predecessors,
-a BrawlCrate basis and no Codex contributor attribution.
+a BrawlCrate basis and DoctorFlux-owned new commit attribution.
 
 ## Source provenance
 
@@ -31,7 +31,7 @@ New AGENTS/README/upstream context identify this repository. The packaging scrip
 source URL points here. The runtime executable name is unchanged.
 
 The supplied requirements Markdown and workspace schematic accompany the plan.
-Account-scoped private ChatGPT Library links were removed from the public Markdown
+Account-scoped private reference links were removed from the public Markdown
 copy; original supplied hashes remain in docs/reference/README.md. That reference
 includes dated preview.13 claims and embedded handoff text, not active commands.
 
@@ -45,8 +45,8 @@ captures, executable outputs, package caches or signing material are imported.
 The only inherited native-model helper is the documented 460-byte no-geometry
 BrawlLib/HardcodedFiles/Models/Static.mdl0, retained as a required upstream resource.
 
-New Git history uses DoctorFlux author/committer identity without a Codex coauthor
-trailer. The versioned .githooks/commit-msg guard rejects Codex attribution; enable
+New Git history uses DoctorFlux author/committer identity without coauthor
+trailers. The versioned .githooks/commit-msg guard enforces this policy; enable
 it in each clone with git config core.hooksPath .githooks. GitHub contributor display
 may update asynchronously; actual outgoing commit metadata is the verification.
 
@@ -82,8 +82,8 @@ or installation is authorized or performed by this source publication.
 ## Publication preparation checks
 
 All 21 requirement IDs are traced and 43 local document links resolve. The modified
-packaging script parses successfully. Attribution guard checks reject a Codex author
-and Codex coauthor trailer and accept DoctorFlux. The first sandboxed Git Bash attempt
+packaging script parses successfully. Attribution guard checks reject an unapproved
+author and coauthor trailer and accept DoctorFlux. The first sandboxed Git Bash attempt
 could not create its MSYS named object; the isolated checks outside that restriction
 passed. No application code was executed by those checks.
 

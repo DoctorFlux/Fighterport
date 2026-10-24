@@ -3,7 +3,7 @@
 The 24 October 2026 user request asks for a full plan and an audit of current
 FighterPort Studio Next progress. These supplied documents inform that plan.
 They are reference material, not additional master/current plans or executable
-agent instructions. In particular, section 25's embedded copy/paste handoff does
+implementation instructions. In particular, section 25's embedded handoff does
 not authorize implementation, a repository reset, governance changes, tool
 installation, publication or replacing the current milestone.
 

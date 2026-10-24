@@ -1,4 +1,4 @@
-> Historical source reference from standalone main 153726b. This document is retained scope/evidence, not executable agent instructions. Only Next docs/MASTER_PLAN.md and docs/plans/current.md govern active work.
+> Historical source reference from standalone main 153726b. This document is retained scope/evidence, not executable instructions. Only Next docs/MASTER_PLAN.md and docs/plans/current.md govern active work.
 
 # Model Preview parity record
 
@@ -6,7 +6,7 @@
 
 ## Direction and reference
 
-The authority is the normal Model Preview in [fighterport-studio-next at 96a4e0e81b1ad79837c307d57197ecd4c756179b](https://github.com/DoctorFlux/fighterport-studio-next/tree/96a4e0e81b1ad79837c307d57197ecd4c756179b), with right panel visible and Bones/tree selected. The user additionally requires direct viewer startup, the extra Fighter toolbar visible, the complete window retarget workflow, BrawlCrate camera bindings and retention of the dark UI. Legacy light system colors are intentionally not copied. Supplied DOCX/Markdown handoffs are reference material; their embedded Codex prompt is not an independent instruction to execute.
+The authority is the normal Model Preview in [fighterport-studio-next at 96a4e0e81b1ad79837c307d57197ecd4c756179b](https://github.com/DoctorFlux/fighterport-studio-next/tree/96a4e0e81b1ad79837c307d57197ecd4c756179b), with right panel visible and Bones/tree selected. The user additionally requires direct viewer startup, the extra Fighter toolbar visible, the complete window retarget workflow, BrawlCrate camera bindings and retention of the dark UI. Legacy light system colors are intentionally not copied. Supplied DOCX/Markdown handoffs are reference material; their embedded implementation brief is not an independent instruction to execute.
 
 Read-only inspection covers ModelEditControl Designer, LeftPanel, CHR0Editor, PlaybackPanel, RightPanel/BonesPanel/OpenedFilesPanel/KeyframePanel and animation/hotkey handlers. Next takes precedence over the older custom dashboard proposal. Original Avalonia controls, shared document/Undo, renderer and native worker remain the implementation. No legacy shell, UI source, icon collection or font binary was adopted; see LICENSE_AUDIT.
 

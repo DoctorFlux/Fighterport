@@ -25,9 +25,8 @@ with fighterport-studio-next and fighterport-studio private and their histories
 preserved. Both old visibility changes were performed and verified on 24 October.
 Import a reviewed source snapshot into new history; do not merge old histories.
 
-**Never add Codex as a commit author, committer, coauthor or collaborator in the
-new repository.** Use the verified DoctorFlux Git identity and inspect every new
-commit before publication. Preserve genuine upstream copyrights, authors,
+**Use the verified DoctorFlux identity for all new commits.** Inspect author,
+committer and attribution trailers before publication. Preserve genuine upstream copyrights, authors,
 licenses and notices. Commit attribution and mandatory source attribution are
 different. The initial commit must describe an imported snapshot and its origins.
 
@@ -122,8 +121,8 @@ and coupled surface/moving-support placement/releases retain their queued gates.
   change accepted documents.
 - Prepare decoding/solving/fitting/baking offline. Playback samples prepared curves;
   no synchronous workers, contact solving, source hashing or catalogue scans.
-- Routine supported operations remain local/offline. AI development tools and
-  optional DCC bridges are not mandatory runtime dependencies.
+- Routine supported operations remain local/offline. Optional development
+  tools and DCC bridges are not mandatory runtime dependencies.
 - Stage saves/outputs atomically, preserve the last successful build, migrate
   versions explicitly, and keep targets/derived results independent.
 - Keep commercial inputs, private paths/settings, captures, caches, secrets,
@@ -506,7 +505,7 @@ it does not block original fixture work. Process isolation is no license excepti
 
 Use installed-tool detection or vetted app-local versioned helpers with integrity,
 cancellation and practical readiness messages. No global installs, arbitrary fetched
-scripts or required paid DCC. REA/Universal Modder/Godot research is development aid,
+scripts or required paid DCC. External component research is development aid,
 not adapter proof or a new runtime/editor requirement.
 
 Review upstream changes separately:
@@ -609,7 +608,7 @@ No Goku-specific numerical dispatch is permitted.
 | REQ03 Four games | 11/12/14 | A09/A11/A17/A18 |
 | REQ04 General motion | 7/15 | A05/A06/A07/A14 |
 | REQ05 Native preservation | 3/4/10/11 | A09/A10/A12 |
-| REQ06 Offline work | 3/13 | Supported operations without mandatory AI/cloud |
+| REQ06 Offline work | 3/13 | Supported operations without mandatory cloud services |
 | REQ07 Shared library | 6 | A03/A04 |
 | REQ08 Native editor | 4/5/7 | A01/A02/A08/A19 |
 | REQ09 Complete models | 10/11 | A11/A12/A16 |

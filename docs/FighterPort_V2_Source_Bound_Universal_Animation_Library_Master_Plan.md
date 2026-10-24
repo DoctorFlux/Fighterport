@@ -16,7 +16,7 @@
 
 # 1. Live repository inspection and decisions
 
-As inspected on 18 October 2026, V2's public `main` is **`7decc0cf094f6f1dd4c5f0abff325b791704e017`**, titled *Record portable preview acceptance and refresh stale GUI controls*. Check actual local/remote HEAD again before changing anything because Codex may have continued work. Do not confuse this repo with the retired `DoctorFlux/fighterport-studio`.
+As inspected on 18 October 2026, V2's public `main` is **`7decc0cf094f6f1dd4c5f0abff325b791704e017`**, titled *Record portable preview acceptance and refresh stale GUI controls*. Check actual local/remote HEAD again before changing anything because development may have continued. Do not confuse this repo with the retired `DoctorFlux/fighterport-studio`.
 
 Repository `docs/DEVELOPMENT_STATUS.md` records the following **repository-reported** results (not independently rerun in the present conversation):
 
@@ -306,7 +306,7 @@ FighterPort Studio V2 (existing BrawlCrate WinForms UI and Model Previewer)
 
 # 11. Concrete implementation phases and acceptance gates
 
-## Phase L0 — Source-bound Brawl library: NEXT executable Codex task
+## Phase L0 — Source-bound Brawl library: next implementation task
 
 **Goal:** In V2's actual native UI, index Brawl Mario and Snake supplied model/motion PACs as read-only game-file sources. Their 297/355 motion metadata (as declared by existing project tests) should be visible in the GLOBAL library linked to the correct model; use one clip from each source on the *other* active fighter without a repeated donor-model picker. Do not refactor the already passing original model browser or Brawl retarget solver unnecessarily.
 
@@ -368,7 +368,7 @@ Before integrating third-party code, check its **actual current API, license, co
 
 ---
 
-# 14. Instructions for Codex to integrate this document
+# 14. Instructions to integrate this document
 
 1. Read V2 `AGENTS.md`, `docs/MASTER_PLAN.md`, `docs/DEVELOPMENT_STATUS.md`, `docs/FORMAT_SUPPORT.md`, `docs/RETARGETING.md`, `docs/TESTING.md` and `docs/plans/current.md` plus the present document. Re-inspect actual HEAD.
 2. Place this exact specification at `docs/V2_SOURCE_BOUND_UNIVERSAL_ANIMATION_LIBRARY.md`; add a short link and scope amendment to the master plan. Avoid copying legacy V1 Authoring/PreviewWorkspace architecture. Do not make a second task queue.
