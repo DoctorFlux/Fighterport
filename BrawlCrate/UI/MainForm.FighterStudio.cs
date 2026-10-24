@@ -44,16 +44,16 @@ namespace BrawlCrate.UI
             if(!StartFighterProject(project))return false;_fighterForm.BindWorkspaceScene(scene);return true;
         }
 
-        internal bool ChooseFighterProject()
+        internal bool ChooseFighterProject(IWin32Window owner = null)
         {
             using (OpenFileDialog dialog = new OpenFileDialog
                    {Title = "Open Fighter", Filter = "FighterPort Studio project (*.fpstudio)|*.fpstudio"})
             {
-                return dialog.ShowDialog(this) == DialogResult.OK && OpenFighterProject(dialog.FileName);
+                return dialog.ShowDialog(owner ?? this) == DialogResult.OK && OpenFighterProject(dialog.FileName, owner);
             }
         }
 
-        internal bool OpenFighterProject(string path)
+        internal bool OpenFighterProject(string path, IWin32Window owner = null)
         {
             FighterProject project = null;
             try
@@ -65,7 +65,7 @@ namespace BrawlCrate.UI
             catch (Exception ex)
             {
                 project?.Dispose();
-                MessageBox.Show(this, ex.Message, "Could not open fighter", MessageBoxButtons.OK,
+                MessageBox.Show(owner ?? this, ex.Message, "Could not open fighter", MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
                 return false;
             }

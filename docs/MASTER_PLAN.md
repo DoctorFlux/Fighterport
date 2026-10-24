@@ -6,8 +6,9 @@
 24 October implementation follow-up: the user explicitly requested starting the
 simpler workspace now while preserving the full BrawlCrate Model Previewer and
 original Next retargeter. G1 is the ONE current substep of incomplete M2.
-Preview.15 implements its first bounded increment with 163 fresh scoped checks
-and 25 actually inspected PNGs; broader task usability/input/DPI remain open.
+Preview.16 implements contextual task flow and source setup/repair, with 257
+fresh scoped checks and 43 actually inspected PNGs. Broader human task usability,
+physical/common-dialog input and DPI remain open. The root tweak stays deferred.
 Complete contact/context work stays queued with every existing failure and gate.
 
 ## 1 Product direction and request boundary
@@ -88,10 +89,11 @@ game installation or game test is claimed.** Older checkpoint counts have
 different scopes and must not be added or treated as completion percentages.
 
 **M2 remains incomplete and is the only active milestone.** Its current bounded
-substep is G1 workspace task-flow/usability qualification. Preview.15 now has
-[fresh workspace evidence](SIMPLE_WORKSPACE_ACCEPTANCE_2026-10-24.md): 61 checks in
-each supplied retarget direction, 41 procedural native-controls checks and 25
-inspected PNGs. It retains original v7 unchanged; this is neither full native
+substep is G1 workspace task-flow/usability qualification. Preview.16 has
+[fresh workspace-flow evidence](WORKSPACE_FLOW_ACCEPTANCE_2026-10-24.md): 47 flow
+and 61 editing checks per supplied direction, 41 procedural native-controls
+checks and 43 inspected PNGs. Historical preview.15 remains in its own receipt.
+This retains original v7 unchanged and establishes neither full native
 parity nor general motion-quality acceptance. Full authentic support context
 and coupled surface/moving-support placement/releases retain their queued gates.
 
@@ -156,9 +158,12 @@ only for demonstrated routes, not empty frameworks for every future game.
 ## 5 Simpler workspace and remaining scope
 
 The supplied image is a structural proposal, not a current screenshot. Its light
-colors do not change the dark native theme. Preview.15 now wraps the complete
+colors do not change the dark native theme. Preview.15 wraps the complete
 native editor with the four-stage strip, left source drawer, compact task panel
 and Focus editor. Existing expert workflows stay in native windows and More tools.
+Preview.16 adds contextual Continue/readiness, direct source add/exact repair,
+visible project/tools entry and paste-path target/project dialogs, with actual
+handler/model-only resume evidence. The whole native editor remains mounted.
 Direct native startup remains; broader start/resume, operations and destination
 choices below are requirements rather than claims of implemented support.
 

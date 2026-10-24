@@ -2,7 +2,7 @@
 
 This is the public unified source repository at https://github.com/DoctorFlux/Fighterport.
 It imports the BrawlCrate-based Next preview.14 source and integrated owned engine;
-the current application is **preview.15-simple-workspace**.
+the current implementation is **preview.16-workspace-flow**.
 The two predecessor repositories are private preserved histories. New commits use
 the DoctorFlux identity without Codex author, committer or coauthor attribution;
 upstream copyrights, licenses and notices remain intact.
@@ -19,17 +19,27 @@ Fighterport now opens with **Source -> Target -> Preview and fix -> Export**
 around the complete dark BrawlCrate Model Previewer and existing animation engine.
 Choose a source-bound library clip, open the target model, preview the transfer,
 edit with the native tools, then export the selected CHR0 or save the project.
+Contextual **Continue** actions and visible readiness explain the next step.
+**New project**, **Open project** and **More tools** are visible commands;
+target/project opening accepts a pasted path or the standard **Browse** dialog.
+Invalid paths are explained inline before loading. Source registration resets
+pairing approval when its inputs change and selects the committed clip. Source
+**Repair** checks the exact indexed identity, supports cancellation and updates
+the library atomically after validation. Untouched empty projects start clean.
 The source library collapses, **Focus editor** restores editing room, and
 **More tools** retains the expert commands. Original resources/animation lists,
 the Bones panel, camera/materials, transform tools, autokeys, interpolation,
 timeline and Undo remain together in the original native control.
 
-Fresh verification passes **163 scoped checks**: 61 in each supplied retarget
-direction and 41 procedural native-controls checks, with **25 inspected PNGs**.
-Broader M2/G1 usability, physical input/DPI and game acceptance remain incomplete. See
-[workspace acceptance](docs/SIMPLE_WORKSPACE_ACCEPTANCE_2026-10-24.md) for the
-exact commands, inspected captures and limits. These checks do not change the
-original Next v7 retargeter or close the queued contact-context work.
+Fresh preview.16 verification passes **257 scoped checks** with **43 actually
+inspected PNGs**. The
+[workspace-flow acceptance record](docs/WORKSPACE_FLOW_ACCEPTANCE_2026-10-24.md)
+records actual commands, outcomes and limits. Historical preview.15 passed
+**163 scoped checks** with **25 inspected PNGs**, as recorded in
+[its workspace receipt](docs/SIMPLE_WORKSPACE_ACCEPTANCE_2026-10-24.md); those
+results do not qualify preview.16. Broader M2/G1 usability, physical input/DPI and
+game acceptance remain incomplete. Original Next v7 is unchanged; contact-context
+work and the later body-bone/protected-motion-control policy remain queued.
 
 Use **Animation Controls** to set up an existing rig, add pins to selected bones,
 soft-pin hands/feet, follow an existing animation, or create an animation from a
@@ -99,7 +109,8 @@ Launch with `scripts/Run.ps1`; use `-NativeDirectory <new-folder>` to select a
 separate build, or `-Check` to print the executable selected without launching it.
 The retained executable is `FighterPortStudioV2.exe`.
 See [integration and verification](docs/ENGINE_INTEGRATION.md),
-[current workspace evidence](docs/SIMPLE_WORKSPACE_ACCEPTANCE_2026-10-24.md),
+[workspace-flow evidence](docs/WORKSPACE_FLOW_ACCEPTANCE_2026-10-24.md),
+[historical preview.15 workspace evidence](docs/SIMPLE_WORKSPACE_ACCEPTANCE_2026-10-24.md),
 [historical contact authoring, native profiles and painting evidence](docs/CONTACT_AUTHORING_ACCEPTANCE_2026-10-24.md),
 [earlier contact preservation and custom slots](docs/CONTACT_SLOTS_ACCEPTANCE_2026-10-24.md),
 [historical boundary fitting and Mario/Snake save evidence](docs/TRANSITION_UI_ACCEPTANCE_2026-10-24.md),

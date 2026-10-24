@@ -51,7 +51,8 @@ namespace BrawlCrate.UI
         internal void InitializeFighterProject(FighterProject project)
         {
             _fighterProject = project ?? throw new ArgumentNullException(nameof(project));
-            _fighterDirty = string.IsNullOrEmpty(project.ManifestPath);
+            _fighterDirty = string.IsNullOrEmpty(project.ManifestPath) &&
+                (project.RegisteredAssets().Any() || project.AnimationControls.Any() || project.Name != "New Fighter");
             ClientSize = new Size(1320, 850);
             MinimumSize = new Size(1050, 650);
             StartPosition = FormStartPosition.CenterScreen;
@@ -59,7 +60,7 @@ namespace BrawlCrate.UI
             ToolStrip toolbar = new ToolStrip {Name = "fighterToolbar", Dock = DockStyle.Top, GripStyle = ToolStripGripStyle.Hidden};
             ToolStripDropDownButton file = new ToolStripDropDownButton("Fighter") {Name = "fighterProjectMenu"};
             file.DropDownItems.Add("New Fighter", null, (s, e) => MainForm.Instance.NewFighterProject());
-            file.DropDownItems.Add("Open Fighter...", null, (s, e) => MainForm.Instance.ChooseFighterProject());
+            file.DropDownItems.Add("Open Fighter...", null, (s, e) => MainForm.Instance.ChooseFighterProject(this));
             file.DropDownItems.Add("Save As...", null, (s, e) => SaveFighterFromUi(true));
             toolbar.Items.Add(file);
             _fighterName = new ToolStripTextBox {Name = "fighterName", Text = project.Name, AutoSize = false, Width = 145, MaxLength = 120};

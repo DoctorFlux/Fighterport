@@ -1,25 +1,42 @@
 # Development status — 24 October 2026 workspace increment
 
-The current Fighterport application is **preview.15-simple-workspace**
-(`2.0.0-preview.15-simple-workspace`). Source -> Target -> Preview and fix ->
+The current Fighterport implementation is **preview.16-workspace-flow**
+(`2.0.0-preview.16-workspace-flow`). Source -> Target -> Preview and fix ->
 Export now surrounds the complete dark BrawlCrate Model Previewer. The existing
 source library and read-only donor audition, target loading, original Next v7
 transfer, native controls and protected CHR0/project output remain the underlying
 operations. Collapsible panels and Focus editor preserve editing room; expert
 commands remain accessible through More tools. Launch with `scripts/Run.ps1`.
 
+This increment adds contextual Continue actions and actual readiness messages,
+visible More tools/Open project/New project commands, and reusable target/project
+file dialogs with a pasteable path, standard Browse, and inline existence checks.
+The owning native operation still validates file contents before changing the
+document. Source Repair validates the exact indexed identity, reports failures
+inline and commits a successful update atomically with cancellation support.
+Registration resets pairing approval after changed inputs, explains invalid
+input inline and selects the committed clip. An untouched empty project remains
+clean; no dummy save is required merely to open another project.
+
 The user's later TopN/TransN/YRotN/XRotN protection request is recorded as queued
 G2 work in MASTER_PLAN section 7: body-bone corrections, with those global/motion
-controls following actual source motion only. Preview.15 leaves the solver and
+controls following actual source motion only. Preview.16 leaves the solver and
 native control authoring unchanged; it does not claim this policy is implemented.
 
-Fresh private-desktop verification passes **163 scoped checks**: 61 in each
-supplied retarget direction and 41 original procedural native-controls checks,
-with **25 actually inspected PNGs**. Transfer output matches a separately prepared
-original Next bake; this proves route parity, not universal motion quality.
-See [workspace acceptance](SIMPLE_WORKSPACE_ACCEPTANCE_2026-10-24.md) for actual
-commands, inspected captures and limitations. These are scoped workspace checks,
-not a full-suite pass or completed first-time-user/physical-input acceptance.
+Fresh preview.16 private-desktop verification passes **257 scoped checks**:
+47 new task-flow checks and 61 editing checks per supplied direction, plus 41
+procedural native-controls checks. All **43 final PNGs** were actually inspected.
+[Workspace-flow acceptance](WORKSPACE_FLOW_ACCEPTANCE_2026-10-24.md) records
+actual commands, handler steps, development failures and limits. Human task
+outcomes and physical/common-dialog input/DPI remain unqualified.
+
+Historical preview.15 passed **163 scoped checks**: 61 in each supplied retarget
+direction and 41 original procedural native-controls checks, with **25 actually
+inspected PNGs**. Its transfer output matched a separately prepared original Next
+bake; this proved route parity for that revision, not universal motion quality.
+See [its workspace receipt](SIMPLE_WORKSPACE_ACCEPTANCE_2026-10-24.md). Those
+results do not qualify preview.16 or complete first-time-user/physical-input
+acceptance, and are not a full-suite pass.
 
 The imported preview.14 baseline was historical Next
 `07cb03299b8a3e63f30642dd8e45a3403dacaaa7`. Its

@@ -13,7 +13,12 @@ namespace BrawlCrate.Studio
         private readonly LinkLabel _source;
         private readonly LinkLabel _target;
         private readonly LinkLabel _result;
+        private readonly Label _readiness;
         private readonly Button _primary;
+        private readonly Button _browse;
+        private readonly Button _addSource;
+        private readonly Button _repairSource;
+        private readonly Button _changeTarget;
         private readonly Button _audition;
         private readonly Button _controls;
         private readonly Button _motions;
@@ -29,6 +34,8 @@ namespace BrawlCrate.Studio
         private bool _canTransfer;
         private bool _canExport;
         private bool _busy;
+        private bool _canRepair;
+        private string _readinessText;
 
         internal event Action<int> StageRequested;
         internal event Action<string> ActionRequested;
@@ -71,6 +78,9 @@ namespace BrawlCrate.Studio
             _source = AddSummary("Source", "workspaceSourceSummary", 0);
             _target = AddSummary("Target", "workspaceTargetSummary", 1);
             _result = AddSummary("Result", "workspaceResultSummary", 2);
+            _readiness = TextLabel("workspaceReadiness", "", 8);
+            _readiness.AccessibleName = "Workspace readiness";
+            AddRow(_readiness);
 
             _primary = ActionButton("workspacePrimaryAction", "", "source");
             _primary.MinimumSize = new Size(0, 38);
@@ -79,6 +89,10 @@ namespace BrawlCrate.Studio
             _primary.Font = _sectionFont;
             _primary.Margin = new Padding(0, 6, 0, 12);
             AddRow(_primary);
+            _browse = AddAction("workspaceBrowseSourcesAction", "Browse sources", "source");
+            _addSource = AddAction("workspaceAddSourceAction", "Add source...", "add-source");
+            _repairSource = AddAction("workspaceRepairSourceAction", "Repair source...", "repair-source");
+            _changeTarget = AddAction("workspaceChangeTargetAction", "Change target model", "target");
             _audition = AddAction("workspaceAuditionAction", "Preview original", "audition");
             _controls = AddAction("workspaceControlsAction", "Set up controls", "controls");
             _motions = AddAction("workspaceMotionsAction", "Add target animations", "motions");
@@ -109,7 +123,8 @@ namespace BrawlCrate.Studio
         }
 
         internal void SetState(string source, string target, string result,
-            bool hasSource, bool hasTarget, bool canTransfer, bool canExport, bool busy)
+            bool hasSource, bool hasTarget, bool canTransfer, bool canExport, bool busy,
+            string readiness = null, bool canRepair = false)
         {
             _source.Text = Summary(source, "No source selected");
             _target.Text = Summary(target, "No target model open");
@@ -119,6 +134,8 @@ namespace BrawlCrate.Studio
             _canTransfer = canTransfer;
             _canExport = canExport;
             _busy = busy;
+            _readinessText = readiness;
+            _canRepair = canRepair;
             UpdateActions();
         }
 
@@ -136,13 +153,47 @@ namespace BrawlCrate.Studio
                     "Preview the transfer, then use the full native editor to review and adjust the result.",
                     "Export the selected target animation or save the project to continue later."
                 }[_stage];
-                string[] actions = { "source", "target", "transfer", "export" };
-                string[] labels = { "Browse sources", "Open target model", "Preview transfer", "Export result" };
-                _primary.Text = labels[_stage];
+                string action;
+                string label;
+                bool enabled = true;
+                switch (_stage)
+                {
+                    case 0:
+                        action = _hasSource ? "continue" : "source";
+                        label = !_hasSource ? "Browse sources" :
+                            _hasTarget ? "Continue to preview" : "Continue to target";
+                        break;
+                    case 1:
+                        action = _hasTarget ? "continue" : "target";
+                        label = _hasTarget ? "Continue to preview" : "Open target model";
+                        break;
+                    case 2:
+                        action = !_hasSource ? "source" : !_hasTarget ? "target" : "transfer";
+                        label = !_hasSource ? "Choose source" :
+                            !_hasTarget ? "Open target model" : "Preview transfer";
+                        enabled = action != "transfer" || _canTransfer;
+                        break;
+                    default:
+                        action = "export";
+                        label = "Export result";
+                        enabled = _canExport;
+                        break;
+                }
+                _primary.Text = label;
                 _primary.AccessibleName = _primary.Text;
-                _primary.Tag = actions[_stage];
-                _primary.Enabled = !_busy && (_stage < 2 ||
-                    (_stage == 2 ? _hasSource && _hasTarget && _canTransfer : _canExport));
+                _primary.Tag = action;
+                _primary.Enabled = !_busy && enabled;
+                _readiness.Text = string.IsNullOrWhiteSpace(_readinessText) ? DefaultReadiness() : _readinessText;
+                _readiness.AccessibleDescription = _readiness.Text;
+
+                _browse.Visible = _stage == 0 && _hasSource;
+                _browse.Enabled = !_busy;
+                _addSource.Visible = _stage == 0;
+                _addSource.Enabled = !_busy;
+                _repairSource.Visible = _stage == 0 && _canRepair;
+                _repairSource.Enabled = !_busy && _canRepair;
+                _changeTarget.Visible = _stage == 1 && _hasTarget;
+                _changeTarget.Enabled = !_busy && _hasTarget;
 
                 _audition.Visible = _stage == 0;
                 _audition.Enabled = _hasSource && !_busy;
@@ -164,6 +215,28 @@ namespace BrawlCrate.Studio
             {
                 _layout.ResumeLayout(true);
                 ResumeLayout(true);
+            }
+        }
+
+        private string DefaultReadiness()
+        {
+            if (_busy) return "Finish or cancel the current operation before continuing.";
+            switch (_stage)
+            {
+                case 0:
+                    return _hasSource ? "Source ready. Continue, or preview the original animation." :
+                        "Choose an available animation with its original source model.";
+                case 1:
+                    return _hasTarget ? "Target ready. Continue to preview or edit the model directly." :
+                        "Open an existing model. Native editing does not require a source animation.";
+                case 2:
+                    if (!_hasSource) return "Choose a source for transfer. Existing target animations remain editable.";
+                    if (!_hasTarget) return "Open the target model before previewing a transfer.";
+                    return _canTransfer ? "Ready to preview transfer. Review the resulting motion in the native editor." :
+                        "Review the current source and target before transfer.";
+                default:
+                    return _canExport ? "The selected target animation can be exported as native Brawl CHR0." :
+                        "Select an accepted target skeletal animation before exporting.";
             }
         }
 

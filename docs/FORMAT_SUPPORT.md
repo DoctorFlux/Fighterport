@@ -2,20 +2,32 @@
 
 ## 24 October 2026 workspace baseline
 
-The current application is **preview.15-simple-workspace**
-(`2.0.0-preview.15-simple-workspace`). Its four stages reuse existing Brawl
+The current implementation is **preview.16-workspace-flow**
+(`2.0.0-preview.16-workspace-flow`). Its four stages reuse existing Brawl
 source-library/model/CHR0 operations and the complete native Model Previewer;
 the original Next v7 solver and native readers/writers are unchanged. Launch
 with `scripts/Run.ps1`. This UI increment adds no game adapter, container writer,
-runtime profile, packaging or game support.
+runtime profile, packaging or game support. Contextual Continue/readiness,
+visible project/tool commands, and paste-path/Browse target/project dialogs
+improve access to existing operations. Path existence is metadata validation,
+not proof of a supported format; the native loader remains authoritative.
 
-Fresh private-desktop checks pass **61 in each supplied retarget direction plus
-41 procedural native-controls checks, 163 scoped checks total**. All **25 final
-PNGs** were actually inspected. See
-[workspace acceptance](SIMPLE_WORKSPACE_ACCEPTANCE_2026-10-24.md) for the exact
-workflow, output comparisons, inspected images and limits. M2 and broader G1
-usability remain incomplete; physical pointer/DPI and first-time-user task
-acceptance remain separate.
+Source registration resets pairing approval when candidate inputs change,
+reports invalid input inline and selects the committed clip. Source Repair
+validates exact indexed identities, supports cancellation and commits successful
+updates atomically. Untouched empty projects remain clean. None of this adds
+another decoder, writer or generalized source-model association rule.
+
+Fresh preview.16 verification passes **257 scoped checks** with **43 actually
+inspected PNGs**. See the
+[workspace-flow record](WORKSPACE_FLOW_ACCEPTANCE_2026-10-24.md) for actual
+commands, outcomes and limits. Historical preview.15 passed
+**163 scoped checks** with **25 inspected PNGs**;
+[that receipt](SIMPLE_WORKSPACE_ACCEPTANCE_2026-10-24.md) qualifies its exact
+revision and operations only. M2 and broader G1 usability remain incomplete;
+physical pointer/DPI, first-time-user tasks and actual games need separate
+evidence. The queued body-bone/protected-motion-control policy is unchanged and
+is not implemented by this workspace increment.
 
 The imported historical preview.14 Next source was
 `07cb03299b8a3e63f30642dd8e45a3403dacaaa7`. Its
@@ -41,6 +53,12 @@ tools, physical input/DPI, generalization, non-Brawl adapters and games are queu
 in the sole current M2 plan.
 
 ## Implemented increments and bounded receipts
+
+Preview.16 adds workspace readiness/continuation, discoverable project/tool
+commands, real target/project file selection and guarded source registration/
+repair through the existing native document and library ownership. The complete
+native editor and original Next v7 are retained. Its fresh acceptance remains
+pending in [workspace-flow evidence](WORKSPACE_FLOW_ACCEPTANCE_2026-10-24.md).
 
 Preview.15 adds Source -> Target -> Preview and fix -> Export around the complete
 native editor, with the existing read-only source audition and independently

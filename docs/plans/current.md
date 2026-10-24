@@ -62,13 +62,32 @@ failures and limitations. Historical preview.14 counts are not these results.
 
 ## One current executable substep — G1 task-flow/usability qualification
 
-Continue the same workspace substep from this checked first increment. Qualify
-first-use and repeat source -> target -> native edit -> output tasks, including
-real source registration/repair and target-open actions, More tools discoverability
-and direct/model-only project resume. Preserve target/clip/frame ownership and
-explain readiness with actual current source/target state. Measure task steps,
-hidden commands and wrong-document errors before calling the simpler workflow
-complete. Do not add unsupported operations, games, synchronized comparison or
+The next user continuation keeps G1 current and explicitly leaves the root-bone
+tweak for later. Preview.16's bounded increment adds contextual Continue and
+readiness, direct source add/repair, visible project/tool entry, actual path-entry
+target/project dialogs and model-only resume. Correct stale association approval,
+exact committed-source selection and failed-byte-verification readiness without
+changing original Next or any numerical bound. An untouched empty project should
+open/resume another project without a redundant save prompt.
+
+The native/engine/harness build and new -WorkspaceFlow private-desktop case passed
+in both supplied directions, along with the existing editing and procedural
+native-controls regressions: 257 scoped checks and 43 actually inspected PNGs.
+These check real registration and repeat deduplication, unapproved association identity,
+target cancellation, compact-toolbar visibility, missing/changed-byte source
+rejection, wrong/exact repair and cancellation, model-only reopen, native body edit/
+Undo and independent native output/reopen. The bounded mechanical increment is
+accepted in [its receipt](../WORKSPACE_FLOW_ACCEPTANCE_2026-10-24.md), with exact
+commands, test-build distinctions, development failures and limits. No physical/common-dialog
+input, DPI or first-time-human usability claim follows from handler automation.
+
+Next, continue the same G1 substep with remaining project/task usability:
+actual New project replacement and unsaved-change choices, readable scaling and
+first/repeat human task outcomes. The checked registration/repair, target-open,
+More tools and model-only resume handlers are implemented; do not treat their
+programmatic steps as human task completion. Preserve target/clip/frame ownership
+and explain readiness with current state. Measure steps, hidden commands and
+wrong-document errors before calling the workflow complete. Do not add unsupported operations, games, synchronized comparison or
 automatic model-port claims merely to populate the proposed layout.
 
 Use background handler/capture evidence for the next bounded mechanical cases;

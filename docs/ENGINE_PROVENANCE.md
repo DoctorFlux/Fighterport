@@ -1,5 +1,25 @@
 # Owned-engine integration ledger — 24 October 2026
 
+24 October **preview.16-workspace-flow** adds original owned native workspace
+readiness and Continue actions, visible project/More tools commands, and a shared
+paste-path/Browse file dialog for existing target/project operations. File-path
+checks inspect metadata only; the owning native loader validates contents.
+Existing source registration now resets pairing approval for changed inputs,
+reports invalid input inline and selects its committed clip. Exact source Repair
+uses inline validation, cancellation and an atomic successful library update.
+Untouched empty projects remain clean.
+
+The complete BrawlCrate Model Previewer, original Next v7, native readers/writers
+and numerical acceptance bounds are unchanged. No third-party source, package,
+binary dependency or notice obligation is added. Fresh preview.16 verification
+passes 257 scoped native checks with 43 actually inspected PNGs, recorded in
+[workspace-flow acceptance](WORKSPACE_FLOW_ACCEPTANCE_2026-10-24.md). M2/G1
+task usability, physical input/DPI and actual game evidence remain incomplete;
+the body-bone/protected-motion-control policy stays queued for later work.
+
+The entries below retain historical component changes and evidence; preview.15
+counts do not validate preview.16.
+
 24 October **preview.15-simple-workspace** adds original owned WinForms workspace
 presentation around the complete existing BrawlCrate Model Previewer: Source ->
 Target -> Preview and fix -> Export. It reuses the existing immutable source-bound
@@ -15,7 +35,7 @@ evidence. M2 and broader workspace usability remain incomplete; coupled surface/
 moving-support contacts and every unresolved advanced gate remain queued.
 
 The entries below retain the component changes and evidence of their historical
-application revisions; they do not independently validate preview.15.
+application revisions; they do not independently validate preview.16.
 
 24 October preview.14 adds original owned manual bone-contact authoring and
 bounded native derivative projection through the existing isolated host, using

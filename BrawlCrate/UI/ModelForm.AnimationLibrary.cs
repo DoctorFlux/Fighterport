@@ -167,11 +167,12 @@ namespace BrawlCrate.UI
             long selectionStart=Stopwatch.GetTimestamp();
             _libraryLastTarget=modelEditControl1.TargetModel;
             var item=LibrarySelection;bool available=!_libraryReplacingTree&&!_librarySearchTimer.Enabled&&item?.State==LibrarySourceState.Available;
+            available=available&&!SimpleWorkspaceSourceNeedsRepair(item);
             _libraryPreview.Enabled=available;_libraryUse.Enabled=available&&modelEditControl1.TargetModel is MDL0Node;
-            _libraryRepair.Enabled=item!=null&&!_libraryReplacingTree&&!_librarySearchTimer.Enabled;
+            _libraryRepair.Enabled=SimpleWorkspaceSourceNeedsRepair(item)&&!_libraryReplacingTree&&!_librarySearchTimer.Enabled;
             _libraryDetails.Text=item==null?"One shared library across all fighters. Add an original model and its complete motion set.":
                 item.Motion.Game+" · "+item.Motion.GameVersion+" · "+item.Clip.Channel+" v"+item.Clip.NativeVersion+Environment.NewLine+
-                item.Clip.FrameCount+" ticks @ "+item.Clip.TicksPerSecond+" Hz · "+(item.Clip.Loop?"Loop":"No loop")+" · "+LibraryStateText(item.State)+Environment.NewLine+
+                item.Clip.FrameCount+" ticks @ "+item.Clip.TicksPerSecond+" Hz · "+(item.Clip.Loop?"Loop":"No loop")+" · "+SimpleWorkspaceSourceStateText(item)+Environment.NewLine+
                 "Original: "+(item.Model?.Name??"Not verified")+" · "+item.Clip.ResourceKey+Environment.NewLine+
                 (item.Clip.AssociationEvidence??item.Clip.AssociationIssue)+Environment.NewLine+
                 (item.Clip.UnboundSourceTracks==null?"":"Native tracks absent on original model (not evaluated): "+item.Clip.UnboundSourceTracks+Environment.NewLine)+"SHA256: "+item.Clip.ResourceSha256;
@@ -180,12 +181,25 @@ namespace BrawlCrate.UI
         }
         private void AddLibrarySource()
         {
+            modelEditControl1.StopAnim();ReleaseLibraryPreview();
             using(var choose=new LibrarySourceDialog())
             {
                 if(choose.ShowDialog(this)!=DialogResult.OK)return;
                 LibraryImportPlan plan=InventoryLibrarySource(choose.Registration);
                 if(plan==null)return;
-                int added=_library.Register(plan);_librarySearchTimer.Stop();_librarySearch.Text="";_librarySearchTimer.Stop();RefreshLibrary();
+                int added=_library.Register(plan);
+                var data=_library.Read();
+                var motion=data.Mounts.First(m=>string.Equals(m.LocalPath,plan.MotionMount.LocalPath,StringComparison.OrdinalIgnoreCase)&&
+                    m.ContainerSha256==plan.MotionMount.ContainerSha256&&m.Game==plan.MotionMount.Game&&m.GameVersion==plan.MotionMount.GameVersion);
+                var original=data.Models.First(m=>m.ResourceKey==plan.Model.ResourceKey&&m.ResourceSha256==plan.Model.ResourceSha256&&
+                    data.Mounts.Any(a=>a.Id==m.MountId&&string.Equals(a.LocalPath,plan.ModelMount.LocalPath,StringComparison.OrdinalIgnoreCase)&&
+                        a.ContainerSha256==plan.ModelMount.ContainerSha256&&a.Game==plan.ModelMount.Game&&a.GameVersion==plan.ModelMount.GameVersion));
+                string selected=data.Clips.Where(c=>c.MountId==motion.Id&&plan.Clips.Any(p=>
+                        p.ResourceKey==c.ResourceKey&&p.ResourceSha256==c.ResourceSha256&&p.ModelId==c.ModelId))
+                    .OrderByDescending(c=>c.ModelId==original.Id).ThenByDescending(c=>c.Channel=="CHR0 skeletal")
+                    .ThenBy(c=>c.Name,StringComparer.OrdinalIgnoreCase).Select(c=>c.Id).FirstOrDefault();
+                _simpleWorkspaceSourceIssue=_simpleWorkspaceIssueClip=null;
+                _librarySearchTimer.Stop();_librarySearch.Text="";_librarySearchTimer.Stop();RefreshLibrary(selected);
                 _fighterStatus.Text="Shared library: "+added+" entries added. Original sources remain read-only.";
             }
         }
@@ -304,27 +318,53 @@ namespace BrawlCrate.UI
         private void RepairLibrarySource()
         {
             var item=LibrarySelection;if(item==null)return;
+            if(!SimpleWorkspaceSourceNeedsRepair(item))return;
+            modelEditControl1.StopAnim();ReleaseLibraryPreview();
             var data=_library.Read();var ids=new[]{item.Clip.MountId,item.Model?.MountId}.Where(id=>id!=null).Distinct().ToArray();
             var choices=ids.Select(id=>Tuple.Create(false,id,Path.GetFileName(data.Mounts.Single(m=>m.Id==id).LocalPath))).ToList();
             foreach(var sourceId in ids.Select(id=>data.Mounts.Single(m=>m.Id==id)).Where(m=>m.OriginPath!=null).Select(m=>m.GameSourceId).Distinct())
                 choices.Add(Tuple.Create(true,sourceId,"Disc image · "+data.GameLocations.Single(l=>l.Id==sourceId).GameVersion));
-            using(var chooser=new Form{Text="Repair Missing Source",ClientSize=new Size(560,135),StartPosition=FormStartPosition.CenterParent,FormBorderStyle=FormBorderStyle.FixedDialog,MaximizeBox=false,MinimizeBox=false})
+            using(var chooser=new Form{Name="LibraryRepairDialog",Text="Repair Original Source",ClientSize=new Size(650,252),StartPosition=FormStartPosition.CenterParent,FormBorderStyle=FormBorderStyle.FixedDialog,MaximizeBox=false,MinimizeBox=false,ShowInTaskbar=false})
             {
-                var list=new ComboBox{Name="libraryRepairMount",DropDownStyle=ComboBoxStyle.DropDownList,Bounds=new Rectangle(14,40,532,26)};
+                var list=new ComboBox{Name="libraryRepairMount",DropDownStyle=ComboBoxStyle.DropDownList,Bounds=new Rectangle(14,44,622,26)};
                 foreach(var choice in choices)list.Items.Add(choice.Item3);list.SelectedIndex=0;
                 if(choices.Any(c=>c.Item1)&&ids.Any(id=>{var mount=data.Mounts.Single(m=>m.Id==id);return mount.OriginPath!=null&&!File.Exists(mount.OriginPath);}))list.SelectedIndex=choices.FindIndex(c=>c.Item1);
-                var browse=LibraryButton("libraryRepairBrowse","Locate Exact Source...",()=>{
+                var path=new TextBox{Name="libraryRepairPath",AccessibleName="Exact original file path",Bounds=new Rectangle(14,103,510,25)};
+                var validation=new Label{Name="libraryRepairValidation",Text="Choose the same indexed bytes at their current location. A different model or build must be added as a new source.",Bounds=new Rectangle(14,139,622,54)};
+                var apply=new Button{Name="libraryRepairApply",Text="Verify and repair",Bounds=new Rectangle(350,210,172,29)};
+                var cancel=new Button{Name="libraryRepairCancel",Text="Cancel",DialogResult=DialogResult.Cancel,Bounds=new Rectangle(536,210,100,29)};
+                var browse=new Button{Name="libraryRepairBrowse",Text="Browse...",Bounds=new Rectangle(536,101,100,29)};
+                browse.Click+=(s,e)=>{
                     var choice=choices[list.SelectedIndex];
                     using(var file=new OpenFileDialog{Title="Locate Exact Indexed Source",Filter=choice.Item1?"Disc images|*.iso;*.wbfs;*.rvz":"Native Brawl files|*.pac;*.pcs;*.brres;*.mdl0;*.chr0"})
                     {
                         if(file.ShowDialog(chooser)!=DialogResult.OK)return;
-                        ReleaseLibraryPreview();
-                        if(choice.Item1){if(LibraryWork.Run(chooser,"Verifying Original Disc",(cancel,progress)=>{_library.RepairGameSource(choice.Item2,file.FileName,cancel);return file.FileName;})==null)return;}
-                        else _library.Repair(choice.Item2,file.FileName);
-                        RefreshLibrary(item.Clip.Id);chooser.Close();
+                        path.Text=file.FileName;
                     }
-                });browse.Bounds=new Rectangle(350,88,196,30);
-                chooser.Controls.AddRange(new Control[]{new Label{Text="Locate the same bytes. A different model/build requires a new source.",Bounds=new Rectangle(14,12,532,24)},list,browse});chooser.ShowDialog(this);
+                };
+                apply.Click+=(s,e)=>{
+                    try
+                    {
+                        var choice=choices[list.SelectedIndex];
+                        string replacement=Path.GetFullPath(path.Text.Trim().Trim('"'));
+                        if(!File.Exists(replacement)){validation.Text="File not found. Paste the exact original file path or choose Browse.";return;}
+                        apply.Enabled=browse.Enabled=list.Enabled=path.Enabled=false;
+                        var repaired=LibraryWork.Run(chooser,"Verifying Original Source",(token,progress)=>{
+                            token.ThrowIfCancellationRequested();
+                            if(choice.Item1)_library.RepairGameSource(choice.Item2,replacement,token);
+                            else _library.Repair(choice.Item2,replacement,token);
+                            return replacement;
+                        });
+                        if(repaired==null)return;
+                        _simpleWorkspaceSourceIssue=_simpleWorkspaceIssueClip=null;
+                        RefreshLibrary(item.Clip.Id);chooser.DialogResult=DialogResult.OK;chooser.Close();
+                    }
+                    catch(Exception error){validation.Text=error.Message;}
+                    finally{if(!chooser.IsDisposed)apply.Enabled=browse.Enabled=list.Enabled=path.Enabled=true;}
+                };
+                chooser.Controls.AddRange(new Control[]{new Label{Text="Repair the original source without changing its identity or model association.",Bounds=new Rectangle(14,12,622,28)},list,
+                    new Label{Text="Exact original file path",Bounds=new Rectangle(14,80,622,20)},path,browse,validation,apply,cancel});
+                chooser.AcceptButton=apply;chooser.CancelButton=cancel;DarkTheme.Apply(chooser);chooser.ShowDialog(this);
             }
         }
         private void RecordLibraryExport(ResourceNode node,string destination)

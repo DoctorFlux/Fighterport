@@ -17,10 +17,12 @@ namespace BrawlCrate.UI
         private ToolStrip _simpleWorkspaceToolbar;
         private ToolStripButton[] _simpleWorkspaceStages;
         private ToolStripButton _simpleWorkspaceLibrary, _simpleWorkspaceFocus;
+        private ToolStripButton _simpleWorkspaceNewProject, _simpleWorkspaceOpenProject, _simpleWorkspaceMoreTools;
         private ToolStripLabel _simpleWorkspaceSummary;
         private int _simpleWorkspaceStage;
         private bool _simpleWorkspaceFocused, _simpleWorkspaceLayingOut;
         private bool _simpleWorkspaceLastBusy;
+        private string _simpleWorkspaceSourceIssue, _simpleWorkspaceIssueClip;
 
         private bool SimpleWorkspaceBusy =>
             _controlBusy || _retargetBusy || _workspaceBusy || _pinGesture != null;
@@ -28,7 +30,16 @@ namespace BrawlCrate.UI
         private bool SimpleWorkspaceSourceReady =>
             LibrarySelection?.State == LibrarySourceState.Available &&
             LibrarySelection.Clip.Channel == "CHR0 skeletal" &&
+            !SimpleWorkspaceSourceNeedsRepair(LibrarySelection) &&
             !_libraryReplacingTree && _librarySearchTimer?.Enabled != true;
+
+        private bool SimpleWorkspaceSourceNeedsRepair(LibrarySearchItem source) =>
+            source != null && (source.State == LibrarySourceState.Missing || source.State == LibrarySourceState.SourceChanged ||
+                source.Clip.Id == _simpleWorkspaceIssueClip && _simpleWorkspaceSourceIssue != null);
+
+        private string SimpleWorkspaceSourceStateText(LibrarySearchItem source) =>
+            source.Clip.Id == _simpleWorkspaceIssueClip && _simpleWorkspaceSourceIssue != null ?
+                "Verification failed — review original source" : LibraryStateText(source.State);
 
         private void InitializeSimpleWorkspace(ToolStrip toolbar, StatusStrip status)
         {
@@ -82,6 +93,12 @@ namespace BrawlCrate.UI
                 () => RunFighterAction(ToggleAnimationLibrary));
             _simpleWorkspaceFocus = AddFighterButton(toolbar, "Focus editor", "workspaceFocusEditor",
                 ToggleSimpleWorkspaceFocus);
+            _simpleWorkspaceMoreTools = AddFighterButton(toolbar, "More tools", "workspaceMoreTools",
+                () => RunFighterAction(() => RunSimpleWorkspaceAction("details")));
+            _simpleWorkspaceOpenProject = AddFighterButton(toolbar, "Open project", "workspaceOpenProject",
+                () => RunFighterAction(() => RunSimpleWorkspaceAction("open-project")));
+            _simpleWorkspaceNewProject = AddFighterButton(toolbar, "New project", "workspaceNewProject",
+                () => RunFighterAction(() => RunSimpleWorkspaceAction("new-project")));
 
             Controls.Add(_simpleWorkspaceBody);
             Controls.Add(_simpleWorkspaceNavigation);
@@ -146,7 +163,20 @@ namespace BrawlCrate.UI
             {
                 case "source":
                     _simpleWorkspaceFocused = false;
+                    _simpleWorkspaceStage = 0;
                     SetSimpleWorkspaceLibraryVisible(true);
+                    break;
+                case "add-source":
+                    _simpleWorkspaceFocused = false;
+                    _simpleWorkspaceStage = 0;
+                    SetSimpleWorkspaceLibraryVisible(true);
+                    AddLibrarySource();
+                    break;
+                case "repair-source":
+                    RepairLibrarySource();
+                    break;
+                case "continue":
+                    ContinueSimpleWorkspace();
                     break;
                 case "audition":
                     if (!SimpleWorkspaceSourceReady)
@@ -155,7 +185,13 @@ namespace BrawlCrate.UI
                     PreviewLibraryOriginal();
                     break;
                 case "target":
-                    ChooseFighterModel();
+                    ChooseSimpleWorkspaceTarget();
+                    break;
+                case "open-project":
+                    ChooseSimpleWorkspaceProject();
+                    break;
+                case "new-project":
+                    MainForm.Instance.NewFighterProject();
                     break;
                 case "motions":
                     ChooseFighterAnimations();
@@ -183,10 +219,133 @@ namespace BrawlCrate.UI
                     SaveFighterFromUi();
                     break;
                 case "details":
-                    _simpleWorkspaceToolbar.OverflowButton.ShowDropDown();
+                    // ToolStrip completes the clicked button's menu dismissal
+                    // after Click. Open the retained overflow on the next UI turn.
+                    BeginInvoke(new Action(() =>
+                    {
+                        if (!IsDisposed && !SimpleWorkspaceBusy)
+                            _simpleWorkspaceToolbar.OverflowButton.ShowDropDown();
+                    }));
                     break;
             }
+            if (!IsDisposed) UpdateSimpleWorkspace();
+        }
+
+        private void ContinueSimpleWorkspace()
+        {
+            if (_simpleWorkspaceStage == 1)
+            {
+                if (modelEditControl1.TargetModel == null)
+                    throw new InvalidOperationException("Open the target model before continuing.");
+                SetSimpleWorkspaceStage(2);
+                return;
+            }
+            var item = LibrarySelection;
+            if (!SimpleWorkspaceSourceReady || item == null) return;
+            modelEditControl1.StopAnim();
+            ReleaseLibraryPreview();
+            var target = modelEditControl1.TargetModel;
+            var clip = modelEditControl1.TargetAnimation;
+            int frame = modelEditControl1.CurrentFrame;
+            bool verified = false;
+            _workspaceBusy = true;
             UpdateSimpleWorkspace();
+            try
+            {
+                // Explicit preparation only. Reuse the existing offline identity
+                // verification; no source decoding or hashing is added to ticks.
+                using (var original = LoadLibrarySource(item.Clip.Id))
+                {
+                    if (original == null) return;
+                    if (LibrarySelection?.Clip.Id != item.Clip.Id ||
+                        !ReferenceEquals(target, modelEditControl1.TargetModel) ||
+                        !ReferenceEquals(clip, modelEditControl1.TargetAnimation) ||
+                        modelEditControl1.CurrentFrame != frame)
+                        throw new InvalidOperationException("The source or editable target changed. Review the current selection before continuing.");
+                    verified = true;
+                    _simpleWorkspaceSourceIssue = _simpleWorkspaceIssueClip = null;
+                }
+            }
+            catch (Exception error) when (error is IOException || error is InvalidOperationException ||
+                error is UnauthorizedAccessException)
+            {
+                _simpleWorkspaceSourceIssue = error.Message;
+                _simpleWorkspaceIssueClip = item.Clip.Id;
+                RefreshLibrary(item.Clip.Id);
+            }
+            finally
+            {
+                _workspaceBusy = false;
+                UpdateSimpleWorkspace();
+                if (_controlReloadRequested) QueueControlSetup();
+            }
+            if (verified) SetSimpleWorkspaceStage(target == null ? 1 : 2);
+        }
+
+        private void ChooseSimpleWorkspaceTarget()
+        {
+            modelEditControl1.StopAnim();
+            var project = _fighterProject;
+            using (var choose = new WorkspaceFileDialog("Open Target Model",
+                "Choose the existing model you want to animate. Original files remain unchanged.",
+                "Brawl model resources (*.pac;*.pcs;*.brres;*.mdl0)|*.pac;*.pcs;*.brres;*.mdl0|All files (*.*)|*.*",
+                "Open model"))
+            {
+                if (choose.ShowDialog(this) != DialogResult.OK) return;
+                if (!ReferenceEquals(project, _fighterProject))
+                    throw new InvalidOperationException("The project changed. Choose the target again.");
+                ImportFighterModel(choose.SelectedPath);
+                SetSimpleWorkspaceStage(1);
+            }
+        }
+
+        private void ChooseSimpleWorkspaceProject()
+        {
+            modelEditControl1.StopAnim();
+            using (var choose = new WorkspaceFileDialog("Open Fighter Project",
+                "Resume a saved Fighterport project in the full native Model Previewer.",
+                "Fighterport project (*.fpstudio)|*.fpstudio", "Open project"))
+            {
+                if (choose.ShowDialog(this) == DialogResult.OK)
+                    MainForm.Instance.OpenFighterProject(choose.SelectedPath, this);
+            }
+        }
+
+        private string SimpleWorkspaceReadiness(LibrarySearchItem source, bool hasTarget, CHR0Node clip, bool busy)
+        {
+            if (busy) return "Finish or cancel the current operation before continuing.";
+            if (_simpleWorkspaceStage == 1)
+                return hasTarget ? "Target ready. Continue to preview, set up controls or add native animations." :
+                    "Open an existing target model. You can edit it without a donor animation.";
+            if (_simpleWorkspaceStage == 3)
+            {
+                if (!hasTarget) return "Open the target model before exporting its animation.";
+                if (clip == null) return "Select a target animation in the native list, or add one from Target.";
+                if (SelectedFighterAsset()?.Retarget?.ReviewDraft == true)
+                    return "This advanced review draft is blocked. Review its unresolved gates in More tools.";
+                return "Export the selected native animation, or save the project to continue later.";
+            }
+            if (_simpleWorkspaceSourceIssue != null &&
+                (_libraryReplacingTree || source?.Clip.Id == _simpleWorkspaceIssueClip))
+                return _simpleWorkspaceSourceIssue;
+            if (_libraryReplacingTree || _librarySearchTimer?.Enabled == true)
+                return "Updating source selection. Wait for the current library results.";
+            if (source == null)
+                return "Choose an animation from Source library, or add an original model and motion set. Existing target animations remain editable.";
+            switch (source.State)
+            {
+                case LibrarySourceState.Missing:
+                    return "Original source is missing. Repair source with the exact indexed file.";
+                case LibrarySourceState.SourceChanged:
+                    return "Original source changed. Locate the exact indexed bytes with Repair source, or add a new source.";
+                case LibrarySourceState.NeedsModelAssociation:
+                    return "This motion needs its original model association. Add source and review the exact model/motion pair.";
+                case LibrarySourceState.UnsupportedChannelVersion:
+                    return "This source channel or native version is not supported for transfer. Choose a supported skeletal animation.";
+            }
+            return !hasTarget ? "Source ready. Continue to choose the target model." :
+                _simpleWorkspaceStage == 0 ? "Source and target ready. Continue to preview the transfer." :
+                    "Ready to preview transfer with original Next. Review the resulting motion before export.";
         }
 
         private void ChooseSimpleWorkspaceExport()
@@ -226,7 +385,7 @@ namespace BrawlCrate.UI
 
         private void UpdateSimpleWorkspace()
         {
-            if (_simpleWorkspaceTask == null) return;
+            if (_simpleWorkspaceTask == null || _simpleWorkspaceMoreTools == null || IsDisposed || Disposing) return;
             var selectedSource = LibrarySelection;
             bool sourceReady = SimpleWorkspaceSourceReady;
             var targetModel = modelEditControl1.TargetModel as MDL0Node;
@@ -239,7 +398,7 @@ namespace BrawlCrate.UI
                 savedSourceName + "\n" + Path.GetFileNameWithoutExtension(asset.Retarget.SourceModelPath) +
                 " · " + savedSource.Game + "\nSaved source link") :
                 selectedSource.Clip.Name + "\n" + (selectedSource.Model?.Character ?? selectedSource.Model?.Name ?? "Unresolved model") +
-                " · " + selectedSource.Motion.Game + "\n" + LibraryStateText(selectedSource.State);
+                " · " + selectedSource.Motion.Game + "\n" + SimpleWorkspaceSourceStateText(selectedSource);
             string target = !hasTarget ? null : targetModel.Name + "\n" +
                 Path.GetFileName(_fighterProject.Model?.SourcePath);
             string result = clip == null ? null : clip.Name + " · " + clip.FrameCount + " frames\n" +
@@ -251,7 +410,9 @@ namespace BrawlCrate.UI
             _simpleWorkspaceTask.SetStage(_simpleWorkspaceStage);
             _simpleWorkspaceTask.SetState(source, target, result, sourceReady, hasTarget,
                 sourceReady && hasTarget, hasTarget && clip != null && OwnsFighterRoot(clip) &&
-                    asset?.Retarget?.ReviewDraft != true, busy);
+                    asset?.Retarget?.ReviewDraft != true, busy,
+                SimpleWorkspaceReadiness(selectedSource, hasTarget, clip, busy),
+                SimpleWorkspaceSourceNeedsRepair(selectedSource));
             for (int i = 0; i < _simpleWorkspaceStages.Length; i++)
             {
                 _simpleWorkspaceStages[i].Checked = i == _simpleWorkspaceStage;
@@ -263,6 +424,8 @@ namespace BrawlCrate.UI
             _simpleWorkspaceLibrary.Checked = _libraryPane?.Visible == true;
             _simpleWorkspaceFocus.Checked = _simpleWorkspaceFocused;
             _simpleWorkspaceFocus.Text = _simpleWorkspaceFocused ? "Show workflow" : "Focus editor";
+            _simpleWorkspaceNewProject.Enabled = _simpleWorkspaceOpenProject.Enabled =
+                _simpleWorkspaceMoreTools.Enabled = _simpleWorkspaceLibrary.Enabled = !busy;
             LayoutSimpleWorkspace();
         }
 

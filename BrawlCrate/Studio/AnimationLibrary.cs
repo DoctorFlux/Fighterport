@@ -294,8 +294,9 @@ namespace BrawlCrate.Studio
                 },cancellation);
             }
         }
-        public void Repair(string mountId,string replacementPath)
+        public void Repair(string mountId,string replacementPath,CancellationToken cancellation=default)
         {
+            cancellation.ThrowIfCancellationRequested();
             string path=OrdinaryPath(replacementPath);
             using(var held=LockSource(path))
             {
@@ -304,7 +305,7 @@ namespace BrawlCrate.Studio
                     var mount=data.Mounts.SingleOrDefault(m=>m.Id==mountId)??throw new InvalidDataException("Unknown source mount.");
                     if(hash!=mount.ContainerSha256 || held.Length!=mount.Bytes)throw new InvalidDataException("This is not the exact indexed source. Its hash differs; the association was preserved unchanged.");
                     mount.LocalPath=path;mount.NativeWriteTicks=File.GetLastWriteTimeUtc(path).Ticks;data.LastOperation="Repair Source";return Tuple.Create(true,true);
-                });
+                },cancellation);
             }
         }
         public bool CanUndo=>SearchSnapshot().Generation>0&&SearchSnapshot().LastOperation!="Undo";

@@ -21,8 +21,9 @@ original Next v7 retargeter as ordinary default. Do not reset the application.
 
 ONE current M2 substep: G1 task-flow/usability qualification of the implemented
 source/target/preview/export workspace around the complete native editor. Its first
-mechanical increment has fresh preview.15 evidence (163 scoped checks/25 inspected
-PNGs); retain original Next v7 and native transactions. Full contact timelines/coupled surfaces/moving supports remain
+mechanical increments have fresh preview.16 evidence (257 scoped checks/43 inspected
+PNGs), separately from historical preview.15. Retain original Next v7 and native
+transactions. Full contact timelines/coupled surfaces/moving supports remain
 queued with their independent subframe/continuity/conflict requirements.
 M2 remains incomplete. Prior advanced 96.2 gates remain unresolved and Apply blocked.
 
@@ -32,6 +33,7 @@ reviewed global/motion controls; transfer their genuine source-authored motion
 only. Apply fitting/corrections on body bones. Names alone never identify roles.
 This is deferred; do not change the solver during current G1 workspace work or
 claim preview.15 native TopN-edit checks validate the queued policy. See master §7.
+The latest workspace continuation explicitly reiterates deferring this tweak.
 
 Asset scope includes models/animations, materials/costumes, library/projects,
 existing-rig controls, retargeting, contacts, timing/transitions, asset assignments,
