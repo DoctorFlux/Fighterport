@@ -1,4 +1,4 @@
-﻿using BrawlLib.Imaging;
+using BrawlLib.Imaging;
 using BrawlLib.Internal.Drawing;
 using BrawlLib.OpenGL;
 using BrawlLib.SSBB.Types;
@@ -219,8 +219,11 @@ namespace BrawlLib.SSBB.ResourceNodes
         private int _index = -1;
         private int _program = -1;
 
+        public static int DiagnosticLoads;
+
         private void Load(int index, int program, MDL0Node model, bool isMetal)
         {
+            System.Threading.Interlocked.Increment(ref DiagnosticLoads);
             _index = index;
             _program = program;
             if (TKContext.CurrentContext == null)

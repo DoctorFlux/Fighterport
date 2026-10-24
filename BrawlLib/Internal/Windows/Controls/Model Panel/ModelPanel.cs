@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -134,6 +134,17 @@ namespace BrawlLib.Internal.Windows.Controls.Model_Panel
                 _ctx.Unbind();
                 _ctx._states["_Node_Refs"] = _resourceList;
             }
+        }
+
+        // Prepare every referenced texture while playback is paused, including
+        // materials outside the initial camera frustum. Reuse the native loader.
+        public void PrepareModelTextures(MDL0Node model)
+        {
+            Capture();
+            if (model?._texList == null) return;
+            foreach (MDL0TextureNode texture in model._texList)
+                foreach (MDL0MaterialRefNode reference in texture._references)
+                    texture.Prepare(reference, 0, model);
         }
 
         public void AddTarget(IRenderedObject target)

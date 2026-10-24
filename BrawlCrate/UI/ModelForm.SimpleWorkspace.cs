@@ -56,6 +56,7 @@ namespace BrawlCrate.UI
             _simpleWorkspaceTask.ActionRequested += action => RunFighterAction(() => RunSimpleWorkspaceAction(action));
             _simpleWorkspaceBody.Controls.Add(_simpleWorkspaceTask);
             _simpleWorkspaceBody.Controls.Add(modelEditControl1);
+            modelEditControl1.AnimationSampled += SampleLinkedComparison;
             modelEditControl1.BringToFront();
 
             _simpleWorkspaceNavigation = new ToolStrip
@@ -144,6 +145,7 @@ namespace BrawlCrate.UI
             if (stage < 0 || stage > 3) throw new ArgumentOutOfRangeException(nameof(stage));
             if (SimpleWorkspaceBusy) return;
             _workspaceTaskOpener = _workspaceInvoker ?? CurrentWorkspaceFocus() ?? _simpleWorkspaceWorkflow;
+            if (_comparisonPane != null) _comparisonPane.Visible = false;
             _simpleWorkspaceStage = stage;
             _simpleWorkspaceDrawer = true;
             _simpleWorkspaceFocused = false;
@@ -164,6 +166,7 @@ namespace BrawlCrate.UI
         {
             if (SimpleWorkspaceBusy) return;
             _workspaceTaskOpener = _workspaceInvoker ?? CurrentWorkspaceFocus() ?? _simpleWorkspaceFocus;
+            if (_comparisonPane?.Visible == true || _comparisonLease != null) { CloseLinkedComparison(); _simpleWorkspaceFocused = false; }
             _simpleWorkspaceFocused = !_simpleWorkspaceFocused;
             _simpleWorkspaceDrawer = !_simpleWorkspaceFocused;
             if (_simpleWorkspaceFocused && _libraryPane?.Visible == true)
@@ -233,6 +236,9 @@ namespace BrawlCrate.UI
                     if (!SimpleWorkspaceSourceReady || !(modelEditControl1.TargetModel is MDL0Node))
                         throw new InvalidOperationException("Choose an available source animation and a target model first.");
                     UseLibraryOnTarget(); // The original Next v7 route and its existing stale/cancel guards.
+                    break;
+                case "compare":
+                    OpenLinkedComparison();
                     break;
                 case "controls":
                     ShowAnimationControls();
@@ -450,7 +456,7 @@ namespace BrawlCrate.UI
                 _simpleWorkspaceStages[i].Checked = i == _simpleWorkspaceStage;
                 _simpleWorkspaceStages[i].Enabled = !busy;
             }
-            _simpleWorkspaceSummary.Text = (sourceReady ? selectedSource.Clip.Name :
+            _simpleWorkspaceSummary.Text = (_comparisonPane?.Visible == true ? "Compare: " + (savedSourceName ?? "No recorded source") : sourceReady ? selectedSource.Clip.Name :
                 savedSource == null ? "Choose a source" : "Saved source: " + savedSourceName) +
                 "  →  " + (hasTarget ? targetModel.Name : "Choose a target");
             _simpleWorkspaceLibrary.Checked = _libraryPane?.Visible == true;
@@ -472,7 +478,10 @@ namespace BrawlCrate.UI
                 LayoutWorkspaceBars();
                 int width=_simpleWorkspaceBody.ClientSize.Width;
                 int height=_simpleWorkspaceBody.ClientSize.Height;
+                bool comparing = _comparisonPane?.Visible == true;
+                if (comparing && _libraryPane != null) _libraryPane.Visible = false;
                 bool libraryVisible = _libraryPane?.Visible == true;
+                if (_comparisonPane != null) { _comparisonPane.Font = WorkspaceAppearance.Font; _comparisonPane.Width = Math.Min(WorkspaceAppearance.Pixels(360), Math.Max(240, width / 3)); }
                 int libraryWidth=Math.Min(WorkspaceAppearance.Pixels(340),Math.Max(280,width-120));
                 bool libraryOverlay=libraryVisible && width-libraryWidth<NativeWorkspaceMinimumWidth;
                 if(_libraryPane!=null)
@@ -483,7 +492,7 @@ namespace BrawlCrate.UI
                 }
                 int taskWidth=Math.Min(WorkspaceAppearance.Pixels(270),Math.Max(240,(width-120)/2));
                 bool fits=!libraryOverlay && width-(libraryVisible?libraryWidth:0)-taskWidth>=NativeWorkspaceMinimumWidth;
-                bool showTask=!_simpleWorkspaceFocused && (fits || _simpleWorkspaceDrawer && !libraryVisible);
+                bool showTask=!comparing && !_simpleWorkspaceFocused && (fits || _simpleWorkspaceDrawer && !libraryVisible);
                 _simpleWorkspaceTask.Visible=showTask;
                 _simpleWorkspaceTask.Dock=fits?DockStyle.Right:DockStyle.None;
                 _simpleWorkspaceTask.Width=taskWidth;

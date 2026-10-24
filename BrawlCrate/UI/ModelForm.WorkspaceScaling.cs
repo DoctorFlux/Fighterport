@@ -14,6 +14,7 @@ namespace BrawlCrate.UI
         {
             if (SimpleWorkspaceBusy) return;
             bool shown=_simpleWorkspaceTask.Visible;
+            if (_comparisonPane != null) _comparisonPane.Visible = false;
             if (!shown) _workspaceTaskOpener = _workspaceInvoker ?? CurrentWorkspaceFocus() ?? _simpleWorkspaceWorkflow;
             _simpleWorkspaceFocused=shown;
             _simpleWorkspaceDrawer=!shown;

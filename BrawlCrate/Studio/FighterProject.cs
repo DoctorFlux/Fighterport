@@ -452,8 +452,10 @@ namespace BrawlCrate.Studio
             }
         }
 
+        public static int DiagnosticFileHashes;
         public static string HashFile(string path)
         {
+            System.Threading.Interlocked.Increment(ref DiagnosticFileHashes);
             using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 65536, FileOptions.SequentialScan))
             using (var sha = SHA256.Create())
                 return BitConverter.ToString(sha.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();

@@ -2,7 +2,7 @@
 
 This is the public unified source repository at https://github.com/DoctorFlux/Fighterport.
 It imports the BrawlCrate-based Next preview.14 source and integrated owned engine;
-the current implementation is **preview.22-verified-export**.
+the current implementation is **preview.23-linked-comparison**.
 The two predecessor repositories are private preserved histories.
 Upstream copyrights, licenses and notices remain intact.
 
@@ -48,6 +48,14 @@ tasks at their primary action. Escape closes a focused pane; cancelled dialogs
 return focus to their invoking control. Native editing shortcuts retain their
 existing routes. Compact drawers may overlay the editor; close them or use Focus
 editor for all native tools.
+
+**Compare source** in Preview and fix links a verified read-only original source
+beside the complete editable target. Scrub/play the native target timeline to see
+both, including recorded trims/timing fits and bind poses. Browser selection never
+redirects comparison. **Focus editor** closes it. Missing provenance/source/timing
+explains unavailability while the target remains editable. Fresh preview.23 passes
+**1,701 scoped assertions / 49 reviewed PNGs**; see its
+[comparison acceptance record](docs/LINKED_COMPARISON_ACCEPTANCE_2026-10-24.md).
 
 Workspace **Export** now reviews the exact CHR0 selection and destination, stages
 an exact snapshot, independently decodes all curves/metadata, then publishes

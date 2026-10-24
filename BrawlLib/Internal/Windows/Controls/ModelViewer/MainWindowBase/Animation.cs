@@ -1,4 +1,4 @@
-﻿using BrawlLib.Modeling;
+using BrawlLib.Modeling;
 using BrawlLib.SSBB.ResourceNodes;
 using BrawlLib.SSBB.Types.Animations;
 using System;
@@ -447,6 +447,8 @@ namespace BrawlLib.Internal.Windows.Controls.ModelViewer.MainWindowBase
         /// Applies animations to all models and invalidates the viewport.
         /// Also updates animation controls if not playing.
         /// </summary>
+        public event Action<float> AnimationSampled;
+
         public virtual void UpdateModel(float frame)
         {
             if (_updating)
@@ -468,6 +470,8 @@ namespace BrawlLib.Internal.Windows.Controls.ModelViewer.MainWindowBase
             {
                 UpdateModel(TargetModel, frame);
             }
+
+            AnimationSampled?.Invoke(frame);
 
             if (!_playing)
             {

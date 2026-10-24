@@ -415,7 +415,7 @@ internal static partial class Program
         using (var bitmap = new Bitmap(form.Width, form.Height))
         {
             form.DrawToBitmap(bitmap, new Rectangle(Point.Empty, form.Size));
-            var panels = new[] { form.FighterEditor.ModelPanel, Field(form, "_libraryViewport") as ModelPanel };
+            var panels = new[] { form.FighterEditor.ModelPanel, Field(form, "_libraryViewport") as ModelPanel, Field(form,"_comparisonViewport") as ModelPanel };
             foreach (var panel in panels.Where(p => p != null && p.Visible && p.Width > 0 && p.Height > 0))
             {
                 panel.Capture(); panel.Invalidate(); panel.Update();

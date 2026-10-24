@@ -16,12 +16,12 @@ namespace BrawlCrate.UI
             {
                 var label=new Label{Text="Reading source metadata...",Bounds=new Rectangle(14,12,532,34)};
                 var progress=new ProgressBar{Style=ProgressBarStyle.Marquee,Bounds=new Rectangle(14,50,532,18)};
-                var button=new Button{Text="Cancel",Bounds=new Rectangle(456,80,90,27)};button.Click+=(s,e)=>{cancel.Cancel();button.Enabled=false;label.Text="Cancelling; original sources remain unchanged...";};
+                var button=new Button{Name="libraryWorkCancel",Text="Cancel",Bounds=new Rectangle(456,80,90,27)};button.Click+=(s,e)=>{cancel.Cancel();button.Enabled=false;label.Text="Cancelling; original sources remain unchanged...";};
                 dialog.Controls.AddRange(new Control[]{label,progress,button});
                 dialog.FormClosing+=(s,e)=>{if(!complete){e.Cancel=true;cancel.Cancel();}};
                 var report=new Progress<string>(message=>{if(!dialog.IsDisposed&&!cancel.IsCancellationRequested)label.Text=message;});
                 dialog.Shown+=(s,e)=>Task.Run(()=>work(cancel.Token,report),cancel.Token).ContinueWith(task=>{
-                    complete=true;if(task.IsFaulted)error=task.Exception.GetBaseException();else if(!task.IsCanceled)result=task.Result;dialog.Close();
+                    complete=true;if(task.IsFaulted)error=task.Exception.GetBaseException();else if(!task.IsCanceled){if(cancel.IsCancellationRequested)(task.Result as IDisposable)?.Dispose();else result=task.Result;}dialog.Close();
                 },TaskScheduler.FromCurrentSynchronizationContext());
                 dialog.ShowDialog(owner);
             }

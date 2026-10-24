@@ -8,11 +8,18 @@ ordering. M2 remains the ONE incomplete milestone; this is its sole executable q
 Latest authorized continuation: implement verified export (preview.22), linked
 source/target comparison (preview.23), then favorites and typed library filters
 (preview.24), sequentially inside this ONE incomplete G1/M2 milestone. Only
-preview.22 is active until its fresh background acceptance and source publication.
+preview.23 linked comparison is active now; preview.22 was verified/published as
+00739db23ed957353aa2a62720db2efe12bcea67. Favorites/filters remain queued.
 Preview.22 bounded acceptance is complete: 1,644 scoped assertions and all 43
 final PNGs reviewed. See [commands, findings and limits](../VERIFIED_EXPORT_ACCEPTANCE_2026-10-24.md).
 The launcher selects its qualified package. Publish this verified source before
 promoting comparison. G1/M2 remains incomplete; remaining increments are queued.
+
+Preview.23 bounded acceptance is complete: 1,701 scoped assertions and all 49
+final PNGs reviewed. See [commands, findings and limits](../LINKED_COMPARISON_ACCEPTANCE_2026-10-24.md).
+Source identity/timing, eager native texture preparation, no-playback-work metrics,
+exact native Undo and relevant regressions pass. Publish this source before
+promoting favorites/filters. G1/M2 and all separate human/game gates stay open.
 
 Use the app-owned path dialog, exact frozen native CHR0 snapshots, independent
 candidate decode and atomic publication. Preserve live curves, native Undo and

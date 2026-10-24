@@ -91,6 +91,7 @@ namespace BrawlCrate.UI
             if (SimpleWorkspaceBusy) return;
             if(_libraryPane==null)BuildLibraryPane();
             bool opening = !_libraryPane.Visible;
+            if (opening && _comparisonPane != null) _comparisonPane.Visible = false;
             if (opening) _workspaceLibraryOpener = _workspaceInvoker ?? CurrentWorkspaceFocus() ?? _simpleWorkspaceLibrary;
             _libraryPane.Visible=!_libraryPane.Visible;
             if(_libraryPane.Visible)RunFighterAction(()=>RefreshLibrary(LibrarySelection?.Clip.Id??SelectedFighterAsset()?.Retarget?.Library?.ClipId));else{++_librarySearchGeneration;CancelLibraryTreeWork();ReleaseLibraryPreview();}
@@ -289,6 +290,7 @@ namespace BrawlCrate.UI
         }
         private void DisposeAnimationLibrary()
         {
+            CloseLinkedComparison();
             _librarySearchGeneration++;CancelLibraryTreeWork();
             ReleaseLibraryPreview();_libraryTimer?.Dispose();_librarySearchTimer?.Dispose();_libraryPopulateTimer?.Dispose();_libraryPendingGroups.Clear();
         }

@@ -21,6 +21,7 @@ namespace BrawlCrate.Studio
     /// <summary>One bounded metadata catalogue, independent of every fighter.</summary>
     public sealed class AnimationLibrary
     {
+        public static int DiagnosticOpens;
         public const int MaximumClips=50000;
         public static readonly string[] PlannedGames={"Brawl","Project M","Project+","Melee","Ultimate","Rivals II","FighterZ","Sparking! ZERO","Xenoverse 1","Xenoverse 2"};
         private const long MaximumIndexBytes=64L*1024*1024;
@@ -435,6 +436,7 @@ namespace BrawlCrate.Studio
         }
         public LibrarySourceLease Open(string clipId)
         {
+            Interlocked.Increment(ref DiagnosticOpens);
             var data=Read();var clip=data.Clips.SingleOrDefault(c=>c.Id==clipId)??throw new InvalidDataException("This immutable library clip is no longer registered.");
             var state=State(data,clip,true);
             if(state!=LibrarySourceState.Available)throw new InvalidOperationException("Library source: "+state+". Repair the exact source or review its model association first.");

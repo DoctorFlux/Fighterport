@@ -8,7 +8,16 @@ Record imported revisions and preserve upstream source authorship and notices.
 
 ## Plans and current work
 
-Latest 24 October continuation: preview.22-verified-export has fresh bounded
+Latest 24 October continuation: preview.23-linked-comparison has fresh bounded
+background acceptance: 1,701 assertions and 49 reviewed final PNGs. See
+docs/LINKED_COMPARISON_ACCEPTANCE_2026-10-24.md. Preserve the editable complete target,
+read-only source tied to result provenance, prepared native textures/curves and
+native sampled-clock linkage. No loading/hashing/baking on playback ticks. Source
+work cancellation rejects/disposes late completion. Source-local roots, original
+Next, project schema and native Undo remain. Favorites/filters follow within the
+ONE incomplete G1/M2. Human/input/DPI/contact/game gates remain open.
+
+Preceding 24 October continuation: preview.22-verified-export has fresh bounded
 background acceptance: 1,644 scoped assertions and 43 reviewed final PNGs. See
 docs/VERIFIED_EXPORT_ACCEPTANCE_2026-10-24.md. Preserve snapshot-only CHR0 export,
 independent exact candidate decoding, atomic publication and live native Undo.
