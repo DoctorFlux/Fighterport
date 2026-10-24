@@ -41,6 +41,9 @@ namespace BrawlLib.Modeling
 
     public class BoneState : SaveState
     {
+        // Optional document-owner snapshot for exact native animation channels.
+        // A sampled FrameState alone cannot restore neighboring key tangents.
+        public System.Action _restoreAnimation;
         public bool _updateBindState; //This will update the actual mesh when the bone is moved
         public bool _updateBoneOnly;  //This means the bones won't affect the mesh when moved
         public int _frameIndex = 0;

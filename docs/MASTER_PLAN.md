@@ -1,9 +1,19 @@
 # Fighterport master plan
 
+Latest 24 October continuation: preview.20-workspace-walkthrough follows the
+user's explicit background-only choice. Two continuous first/repeat task replays
+and fresh regressions pass 2,292 scoped assertions; all 73 final PNGs were
+individually inspected. Exact native bone Undo now restores keys, neighboring
+tangents, flags and absent tracks through the existing owner snapshot/native
+Undo stack. The complete previewer, original Next v7 and source-local root policy
+remain intact. See [acceptance and limits](WORKSPACE_WALKTHROUGH_ACCEPTANCE_2026-10-24.md).
+This accepts the bounded background increment only. Human walkthrough, physical
+input/DPI and broader G1/M2 remain open; no new format/schema/game support.
+
 24 October 2026. This is the sole master plan.
 [plans/current.md](plans/current.md) is the sole executable queue.
 
-Latest 24 October continuation implements preview.19 keyboard/focus completion
+Preceding 24 October continuation implements preview.19 keyboard/focus completion
 inside G1/M2, retaining the full native editor, original Next and source-local
 root policy. [Fresh bounded acceptance](WORKSPACE_KEYBOARD_ACCEPTANCE_2026-10-24.md):
 2,172 scoped assertions / 55 inspected PNGs. F6 regions, outer Tab and dialog/

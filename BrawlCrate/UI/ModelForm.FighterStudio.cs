@@ -124,6 +124,7 @@ namespace BrawlCrate.UI
                 }
             });
             modelEditControl1.FighterSaveRequested = () => SaveFighterFromUi();
+            modelEditControl1.CaptureBoneAnimationUndo = CaptureNativeBoneAnimationUndo;
             modelEditControl1.FighterResourcesRequested = ShowFighterResources;
             modelEditControl1.FighterOwnsFile = OwnsFighterRoot;
             modelEditControl1.FighterFileSaveRequested = SaveOwnedFighterResource;

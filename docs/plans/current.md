@@ -5,7 +5,35 @@ with the simpler workspace while retaining the COMPLETE BrawlCrate Model Preview
 and original Next retargeter. This supersedes the earlier planning-only/contact-first
 ordering. M2 remains the ONE incomplete milestone; this is its sole executable queue.
 
-Latest authorized continuation: preview.19 keyboard/focus completion within G1/M2.
+Latest continuation: the user requested the prepared walkthrough but explicitly
+selected background-only execution. Keep human/physical input and DPI unverified.
+Add one continuous private-desktop first/repeat replay across independent saved
+projects using real source/target/Next/body-edit/Undo/save/reopen handlers. Freeze
+body rotation corrections at 2 and 4 degrees with the existing 0.0002 tolerance;
+protected native groups/keys/tangents/flags must remain exact. Verify source reuse,
+file-lock failure recovery, independent files and exact reopened clip/frame.
+Record application-handler steps separately from human steps/timings. The fresh
+replay exposed a native BoneState Undo gap: restoring a sampled pose regenerated
+three neighboring rotation tangents. Preview.20 now captures exact affected native
+bone channels/flags through the existing owner snapshot and shared native Undo
+stack. Keep missing-track/key and high-precision tangent regression evidence;
+retain bind/model-only fallback. No solver, root-policy, DPI or format changes;
+keep ONE G1/M2 milestone. Rerun relevant native/root/keyboard/lifecycle cases on
+the changed app; preview.19 receipts do not qualify this fix.
+
+Preview.20 bounded background acceptance: 2,292 fresh scoped assertions, all 73
+final PNGs individually inspected. See [commands, findings and limits](../WORKSPACE_WALKTHROUGH_ACCEPTANCE_2026-10-24.md).
+Each direction completes 43 recorded handler steps, one registration, two Next
+transfers and three independent saved projects. Exact native Undo/Redo survives
+failed Save and resource merge; procedural absent-track/sparse-key cases pass.
+Fresh keyboard, scaling, transfer, lifecycle and bidirectional root-policy checks
+pass on the changed app. Launcher selects the qualified preview.20 package.
+Next within this ONE G1/M2 slice: human command discovery, first/repeat task
+completion and wrong-document observations when the user chooses a hands-on
+session. Respect the current background-only choice; these outcomes and physical
+input/DPI remain unverified. Contact/game/generalization gates below remain open.
+
+Preceding authorized continuation: preview.19 keyboard/focus completion within G1/M2.
 Add F6/Shift+F6 regions, ordered outer Tab navigation, focus recovery for drawers/
 dialogs and keyboard hints without intercepting native editing or modal gestures.
 Run a new -WorkspaceKeyboard private-desktop case and relevant scaling/lifecycle/
@@ -20,7 +48,7 @@ Keyboard/focus cases pass on both authentic rigs at compact/wide sizes and 100/
 bidirectional root-policy regressions. This accepts the bounded mechanical
 increment, not all G1/M2. [DPI audit](../WORKSPACE_DPI_AUDIT_2026-10-24.md) is source-only;
 [human task walkthrough](../WORKSPACE_USER_WALKTHROUGH_2026-10-24.md) is prepared, not performed.
-Next: exercise that user-driven supported workflow, recording completion/steps,
+Historical preview.19 next task: exercise that user-driven supported workflow, recording completion/steps,
 repeat prompts, hidden commands and wrong-document errors. A future physical DPI
 migration needs its audit prerequisites and separate bounded scope. No desktop
 input automation or untested physical/human claim is authorized by these receipts.

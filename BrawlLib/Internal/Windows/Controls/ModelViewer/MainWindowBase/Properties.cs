@@ -631,6 +631,7 @@ namespace BrawlLib.Internal.Windows.Controls.ModelViewer.MainWindowBase
         public virtual BrawlLib.Modeling.FrameState? SelectedControlTransform=>null;
         public System.Action<int,float> ControlChannelEdited;
         public System.Func<string,bool> CanEditAnimationBone;
+        public System.Func<CHR0Node,string[],System.Action> CaptureBoneAnimationUndo;
 
         [Browsable(false)]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]

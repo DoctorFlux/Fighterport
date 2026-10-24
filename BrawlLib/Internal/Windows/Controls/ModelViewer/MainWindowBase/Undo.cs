@@ -100,6 +100,9 @@ namespace BrawlLib.Internal.Windows.Controls.ModelViewer.MainWindowBase
                 _frameStates = bones.Select(x => x.FrameState).ToArray(),
                 _animation = SelectedCHR0,
                 _frameIndex = CurrentFrame,
+                _restoreAnimation = SelectedCHR0 != null && CurrentFrame > 0 &&
+                    !CHR0Editor.chkMoveBoneOnly.Checked && !CHR0Editor.chkUpdateBindPose.Checked
+                    ? CaptureBoneAnimationUndo?.Invoke(SelectedCHR0, bones.Select(b => b.Name).ToArray()) : null,
                 _updateBoneOnly = CHR0Editor.chkMoveBoneOnly.Checked,
                 _updateBindState = CHR0Editor.chkUpdateBindPose.Checked
             };
@@ -216,6 +219,12 @@ namespace BrawlLib.Internal.Windows.Controls.ModelViewer.MainWindowBase
             CurrentFrame = state._frameIndex;
             CHR0Editor.chkUpdateBindPose.Checked = state._updateBindState;
             CHR0Editor.chkMoveBoneOnly.Checked = state._updateBoneOnly;
+            if (state._restoreAnimation != null)
+            {
+                foreach (var bone in state._bones) SelectedBone = bone;
+                state._restoreAnimation();
+                return;
+            }
             for (int i = 0; i < state._bones.Length; i++)
             {
                 SelectedBone = state._bones[i];

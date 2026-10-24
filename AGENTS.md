@@ -8,7 +8,15 @@ Record imported revisions and preserve upstream source authorship and notices.
 
 ## Plans and current work
 
-Latest 24 October request authorizes preview.19 keyboard/focus completion and
+Latest 24 October continuation is preview.20-workspace-walkthrough, explicitly
+background-only. Fresh acceptance: 2,292 assertions and 73 individually inspected
+PNGs; see docs/WORKSPACE_WALKTHROUGH_ACCEPTANCE_2026-10-24.md. Preserve exact native
+bone Undo channels/tangents/flags through the existing shared stack and owner
+snapshot, including missing-track/key cases. Keep full previewer/original Next
+and source-local controls. Handler journals are not human usability measurements.
+Human walkthrough and physical input/DPI remain unverified; ONE G1/M2 stays open.
+
+Preceding 24 October request authorized preview.19 keyboard/focus completion and
 publication within the ONE G1/M2 slice. Fresh acceptance: 2,172 assertions and
 55 inspected PNGs; see docs/WORKSPACE_KEYBOARD_ACCEPTANCE_2026-10-24.md. Keep
 F6/outer Tab and focus recovery separate from original native editing shortcuts.

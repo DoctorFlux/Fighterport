@@ -41,3 +41,14 @@ claim measured improvement from automated handler counts.
 Batch, model-port, foreign-game destinations, physical/mixed-monitor DPI, broad
 motion/contact quality and actual game testing need their own cases and evidence.
 This walkthrough does not close those gates or all of G1/M2.
+
+## Background continuation receipt
+
+The user selected background-only execution. Preview.20's [scripted replay](WORKSPACE_WALKTHROUGH_ACCEPTANCE_2026-10-24.md)
+completed the supported first/repeat transfer and donor-free paths on a private
+desktop in both rig directions, exposing and fixing exact native bone Undo.
+Its 43 handler operations per direction and elapsed handler times are automation
+evidence, not measured human steps or task times. This checklist is still prepared,
+not performed. Leave command discovery, repeated setup burden, physical keyboard/
+mouse use, completion rates and wrong-document mistakes unscored until a person
+performs the tasks. Respect the user's current background-only choice.

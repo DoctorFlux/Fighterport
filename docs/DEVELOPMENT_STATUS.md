@@ -1,6 +1,16 @@
 # Development status — 24 October 2026 workspace increment
 
-Current continuation: **preview.19-workspace-keyboard**, with 2,172 fresh scoped
+Latest 24 October continuation: preview.20-workspace-walkthrough follows the
+user's explicit background-only choice. Two continuous first/repeat task replays
+and fresh regressions pass 2,292 scoped assertions; all 73 final PNGs were
+individually inspected. Exact native bone Undo now restores keys, neighboring
+tangents, flags and absent tracks through the existing owner snapshot/native
+Undo stack. The complete previewer, original Next v7 and source-local root policy
+remain intact. See [acceptance and limits](WORKSPACE_WALKTHROUGH_ACCEPTANCE_2026-10-24.md).
+This accepts the bounded background increment only. Human walkthrough, physical
+input/DPI and broader G1/M2 remain open; no new format/schema/game support.
+
+Preceding continuation: **preview.19-workspace-keyboard**, with 2,172 fresh scoped
 assertions and 55 inspected PNGs. F6/Shift+F6 regions, outer Tab order, visible
 focus and drawer/dialog recovery retain the same native editor and original Next
 v7/source-local control policy. No new format, schema or game support is added.

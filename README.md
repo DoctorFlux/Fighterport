@@ -2,7 +2,7 @@
 
 This is the public unified source repository at https://github.com/DoctorFlux/Fighterport.
 It imports the BrawlCrate-based Next preview.14 source and integrated owned engine;
-the current implementation is **preview.19-workspace-keyboard**.
+the current implementation is **preview.20-workspace-walkthrough**.
 The two predecessor repositories are private preserved histories.
 Upstream copyrights, licenses and notices remain intact.
 
@@ -43,11 +43,16 @@ return focus to their invoking control. Native editing shortcuts retain their
 existing routes. Compact drawers may overlay the editor; close them or use Focus
 editor for all native tools.
 
-Fresh preview.19 verification passes **2,172 scoped assertions**, with **55
-actually inspected PNGs**. See the [keyboard/focus acceptance
-record](docs/WORKSPACE_KEYBOARD_ACCEPTANCE_2026-10-24.md), [DPI audit](docs/WORKSPACE_DPI_AUDIT_2026-10-24.md)
-and [prepared human walkthrough](docs/WORKSPACE_USER_WALKTHROUGH_2026-10-24.md).
-Physical input/DPI and human outcomes remain unverified. Historical preview.18
+Fresh preview.20 background verification passes **2,292 scoped assertions**, with
+**73 individually inspected PNGs**. Continuous first/repeat workflows reuse one
+registered source across independent projects and preserve the first project's
+files. Native body Undo/Redo now preserves exact keys, neighboring tangents and
+flags, including missing tracks/keys and recovery after a failed save. See the
+[walkthrough acceptance record](docs/WORKSPACE_WALKTHROUGH_ACCEPTANCE_2026-10-24.md).
+The [human walkthrough](docs/WORKSPACE_USER_WALKTHROUGH_2026-10-24.md) remains
+prepared, not performed; physical input/DPI and human outcomes remain unverified.
+Preview.19 has its separate [keyboard/focus record](docs/WORKSPACE_KEYBOARD_ACCEPTANCE_2026-10-24.md)
+and [DPI audit](docs/WORKSPACE_DPI_AUDIT_2026-10-24.md). Historical preview.18
 has its separate [scaling receipt](docs/WORKSPACE_SCALING_ACCEPTANCE_2026-10-24.md).
 Historical preview.17 has its separate [project and motion-control
 record](docs/PROJECT_MOTION_CONTROLS_ACCEPTANCE_2026-10-24.md).
