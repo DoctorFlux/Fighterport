@@ -24,6 +24,13 @@ namespace BrawlCrate.Properties {
         }
         
         [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("100")]
+        public int WorkspaceTextPercent {
+            get { return ((int)(this["WorkspaceTextPercent"])); }
+            set { this["WorkspaceTextPercent"] = value; }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("False")]
         public bool UpdateSettings {

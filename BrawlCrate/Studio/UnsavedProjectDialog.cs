@@ -18,13 +18,13 @@ namespace BrawlCrate.Studio
             MaximizeBox = MinimizeBox = ShowInTaskbar = false;
             var message = new Label { Name = "unsavedProjectMessage", Text =
                 "Save changes to “" + projectName + "” before leaving this project?",
-                Bounds = new Rectangle(16, 14, 538, 38), UseMnemonic = false };
+                Dock=DockStyle.Fill, AutoSize=true, Margin=new Padding(0,0,0,16), UseMnemonic = false };
             var status = new Label { Name = "unsavedProjectStatus", Text =
                 "Save keeps your current work. Discard leaves the last saved project on disk.",
-                Bounds = new Rectangle(16, 58, 538, 56), UseMnemonic = false };
-            var saveButton = new Button { Name = "unsavedProjectSave", Text = "Save", Bounds = new Rectangle(208, 138, 100, 30) };
-            var discard = new Button { Name = "unsavedProjectDiscard", Text = "Discard", DialogResult = DialogResult.No, Bounds = new Rectangle(322, 138, 100, 30) };
-            var cancel = new Button { Name = "unsavedProjectCancel", Text = "Keep editing", DialogResult = DialogResult.Cancel, Bounds = new Rectangle(436, 138, 118, 30) };
+                Dock=DockStyle.Fill, AutoSize=true, Margin=Padding.Empty, UseMnemonic = false };
+            var saveButton = new WorkspaceButton { Name = "unsavedProjectSave", Text = "Save", Size=new Size(100,30) };
+            var discard = new WorkspaceButton { Name = "unsavedProjectDiscard", Text = "Discard", DialogResult = DialogResult.No, Size=new Size(100,30) };
+            var cancel = new WorkspaceButton { Name = "unsavedProjectCancel", Text = "Keep editing", DialogResult = DialogResult.Cancel, Size=new Size(118,30) };
             saveButton.Click += async (sender, args) =>
             {
                 if (_saving) return;
@@ -44,11 +44,19 @@ namespace BrawlCrate.Studio
                     if (!IsDisposed) saveButton.Enabled = discard.Enabled = cancel.Enabled = true;
                 }
             };
-            Controls.AddRange(new Control[] { message, status, saveButton, discard, cancel });
+            var layout=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=1,RowCount=3,Padding=new Padding(16)};
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
+            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            layout.RowStyles.Add(new RowStyle(SizeType.Percent,100));
+            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            var actions=new FlowLayoutPanel{Dock=DockStyle.Fill,FlowDirection=FlowDirection.RightToLeft,AutoSize=true,WrapContents=true,Margin=Padding.Empty};
+            actions.Controls.AddRange(new Control[]{cancel,discard,saveButton});
+            layout.Controls.Add(message,0,0);layout.Controls.Add(status,0,1);layout.Controls.Add(actions,0,2);Controls.Add(layout);
             AcceptButton = saveButton;
             CancelButton = cancel;
             FormClosing += (sender, args) => { if (_saving) args.Cancel = true; };
             DarkTheme.Apply(this);
+            WorkspaceAppearance.SizeDialog(this);
         }
     }
 }

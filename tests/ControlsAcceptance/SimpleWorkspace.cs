@@ -427,6 +427,34 @@ internal static partial class Program
                     graphics.DrawImageUnscaled(view, point.X + border, point.Y + form.Height - form.ClientSize.Height - border);
                 }
             }
+            // Outer drawers occlude native child viewports. Composite their
+            // actual controls after offscreen GL, matching the window Z order.
+            foreach(string name in new[]{"animationLibraryPane","workspaceTaskPane"})
+            {
+                var drawer=form.Controls.Find(name,true).SingleOrDefault();
+                if(drawer==null||!drawer.Visible||drawer.Dock!=DockStyle.None)continue;
+                using(var layer=new Bitmap(drawer.Width,drawer.Height))
+                using(var graphics=Graphics.FromImage(bitmap))
+                {
+                    drawer.DrawToBitmap(layer,new Rectangle(Point.Empty,drawer.Size));
+                    var point=form.PointToClient(drawer.PointToScreen(Point.Empty));
+                    int border=(form.Width-form.ClientSize.Width)/2;
+                    graphics.DrawImageUnscaled(layer,point.X+border,point.Y+form.Height-form.ClientSize.Height-border);
+                    var sourceView=Field(form,"_libraryViewport") as ModelPanel;
+                    if(sourceView!=null && sourceView.Visible && drawer.Contains(sourceView))
+                    {
+                        sourceView.Capture();sourceView.Invalidate();sourceView.Update();
+                        using(var original=sourceView.GetScreenshot(sourceView.ClientRectangle,false))
+                        {
+                            var viewPoint=form.PointToClient(sourceView.PointToScreen(Point.Empty));
+                            var savedClip=graphics.Save();
+                            graphics.SetClip(new Rectangle(point.X+border,point.Y+form.Height-form.ClientSize.Height-border,drawer.ClientSize.Width,drawer.ClientSize.Height));
+                            graphics.DrawImageUnscaled(original,viewPoint.X+border,viewPoint.Y+form.Height-form.ClientSize.Height-border);
+                            graphics.Restore(savedClip);
+                        }
+                    }
+                }
+            }
             bitmap.Save(path);
         }
     }

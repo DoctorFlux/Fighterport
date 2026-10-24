@@ -3,7 +3,14 @@
 24 October 2026. This is the sole master plan.
 [plans/current.md](plans/current.md) is the sole executable queue.
 
-Latest 24 October continuation authorizes New project/unsaved-change handling
+Latest 24 October continuation implements preview.18 workspace scaling around
+the full native previewer, original Next v7 and source-local root controls.
+Its [fresh bounded acceptance](WORKSPACE_SCALING_ACCEPTANCE_2026-10-24.md) records
+1,848 scoped assertions and 41 inspected PNGs. Workspace Text presets and compact
+drawers are qualified separately from physical DPI/input and human task outcomes.
+M2/G1 stays incomplete; no solver, native renderer or game support is changed.
+
+The preceding 24 October continuation authorized New project/unsaved-change handling
 and implementing the previously deferred root/motion-control tweak now. This
 supersedes deferral wording below while keeping ONE incomplete M2 increment,
 the full native previewer and original Next retargeter as the implementation base.
@@ -93,7 +100,9 @@ game installation or game test is claimed.** Older checkpoint counts have
 different scopes and must not be added or treated as completion percentages.
 
 **M2 remains incomplete and is the only active milestone.** Its current bounded
-substep is G1 workspace task-flow/usability qualification. Preview.16 has
+substep is G1 workspace task-flow/usability qualification. Preview.18 adds the
+[scaling acceptance](WORKSPACE_SCALING_ACCEPTANCE_2026-10-24.md) above; next are
+physical DPI/input and measured human first/repeat tasks. Earlier preview.16 has
 [fresh workspace-flow evidence](WORKSPACE_FLOW_ACCEPTANCE_2026-10-24.md): 47 flow
 and 61 editing checks per supplied direction, 41 procedural native-controls
 checks and 43 inspected PNGs. Historical preview.15 remains in its own receipt.

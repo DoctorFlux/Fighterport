@@ -83,7 +83,7 @@ namespace BrawlCrate.UI
         }
         private Button LibraryButton(string name,string text,Action action)
         {
-            var button=new Button{Name=name,Text=text,AutoSize=true,Height=27,Margin=new Padding(2)};
+            var button=new WorkspaceButton{Name=name,Text=text,AutoSize=true,Height=27,Margin=new Padding(2)};
             button.Click+=(s,e)=>RunFighterAction(action);return button;
         }
         private void ToggleAnimationLibrary()

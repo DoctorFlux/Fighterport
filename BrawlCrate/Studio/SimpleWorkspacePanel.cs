@@ -26,8 +26,11 @@ namespace BrawlCrate.Studio
         private readonly Button _timing;
         private readonly Button _save;
         private readonly Button _details;
-        private readonly Font _headingFont;
-        private readonly Font _sectionFont;
+        private Font _headingFont;
+        private Font _sectionFont;
+        private readonly Panel _scroll;
+        private readonly TableLayoutPanel _footer;
+        private readonly ToolTip _tooltips = new ToolTip();
         private int _stage;
         private bool _hasSource;
         private bool _hasTarget;
@@ -52,10 +55,10 @@ namespace BrawlCrate.Studio
             AccessibleName = "Animation transfer workspace";
             Dock = DockStyle.Right;
             Width = 250;
-            AutoScroll = true;
+            AutoScaleMode = AutoScaleMode.None;
             Padding = new Padding(12);
-            _headingFont = new Font(Font.FontFamily, Font.Size + 2, FontStyle.Bold);
-            _sectionFont = new Font(Font, FontStyle.Bold);
+            _headingFont = WorkspaceAppearance.HeadingFont;
+            _sectionFont = WorkspaceAppearance.BoldFont;
 
             _layout = new TableLayoutPanel
             {
@@ -68,7 +71,13 @@ namespace BrawlCrate.Studio
                 Padding = Padding.Empty
             };
             _layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            Controls.Add(_layout);
+            _scroll = new Panel { Name = "workspaceTaskScroll", Dock = DockStyle.Fill, AutoScroll = true };
+            _scroll.Controls.Add(_layout);
+            _footer = new TableLayoutPanel { Name = "workspaceTaskFooter", Dock = DockStyle.Bottom, AutoSize = true, ColumnCount = 1, RowCount = 2 };
+            _footer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
+            _footer.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            _footer.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            Controls.Add(_scroll);Controls.Add(_footer);
 
             _heading = TextLabel("workspaceStageHeading", "", 8);
             _heading.Font = _headingFont;
@@ -80,7 +89,8 @@ namespace BrawlCrate.Studio
             _result = AddSummary("Result", "workspaceResultSummary", 2);
             _readiness = TextLabel("workspaceReadiness", "", 8);
             _readiness.AccessibleName = "Workspace readiness";
-            AddRow(_readiness);
+            _readiness.AutoEllipsis = true;
+            _footer.Controls.Add(_readiness,0,0);
 
             _primary = ActionButton("workspacePrimaryAction", "", "source");
             _primary.MinimumSize = new Size(0, 38);
@@ -88,7 +98,7 @@ namespace BrawlCrate.Studio
             _primary.Height = 38;
             _primary.Font = _sectionFont;
             _primary.Margin = new Padding(0, 6, 0, 12);
-            AddRow(_primary);
+            _footer.Controls.Add(_primary,0,1);
             _browse = AddAction("workspaceBrowseSourcesAction", "Browse sources", "source");
             _addSource = AddAction("workspaceAddSourceAction", "Add source...", "add-source");
             _repairSource = AddAction("workspaceRepairSourceAction", "Repair source...", "repair-source");
@@ -111,7 +121,7 @@ namespace BrawlCrate.Studio
                 summary.VisitedLinkColor = summary.LinkColor;
             }
             SetState(null, null, null, false, false, false, false, false);
-            UpdateTextWidths();
+            ApplyTextSize();
         }
 
         internal void SetStage(int stage)
@@ -185,6 +195,7 @@ namespace BrawlCrate.Studio
                 _primary.Enabled = !_busy && enabled;
                 _readiness.Text = string.IsNullOrWhiteSpace(_readinessText) ? DefaultReadiness() : _readinessText;
                 _readiness.AccessibleDescription = _readiness.Text;
+                _tooltips.SetToolTip(_readiness,_readiness.Text);
 
                 _browse.Visible = _stage == 0 && _hasSource;
                 _browse.Enabled = !_busy;
@@ -276,7 +287,7 @@ namespace BrawlCrate.Studio
 
         private Button ActionButton(string name, string text, string action)
         {
-            var button = new Button
+            var button = new WorkspaceButton
             {
                 Name = name,
                 AccessibleName = text,
@@ -312,9 +323,34 @@ namespace BrawlCrate.Studio
         private void UpdateTextWidths()
         {
             int width = Math.Max(1, ClientSize.Width - Padding.Horizontal - SystemInformation.VerticalScrollBarWidth);
+            _readiness.MaximumSize = new Size(width, Font.Height*4);
             foreach (Control control in _layout.Controls)
                 if (control is Label)
                     control.MaximumSize = new Size(width, 0);
+        }
+
+        internal void ApplyTextSize()
+        {
+            Font=WorkspaceAppearance.Font;
+            _headingFont=WorkspaceAppearance.HeadingFont;
+            _sectionFont=WorkspaceAppearance.BoldFont;
+            _heading.Font=_headingFont;
+            foreach(Control control in _layout.Controls)
+            {
+                if(control!=_heading && control.Name.EndsWith("Heading",StringComparison.Ordinal))control.Font=_sectionFont;
+                if(control is Button button)
+                {
+                    int height=WorkspaceAppearance.Pixels(32);
+                    button.MinimumSize=new Size(0,height);button.MaximumSize=new Size(0,height);button.Height=height;
+                }
+            }
+            _primary.Font=_sectionFont;
+            int primaryHeight=WorkspaceAppearance.Pixels(40);
+            _primary.MinimumSize=new Size(0,primaryHeight);_primary.MaximumSize=new Size(0,primaryHeight);_primary.Height=primaryHeight;
+            Padding=new Padding(WorkspaceAppearance.Pixels(10));
+            Width=WorkspaceAppearance.Pixels(270);
+            UpdateTextWidths();
+            _footer.PerformLayout();_layout.PerformLayout();
         }
 
         private static string Summary(string text, string fallback)
@@ -327,8 +363,7 @@ namespace BrawlCrate.Studio
             base.Dispose(disposing);
             if (disposing)
             {
-                _headingFont?.Dispose();
-                _sectionFont?.Dispose();
+                _tooltips.Dispose();
             }
         }
     }

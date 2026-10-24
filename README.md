@@ -2,7 +2,7 @@
 
 This is the public unified source repository at https://github.com/DoctorFlux/Fighterport.
 It imports the BrawlCrate-based Next preview.14 source and integrated owned engine;
-the current implementation is **preview.17-project-and-motion-controls**.
+the current implementation is **preview.18-workspace-scaling**.
 The two predecessor repositories are private preserved histories.
 Upstream copyrights, licenses and notices remain intact.
 
@@ -30,9 +30,17 @@ The source library collapses, **Focus editor** restores editing room, and
 the Bones panel, camera/materials, transform tools, autokeys, interpolation,
 timeline and Undo remain together in the original native control.
 
-Fresh preview.17 verification passes **1,182 scoped assertions**, with **23
-actually inspected PNGs**. See the [project and motion-control acceptance
-record](docs/PROJECT_MOTION_CONTROLS_ACCEPTANCE_2026-10-24.md) for commands and limits.
+Use **Text** for 100/125/150/175/200% workspace text. **Workflow** recovers
+the task panel in compact windows; **Focus editor** gives the native previewer
+more room. Task details scroll while the primary action stays visible. Project
+and unsaved-change dialogs scale too. Native editor fonts remain original;
+physical/per-monitor DPI support is not qualified by this app text setting.
+
+Fresh preview.18 verification passes **1,848 scoped assertions**, with **41
+actually inspected PNGs**. See the [workspace scaling acceptance
+record](docs/WORKSPACE_SCALING_ACCEPTANCE_2026-10-24.md) for commands and limits.
+Historical preview.17 has its separate [project and motion-control
+record](docs/PROJECT_MOTION_CONTROLS_ACCEPTANCE_2026-10-24.md).
 New/Open/Close share Save, Discard and Keep editing; failed/cancelled saves keep
 the current document and Undo available. Untitled Save accepts a pasted path.
 Original Next v7 remains the base with a separately recorded source-local control

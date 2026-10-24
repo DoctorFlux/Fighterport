@@ -353,15 +353,25 @@ internal static partial class Program
         })) SimpleControl<Button>(form, "workspaceAddSourceAction").PerformClick();
         return seen;
     }
+    sealed class ModalAssertionTimer : Timer
+    {
+        internal Exception Failure;
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
+            if(disposing && Failure!=null)throw new InvalidOperationException("Modal acceptance failed",Failure);
+        }
+    }
     static Timer FlowModal(string childName, Action<Form> action)
     {
-        var timer = new Timer { Interval = 60 };
+        var timer = new ModalAssertionTimer { Interval = 60 };
         timer.Tick += (sender, args) =>
         {
             var dialog = Application.OpenForms.Cast<Form>().FirstOrDefault(f => f.Visible && f.Controls.Find(childName, true).Length != 0);
             if (dialog == null) return;
             timer.Stop();
-            action(dialog);
+            try { action(dialog); }
+            catch(Exception error) { timer.Failure=error;dialog.DialogResult=DialogResult.Cancel;dialog.Close(); }
         };
         timer.Start();
         return timer;

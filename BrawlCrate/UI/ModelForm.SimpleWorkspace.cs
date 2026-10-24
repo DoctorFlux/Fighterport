@@ -19,6 +19,10 @@ namespace BrawlCrate.UI
         private ToolStripButton _simpleWorkspaceLibrary, _simpleWorkspaceFocus;
         private ToolStripButton _simpleWorkspaceNewProject, _simpleWorkspaceOpenProject, _simpleWorkspaceMoreTools;
         private ToolStripLabel _simpleWorkspaceSummary;
+        private ToolStrip _simpleWorkspaceActions;
+        private ToolStripButton _simpleWorkspaceWorkflow;
+        private ToolStripDropDownButton _simpleWorkspaceOptions;
+        private bool _simpleWorkspaceDrawer;
         private int _simpleWorkspaceStage;
         private bool _simpleWorkspaceFocused, _simpleWorkspaceLayingOut;
         private bool _simpleWorkspaceLastBusy;
@@ -89,22 +93,37 @@ namespace BrawlCrate.UI
             toolbar.Items.Add(new ToolStripSeparator());
             toolbar.Items.Add(new ToolStripLabel("Use animations on a model") { Name = "workspaceOperation" });
             toolbar.Items.Add(new ToolStripLabel("Target: Brawl") { Name = "workspaceTargetGame" });
-            _simpleWorkspaceLibrary = AddFighterButton(toolbar, "Source library", "workspaceSourceLibrary",
+            _simpleWorkspaceActions = new ToolStrip { Name="workspaceActions", Dock=DockStyle.Top,
+                GripStyle=ToolStripGripStyle.Hidden, CanOverflow=false };
+            _simpleWorkspaceWorkflow = AddFighterButton(_simpleWorkspaceActions,"Workflow","workspaceWorkflow",
+                ToggleSimpleWorkspaceWorkflow);
+            _simpleWorkspaceLibrary = AddFighterButton(_simpleWorkspaceActions, "Source library", "workspaceSourceLibrary",
                 () => RunFighterAction(ToggleAnimationLibrary));
-            _simpleWorkspaceFocus = AddFighterButton(toolbar, "Focus editor", "workspaceFocusEditor",
+            _simpleWorkspaceFocus = AddFighterButton(_simpleWorkspaceActions, "Focus editor", "workspaceFocusEditor",
                 ToggleSimpleWorkspaceFocus);
-            _simpleWorkspaceMoreTools = AddFighterButton(toolbar, "More tools", "workspaceMoreTools",
+            _simpleWorkspaceMoreTools = AddFighterButton(_simpleWorkspaceActions, "More tools", "workspaceMoreTools",
                 () => RunFighterAction(() => RunSimpleWorkspaceAction("details")));
-            _simpleWorkspaceOpenProject = AddFighterButton(toolbar, "Open project", "workspaceOpenProject",
+            _simpleWorkspaceOpenProject = AddFighterButton(_simpleWorkspaceActions, "Open project", "workspaceOpenProject",
                 () => RunFighterAction(() => RunSimpleWorkspaceAction("open-project")));
-            _simpleWorkspaceNewProject = AddFighterButton(toolbar, "New project", "workspaceNewProject",
+            _simpleWorkspaceNewProject = AddFighterButton(_simpleWorkspaceActions, "New project", "workspaceNewProject",
                 () => RunFighterAction(() => RunSimpleWorkspaceAction("new-project")));
 
+            _simpleWorkspaceOptions = new ToolStripDropDownButton("Workspace text") { Name="workspaceTextSize", AccessibleName="Workspace text size" };
+            foreach(int percent in WorkspaceAppearance.TextSizes)
+            {
+                int selected=percent;
+                var choice=new ToolStripMenuItem(percent+"%") { Name="workspaceText"+percent, Tag=percent };
+                choice.Click+=(sender,args)=>SetWorkspaceTextSize(selected);
+                _simpleWorkspaceOptions.DropDownItems.Add(choice);
+            }
+            _simpleWorkspaceActions.Items.Add(_simpleWorkspaceOptions);
+            Controls.Add(_simpleWorkspaceActions);
             Controls.Add(_simpleWorkspaceBody);
             Controls.Add(_simpleWorkspaceNavigation);
             _simpleWorkspaceBody.BringToFront();
             Controls.SetChildIndex(toolbar, Controls.Count - 1);
             Controls.SetChildIndex(_simpleWorkspaceNavigation, 1);
+            Controls.SetChildIndex(_simpleWorkspaceActions, 2);
             Resize += (sender, args) => LayoutSimpleWorkspace();
             _simpleWorkspaceBody.SizeChanged += (sender, args) => LayoutSimpleWorkspace();
             EventHandler busyChanged = (sender, args) =>
@@ -115,6 +134,7 @@ namespace BrawlCrate.UI
             _simpleWorkspaceBody.Disposed += (sender, args) => Application.Idle -= busyChanged;
             DarkTheme.Apply(_simpleWorkspaceBody);
             DarkTheme.Apply(_simpleWorkspaceNavigation);
+            ApplyWorkspaceTextSize();
             UpdateSimpleWorkspace();
         }
 
@@ -123,6 +143,7 @@ namespace BrawlCrate.UI
             if (stage < 0 || stage > 3) throw new ArgumentOutOfRangeException(nameof(stage));
             if (SimpleWorkspaceBusy) return;
             _simpleWorkspaceStage = stage;
+            _simpleWorkspaceDrawer = true;
             _simpleWorkspaceFocused = false;
             if (stage != 0 && _libraryPane?.Visible == true)
                 SetSimpleWorkspaceLibraryVisible(false);
@@ -139,6 +160,7 @@ namespace BrawlCrate.UI
         private void ToggleSimpleWorkspaceFocus()
         {
             _simpleWorkspaceFocused = !_simpleWorkspaceFocused;
+            _simpleWorkspaceDrawer = !_simpleWorkspaceFocused;
             if (_simpleWorkspaceFocused && _libraryPane?.Visible == true)
                 SetSimpleWorkspaceLibraryVisible(false);
             UpdateSimpleWorkspace();
@@ -161,6 +183,10 @@ namespace BrawlCrate.UI
                 throw new InvalidOperationException("Finish or cancel the current edit before changing the transfer.");
             switch (action)
             {
+                case "close-workflow":
+                    _simpleWorkspaceDrawer = false;
+                    _simpleWorkspaceFocused = true;
+                    break;
                 case "source":
                     _simpleWorkspaceFocused = false;
                     _simpleWorkspaceStage = 0;
@@ -422,6 +448,8 @@ namespace BrawlCrate.UI
                 savedSource == null ? "Choose a source" : "Saved source: " + savedSourceName) +
                 "  →  " + (hasTarget ? targetModel.Name : "Choose a target");
             _simpleWorkspaceLibrary.Checked = _libraryPane?.Visible == true;
+            _simpleWorkspaceWorkflow.Enabled = !busy;
+            _simpleWorkspaceOptions.Enabled = !busy;
             _simpleWorkspaceFocus.Checked = _simpleWorkspaceFocused;
             _simpleWorkspaceFocus.Text = _simpleWorkspaceFocused ? "Show workflow" : "Focus editor";
             _simpleWorkspaceNewProject.Enabled = _simpleWorkspaceOpenProject.Enabled =
@@ -435,13 +463,32 @@ namespace BrawlCrate.UI
             _simpleWorkspaceLayingOut = true;
             try
             {
+                LayoutWorkspaceBars();
+                int width=_simpleWorkspaceBody.ClientSize.Width;
+                int height=_simpleWorkspaceBody.ClientSize.Height;
                 bool libraryVisible = _libraryPane?.Visible == true;
-                _simpleWorkspaceTask.Visible = !_simpleWorkspaceFocused &&
-                    (!libraryVisible || _simpleWorkspaceBody.ClientSize.Width - _libraryPane.Width -
-                        _simpleWorkspaceTask.Width >= 760);
+                int libraryWidth=Math.Min(WorkspaceAppearance.Pixels(340),Math.Max(280,width-120));
+                bool libraryOverlay=libraryVisible && width-libraryWidth<NativeWorkspaceMinimumWidth;
+                if(_libraryPane!=null)
+                {
+                    _libraryPane.Dock=libraryOverlay?DockStyle.None:DockStyle.Left;
+                    _libraryPane.Width=libraryWidth;
+                    if(libraryOverlay)_libraryPane.Bounds=new Rectangle(0,0,libraryWidth,height);
+                }
+                int taskWidth=Math.Min(WorkspaceAppearance.Pixels(270),Math.Max(240,(width-120)/2));
+                bool fits=!libraryOverlay && width-(libraryVisible?libraryWidth:0)-taskWidth>=NativeWorkspaceMinimumWidth;
+                bool showTask=!_simpleWorkspaceFocused && (fits || _simpleWorkspaceDrawer && !libraryOverlay);
+                _simpleWorkspaceTask.Visible=showTask;
+                _simpleWorkspaceTask.Dock=fits?DockStyle.Right:DockStyle.None;
+                _simpleWorkspaceTask.Width=taskWidth;
+                if(!fits)_simpleWorkspaceTask.Bounds=new Rectangle(width-taskWidth,0,taskWidth,height);
                 modelEditControl1.BringToFront();
                 LayoutSimpleWorkspaceLibraryPreview();
                 _simpleWorkspaceBody.PerformLayout();
+                if(libraryOverlay)_libraryPane.BringToFront();
+                if(showTask && !fits)_simpleWorkspaceTask.BringToFront();
+                _simpleWorkspaceWorkflow.Checked=showTask;
+                _simpleWorkspaceWorkflow.ToolTipText=showTask?"Hide workflow tasks to make room for the native editor":"Show the current task and next action";
             }
             finally { _simpleWorkspaceLayingOut = false; }
         }
@@ -451,11 +498,15 @@ namespace BrawlCrate.UI
             if (_libraryPane == null) return;
             var layout = _libraryPane.Controls.OfType<TableLayoutPanel>().FirstOrDefault();
             if (layout == null) return;
+            ApplyWorkspaceLibraryTextSize(layout);
             bool preview = _libraryLease != null;
-            layout.RowStyles[4].Height = _libraryPane.Height < 650 ? 42 : 70;
-            layout.RowStyles[6].Height = preview ? 22 : 0;
+            layout.RowStyles[4].Height = WorkspaceAppearance.Pixels(_libraryPane.Height < 650 ? 48 : 70);
+            layout.RowStyles[6].Height = preview ? WorkspaceAppearance.Pixels(24) : 0;
             layout.RowStyles[7].Height = preview ? (_libraryPane.Height < 650 ? 120 : 160) : 0;
-            layout.RowStyles[8].Height = preview ? 38 : 0;
+            layout.RowStyles[8].Height = preview ? WorkspaceAppearance.Pixels(38) : 0;
+            int required=(int)layout.RowStyles.Cast<RowStyle>().Where(r=>r.SizeType==SizeType.Absolute).Sum(r=>r.Height)+160;
+            layout.Height=Math.Max(_libraryPane.ClientSize.Height-_libraryPane.Padding.Vertical,required);
+
             for (int row = 6; row < 9; row++)
             {
                 var control = layout.GetControlFromPosition(0, row);

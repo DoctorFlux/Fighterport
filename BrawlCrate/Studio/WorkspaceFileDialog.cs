@@ -72,6 +72,7 @@ namespace BrawlCrate.Studio
                 RowCount = 1,
                 Margin = Padding.Empty
             };
+            picker.RowStyles.Add(new RowStyle(SizeType.Percent,100));
             picker.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             picker.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 94));
             _path = new TextBox
@@ -82,7 +83,7 @@ namespace BrawlCrate.Studio
                 Margin = new Padding(0, 5, 8, 0),
                 TabIndex = 0
             };
-            var browse = new Button
+            var browse = new WorkspaceButton
             {
                 Name = "workspaceFileBrowse",
                 AccessibleName = "Browse for a file",
@@ -113,7 +114,7 @@ namespace BrawlCrate.Studio
                 WrapContents = false,
                 Margin = Padding.Empty
             };
-            var cancel = new Button
+            var cancel = new WorkspaceButton
             {
                 Name = "workspaceFileCancel",
                 AccessibleName = "Cancel file selection",
@@ -123,7 +124,7 @@ namespace BrawlCrate.Studio
                 Margin = new Padding(8, 0, 0, 0),
                 TabIndex = 3
             };
-            _accept = new Button
+            _accept = new WorkspaceButton
             {
                 Name = "workspaceFileAccept",
                 AccessibleName = string.IsNullOrWhiteSpace(actionText) ? "Open" : actionText,
@@ -147,6 +148,9 @@ namespace BrawlCrate.Studio
             _path.Text = initialPath ?? "";
             ValidatePath();
             Shown += (sender, args) => { _path.Focus(); _path.SelectAll(); };
+            WorkspaceAppearance.SizeDialog(this);
+            layout.RowStyles[2].Height = Math.Max(Font.Height+20,WorkspaceAppearance.Pixels(38));
+            layout.RowStyles[4].Height = Math.Max(Font.Height+24,WorkspaceAppearance.Pixels(36));
         }
 
         private void Browse()

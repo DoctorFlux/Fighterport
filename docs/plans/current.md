@@ -5,7 +5,34 @@ with the simpler workspace while retaining the COMPLETE BrawlCrate Model Preview
 and original Next retargeter. This supersedes the earlier planning-only/contact-first
 ordering. M2 remains the ONE incomplete milestone; this is its sole executable queue.
 
-Latest 24 October continuation explicitly authorizes the root tweak now, together
+Latest continuation: workspace scaling and usability, retaining the complete native
+previewer, original Next v7 and source-local control policy. ONE bounded G1
+increment: 100–200% workspace text, compact navigation, recoverable workflow/library
+drawers, readable disabled actions and primary action access in short windows.
+Do not change process/monitor DPI, native document/renderer/fonts, solver or numeric
+gates. Qualify application text scaling and handler usability separately from
+physical OS DPI/input and human task outcomes. Derive minimum native editor room
+from actual native CHR0/playback minima (888 px including spacing), and exercise 1050/1320/1600 widths and 650/850/950 heights, repeated
+scale/resize/focus/stage changes, dialogs and exact document/clip/frame/Undo ownership.
+
+### Preview.18 bounded acceptance and next task
+
+The scaling increment passes 1,848 fresh scoped assertions with all 41 final PNGs
+individually inspected. See [commands, development failures and limits](../WORKSPACE_SCALING_ACCEPTANCE_2026-10-24.md).
+Both authentic rigs pass repeated 100–200% presets, compact/wide resize, stage,
+focus, library and workflow cycles while retaining exact native ownership and
+protected root controls. New/unsaved, original Next transfer/export/reopen and
+bidirectional source-only control regressions pass on the same final app.
+User preference survives New in process; actual config disk roundtrip is untested.
+
+Next within this ONE G1/M2 slice: physical monitor DPI/input and measured human
+first/repeat workspace tasks, recording steps, hidden commands and wrong-document
+errors. Keep these explicitly unverified until exercised. No broader solver or
+contact acceptance is implied. Retain all unresolved work below.
+
+### Preceding preview.17 scope
+
+The preceding 24 October continuation explicitly authorized the root tweak, together
 with New project and unsaved-change handling. This overrides the deferral recorded
 below. ONE current bounded increment: preserve current native documents through
 Save/Discard/Cancel, failed/cancelled saves and project replacement; implement
@@ -88,9 +115,9 @@ The [preview.15 acceptance report](../SIMPLE_WORKSPACE_ACCEPTANCE_2026-10-24.md)
 records commands, fixtures, baseline, results, inspected images, development
 failures and limitations. Historical preview.14 counts are not these results.
 
-## One current executable substep — G1 task-flow/usability qualification
+## Recorded preview.16/17 G1 task-flow qualification
 
-The next user continuation keeps G1 current and explicitly leaves the root-bone
+The historical preview.16 continuation kept G1 current and explicitly left the root-bone
 tweak for later. Preview.16's bounded increment adds contextual Continue and
 readiness, direct source add/repair, visible project/tool entry, actual path-entry
 target/project dialogs and model-only resume. Correct stale association approval,
@@ -117,7 +144,7 @@ reopen, individual authored controls and inherited-motion exclusion pass the
 recorded bounded cases. Original Next v7 remains the base with separate policy
 provenance; legacy receipts do not qualify that new policy.
 
-Next, continue this SAME G1 substep with readable scaling and first/repeat human
+Preview.17 queued this SAME G1 substep for readable scaling and first/repeat human
 task outcomes. The mechanical registration/repair, target-open, New/unsaved,
 More tools and resume handlers are implemented. Measure steps, hidden commands
 and wrong-document errors before calling workflow usability complete. Keep
@@ -157,7 +184,8 @@ and gameplay authoring remain deferred.
 
 ## Source baseline
 
-Public Fighterport main began this increment at 6bab2084b2bbc07eed48a3ab3a97c8322d988b95.
+Public Fighterport main began preview.18 at 736c8e1fbee8cde5b9eab3c1a83cc78cf65469a1.
+The preceding preview.17 began at 6bab2084b2bbc07eed48a3ab3a97c8322d988b95.
 The imported application is preview.14: private Next 1cc96940bb58a6bab2f5a5c6ab9fff03e3d4165d
 has the same source tree as historical evidence alias 07cb032. Its reported 655 scoped
 assertions/47 inspected PNGs were hash-verified during planning, not rerun for this UI.

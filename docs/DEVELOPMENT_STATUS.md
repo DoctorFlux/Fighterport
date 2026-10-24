@@ -1,11 +1,14 @@
 # Development status — 24 October 2026 workspace increment
 
-Current continuation: **preview.17-project-and-motion-controls**, with 1,182
-scoped assertions and 23 inspected PNGs. New/unsaved handling and the source-local
-protected-control policy are implemented around the same full native previewer
-and original Next v7 base. See [fresh evidence and limitations](PROJECT_MOTION_CONTROLS_ACCEPTANCE_2026-10-24.md).
-No other-game, broad contact/generalization or actual game acceptance is implied.
-The preview.16 text below records its preceding increment.
+Current continuation: **preview.18-workspace-scaling**, with 1,848 scoped
+assertions and 41 individually inspected PNGs. Workspace text presets (100–200%),
+compact Workflow/library drawers, pinned primary actions and readable scaled
+dialogs retain the complete native previewer, original Next v7 and source-local
+protected-control policy. See [fresh evidence and limitations](WORKSPACE_SCALING_ACCEPTANCE_2026-10-24.md).
+Application text scaling does not qualify physical/per-monitor DPI. Physical input,
+human task outcomes and user-config disk roundtrip remain unverified. No new game,
+format, broad contact/generalization or actual game acceptance is implied.
+Preview.17 New/unsaved and protected controls retain their [separate receipt](PROJECT_MOTION_CONTROLS_ACCEPTANCE_2026-10-24.md); the preview.16 text below is historical.
 
 The preceding Fighterport implementation was **preview.16-workspace-flow**
 (`2.0.0-preview.16-workspace-flow`). Source -> Target -> Preview and fix ->

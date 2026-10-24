@@ -8,7 +8,14 @@ Record imported revisions and preserve upstream source authorship and notices.
 
 ## Plans and current work
 
-Latest 24 October user request supersedes the root-policy deferral below:
+Latest 24 October request continues workspace scaling/usability. Preview.18 has
+fresh bounded acceptance (1,848 assertions/41 inspected PNGs); see
+docs/WORKSPACE_SCALING_ACCEPTANCE_2026-10-24.md. Preserve the complete native
+previewer, original Next v7 and source-local root-control policy. App text presets
+do not establish physical/per-monitor DPI, physical input or human task outcomes.
+M2/G1 remains the ONE incomplete slice; the sole plans below govern the next work.
+
+The preceding 24 October user request superseded the root-policy deferral below:
 implement New project/unsaved-change handling AND the source-owned motion-control
 tweak now, within the ONE incomplete M2 slice. Keep original Next v7 as the base
 and the complete native previewer. Record the new policy separately from legacy
