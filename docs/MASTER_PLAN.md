@@ -41,8 +41,8 @@ asset replacement must not require authoring a moveset.
 
 | Source | Revision checked on 24 October | Role |
 | --- | --- | --- |
-| Next main | 07cb03299b8a3e63f30642dd8e45a3403dacaaa7, 11:59 CEST | Source baseline, preview.14; local clean main matched remote before this documentation pass |
-| Standalone main | 083bdc3393729620dd8b872a822b7164d81e4fbc | Private preserved history; already routes development to Next |
+| Next main | Final head 1cc96940bb58a6bab2f5a5c6ab9fff03e3d4165d; audited alias 07cb03299b8a3e63f30642dd8e45a3403dacaaa7, 11:59 CEST | Identical source tree ebe593d13ece68cdd9d581c7818ec01a7bb9c193, preview.14 |
+| Standalone main | Final head 8059c7de07baa34916e05d4ac159c3dd833169b3; audited alias 083bdc3393729620dd8b872a822b7164d81e4fbc | Identical source tree 525f054b2f2caded07227427fe570f5d280b84b9; private reference |
 | Integrated owned engine | Source 153726b632a99f34afe2b837802c1cb29052f2e0; application implementation 4752bb4ff4fa04e216b5e3977c1675a7debf3286 | Already integrated; historical evidence does not qualify its migration |
 | Pinned BrawlCrate foundation | d56cbac89dc2cd0e5c3f923e1d03041b16902add | Retain native application and audited modifications |
 | Current upstream BrawlCrate master | a4c1ee3385010d5c64a88df9c56267c61f213321 | Two later commits affecting ten animation/interpolation files; separate review candidate |

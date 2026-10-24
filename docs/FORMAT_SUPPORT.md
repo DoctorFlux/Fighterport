@@ -155,3 +155,12 @@ Automatic associations require a reviewed pair, or reviewed native Brawl build
 ownership plus a unique original body candidate and native body-track binding.
 Ambiguous assets remain unassociated. No reusable automatic rig-profile store,
 Melee HSD, Ultimate SSBH, Unreal or Xenoverse native adapter is implemented here.
+
+Final remote verification on 24 October observed Next main at
+1cc96940bb58a6bab2f5a5c6ab9fff03e3d4165d and standalone main at
+8059c7de07baa34916e05d4ac159c3dd833169b3. Their Git source trees exactly match
+07cb032 and 083bdc3 respectively. The author/committer metadata differs; this
+import did not perform that rewrite. The source/preview.14 audit and its historical
+receipt IDs remain applicable to the identical bytes, without becoming fresh tests.
+Both predecessor repositories are verified private. Fighterport's new public
+history is independently DoctorFlux-authored without coauthor trailers.

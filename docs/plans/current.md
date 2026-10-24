@@ -129,3 +129,12 @@ These retain their exact revision/scope and are not current executable tasks:
 The complete prior queue/master remain in the preserved private Next history at
 07cb03299b8a3e63f30642dd8e45a3403dacaaa7. Historical “next substep” prose there
 does not open additional milestones. None of these counts should be summed.
+
+Final remote verification on 24 October observed Next main at
+1cc96940bb58a6bab2f5a5c6ab9fff03e3d4165d and standalone main at
+8059c7de07baa34916e05d4ac159c3dd833169b3. Their Git source trees exactly match
+07cb032 and 083bdc3 respectively. The author/committer metadata differs; this
+import did not perform that rewrite. The source/preview.14 audit and its historical
+receipt IDs remain applicable to the identical bytes, without becoming fresh tests.
+Both predecessor repositories are verified private. Fighterport's new public
+history is independently DoctorFlux-authored without coauthor trailers.

@@ -481,3 +481,12 @@ The local source root is the V2 directory only. This session has no project
 management tool. In Codex, create a separate local project, use Edit project ->
 Add folder to select only this V2 folder, and make it primary. Do not attach the
 old workspace or the sibling backup directory.
+
+Final remote verification on 24 October observed Next main at
+1cc96940bb58a6bab2f5a5c6ab9fff03e3d4165d and standalone main at
+8059c7de07baa34916e05d4ac159c3dd833169b3. Their Git source trees exactly match
+07cb032 and 083bdc3 respectively. The author/committer metadata differs; this
+import did not perform that rewrite. The source/preview.14 audit and its historical
+receipt IDs remain applicable to the identical bytes, without becoming fresh tests.
+Both predecessor repositories are verified private. Fighterport's new public
+history is independently DoctorFlux-authored without coauthor trailers.
