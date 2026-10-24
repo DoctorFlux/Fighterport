@@ -259,6 +259,36 @@ Translation/root/pelvis/fingers/accessories need explicit role-aware policies.
 Preserve arcs/gestures/action style as well as contact; keep unsupported helper/
 nonuniform-scale semantics visible.
 
+### Queued body-bone correction and source-owned motion controls
+
+24 October follow-up: the user explicitly queued this tweak for later, rather
+than changing the current workspace increment. Retargeting adjustments and
+correction/control operations must act on the body's deform hierarchy. Do not
+synthesize translation, rotation or scale on TopN, TransN, YRotN, XRotN, or
+equivalent global/root/motion controls on other rigs to solve body fitting,
+grounding, contacts or pose corrections.
+
+Those controls can affect the target when the corresponding source control
+has authored motion: transfer the source-owned movement/rotation/scale through
+reviewed role/coordinate mappings. A source TransN movement must still move the
+corresponding target control; the same rule applies to TopN/YRotN/XRotN and their
+equivalents. Where the source provides no such motion, retain the target's
+authentic baseline and avoid generated control transforms. This is not a blanket
+freeze that deletes actual source root motion.
+
+Identify these roles from reviewed hierarchy, native control/deformation,
+rest/axis and structural evidence; names are examples, not the algorithm. Save
+the policy in exact rig/profile/recipe dependencies. Before implementation,
+freeze independent expectations for source-animated and unanimated cases,
+permitted coordinate conversion, body correction, export/reopen and existing-rig
+controls, including renamed/permuted compatible rigs. Do not replace or normalize
+bones/binds. Report genuine conflicts when body reach cannot meet a goal under
+the protected-control policy.
+
+Preview.15 does not implement this policy. Its TopN pin-authoring tests establish
+current native edit continuity only and are not acceptance for this queued tweak.
+Keep it in G2's later numerical/control work; G1 remains the sole current substep.
+
 Original Next v7 stays default. Advanced 96.2 output remains blocked until its
 motion/contact/native/display/missing-context gates pass; a repository import or
 successful decode does not promote it.
@@ -281,10 +311,11 @@ moving supports. Fixed pins/sockets stay fixed in support coordinates. Infer
 changing interactions from actual deforming geometry and context, not action names
 or height alone. Preserve moving-frame timing and continuous bounded-ledge motion.
 
-Coordinate root/pelvis/spine/clavicles/limbs, reachable bounds/joint limits,
+Coordinate body pelvis/spine/clavicles/limbs, reachable bounds/joint limits,
 full foot/hand geometry, bend continuity and release phases. Contradictory goals
 produce explicit conflicts; never resize anatomy, move fixed anchors or quietly
-drop constraints to manufacture success.
+drop constraints to manufacture success. The queued protected-motion-control
+policy above permits actual source root motion, not generated global compensation.
 
 Manual bounds remain position <= 0.001 times reviewed limb scale and orientation
 <= 0.25 degrees at native quarter frames. Keep other frozen numeric gates. Freeze
@@ -318,7 +349,7 @@ to every reaction or present preview crossfades as native baked output.
 
 Couple contacts and fitting where they overlap. Short clips, protected events and
 incompatible states must show bounded conflicts. Persist meaningful target layers
-for FK baseline/calibration/root, IK/contact, manual/additive edits, timing,
+for FK baseline/calibration/source-owned root motion, IK/contact, manual/additive edits, timing,
 boundaries and supported companion channels; allow only valid orderings.
 Expose optional source/FK/corrected ghosts, paths and diagnostic views.
 

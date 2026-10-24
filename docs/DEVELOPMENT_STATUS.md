@@ -8,6 +8,11 @@ transfer, native controls and protected CHR0/project output remain the underlyin
 operations. Collapsible panels and Focus editor preserve editing room; expert
 commands remain accessible through More tools. Launch with `scripts/Run.ps1`.
 
+The user's later TopN/TransN/YRotN/XRotN protection request is recorded as queued
+G2 work in MASTER_PLAN section 7: body-bone corrections, with those global/motion
+controls following actual source motion only. Preview.15 leaves the solver and
+native control authoring unchanged; it does not claim this policy is implemented.
+
 Fresh private-desktop verification passes **163 scoped checks**: 61 in each
 supplied retarget direction and 41 original procedural native-controls checks,
 with **25 actually inspected PNGs**. Transfer output matches a separately prepared

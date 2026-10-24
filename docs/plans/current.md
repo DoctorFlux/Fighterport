@@ -79,6 +79,15 @@ or unresolved concerns. Full native parity and all G1 usability remain incomplet
 
 ## Retained unresolved work
 
+24 October user follow-up queues a later body-bone-only correction policy:
+TopN/TransN/YRotN/XRotN and equivalent reviewed global/motion controls receive
+source-authored motion only, with no generated move/rotate/scale compensation.
+Use body bones for retarget fitting and corrections. Preserve genuine source
+motion on the corresponding target controls; identify roles structurally rather
+than by names alone. See MASTER_PLAN section 7. This is queued G2 work, not a
+solver change in the current G1 workspace increment. Existing preview.15 TopN
+pin checks do not validate this new policy.
+
 Full original native support timelines/context, coupled surface and moving-support
 placements/releases remain queued under MASTER_PLAN section 7 with legacy full-context
 persistence, independent subframe/conflict/continuity and generalization evidence.

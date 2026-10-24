@@ -26,6 +26,13 @@ PNGs); retain original Next v7 and native transactions. Full contact timelines/c
 queued with their independent subframe/continuity/conflict requirements.
 M2 remains incomplete. Prior advanced 96.2 gates remain unresolved and Apply blocked.
 
+24 October later user follow-up queues a body-bone correction policy for G2:
+do not generate movement/rotation/scale on TopN/TransN/YRotN/XRotN or equivalent
+reviewed global/motion controls; transfer their genuine source-authored motion
+only. Apply fitting/corrections on body bones. Names alone never identify roles.
+This is deferred; do not change the solver during current G1 workspace work or
+claim preview.15 native TopN-edit checks validate the queued policy. See master §7.
+
 Asset scope includes models/animations, materials/costumes, library/projects,
 existing-rig controls, retargeting, contacts, timing/transitions, asset assignments,
 optimization, native output and independent target branches. Moveset scripting,
