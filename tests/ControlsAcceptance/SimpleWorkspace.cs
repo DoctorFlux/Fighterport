@@ -429,7 +429,7 @@ internal static partial class Program
             }
             // Outer drawers occlude native child viewports. Composite their
             // actual controls after offscreen GL, matching the window Z order.
-            foreach(string name in new[]{"animationLibraryPane","workspaceTaskPane"})
+            foreach(string name in new[]{"animationLibraryPane","workspaceTaskPane","workspaceBatchReview"})
             {
                 var drawer=form.Controls.Find(name,true).SingleOrDefault();
                 if(drawer==null||!drawer.Visible||drawer.Dock!=DockStyle.None)continue;

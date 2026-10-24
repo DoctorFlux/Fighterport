@@ -57,6 +57,7 @@ namespace BrawlCrate.UI
             _simpleWorkspaceBody.Controls.Add(_simpleWorkspaceTask);
             _simpleWorkspaceBody.Controls.Add(modelEditControl1);
             modelEditControl1.AnimationSampled += SampleLinkedComparison;
+            modelEditControl1.FighterAnimationAuthored += BatchReviewAuthored;
             modelEditControl1.BringToFront();
 
             _simpleWorkspaceNavigation = new ToolStrip
@@ -146,6 +147,7 @@ namespace BrawlCrate.UI
             if (SimpleWorkspaceBusy) return;
             _workspaceTaskOpener = _workspaceInvoker ?? CurrentWorkspaceFocus() ?? _simpleWorkspaceWorkflow;
             if (_comparisonPane != null) _comparisonPane.Visible = false;
+            HideBatchReview();
             _simpleWorkspaceStage = stage;
             _simpleWorkspaceDrawer = true;
             _simpleWorkspaceFocused = false;
@@ -166,6 +168,7 @@ namespace BrawlCrate.UI
         {
             if (SimpleWorkspaceBusy) return;
             _workspaceTaskOpener = _workspaceInvoker ?? CurrentWorkspaceFocus() ?? _simpleWorkspaceFocus;
+            if (_batchReviewPane?.Visible == true) { HideBatchReview(); _simpleWorkspaceFocused = false; }
             if (_comparisonPane?.Visible == true || _comparisonLease != null) { CloseLinkedComparison(); _simpleWorkspaceFocused = false; }
             _simpleWorkspaceFocused = !_simpleWorkspaceFocused;
             _simpleWorkspaceDrawer = !_simpleWorkspaceFocused;
@@ -236,6 +239,9 @@ namespace BrawlCrate.UI
                     if (!SimpleWorkspaceSourceReady || !(modelEditControl1.TargetModel is MDL0Node))
                         throw new InvalidOperationException("Choose an available source animation and a target model first.");
                     UseLibraryOnTarget(); // The original Next v7 route and its existing stale/cancel guards.
+                    break;
+                case "review-results":
+                    OpenBatchReview();
                     break;
                 case "compare":
                     OpenLinkedComparison();
@@ -424,6 +430,9 @@ namespace BrawlCrate.UI
         private void UpdateSimpleWorkspace()
         {
             if (_simpleWorkspaceTask == null || _simpleWorkspaceMoreTools == null || IsDisposed || Disposing) return;
+            if (_batchReviewOpenRequested && !SimpleWorkspaceBusy)
+            { _batchReviewOpenRequested = false; BeginInvoke(new Action(OpenBatchReview)); }
+            SyncBatchReview();
             var selectedSource = LibrarySelection;
             bool sourceReady = SimpleWorkspaceSourceReady;
             var targetModel = modelEditControl1.TargetModel as MDL0Node;
@@ -478,6 +487,7 @@ namespace BrawlCrate.UI
                 LayoutWorkspaceBars();
                 int width=_simpleWorkspaceBody.ClientSize.Width;
                 int height=_simpleWorkspaceBody.ClientSize.Height;
+                bool reviewing = _batchReviewPane?.Visible == true;
                 bool comparing = _comparisonPane?.Visible == true;
                 if (comparing && _libraryPane != null) _libraryPane.Visible = false;
                 bool libraryVisible = _libraryPane?.Visible == true;
@@ -492,14 +502,16 @@ namespace BrawlCrate.UI
                 }
                 int taskWidth=Math.Min(WorkspaceAppearance.Pixels(270),Math.Max(240,(width-120)/2));
                 bool fits=!libraryOverlay && width-(libraryVisible?libraryWidth:0)-taskWidth>=NativeWorkspaceMinimumWidth;
-                bool showTask=!comparing && !_simpleWorkspaceFocused && (fits || _simpleWorkspaceDrawer && !libraryVisible);
+                bool showTask=!reviewing && !comparing && !_simpleWorkspaceFocused && (fits || _simpleWorkspaceDrawer && !libraryVisible);
                 _simpleWorkspaceTask.Visible=showTask;
                 _simpleWorkspaceTask.Dock=fits?DockStyle.Right:DockStyle.None;
                 _simpleWorkspaceTask.Width=taskWidth;
                 if(!fits)_simpleWorkspaceTask.Bounds=new Rectangle(width-taskWidth,0,taskWidth,height);
+                LayoutBatchReview(width, height);
                 modelEditControl1.BringToFront();
                 LayoutSimpleWorkspaceLibraryPreview();
                 _simpleWorkspaceBody.PerformLayout();
+                if(reviewing && _batchReviewPane.Dock==DockStyle.None)_batchReviewPane.BringToFront();
                 if(libraryOverlay)_libraryPane.BringToFront();
                 if(showTask && !fits)_simpleWorkspaceTask.BringToFront();
                 _simpleWorkspaceWorkflow.Checked=showTask;

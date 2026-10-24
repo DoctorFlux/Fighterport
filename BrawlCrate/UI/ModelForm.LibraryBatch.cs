@@ -22,7 +22,7 @@ namespace BrawlCrate.UI
         {
             if(!(modelEditControl1.TargetModel is MDL0Node target)||_controlBusy||_retargetBusy||_workspaceBusy)return;
             modelEditControl1.StopAnim();_libraryTimer.Stop();_libraryPlay.Text="Play";
-            var query=CurrentLibraryQuery();var items=LibraryWork.Run(this,"Loading Batch Catalogue",(cancel,progress)=>{cancel.ThrowIfCancellationRequested();return _library.Search(query,0,out _,200);});
+            var query=CurrentLibraryQuery();int matches=0;var items=LibraryWork.Run(this,"Loading Batch Catalogue",(cancel,progress)=>{cancel.ThrowIfCancellationRequested();return _library.Search(query,0,out matches,200);});
             if(items==null)return;
             var project=_fighterProject;string targetHash=NativeControlHash(target,".mdl0");var mode=project.GroundMode;
             var drafts=new List<LibraryBatchDraft>();bool working=false;
@@ -34,15 +34,15 @@ namespace BrawlCrate.UI
                 foreach(string name in new[]{"Start","End","Frames"})grid.Columns.Add(new DataGridViewTextBoxColumn{Name=name,HeaderText=name=="Frames"?"Output frames*":name+" frame",FillWeight=60});
                 grid.Columns.Add(new DataGridViewTextBoxColumn{Name="Result",HeaderText="Review / channel losses",ReadOnly=true,FillWeight=260});
                 foreach(var item in items){int row=grid.Rows.Add(false,item.Clip.Name+" / "+(item.Model?.Character??"Unbound"),1,item.Clip.FrameCount,0,LibraryStateText(item.State));grid.Rows[row].Tag=item;}
-                var heading=new Label{Dock=DockStyle.Top,Height=68,Padding=new Padding(8),Text="Original Next retargeter · "+mode+" contacts · target "+target.Name+"\nFrames are numbered from 1. Trim and timing fits resample the source before retargeting; fitted results are non-looping.\n*0 uses the shared frame count; shared 0 keeps the selected source range. Originals remain unchanged. Showing up to 200 matches; filter in the library to narrow the list."};
+                var heading=new Label{Name="batchHeading",Dock=DockStyle.Top,Height=68,Padding=new Padding(8),Text="Original Next retargeter · "+mode+" contacts · target "+target.Name+"\nFrames are numbered from 1. Trim and timing fits resample the source before retargeting; fitted results are non-looping.\n*0 uses the shared frame count; shared 0 keeps the selected source range. Originals remain unchanged. Showing "+items.Count+" of "+matches+" matches (200-row display limit); filter in the library to narrow the list."};
                 var actions=new FlowLayoutPanel{Dock=DockStyle.Bottom,AutoSize=true,Padding=new Padding(6)};
                 var details=new TextBox{Name="batchDetails",Dock=DockStyle.Bottom,Height=76,ReadOnly=true,Multiline=true,ScrollBars=ScrollBars.Vertical};
                 Action showDetails=()=>details.Text=grid.CurrentRow==null?"Select a result to read its full report.":Convert.ToString(grid.CurrentRow.Cells["Clip"].Value)+Environment.NewLine+Convert.ToString(grid.CurrentRow.Cells["Result"].Value);
                 grid.SelectionChanged+=(s,e)=>showDetails();grid.CurrentCellChanged+=(s,e)=>showDetails();grid.CellValueChanged+=(s,e)=>showDetails();
                 var shared=new NumericUpDown{Name="sharedFrames",Minimum=0,Maximum=4096,Width=70};
                 var review=new CheckBox{Name="reviewBatch",Text="I reviewed results and listed channel losses",AutoSize=true};
-                var prepare=new Button{Name="prepareBatch",Text="Retarget Selected",AutoSize=true};var apply=new Button{Name="applyBatch",Text="Add Reviewed Results",AutoSize=true,Enabled=false};
-                var select=new Button{Text="Select Available",AutoSize=true};select.Click+=(s,e)=>{foreach(DataGridViewRow row in grid.Rows)row.Cells["Use"].Value=((LibrarySearchItem)row.Tag).State==LibrarySourceState.Available;};
+                var prepare=new WorkspaceButton{Name="prepareBatch",Text="Retarget Selected",AutoSize=true};var apply=new WorkspaceButton{Name="applyBatch",Text="Add Reviewed Results",AutoSize=true,Enabled=false};
+                var select=new WorkspaceButton{Text="Select Available",AutoSize=true};select.Click+=(s,e)=>{foreach(DataGridViewRow row in grid.Rows)row.Cells["Use"].Value=((LibrarySearchItem)row.Tag).State==LibrarySourceState.Available;};
                 actions.Controls.Add(select);actions.Controls.Add(new Label{Text="Shared frames",AutoSize=true,Padding=new Padding(0,6,0,0)});actions.Controls.Add(shared);actions.Controls.Add(prepare);actions.Controls.Add(review);actions.Controls.Add(apply);
                 Action clear=()=>{foreach(var draft in drafts)draft.Dispose();drafts.Clear();review.Checked=false;apply.Enabled=false;};
                 grid.CellValueChanged+=(s,e)=>{if(!working&&e.RowIndex>=0&&e.ColumnIndex>=0&&!grid.Columns[e.ColumnIndex].ReadOnly)clear();};
@@ -89,6 +89,9 @@ namespace BrawlCrate.UI
                     {
                         current();if(!review.Checked||drafts.Count==0)return;
                         if(_controlBusy||_retargetBusy||_workspaceBusy)throw new InvalidOperationException("Finish the current edit before adding results.");
+                        SyncBatchReview();
+                        if (_batchReviewRows.Count + drafts.Count > 64 || project.Animations.Count + drafts.Count > FighterProject.MaximumAnimations)
+                            throw new InvalidOperationException("The review/project limit would be exceeded. Remove review rows or use a smaller batch.");
                         var json=new JavaScriptSerializer();
                         foreach(var draft in drafts)using(var verified=_library.Open(draft.Source.ClipId))
                             if(json.Serialize(verified.Reference)!=json.Serialize(draft.Source))throw new InvalidOperationException("A library source changed. Retarget the batch again.");
@@ -98,12 +101,22 @@ namespace BrawlCrate.UI
                         RememberFighterImport();project.Animations.AddRange(assets);project.SelectedAnimation=FighterAnimationKey(assets[0],FighterRoot(assets[0]));project.Frame=1;
                         RebuildFighterScene();if(drafts[0].Result.Contacts.FloorEnabled)modelEditControl1.QueueGroundContactView();else modelEditControl1.QueueFrameFighterModel();
                         MarkFighterChanged();UpdateFighterStatus();_fighterStatus.Text="Added "+assets.Length+" reviewed independent Next results. Save Fighter to keep the batch.";
+                        foreach (var added in assets) AddBatchReviewClip(added, (CHR0Node)FighterRoot(added));
                         window.Close();
+                        BeginInvoke(new Action(OpenBatchReview));
                     }
                     catch(Exception error){_fighterStatus.Text="Batch: "+error.Message;clear();}
                 };
                 window.FormClosing+=(s,e)=>e.Cancel=working;
                 window.Controls.Add(grid);window.Controls.Add(heading);window.Controls.Add(details);window.Controls.Add(actions);DarkTheme.Apply(window);
+                WorkspaceAppearance.SizeDialog(window);
+                foreach(Button button in actions.Controls.OfType<Button>())
+                {button.AutoSize=false;button.Size=new Size(TextRenderer.MeasureText(button.Text,button.Font).Width+24,button.Font.Height+18);}
+                window.AccessibleDescription="Select source rows, inspect timing and losses, and explicitly add reviewed native results. Tab navigates controls; native grid editing retains its normal keys.";
+                grid.AutoSizeRowsMode=DataGridViewAutoSizeRowsMode.DisplayedCells;
+                grid.ColumnHeadersHeightSizeMode=DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+                Action sizeHeading=()=>{heading.Height=heading.GetPreferredSize(new Size(window.ClientSize.Width,0)).Height+12;};
+                window.SizeChanged+=(s,e)=>sizeHeading();sizeHeading();
                 window.Shown+=(s,e)=>LibraryBatchReady?.Invoke(window);
                 try{window.ShowDialog(this);}finally{clear();}
             }

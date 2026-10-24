@@ -1,4 +1,4 @@
-﻿using BrawlLib.Modeling;
+using BrawlLib.Modeling;
 using BrawlLib.SSBB.ResourceNodes;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,6 +11,7 @@ namespace BrawlLib.Internal.Windows.Controls.ModelViewer.MainWindowBase
 {
     public partial class ModelEditorBase : UserControl
     {
+        public event System.Action<CHR0Node> FighterAnimationAuthored;
         public uint _allowedUndos = 50;
         public List<SaveState> _undoSaves = new List<SaveState>();
         public List<SaveState> _redoSaves = new List<SaveState>();
@@ -73,6 +74,7 @@ namespace BrawlLib.Internal.Windows.Controls.ModelViewer.MainWindowBase
             _undoing=false;
 
             _currentUndo = null;
+            FighterAnimationAuthored?.Invoke(SelectedCHR0);
             UpdateUndoButtons();
         }
 
@@ -284,6 +286,7 @@ namespace BrawlLib.Internal.Windows.Controls.ModelViewer.MainWindowBase
                 ApplyVertexState((VertexState) current);
             }
             else if(current is EditorCommandState command) command.Restore();
+            FighterAnimationAuthored?.Invoke(SelectedCHR0);
         }
 
         public virtual void UpdateUndoButtons()

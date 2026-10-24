@@ -2,7 +2,7 @@
 
 This is the public unified source repository at https://github.com/DoctorFlux/Fighterport.
 It imports the BrawlCrate-based Next preview.14 source and integrated owned engine;
-the current implementation is **preview.24-library-organization**.
+the current implementation is **preview.25-batch-review**.
 The two predecessor repositories are private preserved histories.
 Upstream copyrights, licenses and notices remain intact.
 
@@ -48,6 +48,16 @@ tasks at their primary action. Escape closes a focused pane; cancelled dialogs
 return focus to their invoking control. Native editing shortcuts retain their
 existing routes. Compact drawers may overlay the editor; close them or use Focus
 editor for all native tools.
+
+**Review results** in Preview and fix or Export keeps a session list of exact
+target clips. Batch / Fit opens it after adding reviewed results. Add an existing
+native CHR0 with **Add selected**, inspect it in the full editor, use Previous/Next
+or linked comparison, then **Mark reviewed**. Edits and changed dependencies require
+review again. Removing a row keeps the project animation. Native cross-clip
+Undo/Redo retains its original history. Save keeps unchanged exact approval;
+reopen starts a fresh review session. See the
+[batch review acceptance record](docs/BATCH_REVIEW_ACCEPTANCE_2026-10-24.md).
+Verified set export follows in preview.26; single-clip export remains available.
 
 The source library now has **Favorite / Favorited**, **Favorites only**, and
 combinable game/build, character/model, availability and channel filters alongside

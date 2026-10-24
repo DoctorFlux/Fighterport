@@ -5,7 +5,18 @@ with the simpler workspace while retaining the COMPLETE BrawlCrate Model Preview
 and original Next retargeter. This supersedes the earlier planning-only/contact-first
 ordering. M2 remains the ONE incomplete milestone; this is its sole executable queue.
 
-Latest authorized continuation completes verified export (preview.22), linked
+Latest authorized continuation: reviewed animation batches (preview.25), then
+atomic verified set export (preview.26). Preview.25 bounded acceptance is complete: 1,925 assertions and 81 inspected PNGs.
+See [commands and limits](../BATCH_REVIEW_ACCEPTANCE_2026-10-24.md). Preview.26 is
+queued until this verified source is published. Remain inside ONE incomplete G1/M2.
+Use session-only exact-content approval, original Next, existing native selection/
+Undo, 64-clip/two-million-key bounds and background-only private desktop evidence.
+Review results is recoverable and interoperates with recorded source comparison.
+Set export later stages/independently verifies all CHR0s, then renames a sibling
+folder to a new nonexistent destination; no partial set or project-format change.
+Keep root controls source-local, full native editor and all human/DPI/game gates.
+
+Preceding authorized continuation completes verified export (preview.22), linked
 source/target comparison (preview.23), then favorites and typed library filters
 (preview.24), sequentially inside this ONE incomplete G1/M2 milestone. All three
 bounded increments are accepted; no other feature increment is active.

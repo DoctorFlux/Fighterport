@@ -21,6 +21,7 @@ namespace BrawlCrate.Studio
         private readonly Button _changeTarget;
         private readonly Button _audition;
         private readonly Button _compare;
+        private readonly Button _review;
         private readonly Button _controls;
         private readonly Button _motions;
         private readonly Button _transitions;
@@ -105,6 +106,7 @@ namespace BrawlCrate.Studio
             _repairSource = AddAction("workspaceRepairSourceAction", "Repair source...", "repair-source");
             _changeTarget = AddAction("workspaceChangeTargetAction", "Change target model", "target");
             _audition = AddAction("workspaceAuditionAction", "Preview original", "audition");
+            _review = AddAction("workspaceReviewResultsAction", "Review results", "review-results");
             _compare = AddAction("workspaceCompareSourceAction", "Compare source", "compare");
             _controls = AddAction("workspaceControlsAction", "Set up controls", "controls");
             _motions = AddAction("workspaceMotionsAction", "Add target animations", "motions");
@@ -210,6 +212,8 @@ namespace BrawlCrate.Studio
 
                 _audition.Visible = _stage == 0;
                 _audition.Enabled = _hasSource && !_busy;
+                _review.Visible = _stage == 2 || _stage == 3;
+                _review.Enabled = _hasTarget && !_busy;
                 _compare.Visible = _stage == 2;
                 _compare.Enabled = _hasTarget && _canExport && !_busy;
                 _controls.Visible = _stage == 1 || _stage == 2;

@@ -1,6 +1,15 @@
 # Fighterport master plan
 
-Latest 24 October continuation: preview.24-library-organization completes the
+Latest 24 October continuation: preview.25-batch-review adds recoverable exact
+result navigation and session-only content/target/recipe approval around the full
+native editor. Batch preparation retains original Next, filters, loss review,
+64-clip/two-million-key bounds and one import transaction. Preserve native cross-
+clip Undo, source-local roots, prepared comparison and no playback I/O/hashing.
+Fresh acceptance: 1,925 assertions / 81 reviewed PNGs. See BATCH_REVIEW_ACCEPTANCE_2026-10-24.md for final commands/evidence/limits.
+Verified set export is queued as preview.26 and starts only after this verified
+source is published. Keep ONE incomplete G1/M2 and all human/DPI/contact/game gates.
+
+Preceding 24 October continuation: preview.24-library-organization completes the
 third requested bounded increment after verified export and linked comparison.
 Fresh background qualification: 1,793 assertions and 63 reviewed final PNGs; see
 LIBRARY_ORGANIZATION_ACCEPTANCE_2026-10-24.md. Favorites belong to exact clip IDs

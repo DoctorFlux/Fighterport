@@ -502,6 +502,7 @@ namespace BrawlCrate.UI
                 _fighterProject.ModelNodePath = model.TreePath;
             }
 
+            var approvedBeforeSave = _batchReviewRows.Where(r => r.Approved).ToArray();
             foreach (FighterAsset asset in RegisteredFighterAssets())
             {
                 ResourceNode root = FighterRoot(asset);
@@ -536,6 +537,7 @@ namespace BrawlCrate.UI
             }
 
             _fighterDirty = false;
+            RestoreBatchReviewAfterSave(approvedBeforeSave);
             UpdateFighterStatus();
             WorkspaceRecentProjects.Current.Record(_fighterProject.ManifestPath);
             if (WorkspaceRecentProjects.Current.LastError != null) _fighterStatus.Text = WorkspaceRecentProjects.Current.LastError;
