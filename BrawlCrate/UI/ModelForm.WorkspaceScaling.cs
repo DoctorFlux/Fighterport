@@ -106,9 +106,9 @@ namespace BrawlCrate.UI
                 }
                 layout.RowStyles[row].Height=rows*rowHeight+4;
             }
-            layout.RowStyles[1].Height=Math.Max(line+12,WorkspaceAppearance.Pixels(32));
+            SizeLibraryFilters(line);
             layout.RowStyles[3].Height=line+12;
-            var search=layout.GetControlFromPosition(0,1);
+            var search=_libraryQueryStack.Controls.Find("librarySearchRow",true).Single();
             foreach(Control label in search.Controls)
                 if(label!=_librarySearch)label.Width=TextRenderer.MeasureText(label.Text,label.Font).Width+WorkspaceAppearance.Pixels(label is Button?20:8);
             _libraryList.ItemHeight=line+WorkspaceAppearance.Pixels(5);

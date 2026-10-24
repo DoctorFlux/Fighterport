@@ -54,15 +54,16 @@ namespace BrawlCrate.UI
             {
                 string selected=selectId??LibrarySelection?.Clip.Id;
                 if(modelEditControl1.Playing&&selectId==null)selected=null;
-                string query=_librarySearch.Text;
+                var query=CurrentLibraryQuery();
                 _libraryUse.Enabled=_libraryPreview.Enabled=false;_libraryPage.Text="Searching...";
                 var result=await Task.Run(()=>{
                     if(generation!=_librarySearchGeneration)return null;
                     var rows=_library.Browse(query);
-                    return Tuple.Create(PlanLibraryOutline(rows,_library.ConfiguredGames,selected),rows.Count,_library.ClipCount,_library.CanUndo);
+                    return Tuple.Create(PlanLibraryOutline(rows,query.HasFilters?new string[0]:_library.ConfiguredGames,selected),rows.Count,_library.ClipCount,_library.CanUndo,_library.Channels);
                 });
                 if(result==null||IsDisposed||_libraryPane.IsDisposed||generation!=_librarySearchGeneration)return;
-                _librarySelectAfterRefresh=selected;_libraryExpandSearch=!string.IsNullOrWhiteSpace(query)&&result.Item2<=200;
+                UpdateLibraryChannels(result.Item5);
+                _librarySelectAfterRefresh=selected;_libraryExpandSearch=query.HasFilters&&result.Item2<=200;
                 _libraryRestoreExpansions=!modelEditControl1.Playing;
                 _libraryTreeGeneration=generation;_libraryClearingTree=true;
                 _libraryUpdatingTree=true;

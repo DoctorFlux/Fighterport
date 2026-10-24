@@ -169,7 +169,7 @@ namespace BrawlCrate.UI
             {
                 child.TabIndex = index++;
                 if (child is Panel || child is UserControl) child.TabStop = false;
-                if (child is Button || child is LinkLabel || child is TextBoxBase || child is TreeView || child is TrackBar)
+                if (child is Button || child is LinkLabel || child is TextBoxBase || child is TreeView || child is TrackBar || child is CheckBox || child is ComboBox)
                     child.Enter += (sender, args) =>
                     {
                         for (Control parent = child.Parent; parent != null && parent != root.Parent; parent = parent.Parent)

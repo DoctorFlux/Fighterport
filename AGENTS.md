@@ -8,7 +8,18 @@ Record imported revisions and preserve upstream source authorship and notices.
 
 ## Plans and current work
 
-Latest 24 October continuation: preview.23-linked-comparison has fresh bounded
+Latest 24 October continuation: preview.24-library-organization completes the
+third requested bounded increment after verified export and linked comparison.
+Fresh background qualification: 1,793 assertions and 63 reviewed final PNGs; see
+docs/LIBRARY_ORGANIZATION_ACCEPTANCE_2026-10-24.md. Favorites belong to exact clip IDs
+in separate per-library atomic bounded preferences. Combined filters precede
+counts/paging/tree construction; retain async generations and lazy population.
+Hidden library selections lose actions, while target curves/Undo and recorded
+comparison stay intact. Preserve full native editor, original Next and source-local
+protected controls. All three requested increments are accepted; the ONE G1/M2
+remains incomplete for human/input/DPI/contact/game gates.
+
+Preceding 24 October continuation: preview.23-linked-comparison has fresh bounded
 background acceptance: 1,701 assertions and 49 reviewed final PNGs. See
 docs/LINKED_COMPARISON_ACCEPTANCE_2026-10-24.md. Preserve the editable complete target,
 read-only source tied to result provenance, prepared native textures/curves and

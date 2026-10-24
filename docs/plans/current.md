@@ -5,21 +5,26 @@ with the simpler workspace while retaining the COMPLETE BrawlCrate Model Preview
 and original Next retargeter. This supersedes the earlier planning-only/contact-first
 ordering. M2 remains the ONE incomplete milestone; this is its sole executable queue.
 
-Latest authorized continuation: implement verified export (preview.22), linked
+Latest authorized continuation completes verified export (preview.22), linked
 source/target comparison (preview.23), then favorites and typed library filters
-(preview.24), sequentially inside this ONE incomplete G1/M2 milestone. Only
-preview.23 linked comparison is active now; preview.22 was verified/published as
-00739db23ed957353aa2a62720db2efe12bcea67. Favorites/filters remain queued.
-Preview.22 bounded acceptance is complete: 1,644 scoped assertions and all 43
-final PNGs reviewed. See [commands, findings and limits](../VERIFIED_EXPORT_ACCEPTANCE_2026-10-24.md).
-The launcher selects its qualified package. Publish this verified source before
-promoting comparison. G1/M2 remains incomplete; remaining increments are queued.
+(preview.24), sequentially inside this ONE incomplete G1/M2 milestone. All three
+bounded increments are accepted; no other feature increment is active.
+Preview.22 was published as 00739db23ed957353aa2a62720db2efe12bcea67;
+preview.23 as 412b1dfc595c848a2ec9161bd2c1489a54466158. Preview.24 is the
+current qualified source/launcher package. Preserve preferences separately from
+catalogue/project schemas, async/lazy browsing and filters before counts/paging.
 
-Preview.23 bounded acceptance is complete: 1,701 scoped assertions and all 49
-final PNGs reviewed. See [commands, findings and limits](../LINKED_COMPARISON_ACCEPTANCE_2026-10-24.md).
-Source identity/timing, eager native texture preparation, no-playback-work metrics,
-exact native Undo and relevant regressions pass. Publish this source before
-promoting favorites/filters. G1/M2 and all separate human/game gates stay open.
+Preview.22 bounded acceptance: 1,644 scoped assertions and all 43 final PNGs
+reviewed. See [commands, findings and limits](../VERIFIED_EXPORT_ACCEPTANCE_2026-10-24.md).
+Preview.23 bounded acceptance: 1,701 scoped assertions and all 49 final PNGs
+reviewed. See [commands, findings and limits](../LINKED_COMPARISON_ACCEPTANCE_2026-10-24.md).
+Preview.24 bounded acceptance: 1,793 scoped assertions and all 63 final PNGs
+reviewed. See [commands, findings and limits](../LIBRARY_ORGANIZATION_ACCEPTANCE_2026-10-24.md).
+Exact export, provenance-linked comparison, separate atomic favorites, combined
+queries, native Undo and relevant current regressions pass. These receipts qualify
+their own builds. Human/input/DPI/contact/game gates and broader G1/M2 stay open.
+The prepared human walkthrough waits for hands-on authorization; current testing
+remains background-only. Further feature work needs a bounded authorized scope.
 
 Use the app-owned path dialog, exact frozen native CHR0 snapshots, independent
 candidate decode and atomic publication. Preserve live curves, native Undo and

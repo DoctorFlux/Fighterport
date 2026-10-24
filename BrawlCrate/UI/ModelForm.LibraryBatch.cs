@@ -22,7 +22,7 @@ namespace BrawlCrate.UI
         {
             if(!(modelEditControl1.TargetModel is MDL0Node target)||_controlBusy||_retargetBusy||_workspaceBusy)return;
             modelEditControl1.StopAnim();_libraryTimer.Stop();_libraryPlay.Text="Play";
-            string query=_librarySearch.Text;var items=LibraryWork.Run(this,"Loading Batch Catalogue",(cancel,progress)=>{cancel.ThrowIfCancellationRequested();return _library.Search(query,0,out _,200);});
+            var query=CurrentLibraryQuery();var items=LibraryWork.Run(this,"Loading Batch Catalogue",(cancel,progress)=>{cancel.ThrowIfCancellationRequested();return _library.Search(query,0,out _,200);});
             if(items==null)return;
             var project=_fighterProject;string targetHash=NativeControlHash(target,".mdl0");var mode=project.GroundMode;
             var drafts=new List<LibraryBatchDraft>();bool working=false;

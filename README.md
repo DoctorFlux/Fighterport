@@ -2,7 +2,7 @@
 
 This is the public unified source repository at https://github.com/DoctorFlux/Fighterport.
 It imports the BrawlCrate-based Next preview.14 source and integrated owned engine;
-the current implementation is **preview.23-linked-comparison**.
+the current implementation is **preview.24-library-organization**.
 The two predecessor repositories are private preserved histories.
 Upstream copyrights, licenses and notices remain intact.
 
@@ -48,6 +48,14 @@ tasks at their primary action. Escape closes a focused pane; cancelled dialogs
 return focus to their invoking control. Native editing shortcuts retain their
 existing routes. Compact drawers may overlay the editor; close them or use Focus
 editor for all native tools.
+
+The source library now has **Favorite / Favorited**, **Favorites only**, and
+combinable game/build, character/model, availability and channel filters alongside
+text search. **Clear filters** resets the view while retaining favorites. Favorites
+are local to each library and use exact clip identities, including duplicate names.
+Filtering preserves the editable target and recorded comparison source. Preview.24
+passes **1,793 scoped assertions / 63 reviewed PNGs**; see the
+[library organization acceptance record](docs/LIBRARY_ORGANIZATION_ACCEPTANCE_2026-10-24.md).
 
 **Compare source** in Preview and fix links a verified read-only original source
 beside the complete editable target. Scrub/play the native target timeline to see

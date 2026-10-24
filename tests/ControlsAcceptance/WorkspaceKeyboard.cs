@@ -120,7 +120,9 @@ internal static partial class Program
                 Check(search.Focused,"Opening the library focuses search");
                 Check(!SimpleControl<Control>(form,"workspaceTaskPane").Visible && editor.Width>=888,"At 200% the library yields task space to the intact native editor");
                 Check(WorkspaceKey(form,Keys.Tab)&&SimpleControl<Button>(form,"libraryClearSearch").Focused,"Library Tab proceeds from search to Clear");
-                Check(WorkspaceKey(form,Keys.Tab)&&SimpleControl<TreeView>(form,"libraryClips").Focused,"Library Tab proceeds from Clear to source tree");
+                string[] filterOrder={"libraryGameFilter","libraryCharacterFilter","libraryAvailabilityFilter","libraryChannelFilter","libraryFavoritesOnly","libraryClearFilters","libraryClips"};
+                foreach(string name in filterOrder)Check(WorkspaceKey(form,Keys.Tab)&&SimpleControl<Control>(form,name).Focused,"Library Tab reaches "+name);
+                foreach(string name in filterOrder.Take(filterOrder.Length-1).Reverse())Check(WorkspaceKey(form,Keys.Shift|Keys.Tab)&&SimpleControl<Control>(form,name).Focused,"Library reverse Tab reaches "+name);
                 Check(WorkspaceKey(form,Keys.Shift|Keys.Tab)&&SimpleControl<Button>(form,"libraryClearSearch").Focused,"Library reverse Tab returns to Clear");
                 Check(WorkspaceKey(form,Keys.Shift|Keys.Tab)&&search.Focused,"Library reverse Tab returns to search");
                 foreach(Keys key in new[]{Keys.A,Keys.Space,Keys.Control|Keys.A,Keys.Control|Keys.Z})

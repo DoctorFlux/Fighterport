@@ -48,7 +48,7 @@ namespace BrawlCrate.Studio
         private readonly Dictionary<string,Tuple<long,long,LibrarySourceState>> health=new Dictionary<string,Tuple<long,long,LibrarySourceState>>();
         private LibraryCatalogue searchSnapshot;
         private sealed class IndexedClip
-        {internal LibraryAnimation Clip;internal LibraryModel Model;internal LibraryMount Motion;internal string Text;}
+        {internal LibraryAnimation Clip;internal LibraryModel Model;internal LibraryMount Motion;internal string Text,GameText,ModelText;}
         private LibraryCatalogue indexedCatalogue;
         private IndexedClip[] indexedClips;
         private Dictionary<string,LibraryModel> indexedModels;
@@ -69,6 +69,15 @@ namespace BrawlCrate.Studio
             return searchSnapshot;
             }
         }
+        private readonly Lazy<LibraryFavorites> favorites;
+        public bool IsFavorite(string clipId) => favorites.Value.Contains(clipId);
+        public string FavoritePreferenceError => favorites.Value.LastError;
+        public string[] Channels => SearchSnapshot().Clips.Select(c=>c.Channel).Distinct().OrderBy(c=>c,StringComparer.Ordinal).ToArray();
+        public void SetFavorite(string clipId,bool favorite)
+        {
+            if(!SearchSnapshot().Clips.Any(c=>c.Id==clipId)) throw new InvalidDataException("This exact library clip is no longer registered.");
+            favorites.Value.Set(clipId,favorite);
+        }
         public int ClipCount=>SearchSnapshot().Clips.Count;
         public string[] ConfiguredGames=>SearchSnapshot().GameLocations.Select(l=>l.Game).Distinct().ToArray();
         public static string DefaultDirectory=>Environment.GetEnvironmentVariable("FIGHTERPORT_LIBRARY_ROOT")??
@@ -76,6 +85,7 @@ namespace BrawlCrate.Studio
         public AnimationLibrary(string directory=null)
         {
             DirectoryPath=OrdinaryPath(directory??DefaultDirectory);NoLinks(DirectoryPath);
+            favorites=new Lazy<LibraryFavorites>(()=>new LibraryFavorites(DirectoryPath));
         }
         internal static string OrdinaryPath(string path)
         {
@@ -407,30 +417,42 @@ namespace BrawlCrate.Studio
             return CachedMountState(mounts==null?data.Mounts.Single(m=>m.Id==model.MountId):mounts[model.MountId],force,states,files);
         }
         public List<LibrarySearchItem> Search(string query,int offset,out int total,int pageSize=100)
-            =>SearchRows(query,offset,out total,pageSize,false);
-        // Complete metadata results for the lazy Game/Character/Model outline.
-        // No native resources are decoded; leaves are materialized on expansion.
+            =>SearchRows(new LibraryQuery{Text=query},offset,out total,pageSize,false);
+        // Generic additive overloads retain unambiguous legacy Search(null)/Browse(null).
+        public List<LibrarySearchItem> Search<TQuery>(TQuery query,int offset,out int total,int pageSize=100) where TQuery:LibraryQuery
+            =>SearchRows(query??new LibraryQuery(),offset,out total,pageSize,false);
         public List<LibrarySearchItem> Browse(string query)
-            =>SearchRows(query,0,out _,MaximumClips,true);
-        private List<LibrarySearchItem> SearchRows(string query,int offset,out int total,int pageSize,bool outline)
+            =>SearchRows(new LibraryQuery{Text=query},0,out _,MaximumClips,true);
+        public List<LibrarySearchItem> Browse<TQuery>(TQuery query) where TQuery:LibraryQuery
+            =>SearchRows(query??new LibraryQuery(),0,out _,MaximumClips,true);
+        private List<LibrarySearchItem> SearchRows(LibraryQuery query,int offset,out int total,int pageSize,bool outline)
         {
+            query=query.Snapshot();
             lock(cacheSync)
             {
-            if(offset<0 || pageSize<1 || pageSize>(outline?MaximumClips:200) || (query?.Length??0)>512)throw new ArgumentException("Invalid library search range.");
+            if(offset<0 || pageSize<1 || pageSize>(outline?MaximumClips:200) || (query.Text?.Length??0)>512)throw new ArgumentException("Invalid library search range.");
             var data=SearchSnapshot();
             if(!ReferenceEquals(indexedCatalogue,data))
             {
                 indexedModels=data.Models.ToDictionary(m=>m.Id);indexedMounts=data.Mounts.ToDictionary(m=>m.Id);
                 indexedClips=data.Clips.OrderBy(c=>c.Name,StringComparer.OrdinalIgnoreCase).ThenBy(c=>c.ResourceKey,StringComparer.Ordinal).Select(c=>{
                     indexedModels.TryGetValue(c.ModelId??"",out var model);var motion=indexedMounts[c.MountId];
-                    return new IndexedClip{Clip=c,Model=model,Motion=motion,Text=c.Name+" "+model?.Name+" "+model?.Character+" "+c.SourceCharacter+" "+motion.Game+" "+motion.GameVersion+" "+c.Channel+" "+c.Tags};
+                    return new IndexedClip{Clip=c,Model=model,Motion=motion,GameText=motion.Game+" "+motion.GameVersion,ModelText=model?.Character+" "+model?.Name+" "+c.SourceCharacter,Text=c.Name+" "+model?.Name+" "+model?.Character+" "+c.SourceCharacter+" "+motion.Game+" "+motion.GameVersion+" "+c.Channel+" "+c.Tags};
                 }).ToArray();indexedCatalogue=data;
             }
-            var words=(query??"").Split(new[]{' ','\t'},StringSplitOptions.RemoveEmptyEntries);
-            var found=indexedClips.Where(c=>words.All(w=>c.Text.IndexOf(w,StringComparison.OrdinalIgnoreCase)>=0)).ToArray();
-            total=found.Length;
+            var words=LibraryQuery.Words(query.Text);var gameWords=LibraryQuery.Words(query.GameBuildText);var modelWords=LibraryQuery.Words(query.CharacterModelText);
+            var favoriteIds=query.FavoritesOnly?new HashSet<string>(favorites.Value.Ids,StringComparer.Ordinal):null;
             var states=new Dictionary<string,LibrarySourceState>();
             var files=new Dictionary<string,FileInfo>(StringComparer.OrdinalIgnoreCase);
+            var found=indexedClips.Where(c=>LibraryQuery.WordsMatch(c.Text,words) &&
+                LibraryQuery.Exact(c.Motion.Game,query.Game) && LibraryQuery.Exact(c.Motion.GameVersion,query.Build) &&
+                LibraryQuery.Exact(c.Model?.Character??c.Clip.SourceCharacter,query.Character) && LibraryQuery.Exact(c.Model?.Id,query.ModelId) &&
+                LibraryQuery.Exact(c.Clip.Channel,query.Channel) &&
+                LibraryQuery.WordsMatch(c.GameText,gameWords) &&
+                LibraryQuery.WordsMatch(c.ModelText,modelWords) &&
+                (favoriteIds==null||favoriteIds.Contains(c.Clip.Id))).ToArray();
+            if(query.Availability.HasValue) found=found.Where(c=>State(data,c.Clip,false,states,indexedModels,indexedMounts,files)==query.Availability.Value).ToArray();
+            total=found.Length;
             return found.Skip(offset).Take(pageSize).Select(c=>new LibrarySearchItem{Clip=c.Clip,Model=c.Model,Motion=c.Motion,State=State(data,c.Clip,false,states,indexedModels,indexedMounts,files)}).ToList();
             }
         }

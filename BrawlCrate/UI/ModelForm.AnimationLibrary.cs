@@ -116,7 +116,7 @@ namespace BrawlCrate.UI
             header.Controls.Add(LibraryButton("libraryClose","Close",ToggleAnimationLibrary));layout.Controls.Add(header,0,0);
             _librarySearch=new TextBox{Name="librarySearch",AccessibleName="Search Animation Library",Dock=DockStyle.Fill,MaxLength=512};
             _librarySearchTimer=new System.Windows.Forms.Timer{Interval=300};
-            _librarySearch.TextChanged+=(s,e)=>{++_librarySearchGeneration;CancelLibraryTreeWork();_libraryReplacingTree=true;_librarySearchTimer.Stop();_librarySearchTimer.Start();if(_libraryUse!=null)_libraryUse.Enabled=false;if(_libraryPreview!=null)_libraryPreview.Enabled=false;UpdateSimpleWorkspace();};
+            _librarySearch.TextChanged+=(s,e)=>QueueLibrarySearch();
             _librarySearchTimer.Tick+=(s,e)=>{_librarySearchTimer.Stop();RunFighterAction(()=>RefreshLibrary());};
             var searchRow=new Panel{Dock=DockStyle.Fill};searchRow.Controls.Add(_librarySearch);
             var clear=LibraryButton("libraryClearSearch","Clear",()=>{if(_librarySearch.Text.Length>0)_librarySearch.Clear();else RefreshLibrary();});clear.Dock=DockStyle.Right;clear.AutoSize=false;clear.Width=49;searchRow.Controls.Add(clear);
@@ -160,6 +160,7 @@ namespace BrawlCrate.UI
                 if(_libraryTime>frames-1){if(_libraryLease.Animation.Loop)_libraryTime%=frames;else{_libraryTime=frames-1;_libraryTimer.Stop();_libraryPlay.Text="Play";}}
                 RenderLibraryFrame();
             };
+            BuildLibraryFilters(layout,searchRow,actions);
             _libraryPane.Controls.Add(layout);
             PrepareWorkspaceTabOrder(_libraryPane);
             layout.GetControlFromPosition(0,1).TabIndex = 0;
@@ -187,6 +188,7 @@ namespace BrawlCrate.UI
                 "Original: "+(item.Model?.Name??"Not verified")+" · "+item.Clip.ResourceKey+Environment.NewLine+
                 (item.Clip.AssociationEvidence??item.Clip.AssociationIssue)+Environment.NewLine+
                 (item.Clip.UnboundSourceTracks==null?"":"Native tracks absent on original model (not evaluated): "+item.Clip.UnboundSourceTracks+Environment.NewLine)+"SHA256: "+item.Clip.ResourceSha256;
+            UpdateLibraryFavorite();
             MeasureLibraryUi(7,selectionStart);
             UpdateSimpleWorkspace();
         }
