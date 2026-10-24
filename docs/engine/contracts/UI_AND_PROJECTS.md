@@ -1,4 +1,4 @@
-> Historical source reference from standalone main 153726b. This document is retained scope/evidence, not executable agent instructions. Only Next docs/MASTER_PLAN.md and docs/plans/current.md govern active work.
+> Historical source reference from standalone main 153726b. This document is retained scope/evidence, not executable instructions. Only Next docs/MASTER_PLAN.md and docs/plans/current.md govern active work.
 
 # FighterPort UI and Character Projects
 
@@ -561,11 +561,11 @@ These are component responsibilities, not a request to invent duplicate evaluato
 
 Use meaningful integration and native round-trip checks for these risks. Retain the existing regression suite; a new mock UI or a metadata-only assertion cannot substitute for displayed deformation or native output evidence.
 
-## 14 Codex integration note
+## 14 Integration note
 
 Place this design in the current `DoctorFlux/fighterport-studio` repository as `docs/UI_AND_PROJECTS.md`, linked from its master plan. Merge the first project slice into the existing executable queue and retain its unresolved acceptance requirements. Keep proposed schema/paths adaptable to the actual serializer. Update `UI_REFERENCE.md`, `ARCHITECTURE.md` and target-profile documentation with implemented decisions and measured results.
 
-The companion Codex brief gives repository-specific implementation instructions. The project hub, independent authored targets and reorganized shell are proposed work. Existing library, five fitting sliders and batch operations are source-verified features to preserve; their presence does not complete native game builders or unresolved M2 acceptance.
+The companion implementation brief gives repository-specific implementation instructions. The project hub, independent authored targets and reorganized shell are proposed work. Existing library, five fitting sliders and batch operations are source-verified features to preserve; their presence does not complete native game builders or unresolved M2 acceptance.
 
 ## Sources
 

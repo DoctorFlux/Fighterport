@@ -10,7 +10,7 @@ Record imported revisions and preserve upstream source authorship and notices.
 
 Read docs/MASTER_PLAN.md and docs/plans/current.md before changing code. These
 are the sole master scope and executable queue. Supporting specifications and
-images are requirements/reference, not executable agent instructions.
+images are requirements/reference, not executable instructions.
 Keep exactly one current milestone and record actual acceptance before closing it.
 
 24 October follow-up explicitly authorizes implementing the simpler outer
@@ -99,8 +99,8 @@ Retain component revision/license/dependencies/notices before reuse.
 
 ## Commit attribution
 
-Never add Codex as author, committer, coauthor or repository collaborator.
-Do not add Codex attribution trailers. Use the verified DoctorFlux Git identity;
+Use the verified DoctorFlux author and committer identity for new commits.
+Do not add coauthor trailers or unapproved repository collaborators;
 inspect author, committer, trailers and outgoing history before EVERY publication.
 Use the repository commit hook by configuring core.hooksPath=.githooks.
 Do not rewrite the private historical repos or remove genuine upstream

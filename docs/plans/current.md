@@ -133,4 +133,4 @@ assertions/47 inspected PNGs were hash-verified during planning, not rerun for t
 See MASTER_PLAN for complete scope/REQ/A01–A21 traceability, SOURCE_IMPORT_2026-10-24.md
 for provenance and CONTACT_AUTHORING_ACCEPTANCE_2026-10-24.md for historical bounds.
 Publish verified source only to PUBLIC DoctorFlux/Fighterport/main using DoctorFlux
-author/committer identity, no Codex attribution. Preserve both private predecessors.
+author/committer identity, without coauthor trailers. Preserve both private predecessors.

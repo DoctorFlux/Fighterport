@@ -1,4 +1,4 @@
-# FIGHTERPORT STUDIO V2 — CODEX CLEAN-RESTART BOOTSTRAP
+# FIGHTERPORT STUDIO V2 — CLEAN-RESTART BOOTSTRAP
 
 **Date:** 2026-10-17  
 **Authority:** `FighterPort_Studio_V2_MASTER_PLAN.md` (the new authoritative feature specification).  
@@ -45,7 +45,7 @@ After verified recovery:
 
 ### Example local shell sequence, only after path review
 
-The following is an illustration for Codex to adapt, **not an instruction to execute without preflight**:
+Adapt the following illustration to the local environment; it is **not an instruction to execute without preflight**:
 
 ```powershell
 # 1. Define NEW empty destinations after verifying that they do not exist.
@@ -77,15 +77,15 @@ New-Item -ItemType Directory -Force -Path $v2 | Out-Null
 
 If the installed PowerShell/git/tar environment lacks a safe extraction route, use a verified file copy. Never copy upstream `.git` into V2. `git archive` does NOT export submodule content; declare and resolve that explicitly. Do not commit upstream credentials, proprietary assets, build products, or historical private data.
 
-## 3. New GitHub and new Codex environment
+## 3. New GitHub repository and development workspace
 
 The new GitHub repository should be created **without GitHub's Fork button**. Prefer making it PRIVATE initially if the user wishes to keep the development work non-public. Private visibility does not erase source license obligations if binaries/source are later distributed; public code similarity and required attribution must not be hidden or misrepresented.
 
-**Repository UI steps (user or authorized local Codex GitHub CLI):** GitHub → New repository → owner `DoctorFlux` → name (proposed `fighterport-studio-next`) → Private → do not pre-initialize README/.gitignore/license if pushing a pre-existing initial import → Create repository. Verify the actual resulting URL before `git remote add origin`. The currently available GitHub connector cannot create repositories; do not claim the remote exists until it does.
+**Repository UI steps (user or authorized local GitHub CLI):** GitHub → New repository → owner `DoctorFlux` → name (proposed `fighterport-studio-next`) → Private → do not pre-initialize README/.gitignore/license if pushing a pre-existing initial import → Create repository. Verify the actual resulting URL before `git remote add origin`. The currently available GitHub connector cannot create repositories; do not claim the remote exists until it does.
 
 After that, use `git remote -v`, `git status`, `git log -1`, and `git diff --cached --stat` to verify the new source-only commit and the exact NEW remote before a normal initial push. The old repo's 2026 standing permission to push updates to `DoctorFlux/fighterport-studio` is **not** authorization to push to the new repo. Check authorization for the new destination and its intended visibility before publishing. Do NOT modify the old repo or force-push either.
 
-Create a NEW Codex project/environment, connected **only to the new repository**. Set workspace to the new root. Add the new V2 `AGENTS.md` below; attach `FighterPort_Studio_V2_MASTER_PLAN.md` and `FighterPort_Studio_V2_FIRST_TASK.md` as the governing files. Do not import old Codex prompts or cached assumptions. Check that the new Codex task displays the new repo's path and remote before actions.
+Create a separate development workspace connected **only to the new repository**. Set its root to the new checkout. Add the new V2 `AGENTS.md` below; attach `FighterPort_Studio_V2_MASTER_PLAN.md` and `FighterPort_Studio_V2_FIRST_TASK.md` as the governing files. Do not import earlier workspace instructions or cached assumptions. Verify the repository path and remote before actions.
 
 ## 4. First-party V2 docs to create and maintain
 
@@ -133,8 +133,8 @@ Reject technical theater: empty architecture-only classes, lots of inert placeho
 
 The ordering may be adjusted after real quality results, but **do not begin with a huge game-adapter framework before the user can operate the one-model/one-animation workflow**.
 
-## 7. Completion receipt, what Codex must report
+## 7. Required completion report
 
-Report actual source commit and upstream pin; old backup location and verification; new local workspace; whether NEW GitHub repo exists and what visibility it really has; new Codex project root/remote; build prerequisites; exact native executable path; which original fixture was opened in GUI; playback and save/reopen results; unchanged hashes; current V2 task; and what has NOT been done. Avoid vague 'everything is ready' claims.
+Report actual source commit and upstream pin; old backup location and verification; new local workspace; whether NEW GitHub repo exists and what visibility it really has; new development workspace root/remote; build prerequisites; exact native executable path; which original fixture was opened in GUI; playback and save/reopen results; unchanged hashes; current V2 task; and what has NOT been done. Avoid vague 'everything is ready' claims.
 
 **Stop safely on a real blocker, keep a coherent local checkout and actual test evidence; never fabricate a pushed repo, successful UI interaction or working cross-game output.**

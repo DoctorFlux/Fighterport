@@ -514,10 +514,9 @@ in-game validation remain future milestones. The master plan retains their scope
 
 ## Historical workspace setup notes
 
-The local source root is the V2 directory only. This session has no project
-management tool. In Codex, create a separate local project, use Edit project ->
-Add folder to select only this V2 folder, and make it primary. Do not attach the
-old workspace or the sibling backup directory.
+The local source root is the V2 directory only. Use a separate development
+workspace rooted in that directory. Keep the old workspace and sibling
+backup directory separate.
 
 Final remote verification on 24 October observed Next main at
 1cc96940bb58a6bab2f5a5c6ab9fff03e3d4165d and standalone main at

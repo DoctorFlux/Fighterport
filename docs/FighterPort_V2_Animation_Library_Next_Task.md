@@ -1,4 +1,4 @@
-# CODEX — FIGHTERPORT STUDIO V2: NEXT SOURCE-BOUND ANIMATION LIBRARY MILESTONE
+# FIGHTERPORT STUDIO V2: NEXT SOURCE-BOUND ANIMATION LIBRARY MILESTONE
 
 **Repository:** https://github.com/DoctorFlux/fighterport-studio-next  
 **Inspected remote main:** `7decc0cf094f6f1dd4c5f0abff325b791704e017` on 2026-10-18. **Re-read actual HEAD before doing anything.**  

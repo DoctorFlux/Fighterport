@@ -1,4 +1,4 @@
-> Historical source reference from standalone main 153726b. This document is retained scope/evidence, not executable agent instructions. Only Next docs/MASTER_PLAN.md and docs/plans/current.md govern active work.
+> Historical source reference from standalone main 153726b. This document is retained scope/evidence, not executable instructions. Only Next docs/MASTER_PLAN.md and docs/plans/current.md govern active work.
 
 # FighterPort Automatic Animation Retargeting
 
@@ -57,7 +57,7 @@ These states come from the current architecture, library, testing and capability
 
 The newest explicit user amendments in `docs/MASTER_PLAN.md` govern the retained older handoff. The master snapshot includes the source browsing, detailed-bone, comparison/support and execution-order amendments that the earlier existing-rig master lacks.
 
-The historical `FIGHTERPORT_STANDALONE_CODEX_START_HERE.md` still says to create a new workspace, copy the earlier master over `docs/MASTER_PLAN.md`, and start M0 then M1. Those instructions are obsolete for this existing application. Preserve its standalone and existing-skeleton rules, while continuing the current implementation.
+The historical `FIGHTERPORT_STANDALONE_START_HERE.md` still says to create a new workspace, copy the earlier master over `docs/MASTER_PLAN.md`, and start M0 then M1. Those instructions are obsolete for this existing application. Preserve its standalone and existing-skeleton rules, while continuing the current implementation.
 
 `ANIMATION_LIBRARY.md` records substantial implemented library functionality and experimental whole-body transfer, while contact conflicts, fractional drift and broader support coverage remain unresolved. The current task's remaining acceptance work is still relevant. The older development status sends work to GPU recovery and DPI, while the later explicit user amendment defers both. Reconcile completed behavior and remaining failures against code and receipts. Keep GPU/DPI open and deferred, the backend provisional, further SHP0 authoring deferred, and SCN0 inactive.
 
@@ -75,7 +75,7 @@ One editable target `EditorDocument` owns its editing state and Undo history. Re
 
 Rendering consumes prepared data and evaluated poses. Native decoding, contact analysis, solving, baking, hashing and synchronous worker calls stay outside playback ticks and animation filtering. New controls must preserve this boundary.
 
-New type names in this specification describe responsibilities. Codex must inspect existing definitions and extend them instead of adding parallel abstractions with equivalent state.
+New type names in this specification describe responsibilities. Inspect existing definitions and extend them instead of adding parallel abstractions with equivalent state.
 
 ## 4 Retain authentic sources and separate derived data
 
@@ -566,6 +566,6 @@ These reference labels point to the user's uploaded snapshots. Files with a numb
 | D14 | TARGET_RIVALS2.md | Separate Rivals II target/toolchain requirements |
 | D15 | BRAWL_PARITY.md | Brawl native behavior and parity scope |
 | D16 | FIGHTERPORT_STANDALONE_EXISTING_RIG_MASTER_PLAN(1).md | Earlier master retained as history |
-| D17 | FIGHTERPORT_STANDALONE_CODEX_START_HERE(1).md | Earlier bootstrap handoff requiring correction |
+| D17 | FIGHTERPORT_STANDALONE_START_HERE(1).md | Earlier bootstrap handoff requiring correction |
 
 `RETARGET_VALIDATION.md` was referenced by these records but was not included among the supplied snapshots. Do not infer its contents or treat this document's proposed metrics as its existing results.

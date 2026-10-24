@@ -213,7 +213,7 @@ Use the actual supplied Mario and Snake models/motions in both directions for on
 
 
 **Revision:** 2026-10-18 — existing-skeleton IK/FK controls are the authoritative design.  
-**Basis:** User-provided `FIGHTERPORT_STANDALONE_CODEX_HANDOFF_2026-10-18(1).md`, retained in full below except conflicting rig-creation language.  
+**Basis:** User-provided `FIGHTERPORT_STANDALONE_HANDOFF_2026-10-18(1).md`, retained in full below except conflicting rig-creation language.
 **Status:** Requirements, not a claim of implementation.  
 
 ## User amendment — source publication and contact fixes (2026-10-19)
@@ -260,7 +260,7 @@ This amendment governs interpretation of every remaining section, including refe
 
 ---
 
-# FighterPort standalone Codex handoff
+# FighterPort standalone implementation handoff
 
 **Date:** 18 October 2026  
 **Purpose:** Build a new desktop application for complete platform fighter character authoring, including native asset editing, source animation reuse, retargeting, transition fitting and target-specific packaging.  
@@ -673,7 +673,7 @@ Every milestone ends with a runnable workflow and recorded evidence.
 
 Run the small Rivals toolchain discovery alongside early architecture work so export requirements influence the design. Bring a suitable Dragon Ball donor reader forward when needed for Goku. Do not delay all Rivals progress until every old-game format is complete; do not mark a partial writer complete to accelerate it.
 
-### 12.1 Immediate Codex task
+### 12.1 Immediate implementation task
 
 The next execution task is **M0 followed by the narrow M1 native animation workflow**. Carry M2's data contracts from the start, and implement its first transition fitter immediately after native sampling/editing is sound.
 

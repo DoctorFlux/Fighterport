@@ -6,7 +6,7 @@ Complete requirements for character model porting and animation retargeting
 **Development repository:** [DoctorFlux/fighterport-studio-next](https://github.com/DoctorFlux/fighterport-studio-next)  
 **Application foundation:** BrawlCrate and BrawlLib  
 **Primary destinations:** Super Smash Bros. Melee, Brawl, Ultimate and Rivals of Aether 2  
-**Audience:** The project owner and Codex implementing FighterPort
+**Audience:** The project owner and FighterPort developers
 
 FighterPort is a BrawlCrate-based desktop tool for taking a character model and its animations from a supported game, preparing them for another platform fighter, or applying those animations to an existing destination character. A single fighter project should reuse a shared source library while keeping independently editable and validated builds for each destination game.
 
@@ -14,7 +14,7 @@ The active product is **fighterport-studio-next**. Build a new, substantially si
 
 **Current scope is models and animations. Moveset scripting is deferred.** The new interface must make ordinary transfers easier than the current Next workflow, while keeping advanced rigging, contact and native editing tools available when needed.
 
-This specification separates permanent product requirements, a dated implementation snapshot, proposed engineering contracts, and acceptance criteria. Requirements describe the intended complete tool; they do not imply that every adapter or feature exists today. Section 2 records the inspected baseline. Section 25 gives the Codex handoff. References appear in Section 26.
+This specification separates permanent product requirements, a dated implementation snapshot, proposed engineering contracts, and acceptance criteria. Requirements describe the intended complete tool; they do not imply that every adapter or feature exists today. Section 2 records the inspected baseline. Section 25 gives the implementation handoff. References appear in Section 26.
 
 ## 1 Product decisions and scope
 
@@ -32,7 +32,7 @@ The separate `DoctorFlux/fighterport-studio` repository and its earlier branches
 
 **REQ 05 — Preserve native assets and source ownership.** A Brawl asset remains a Brawl asset, retaining its native channels and resource data. Other formats retain their own source representation. Shared evaluated data enables cross-format work; importing an asset must not automatically reduce it to Brawl's format or overwrite the original.
 
-**REQ 06 — Keep routine work local.** Model viewing, editing, rig setup, retargeting and supported file conversion should work offline without a required AI service. Codex, REA and similar tools can help develop adapters and investigate formats. Their use during development does not make an AI account a runtime dependency. External game toolchains may have their own installation and account requirements.
+**REQ 06 — Keep routine work local.** Model viewing, editing, rig setup, retargeting and supported file conversion should work offline without a required external service or account. External game toolchains may have their own installation and account requirements.
 
 ### 1.2 Priority and eventual completeness
 
@@ -719,11 +719,10 @@ Always distinguish an interchange file, a native asset, an assembled mod package
 | DolphinTool and compatible disc libraries | GameCube/Wii source inventory and selective extraction where qualified |
 | Blender Maya and 3ds Max | Optional modelling, rigging and interchange bridges |
 | Godot source and animation systems | Research/reference for reusable concepts or suitable licensed components |
-| Universal Modder and REA | Development-time investigation, tool orchestration and reverse-engineering assistance |
 
 Use proven parsers and mathematics where they fit. Avoid making users operate a collection of disconnected editors for a routine supported transfer. The main FighterPort workflow remains the native BrawlCrate-based application.
 
-Godot is a reference or component source, not a requirement to build FighterPort in Godot. Universal Modder and REA describe agent-driven tooling; neither establishes that a particular game format is already decoded or that its assets will round-trip. Their role is to help produce tested implementation and evidence. [T12–T14]
+Godot is a reference or component source, not a requirement to build FighterPort in Godot. External research does not establish that a particular game format is already decoded or that its assets will round-trip; tested implementation and evidence are required. [T14]
 
 ### 18.2 Dragon Ball and Unreal sources
 
@@ -925,7 +924,7 @@ The requirement identifiers record the user's durable intent. Detailed architect
 | REQ 03 Four primary games | Sections 3, 17 and 23 | A09, A11, A17, A18 |
 | REQ 04 General motion | Sections 10, 12 and 13 | A05, A06, A07, A14 |
 | REQ 05 Native preservation | Sections 5, 9 and 17 | A09, A10, A12 |
-| REQ 06 Local runtime | Sections 1 and 18 | Core operations without required AI/cloud services |
+| REQ 06 Local runtime | Sections 1 and 18 | Core operations without required cloud services |
 | REQ 07 Shared source library | Sections 6 and 7 | A03, A04 |
 | REQ 08 Native editor behavior | Sections 8 and 11 | A01, A02, A08, A19 |
 | REQ 09 Complete models | Sections 9 and 17 | A11, A12, A16 |
@@ -942,7 +941,7 @@ The requirement identifiers record the user's durable intent. Detailed architect
 
 Additional preserved details include the complete donor-game list, native Brawl nonbone channels, SCN0 deferral, native Transform All/frame controls, automatic keys, right-side skeleton list, optional DCC bridges, independent target builds, outfit/form examples and full-motion visual review. They remain required even where a phase initially implements only a subset.
 
-## 25 Codex implementation handoff
+## 25 Implementation handoff
 
 ### 25.1 How to place and use this specification
 
@@ -1063,8 +1062,6 @@ These references establish the external project's documented role. They do not e
 - **T09** [Exporting content from the Rivals Workshop](https://rivals2.com/workshop/knowledge-base/miscellaneous/export-content-from-workshop/) — source export and preview-mesh association.
 - **T10** [CUE4Parse](https://github.com/FabianFG/CUE4Parse) — Unreal package parsing/conversion candidate for title-specific donor adapters.
 - **T11** [LibXenoverse2](https://github.com/Olganix/LibXenoverse2) and [EMD ESK EAN conversion source](https://github.com/Olganix/LibXenoverse2/blob/master/LibXenoverse/emdfbx/main.cpp) — concrete Xenoverse source-format candidates.
-- **T12** [Universal Modder](https://github.com/rehan-remade/universal-modder) — development-time agent skills and tools.
-- **T13** [REA](https://github.com/morluto/rea) — development-time reverse-engineering tooling.
 - **T14** [Godot source](https://github.com/godotengine/godot) — optional animation/rigging research and component reference.
 - **T15** [Native developer explanation of Melee animation structures](https://github.com/Ploaj/StudioSB/issues/19) — AnimJoint and Figatree coverage; historical technical reference, not a current FighterPort implementation claim.
 - **T16** [Official Rivals Workshop publication workflow](https://rivals2.com/workshop/knowledge-base/getting-started/publish-to-steam-workshop/) — supported cooking and publication boundary.

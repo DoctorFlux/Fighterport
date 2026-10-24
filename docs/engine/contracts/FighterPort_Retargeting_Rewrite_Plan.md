@@ -1,4 +1,4 @@
-> Historical source reference from standalone main 153726b. This document is retained scope/evidence, not executable agent instructions. Only Next docs/MASTER_PLAN.md and docs/plans/current.md govern active work.
+> Historical source reference from standalone main 153726b. This document is retained scope/evidence, not executable instructions. Only Next docs/MASTER_PLAN.md and docs/plans/current.md govern active work.
 
 > Supporting supplied design. Governing plans: [MASTER_PLAN.md](MASTER_PLAN.md) and the ONE [plans/current.md](plans/current.md). Its inspected 5605bf7 baseline is historical; current measurements are in [RETARGET_VALIDATION.md](RETARGET_VALIDATION.md).
 
@@ -10,7 +10,7 @@ Rewrite FighterPort's retargeting subsystem around independent rig descriptions,
 
 The product goal is to select an authentic source model and one or many of its animations, choose an existing target character, obtain motion fitted to that character's proportions, adjust useful controls and save through the target document's native adapter. The same pipeline must work with either character as the source. Its automatic behavior must cover grounded motion, airborne motion, hands on surfaces, sitting, lying, rolling, ledges, self-contact and shared two-hand props when the required rig and scene information is available.
 
-This handoff is based on a source inspection of `DoctorFlux/fighterport-studio`, branch `main`, commit `5605bf7e69b0d09f7d78bc799f4a3b9cc38e218d`, dated 19 October 2026. Codex must inspect the actual checkout again before implementation. Repository test results below are recorded results, not tests executed during this review. [S1, S2]
+This handoff is based on a source inspection of `DoctorFlux/fighterport-studio`, branch `main`, commit `5605bf7e69b0d09f7d78bc799f4a3b9cc38e218d`, dated 19 October 2026. Inspect the actual checkout again before implementation. Repository test results below are recorded results, not tests executed during this review. [S1, S2]
 
 ### Meaning of any source and any target
 
@@ -32,7 +32,7 @@ The current application is independent Windows x64 C# with .NET 10 and Avalonia.
 
 The recorded v6 matrix contains 26 directional transfers, 22 native-correct outputs and four unresolved bakes. Only `Wait1` in both directions has clean status under the frozen contact profile. Review outputs remain investigation results and normal batch Apply blocks them. The four unresolved rows are Mario to Snake `SlipWait` and `DownWaitU`, and Snake to Mario `CliffAttackSlow` and `DownWaitD`. Large down-motion contact residuals also remain among review rows. [S2]
 
-The repository records 339 original Core checks, 592 original/private native checks, fitting and directional GUI checks and fresh build receipts. These counts overlap and must not be added. Codex must reproduce the relevant available checks and record new evidence for the rewrite. Native acceptance, displayed behavior and actual game acceptance stay separate. [S1, S2]
+The repository records 339 original Core checks, 592 original/private native checks, fitting and directional GUI checks and fresh build receipts. These counts overlap and must not be added. Reproduce the relevant available checks and record new evidence for the rewrite. Native acceptance, displayed behavior and actual game acceptance stay separate. [S1, S2]
 
 ### Source locations and rewrite consequences
 
@@ -362,9 +362,9 @@ The first execution should create a real vertical slice: use the new backend fro
 
 Keep the old backend for comparison until the new backend passes the V5 acceptance gate. At each gate update the current plan, actual validation record and development status with commands, measured results, open cases and the next concrete step. Do not mark M2 complete while its required feature and fixture coverage remains open.
 
-## 15 Codex execution and deliverables
+## 15 Implementation and deliverables
 
-Paste the accompanying `FighterPort_Retargeting_Rewrite_Codex_Prompt.txt` into Codex in the real FighterPort checkout. The prompt requires current-source inspection, selective reuse, implementation and validation. This plan supplies the detailed design and references.
+Use the accompanying implementation brief in the real FighterPort checkout. It requires current-source inspection, selective reuse, implementation and validation. This plan supplies the detailed design and references.
 
 Expected implementation deliverables are working Core/CLI/Desktop integration, versioned data migrations, meaningful fixtures, source and target previews, live functional controls, same-source batches, native save/reopen evidence and synchronized repository documentation. Retain ordinary editor features and the native format ownership model.
 
@@ -374,7 +374,7 @@ If a native worker, private fixture or platform dependency is unavailable, compl
 
 Repository observations are pinned to the inspected revision. Re-check the checkout and external component versions before adopting code.
 
-- [S1] [FighterPort current milestone](https://github.com/DoctorFlux/fighterport-studio/blob/5605bf7e69b0d09f7d78bc799f4a3b9cc38e218d/docs/plans/current.md) and [agent instructions](https://github.com/DoctorFlux/fighterport-studio/blob/5605bf7e69b0d09f7d78bc799f4a3b9cc38e218d/AGENTS.md).
+- [S1] [FighterPort current milestone](https://github.com/DoctorFlux/fighterport-studio/blob/5605bf7e69b0d09f7d78bc799f4a3b9cc38e218d/docs/plans/current.md) and [repository instructions](https://github.com/DoctorFlux/fighterport-studio/blob/5605bf7e69b0d09f7d78bc799f4a3b9cc38e218d/AGENTS.md).
 - [S2] [FighterPort retarget validation](https://github.com/DoctorFlux/fighterport-studio/blob/5605bf7e69b0d09f7d78bc799f4a3b9cc38e218d/docs/RETARGET_VALIDATION.md).
 - [S3] [FighterPort architecture](https://github.com/DoctorFlux/fighterport-studio/blob/5605bf7e69b0d09f7d78bc799f4a3b9cc38e218d/docs/ARCHITECTURE.md) and [automatic retargeting contract](https://github.com/DoctorFlux/fighterport-studio/blob/5605bf7e69b0d09f7d78bc799f4a3b9cc38e218d/docs/AUTOMATIC_RETARGETING.md).
 - [S4] [Current transfer](https://github.com/DoctorFlux/fighterport-studio/blob/5605bf7e69b0d09f7d78bc799f4a3b9cc38e218d/src/FighterPort.Core/Retargeting.cs), [contact solver](https://github.com/DoctorFlux/fighterport-studio/blob/5605bf7e69b0d09f7d78bc799f4a3b9cc38e218d/src/FighterPort.Core/Contacts.cs) and [workflow and acceptance](https://github.com/DoctorFlux/fighterport-studio/blob/5605bf7e69b0d09f7d78bc799f4a3b9cc38e218d/src/FighterPort.Core/RetargetWorkflow.cs).

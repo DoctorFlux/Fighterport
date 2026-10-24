@@ -1,15 +1,15 @@
-> Historical source reference from standalone main 153726b. This document is retained scope/evidence, not executable agent instructions. Only Next docs/MASTER_PLAN.md and docs/plans/current.md govern active work.
+> Historical source reference from standalone main 153726b. This document is retained scope/evidence, not executable instructions. Only Next docs/MASTER_PLAN.md and docs/plans/current.md govern active work.
 
 > Historical bootstrap: this repository already exists. Continue through AGENTS.md, docs/MASTER_PLAN.md, docs/AUTOMATIC_RETARGETING.md and the ONE docs/plans/current.md. Do not recreate the workspace, restart M0/M1 or overwrite the amended master with the older handoff.
 
-# FighterPort Standalone — Copy/Paste Codex Kickoff
+# FighterPort Standalone — Implementation kickoff
 
 **Date:** 18 October 2026  
 **Use with:** `FIGHTERPORT_STANDALONE_EXISTING_RIG_MASTER_PLAN.md`  
 **Authority:** The uploaded original standalone handoff is included in the revised master file, with the user's new existing-skeleton-control requirement governing conflicting wording.  
 **This is a new product, not the BrawlCrate-derived V1 or V2 application.**
 
-## Paste the following into the NEW Codex workspace
+## Historical implementation brief
 
 ```text
 Build FIGHTERPORT as a NEW, STANDALONE, game-engine-style desktop studio
