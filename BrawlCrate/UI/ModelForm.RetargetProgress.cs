@@ -19,8 +19,9 @@ namespace BrawlCrate.UI
         {
             if(_controlBusy||_retargetBusy||_workspaceBusy||_pinGesture!=null)throw new InvalidOperationException("Finish the current animation-control or workspace edit before retargeting.");
             _retargetBusy=true;
+            UpdateSimpleWorkspace();
             try{return BakeNextSnapshots(source,target,clip);}
-            finally{_retargetBusy=false;if(_controlReloadRequested)QueueControlSetup();}
+            finally{_retargetBusy=false;UpdateSimpleWorkspace();if(_controlReloadRequested)QueueControlSetup();}
         }
         private RetargetResult BakeNextSnapshots(MDL0Node source,MDL0Node target,CHR0Node clip)
         {

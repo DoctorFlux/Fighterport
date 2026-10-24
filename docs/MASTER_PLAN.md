@@ -3,6 +3,13 @@
 24 October 2026. This is the sole master plan.
 [plans/current.md](plans/current.md) is the sole executable queue.
 
+24 October implementation follow-up: the user explicitly requested starting the
+simpler workspace now while preserving the full BrawlCrate Model Previewer and
+original Next retargeter. G1 is the ONE current substep of incomplete M2.
+Preview.15 implements its first bounded increment with 163 fresh scoped checks
+and 25 actually inspected PNGs; broader task usability/input/DPI remain open.
+Complete contact/context work stays queued with every existing failure and gate.
+
 ## 1 Product direction and request boundary
 
 Build the unified product from the existing **BrawlCrate-based Next** application
@@ -18,11 +25,11 @@ commit before publication. Preserve genuine upstream copyrights, authors,
 licenses and notices. Commit attribution and mandatory source attribution are
 different. The initial commit must describe an imported snapshot and its origins.
 
-This request authorizes planning, a progress audit and repository setup/publication.
-It does not request application implementation through the supplied document's
-embedded handoff. The proposed workspace remains queued; this planning pass does
-not implement a UI, solver or adapter. The new repository's initial public source
-is the current application plus reconciled documentation and source safeguards.
+The initial request authorized planning, a progress audit and repository setup/
+publication. The later explicit request authorizes implementing the simpler
+workspace while retaining the complete native Model Previewer and original Next
+retargeter. It supersedes planning-only/contact-first execution. The supplied
+document's embedded handoff remains reference, not independent authorization.
 
 The [supplied specification](reference/FighterPort_Requirements_2026-10-24.md)
 and [provenance](reference/README.md) are requirements/reference input, not extra
@@ -80,9 +87,13 @@ contact/release assertion failure. **No full-suite pass, universal motion qualit
 game installation or game test is claimed.** Older checkpoint counts have
 different scopes and must not be added or treated as completion percentages.
 
-**M2 remains incomplete and is the only active milestone.** Its bounded current
-substep is full authentic native support context, then coupled surface/moving-
-support placement and release with independent subframe/conflict evidence.
+**M2 remains incomplete and is the only active milestone.** Its current bounded
+substep is G1 workspace task-flow/usability qualification. Preview.15 now has
+[fresh workspace evidence](SIMPLE_WORKSPACE_ACCEPTANCE_2026-10-24.md): 61 checks in
+each supplied retarget direction, 41 procedural native-controls checks and 25
+inspected PNGs. It retains original v7 unchanged; this is neither full native
+parity nor general motion-quality acceptance. Full authentic support context
+and coupled surface/moving-support placement/releases retain their queued gates.
 
 ## 3 Binding preservation and ownership contracts
 
@@ -142,18 +153,21 @@ scale compensation, flags, interpolation, timebase and loops. No universal
 bone/influence cap or assumed 60 fps/XYZ/no-helper convention. Add abstractions
 only for demonstrated routes, not empty frameworks for every future game.
 
-## 5 Proposed simpler workspace
+## 5 Simpler workspace and remaining scope
 
 The supplied image is a structural proposal, not a current screenshot. Its light
-colors do not change the dark native theme. Current expert workflows use native
-windows. Attachment startup/outer-layout proposals differ from the retained
-direct-viewer preference; reconcile that at an explicit UI implementation request.
-This request covers planning and repository setup.
+colors do not change the dark native theme. Preview.15 now wraps the complete
+native editor with the four-stage strip, left source drawer, compact task panel
+and Focus editor. Existing expert workflows stay in native windows and More tools.
+Direct native startup remains; broader start/resume, operations and destination
+choices below are requirements rather than claims of implemented support.
 
 ![Proposed workspace retaining the full native previewer](reference/FighterPort_Workspace_Layout.png)
 
-Plan a project/operation/game bar, Source -> Target -> Preview and fix -> Export
+Provide a project/operation/game bar, Source -> Target -> Preview and fix -> Export
 strip, collapsible library, complete central previewer and compact task panel.
+The first increment identifies the implemented Brawl animation-on-model operation;
+it does not expose unsupported games or model-port operations as ready choices.
 Keep one editable target and independent read-only donor audition; no duplicate
 permanent bone inspector.
 
@@ -164,7 +178,7 @@ permanent bone inspector.
 | Preview and fix | Generate, compare, correct hand/foot/body/timing/boundaries | Original Next default, offline result, native edits, visible acceptance gates |
 | Export | Select qualified asset/profile/output | Native bake, dependencies/binding validation, fresh reopen, clear next-tool step |
 
-Proposed start/resume supports both port modes, recent/Open project and direct
+Remaining start/resume work supports both port modes, recent/Open project and direct
 Open native files. Native editing needs no wizard or dummy donor. Resume exact
 project/target/clip/time context; donor or stage changes cannot redirect Apply/Save.
 
@@ -249,7 +263,7 @@ Original Next v7 stays default. Advanced 96.2 output remains blocked until its
 motion/contact/native/display/missing-context gates pass; a repository import or
 successful decode does not promote it.
 
-### Current M2 contact dependency
+### Retained M2 contact dependency
 
 Original Next currently projects aggregate support measurements; conservative
 protection freezes influenced native skin/bone/ancestor curves. Counts cannot
@@ -466,8 +480,8 @@ recorded acceptance of the current one.
 | Package | Deliverable/dependency | Completion evidence |
 | --- | --- | --- |
 | G0 Reconcile/public source | This full plan, private preserved originals, audited new public snapshot and DoctorFlux-only new commit attribution | Visibility/ref/author checks, source audit, documentation validity; no claim of new application acceptance |
-| Current M2 | Full original support context, coupled surface/moving-support placements/releases | Independent analytic/subframe/conflict/persistence/stale checks plus inspected native images |
-| G1 Simple workspace | After explicit UI implementation direction, accepted Brawl route through proposed workspace and complete native viewer | Donor -> target -> preview/native edit/autokey/Undo -> export/fresh reopen; first/repeat task review |
+| G1 Current M2 workspace substep | Accepted Brawl route through the simpler workspace and complete native viewer, explicitly authorized by the follow-up request | Donor -> target -> preview/native edit/autokey/Undo -> export/fresh reopen; actual background image review and first/repeat task evidence |
+| Queued M2 contact dependency | Full original support context, coupled surface/moving-support placements/releases | Independent analytic/subframe/conflict/persistence/stale checks plus inspected native images |
 | G2 Motion breadth | Broader chains/profiles/contacts/temporal behavior and durable correction layers | Whole motions, held-out/rename/permutation/body-volume/batch evidence, frozen bounds; advanced gates retained until passed |
 | G3 Brawl asset completion | Both port modes, complete models/materials, qualified channels/container writers and build overlays | Independent decoded poses/geometry, untouched resources, correct texture/materials and package versions |
 | G4 Sets/batch | Verified runtime profiles plus applicable contact/timing/state contracts; variable parts, loop/style tools, protected Fill Missing | Real binding provenance, approved batch/one Undo, persisted locks/recipes, cadence/duration/contact proof |

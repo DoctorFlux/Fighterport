@@ -1,15 +1,28 @@
 # Format support and evidence
 
-## 24 October 2026 audit baseline
+## 24 October 2026 workspace baseline
 
-The audited published baseline is Next `main`
-`07cb03299b8a3e63f30642dd8e45a3403dacaaa7`, preview.14
-(`2.0.0-preview.14-contact-authoring`). This documentation/source audit does not
-record a new build, suite run, capture or physical-input test. The existing
-[preview.14 acceptance record](CONTACT_AUTHORING_ACCEPTANCE_2026-10-24.md) reports
-**373 native and 282 focused engine assertions (655)** and **47 actually inspected
-PNG captures**. Those bounded receipts do not establish a full-suite pass or M2
-completion; the retained advanced contact/release failure remains unresolved.
+The current application is **preview.15-simple-workspace**
+(`2.0.0-preview.15-simple-workspace`). Its four stages reuse existing Brawl
+source-library/model/CHR0 operations and the complete native Model Previewer;
+the original Next v7 solver and native readers/writers are unchanged. Launch
+with `scripts/Run.ps1`. This UI increment adds no game adapter, container writer,
+runtime profile, packaging or game support.
+
+Fresh private-desktop checks pass **61 in each supplied retarget direction plus
+41 procedural native-controls checks, 163 scoped checks total**. All **25 final
+PNGs** were actually inspected. See
+[workspace acceptance](SIMPLE_WORKSPACE_ACCEPTANCE_2026-10-24.md) for the exact
+workflow, output comparisons, inspected images and limits. M2 and broader G1
+usability remain incomplete; physical pointer/DPI and first-time-user task
+acceptance remain separate.
+
+The imported historical preview.14 Next source was
+`07cb03299b8a3e63f30642dd8e45a3403dacaaa7`. Its
+[acceptance record](CONTACT_AUTHORING_ACCEPTANCE_2026-10-24.md) reports 373 native
+and 282 focused engine assertions (655), with 47 inspected PNG captures. Those
+receipts are not new-workspace evidence or a full-suite pass; the retained
+advanced contact/release failure remains unresolved.
 
 Source interpretation, motion quality, native serialization, and destination-tool
 or game acceptance are separate evidence levels. Successful CHR0/project reopen
@@ -28,6 +41,15 @@ tools, physical input/DPI, generalization, non-Brawl adapters and games are queu
 in the sole current M2 plan.
 
 ## Implemented increments and bounded receipts
+
+Preview.15 adds Source -> Target -> Preview and fix -> Export around the complete
+native editor, with the existing read-only source audition and independently
+editable target result. Stage/focus/library navigation preserves native selection
+and authoring ownership. Workspace export uses protected paths, checks the target
+rig for retargeted clips and freshly decodes native output. Source-bound transfers
+still use original Next v7; expert native exports remain available through More
+tools. This adds presentation and workflow, not broader format or motion-quality
+qualification. See [workspace evidence](SIMPLE_WORKSPACE_ACCEPTANCE_2026-10-24.md).
 
 Preview.14 adds reviewed existing-chain bone contact placement/releases and
 source-bound Brawl motion template slot inventories, plus native CHR0 slot export.

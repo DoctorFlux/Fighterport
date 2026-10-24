@@ -90,26 +90,27 @@ namespace BrawlCrate.UI
         {
             if(_libraryPane==null)BuildLibraryPane();
             _libraryPane.Visible=!_libraryPane.Visible;
-            if(_libraryPane.Visible)RunFighterAction(()=>RefreshLibrary());else{++_librarySearchGeneration;CancelLibraryTreeWork();ReleaseLibraryPreview();}
+            if(_libraryPane.Visible)RunFighterAction(()=>RefreshLibrary(LibrarySelection?.Clip.Id??SelectedFighterAsset()?.Retarget?.Library?.ClipId));else{++_librarySearchGeneration;CancelLibraryTreeWork();ReleaseLibraryPreview();}
             modelEditControl1.BringToFront();PerformLayout();
+            UpdateSimpleWorkspace();
         }
         private void BuildLibraryPane()
         {
             _library=new AnimationLibrary();
-            _libraryPane=new Panel{Name="animationLibraryPane",Dock=DockStyle.Right,Width=370,Visible=false,Padding=new Padding(6),BorderStyle=BorderStyle.FixedSingle};
+            _libraryPane=new Panel{Name="animationLibraryPane",Dock=DockStyle.Left,Width=320,Visible=false,Padding=new Padding(6),BorderStyle=BorderStyle.FixedSingle};
             var layout=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=1,RowCount=9};
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
-            foreach(int h in new[]{30,30,0,30,85,94,22,190,48})layout.RowStyles.Add(h==0?new RowStyle(SizeType.Percent,100):new RowStyle(SizeType.Absolute,h));
-            var header=new FlowLayoutPanel{Dock=DockStyle.Fill,WrapContents=false};
+            foreach(int h in new[]{60,30,0,24,70,66,22,160,38})layout.RowStyles.Add(h==0?new RowStyle(SizeType.Percent,100):new RowStyle(SizeType.Absolute,h));
+            var header=new FlowLayoutPanel{Dock=DockStyle.Fill,WrapContents=true};
             header.Controls.Add(LibraryButton("libraryAddSource","Add Source...",AddLibrarySource));
             header.Controls.Add(LibraryButton("librarySources","Sources...",()=>{
                 ReleaseLibraryPreview();using(var dialog=new LibrarySourcesDialog(_library,IndexLibraryGameSource))dialog.ShowDialog(this);RefreshLibrary();
             }));
-            _libraryUndo=LibraryButton("libraryUndo","Undo Source",()=>{ReleaseLibraryPreview();_library.UndoLastUpdate();RefreshLibrary();});header.Controls.Add(_libraryUndo);
+            _libraryUndo=LibraryButton("libraryUndo","Undo",()=>{ReleaseLibraryPreview();_library.UndoLastUpdate();RefreshLibrary();});header.Controls.Add(_libraryUndo);
             header.Controls.Add(LibraryButton("libraryClose","Close",ToggleAnimationLibrary));layout.Controls.Add(header,0,0);
             _librarySearch=new TextBox{Name="librarySearch",AccessibleName="Search Animation Library",Dock=DockStyle.Fill,MaxLength=512};
             _librarySearchTimer=new System.Windows.Forms.Timer{Interval=300};
-            _librarySearch.TextChanged+=(s,e)=>{++_librarySearchGeneration;CancelLibraryTreeWork();_libraryReplacingTree=true;_librarySearchTimer.Stop();_librarySearchTimer.Start();if(_libraryUse!=null)_libraryUse.Enabled=false;if(_libraryPreview!=null)_libraryPreview.Enabled=false;};
+            _librarySearch.TextChanged+=(s,e)=>{++_librarySearchGeneration;CancelLibraryTreeWork();_libraryReplacingTree=true;_librarySearchTimer.Stop();_librarySearchTimer.Start();if(_libraryUse!=null)_libraryUse.Enabled=false;if(_libraryPreview!=null)_libraryPreview.Enabled=false;UpdateSimpleWorkspace();};
             _librarySearchTimer.Tick+=(s,e)=>{_librarySearchTimer.Stop();RunFighterAction(()=>RefreshLibrary());};
             var searchRow=new Panel{Dock=DockStyle.Fill};searchRow.Controls.Add(_librarySearch);
             var clear=LibraryButton("libraryClearSearch","Clear",()=>{if(_librarySearch.Text.Length>0)_librarySearch.Clear();else RefreshLibrary();});clear.Dock=DockStyle.Right;clear.AutoSize=false;clear.Width=49;searchRow.Controls.Add(clear);
@@ -126,15 +127,15 @@ namespace BrawlCrate.UI
             pages.Controls.Add(_libraryPage);layout.Controls.Add(pages,0,3);
             _libraryDetails=new TextBox{Name="libraryDetails",Multiline=true,ReadOnly=true,ScrollBars=ScrollBars.Vertical,Dock=DockStyle.Fill};layout.Controls.Add(_libraryDetails,0,4);
             var actions=new FlowLayoutPanel{Dock=DockStyle.Fill,WrapContents=true};
-            _libraryPreview=LibraryButton("libraryPreviewOriginal","Preview Original",PreviewLibraryOriginal);
-            _libraryUse=LibraryButton("libraryUseOnTarget","Use on This Model",UseLibraryOnTarget);
+            _libraryPreview=LibraryButton("libraryPreviewOriginal","Preview original",PreviewLibraryOriginal);
+            _libraryUse=LibraryButton("libraryUseOnTarget","Use on model",UseLibraryOnTarget);
             _libraryRepair=LibraryButton("libraryRepairSource","Repair...",RepairLibrarySource);
             actions.Controls.AddRange(new Control[]{_libraryPreview,_libraryUse,_libraryRepair,LibraryButton("libraryBatch","Batch / Fit...",ShowLibraryBatch),LibraryButton("libraryAdvancedFitting","Advanced Fitting...",OpenAdvancedSceneFitting)});layout.Controls.Add(actions,0,5);
             _libraryOriginalLabel=new Label{Name="libraryOriginalLabel",Text="Original source preview (read-only)",Dock=DockStyle.Fill};layout.Controls.Add(_libraryOriginalLabel,0,6);
             _libraryViewport=new ModelPanel{Name="libraryOriginalViewport",Dock=DockStyle.Fill};
             _libraryViewport.CurrentViewport.AllowSelection=false;
             _libraryViewport.CurrentViewport.RenderFloor=true;
-            _libraryViewport.CurrentViewport.BackgroundColor=Color.FromArgb(230,230,250);
+            _libraryViewport.CurrentViewport.BackgroundColor=Color.FromArgb(35,39,46);
             layout.Controls.Add(_libraryViewport,0,7);
             var transport=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=2};transport.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,65));transport.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
             _libraryPlay=LibraryButton("libraryOriginalPlay","Play",()=>{
@@ -153,7 +154,8 @@ namespace BrawlCrate.UI
                 if(_libraryTime>frames-1){if(_libraryLease.Animation.Loop)_libraryTime%=frames;else{_libraryTime=frames-1;_libraryTimer.Stop();_libraryPlay.Text="Play";}}
                 RenderLibraryFrame();
             };
-            _libraryPane.Controls.Add(layout);Controls.Add(_libraryPane);modelEditControl1.BringToFront();
+            _libraryPane.Controls.Add(layout);(_simpleWorkspaceBody?.Controls??Controls).Add(_libraryPane);modelEditControl1.BringToFront();
+            LayoutSimpleWorkspaceLibraryPreview();
         }
         private static string LibraryStateText(LibrarySourceState state)
         {
@@ -174,6 +176,7 @@ namespace BrawlCrate.UI
                 (item.Clip.AssociationEvidence??item.Clip.AssociationIssue)+Environment.NewLine+
                 (item.Clip.UnboundSourceTracks==null?"":"Native tracks absent on original model (not evaluated): "+item.Clip.UnboundSourceTracks+Environment.NewLine)+"SHA256: "+item.Clip.ResourceSha256;
             MeasureLibraryUi(7,selectionStart);
+            UpdateSimpleWorkspace();
         }
         private void AddLibrarySource()
         {
@@ -226,6 +229,7 @@ namespace BrawlCrate.UI
             modelEditControl1.StopAnim();
             ReleaseLibraryPreview();
             _libraryLease=LoadLibrarySource(item.Clip.Id);if(_libraryLease==null)return;
+            LayoutSimpleWorkspaceLibraryPreview();
             _libraryTime=0;_libraryFrame.Maximum=_libraryLease.Animation.FrameCount;_libraryFrame.Value=1;
             _libraryLease.Model.ResetToBindState();
             _libraryViewport.AddReference(_libraryLease.Model.RootNode);
@@ -257,6 +261,7 @@ namespace BrawlCrate.UI
             if(_libraryLease==null)return;
             _libraryViewport.ClearAll();_libraryLease.Dispose();_libraryLease=null;
             _libraryOriginalLabel.Text="Original source preview (read-only)";
+            LayoutSimpleWorkspaceLibraryPreview();
         }
         private void DisposeAnimationLibrary()
         {

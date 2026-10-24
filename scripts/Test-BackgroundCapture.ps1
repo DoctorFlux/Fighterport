@@ -1,9 +1,10 @@
 [CmdletBinding()]
-param([Parameter(Mandatory)][string]$Model,[Parameter(Mandatory)][string]$Motion,[Parameter(Mandatory)][string]$OutputDirectory,[switch]$SuppliedModel,[string]$RetargetSource,[string]$Clip='Wait1',[switch]$ModelPose,[string]$NativeDirectory,[switch]$ControlGizmos,[switch]$ControlReview,[switch]$LibraryBatch,[switch]$SceneFitting,[switch]$TransitionFit,[switch]$ContactAuthoring,[switch]$CombinedStress,[string]$ContactTransitionsProject,[switch]$CharacterWorkspace,[string]$CompatibilityProject,[string]$LegacyProject)
+param([Parameter(Mandatory)][string]$Model,[Parameter(Mandatory)][string]$Motion,[Parameter(Mandatory)][string]$OutputDirectory,[switch]$SuppliedModel,[string]$RetargetSource,[string]$Clip='Wait1',[switch]$ModelPose,[string]$NativeDirectory,[switch]$ControlGizmos,[switch]$ControlReview,[switch]$LibraryBatch,[switch]$SceneFitting,[switch]$TransitionFit,[switch]$ContactAuthoring,[switch]$CombinedStress,[string]$ContactTransitionsProject,[switch]$CharacterWorkspace,[switch]$SimpleWorkspace,[string]$CompatibilityProject,[string]$LegacyProject)
 $ErrorActionPreference='Stop'
 $root=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $modelPath=(Resolve-Path -LiteralPath $Model).Path
 $motionPath=(Resolve-Path -LiteralPath $Motion).Path
+if($SimpleWorkspace -and !$RetargetSource){throw 'SimpleWorkspace requires RetargetSource pointing to the authentic donor model.'}
 $output=[IO.Path]::GetFullPath($OutputDirectory)
 if(Test-Path -LiteralPath $output){throw 'Choose a new output directory; prior evidence is preserved.'}
 $harness=Join-Path $root 'tests/ControlsAcceptance/bin/x86/Release/net472/ControlsAcceptance.exe'
@@ -27,6 +28,7 @@ try {
     if($ContactTransitionsProject){$captureArgs+=@('--contact-transitions-project',(Resolve-Path -LiteralPath $ContactTransitionsProject).Path)}
     if($SceneFitting){$captureArgs+='--scene-fitting'};if($LibraryBatch){$captureArgs+='--library-batch'};if($ControlReview){$captureArgs+='--control-review'}
     if($CharacterWorkspace){$captureArgs+='--character-workspace'}
+    if($SimpleWorkspace){$captureArgs+='--simple-workspace'}
     if($CompatibilityProject){if(!$LegacyProject){throw 'Supply the earlier standalone LegacyProject as well.'};$captureArgs+=@('--saved-project',(Resolve-Path -LiteralPath $CompatibilityProject).Path,'--legacy-project',(Resolve-Path -LiteralPath $LegacyProject).Path)}
     if($RetargetSource){$captureArgs+=@('--retarget-source',(Resolve-Path -LiteralPath $RetargetSource).Path,'--clip',$Clip)}
     & $harness @captureArgs

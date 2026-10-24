@@ -1,7 +1,8 @@
 # Fighterport
 
 This is the public unified source repository at https://github.com/DoctorFlux/Fighterport.
-It imports the BrawlCrate-based Next preview.14 source and integrated owned engine.
+It imports the BrawlCrate-based Next preview.14 source and integrated owned engine;
+the current application is **preview.15-simple-workspace**.
 The two predecessor repositories are private preserved histories. New commits use
 the DoctorFlux identity without Codex author, committer or coauthor attribution;
 upstream copyrights, licenses and notices remain intact.
@@ -9,15 +10,26 @@ upstream copyrights, licenses and notices remain intact.
 Read the [full product plan](docs/MASTER_PLAN.md),
 [one current M2 task](docs/plans/current.md), and
 [source-import record](docs/SOURCE_IMPORT_2026-10-24.md).
-The supplied workspace image is a proposal. The current native app and its
-executable name are retained; broader game adapters and universal contact quality
-remain unfinished. This publication does not claim a fresh application test run.
+The supplied workspace image guided the first simpler-workspace increment. The
+native app and executable name are retained; broader game adapters and universal
+contact quality remain unfinished.
 
 
-Fighterport combines the existing native BrawlCrate viewer and editors with
-our existing FighterPort animation engine. The app opens directly in the dark
-standard model viewer, with stacked lists, the Bones panel and native camera
-controls.
+Fighterport now opens with **Source -> Target -> Preview and fix -> Export**
+around the complete dark BrawlCrate Model Previewer and existing animation engine.
+Choose a source-bound library clip, open the target model, preview the transfer,
+edit with the native tools, then export the selected CHR0 or save the project.
+The source library collapses, **Focus editor** restores editing room, and
+**More tools** retains the expert commands. Original resources/animation lists,
+the Bones panel, camera/materials, transform tools, autokeys, interpolation,
+timeline and Undo remain together in the original native control.
+
+Fresh verification passes **163 scoped checks**: 61 in each supplied retarget
+direction and 41 procedural native-controls checks, with **25 inspected PNGs**.
+Broader M2/G1 usability, physical input/DPI and game acceptance remain incomplete. See
+[workspace acceptance](docs/SIMPLE_WORKSPACE_ACCEPTANCE_2026-10-24.md) for the
+exact commands, inspected captures and limits. These checks do not change the
+original Next v7 retargeter or close the queued contact-context work.
 
 Use **Animation Controls** to set up an existing rig, add pins to selected bones,
 soft-pin hands/feet, follow an existing animation, or create an animation from a
@@ -53,7 +65,7 @@ Undo/Redo. Advanced drafts retain unresolved gates and cannot be applied;
 uncalibrated body preference knobs remain disabled. The ordinary Next retarget
 and pin/curve saving workflow remains available.
 
-Top-bar **Fit / Transitions...** fits selected entry/exit FK curves inside the
+**More tools > Fit / Transitions...** fits selected entry/exit FK curves inside the
 existing animation duration, using reviewed same-rig references, protected
 middle frames and the same native model renderer. Review and add an independent
 result with native Undo/Redo. **Fighter > Transition Fit Details / Frozen
@@ -83,15 +95,18 @@ transitions remain separate work. Renderer window/DC lifetime cleanup is verifie
 through both Mario/Snake retarget and repeated-modal painting sequences.
 
 Build with `scripts/Build.ps1 -DotNet <path-to-dotnet-10>` on Windows x64.
-Launch `BrawlCrate/bin/x86/Release/net472/FighterPortStudioV2.exe`. Use `-NativeDirectory <new-folder>` to build separately while an earlier app is open.
+Launch with `scripts/Run.ps1`; use `-NativeDirectory <new-folder>` to select a
+separate build, or `-Check` to print the executable selected without launching it.
+The retained executable is `FighterPortStudioV2.exe`.
 See [integration and verification](docs/ENGINE_INTEGRATION.md),
-[current contact authoring, native profiles and painting evidence](docs/CONTACT_AUTHORING_ACCEPTANCE_2026-10-24.md),
+[current workspace evidence](docs/SIMPLE_WORKSPACE_ACCEPTANCE_2026-10-24.md),
+[historical contact authoring, native profiles and painting evidence](docs/CONTACT_AUTHORING_ACCEPTANCE_2026-10-24.md),
 [earlier contact preservation and custom slots](docs/CONTACT_SLOTS_ACCEPTANCE_2026-10-24.md),
-[current boundary fitting and Mario/Snake save evidence](docs/TRANSITION_UI_ACCEPTANCE_2026-10-24.md),
-[current scene fitting and Mario/Snake persistence evidence](docs/SCENE_FITTING_ACCEPTANCE_2026-10-24.md),
-[current control-review qualification](docs/CONTROL_REVIEW_ACCEPTANCE_2026-10-23.md),
-[native controls/interpolation/workspace evidence](docs/NATIVE_CONTROLS_WORKSPACE_ACCEPTANCE_2026-10-23.md),
-[current two-direction retarget/pin evidence](docs/NEXT_RETARGET_ACCEPTANCE_2026-10-23.md),
+[historical boundary fitting and Mario/Snake save evidence](docs/TRANSITION_UI_ACCEPTANCE_2026-10-24.md),
+[historical scene fitting and Mario/Snake persistence evidence](docs/SCENE_FITTING_ACCEPTANCE_2026-10-24.md),
+[historical control-review qualification](docs/CONTROL_REVIEW_ACCEPTANCE_2026-10-23.md),
+[historical native controls/interpolation/workspace evidence](docs/NATIVE_CONTROLS_WORKSPACE_ACCEPTANCE_2026-10-23.md),
+[historical two-direction retarget/pin evidence](docs/NEXT_RETARGET_ACCEPTANCE_2026-10-23.md),
 [the sole current plan](docs/plans/current.md),
 [the full product plan](docs/MASTER_PLAN.md) and
 [per-operation support](docs/FORMAT_SUPPORT.md).

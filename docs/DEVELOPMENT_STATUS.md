@@ -1,18 +1,31 @@
-# Development status — 24 October 2026 audit
+# Development status — 24 October 2026 workspace increment
 
-The audited local and published Next `main` baseline is
-`07cb03299b8a3e63f30642dd8e45a3403dacaaa7`, preview.14
-(`2.0.0-preview.14-contact-authoring`). This is a progression audit with
-documentation reconciliation; no build, test suite, capture or physical-input
-acceptance was rerun for it. The existing
-[preview.14 acceptance record](CONTACT_AUTHORING_ACCEPTANCE_2026-10-24.md) reports
-**373 native and 282 focused engine assertions (655)** and **47 actually inspected
-PNG captures**. Earlier checkpoint totals below belong to their own revisions and
-must not be added to this total or presented as fresh validation.
+The current Fighterport application is **preview.15-simple-workspace**
+(`2.0.0-preview.15-simple-workspace`). Source -> Target -> Preview and fix ->
+Export now surrounds the complete dark BrawlCrate Model Previewer. The existing
+source library and read-only donor audition, target loading, original Next v7
+transfer, native controls and protected CHR0/project output remain the underlying
+operations. Collapsible panels and Focus editor preserve editing room; expert
+commands remain accessible through More tools. Launch with `scripts/Run.ps1`.
 
-Next retains its native dark BrawlCrate viewer/editors, direct startup and
-original v7 retargeter. Integrated existing-rig FK/IK/pin/pole controls, native
-key/tangent editing and Undo/project/CHR0 reopen have bounded receipts. Later
+Fresh private-desktop verification passes **163 scoped checks**: 61 in each
+supplied retarget direction and 41 original procedural native-controls checks,
+with **25 actually inspected PNGs**. Transfer output matches a separately prepared
+original Next bake; this proves route parity, not universal motion quality.
+See [workspace acceptance](SIMPLE_WORKSPACE_ACCEPTANCE_2026-10-24.md) for actual
+commands, inspected captures and limitations. These are scoped workspace checks,
+not a full-suite pass or completed first-time-user/physical-input acceptance.
+
+The imported preview.14 baseline was historical Next
+`07cb03299b8a3e63f30642dd8e45a3403dacaaa7`. Its
+[acceptance record](CONTACT_AUTHORING_ACCEPTANCE_2026-10-24.md) reports 373 native
+and 282 focused engine assertions (655), with 47 inspected PNG captures. The
+repository-import audit verified those stored receipts; those totals do not
+qualify the new workspace and must not be added to the new checks.
+
+Fighterport retains its native dark BrawlCrate viewer/editors and original v7
+retargeter. Integrated existing-rig FK/IK/pin/pole controls, native
+key/tangent editing and Undo/project/CHR0 reopen have bounded receipts. Earlier
 increments add source-bound batch timing review, advanced fitting review with
 blocked Apply, fixed-duration FK boundary fitting and conservative support-path
 protection. Custom editor slots/assignments are implemented; preview.14 adds
@@ -29,10 +42,12 @@ four quality gates, physical pointer/DPI acceptance, a Modkit import, a target
 build or an in-game result. The broader suite retains its advanced contact/release
 failure; no full-suite pass or advanced 96.2 Apply is claimed.
 
-M2 and full engine integration remain incomplete. The sole next executable task
-is to retain complete original Next support timelines/context and extend reviewed
-placement/releases to coupled surfaces and moving support frames, with independent subframe
-and conflict evidence. Canonical per-build runtime slot rules/Fill Missing,
+M2, broader G1 usability and full engine integration remain incomplete. The sole
+current executable substep is G1 workspace task-flow/usability qualification in
+`plans/current.md`. Complete original Next support timelines/context and reviewed
+placement/releases on coupled surfaces and moving support frames remain queued,
+with independent subframe and conflict evidence. Canonical per-build runtime slot
+rules/Fill Missing,
 advanced companion portability/layers, remaining workspace tools, physical
 input/DPI, generalization, non-Brawl adapters and games remain queued in
 `plans/current.md`. Native motion inventories explicitly keep the build
@@ -42,7 +57,7 @@ Unverified. New skeleton/auto-skin authoring is outside current core scope.
 
 All remaining sections retain earlier evidence and status wording for their
 recorded revision. Their uses of "current", "not implemented" or "next" do not
-override the audit baseline above or the sole master/current plans. In particular,
+override the current baseline above or the sole master/current plans. In particular,
 preview.10 timing, preview.12 fitting, and preview.13/.14 slot work supersede
 older statements that those operations are wholly unimplemented. Historical
 interactive/packaging results do not validate later application revisions.

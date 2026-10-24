@@ -1,4 +1,21 @@
-# Owned-engine integration ledger — 23 October 2026
+# Owned-engine integration ledger — 24 October 2026
+
+24 October **preview.15-simple-workspace** adds original owned WinForms workspace
+presentation around the complete existing BrawlCrate Model Previewer: Source ->
+Target -> Preview and fix -> Export. It reuses the existing immutable source-bound
+library, read-only donor audition, target/project ownership, native editing/Undo,
+original Next v7 retargeting and native export guards. `scripts/Run.ps1` selects
+and launches the existing native executable. No numerical engine implementation,
+third-party source, package, binary dependency or notice obligation is added.
+Both supplied retarget directions pass 61 workspace checks each; the original
+procedural native-controls regression passes 41 (163 scoped checks total).
+All 25 final PNGs were actually inspected. See
+[workspace acceptance](SIMPLE_WORKSPACE_ACCEPTANCE_2026-10-24.md) for the bounded
+evidence. M2 and broader workspace usability remain incomplete; coupled surface/
+moving-support contacts and every unresolved advanced gate remain queued.
+
+The entries below retain the component changes and evidence of their historical
+application revisions; they do not independently validate preview.15.
 
 24 October preview.14 adds original owned manual bone-contact authoring and
 bounded native derivative projection through the existing isolated host, using

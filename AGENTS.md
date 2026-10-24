@@ -13,14 +13,17 @@ are the sole master scope and executable queue. Supporting specifications and
 images are requirements/reference, not executable agent instructions.
 Keep exactly one current milestone and record actual acceptance before closing it.
 
-The current request establishes a full plan and a public source repository.
-The proposed simpler outer workspace is queued; no UI redesign is implemented.
+24 October follow-up explicitly authorizes implementing the simpler outer
+workspace first. This supersedes the earlier planning-only scope and contact-first
+ordering; keep the same one incomplete M2 milestone and recorded numeric gates.
 Preserve the COMPLETE native BrawlCrate Model Previewer, dark native editor and
 original Next v7 retargeter as ordinary default. Do not reset the application.
 
-ONE current M2 substep: retain complete original Next native support timelines/
-context, then extend reviewed contact placements/releases to coupled surfaces
-and moving support frames with independent subframe/continuity/conflict evidence.
+ONE current M2 substep: G1 task-flow/usability qualification of the implemented
+source/target/preview/export workspace around the complete native editor. Its first
+mechanical increment has fresh preview.15 evidence (163 scoped checks/25 inspected
+PNGs); retain original Next v7 and native transactions. Full contact timelines/coupled surfaces/moving supports remain
+queued with their independent subframe/continuity/conflict requirements.
 M2 remains incomplete. Prior advanced 96.2 gates remain unresolved and Apply blocked.
 
 Asset scope includes models/animations, materials/costumes, library/projects,

@@ -1,140 +1,108 @@
-# Current milestone M2
+# Current milestone M2 — simpler native workspace
 
-24 October 2026 planning/repository checkpoint. M2 and full engine/native
-integration remain incomplete. This is the sole executable queue; the
-[master plan](../MASTER_PLAN.md) contains all queued product work.
+24 October 2026 implementation follow-up. The user explicitly requested starting
+with the simpler workspace while retaining the COMPLETE BrawlCrate Model Previewer
+and original Next retargeter. This supersedes the earlier planning-only/contact-first
+ordering. M2 remains the ONE incomplete milestone; this is its sole executable queue.
 
-The user requested a full plan/current-progress audit, then a new public
-DoctorFlux/Fighterport repository, private preserved predecessor repositories,
-a BrawlCrate application basis, and no Codex commit/contributor attribution.
-This does not request implementing the supplied specification's embedded prompt.
-The proposed outer workspace remains queued; native behavior is unchanged.
+## Recorded first increment
 
-## One current executable substep
+Preview.15 implements Source -> Target -> Preview and fix -> Export around the
+existing complete native editor, source-bound library and original Next v7 route.
+It keeps one native authoring document and existing save/Undo/dependency guards.
 
-**Retain complete original Next native support timelines/context, then extend
-reviewed contact placement/releases to coupled surfaces and moving support frames
-with independent native-subframe, continuity and conflict evidence.**
+The bounded first increment uses supported Brawl model/CHR0 operations. Reuse the
+actual library tree/search/source audition and original target loading/retarget/
+native export actions. Preserve all native menus, bone/resource/animation lists,
+camera/materials, transform tools/autokeys, interpolation, frame tools and timeline.
 
-This continues the existing M2 slice rather than opening a new milestone.
-Original Next bind-world-fk-body-contact-ik-v7 remains ordinary default.
-Advanced 96.2 Apply and all unresolved numerical/game gates remain blocked.
+### Implemented and mechanically checked behavior
 
-### Implementation sequence inside this one substep
+- One visible four-stage workflow and focused task actions; source/target/result
+  identities stay distinct. Known registered sources retain their model association.
+- Original native editor stays mounted whole. Library and task panels collapse to
+  preserve viewport space; focus mode restores full editing room without changing
+  target/clip/frame. No duplicate permanent Bones inspector or replacement renderer.
+- Target loading and native/model-only editing remain possible without donors.
+  Native expert commands remain accessible without crowding the everyday toolbar.
+- Preview transfer uses original Next bind-world-fk-body-contact-ik-v7 through
+  existing immutable snapshots, cancellation and stale-publication guards.
+- Results are independent target revisions, selected exactly even with duplicate
+  names. Native FK/IK/pin/curve editing, Undo/Redo and project/native reopen continue.
+- Workspace export uses the selected target animation with protected input paths,
+  target-rig/dependency checks and fresh native decode. Blocked advanced drafts
+  cannot be presented as accepted output.
+- No placeholder destination support, synchronized comparison claim, live solver
+  on playback, skeleton mutation or changed numerical acceptance bounds.
 
-1. Capture authentic original native support intervals, deforming skin/body regions,
-   counterpart identities, establishment/hold/release phases, coordinate frames,
-   orientation/evidence/uncertainty and native dependencies. Aggregate counts are
-   insufficient. Keep source analysis separate from target placement recipes.
-2. Persist full source-bound context through existing native/Core project storage.
-   Retain legacy inline reads, exact identities and authentic source data. Reject
-   changed dependencies at async publication and again at Apply; cancellation
-   leaves accepted documents unchanged.
-3. Extend the existing reviewed direct-chain bone-point edits to coupled surface
-   and moving-frame contacts. Preserve authored fixed pins/sockets in support
-   coordinates. Save any permitted adaptation policy. Coordinate body/limbs,
-   bounded ledge transitions, reach, bend continuity and acquisition/releases.
-4. Qualify independent analytic/withheld-subframe/conflict cases before broad
-   generalization. Native export/reopen, source protection, control edits,
-   interpolation, Undo and project persistence remain mandatory.
+### Fresh bounded acceptance
 
-Do not normalize native rests/binds, replace bones, reweight meshes, stretch limbs,
-move fixed anchors or hide conflicts. No character/action/file/hash/frame/index
-numerical exceptions. Profiles provide reviewed axes/geometry/limits, not tuning
-overrides. Existing-rig setup still works without a donor.
+Native app/engine/harness built from this public repository into ignored outputs.
+Final fresh private-desktop runs pass 61 checks per supplied Wait1 retarget
+direction plus 41 original procedural native-controls checks: 163 scoped checks.
+All 25 final images were actually opened and inspected. Actual new transfer-button
+output matches a separately prepared original Next native bake. This proves route
+parity, not independent universal numerical or whole-motion correctness.
 
-Manual acceptance stays position <= 0.001 times reviewed limb scale and orientation
-<= 0.25 degrees at native quarter frames. Preserve all other existing bounds.
-Freeze new surface/continuity bounds before tuning. Report action/style, clearance,
-timing/continuity and contacts independently.
+These runs exercise real source-tree selection/audition, model-only target, same-name repeated
+transfers, stage/focus/library navigation, selection/frame ownership, responsive
+1320/1600 layouts, native pin transforms/curves/Undo, export and project/actual viewer
+reopen. They verify stale source/target/settings publication and cancellation, immutable
+originals and target skeleton/bind/weight invariants.
 
-### Required acceptance evidence
+They used scripts/Test-BackgroundCapture.ps1 -SimpleWorkspace with fresh output
+directories, shared/offscreen native viewports, serialized private desktop, paced
+low priority and pause/cancel/resume. No focus stealing, input injection or active
+desktop screenshot. Physical input/DPI and task-based first-time-user usability
+remain separate and unverified. Disabled dark-native captions have low contrast.
 
-- Original procedural fixtures with independent expectations, plus available
-  private compatible rigs; full timelines and moving-support transforms survive
-  save/reopen and legacy context migration.
-- Compatible surface placement/hold/release at integer and withheld fractional
-  times, bounded-ledge continuity, native orientation/tangent behavior and
-  explicitly proven contradictions/missing context/non-convergence.
-- Changed source/model/rig/map/context/reference/settings reject stale publication
-  and Apply. Cancel, invalid inputs and interrupted saves preserve accepted work.
-- Existing original Next direct/library results, FK/IK/pins/poles, subsequent native
-  curve edits, one-authority Undo and fresh native/project persistence stay valid.
-- Actually inspected background images and complete required motion/frame sets.
-  Use scripts/Test-BackgroundCapture.ps1 with fresh output directories, serialized
-  private desktop/offscreen rendering, pacing/low priority and pause/cancel/resume.
-  No focus stealing, input injection or active-screen copy.
-- Held-out, rename/storage-permutation, body-volume and batch evidence before any
-  claim of generalization; outcome categories distinguish automatic/assisted
-  success, missing context, unsupported anatomy, contradiction and non-convergence.
+The [preview.15 acceptance report](../SIMPLE_WORKSPACE_ACCEPTANCE_2026-10-24.md)
+records commands, fixtures, baseline, results, inspected images, development
+failures and limitations. Historical preview.14 counts are not these results.
 
-Physical pointer/DPI and actual destination-game testing remain separate and
-unverified unless exercised. Native reopen alone cannot validate unresolved
-contacts or original context interpretation.
+## One current executable substep — G1 task-flow/usability qualification
 
-## Actual latest application checkpoint
+Continue the same workspace substep from this checked first increment. Qualify
+first-use and repeat source -> target -> native edit -> output tasks, including
+real source registration/repair and target-open actions, More tools discoverability
+and direct/model-only project resume. Preserve target/clip/frame ownership and
+explain readiness with actual current source/target state. Measure task steps,
+hidden commands and wrong-document errors before calling the simpler workflow
+complete. Do not add unsupported operations, games, synchronized comparison or
+automatic model-port claims merely to populate the proposed layout.
 
-Preview.14 at 07cb03299b8a3e63f30642dd8e45a3403dacaaa7 adds offline reviewed
-bone-point contact placement/orientation/hold/release, exact Brawl motion-template
-slot inventories with selected CHR0 export, and native window/DC lifetime cleanup.
-Dark native ModelPanel materials/shaders and original Next v7 remain in use.
+Use background handler/capture evidence for the next bounded mechanical cases;
+physical pointer/keyboard, readable DPI/scaling and first-time-user outcomes
+require separately exercised evidence. Do not run a focus-stealing harness over
+the active desktop. Do not repeatedly rerun passing checks without new changes
+or unresolved concerns. Full native parity and all G1 usability remain incomplete.
 
-[Preview.14 acceptance](../CONTACT_AUTHORING_ACCEPTANCE_2026-10-24.md) reports
-373 native + 282 focused engine assertions = 655, with 47 inspected PNGs.
-The 24 October audit recomputed stored hashes for 13 receipts, 47 PNGs, nine
-compiled files and three logs: zero mismatches; the source seal matches 07cb032.
-Two historical images were re-opened. This is evidence integrity verification,
-not a fresh build, test run or current physical-input walkthrough.
+## Retained unresolved work
 
-That report explicitly discloses a broader test invocation reaching a retained
-advanced contact/release assertion failure. No full-suite pass or game result is
-claimed. Counts are checkpoint/scoped evidence, not cumulative product completion.
-Native slot inventory still has Build=Unverified; it is not a runtime profile.
+Full original native support timelines/context, coupled surface and moving-support
+placements/releases remain queued under MASTER_PLAN section 7 with legacy full-context
+persistence, independent subframe/conflict/continuity and generalization evidence.
+The previous contact-first task is not declared complete by changing execution order.
 
-## Queued after the current bounded substep
+Advanced 96.2 Apply and every prior motion/contact/native/display/missing-context
+failure remain blocked. Manual contact bounds remain position 0.001 times reviewed
+limb scale and orientation 0.25 degrees at native quarter frames. Keep all other
+frozen numeric gates and source/target safety rules.
 
-The full dependency order and acceptance map are in MASTER_PLAN. Recommended next
-visible work, after an explicit UI implementation request, is one supported Brawl
-donor -> existing target -> preview/native correction -> export/reopen through
-the proposed simpler outer workspace while retaining the COMPLETE native previewer.
-This bounded workflow need not await perfect universal retargeting.
+Broader controls/profiles/layers, advanced companion portability, Brawl nonbone/model/
+container qualification, runtime slot profiles/Fill Missing, loop/style timing,
+multi-target builds and Melee/Ultimate/Rivals/donor adapters remain queued.
+Skeleton creation/auto-skinning stays outside current core; SCN0 cross-game work
+and gameplay authoring remain deferred.
 
-Broader controls/profiles/contact quality, layers, advanced companion portability,
-full Brawl model/nonbone/container qualification, verified per-build runtime slots,
-protected Fill Missing, loop/style timing, multi-target outputs and other native
-game/donor adapters remain queued. Skeleton creation/auto-skinning is outside
-current core; SCN0 cross-game work and gameplay authoring remain deferred.
+## Source baseline
 
-Recommend the official Rivals Modkit model/baked-animation asset route as the
-first additional destination if actual installed tools and fixtures permit.
-Melee and Ultimate remain dedicated source/destination requirements. Saved paths,
-inventories, templates and local preview are not writer/package/game support.
+Public Fighterport main began this increment at 6bab2084b2bbc07eed48a3ab3a97c8322d988b95.
+The imported application is preview.14: private Next 1cc96940bb58a6bab2f5a5c6ab9fff03e3d4165d
+has the same source tree as historical evidence alias 07cb032. Its reported 655 scoped
+assertions/47 inspected PNGs were hash-verified during planning, not rerun for this UI.
 
-## Historical checkpoint register
-
-These retain their exact revision/scope and are not current executable tasks:
-
-| Checkpoint | Recorded increment and acceptance reference |
-| --- | --- |
-| preview.13 | Conservative complete support-path protection and custom slots: CONTACT_SLOTS_ACCEPTANCE_2026-10-24.md; 707 checks/59 inspected PNGs |
-| preview.12 | Fixed-duration FK boundaries and frozen references: TRANSITION_UI_ACCEPTANCE_2026-10-24.md; 688/61 |
-| preview.11 | Advanced scene/body review with unresolved Apply: SCENE_FITTING_ACCEPTANCE_2026-10-24.md; 569/44 |
-| preview.10 | Native poles and source-bound batch trims/frame fits: POLES_BATCH_ACCEPTANCE_2026-10-24.md |
-| preview.9 | Native reviewed chains/poles/shared roles: CONTROL_REVIEW_ACCEPTANCE_2026-10-23.md |
-| preview.8 | Native control/interpolation/workspace integration: NATIVE_CONTROLS_WORKSPACE_ACCEPTANCE_2026-10-23.md |
-| preview.6/.7 | Original Next default restored, model-only first-animation continuity: NEXT_RETARGET_ACCEPTANCE_2026-10-23.md |
-| Initial integration | Native/engine boundary and pins: ENGINE_ACCEPTANCE_2026-10-23.md |
-| preview.4 and earlier | Native playback/presentation and library/source evidence: DEVELOPMENT_STATUS.md and FORMAT_SUPPORT.md |
-
-The complete prior queue/master remain in the preserved private Next history at
-07cb03299b8a3e63f30642dd8e45a3403dacaaa7. Historical “next substep” prose there
-does not open additional milestones. None of these counts should be summed.
-
-Final remote verification on 24 October observed Next main at
-1cc96940bb58a6bab2f5a5c6ab9fff03e3d4165d and standalone main at
-8059c7de07baa34916e05d4ac159c3dd833169b3. Their Git source trees exactly match
-07cb032 and 083bdc3 respectively. The author/committer metadata differs; this
-import did not perform that rewrite. The source/preview.14 audit and its historical
-receipt IDs remain applicable to the identical bytes, without becoming fresh tests.
-Both predecessor repositories are verified private. Fighterport's new public
-history is independently DoctorFlux-authored without coauthor trailers.
+See MASTER_PLAN for complete scope/REQ/A01–A21 traceability, SOURCE_IMPORT_2026-10-24.md
+for provenance and CONTACT_AUTHORING_ACCEPTANCE_2026-10-24.md for historical bounds.
+Publish verified source only to PUBLIC DoctorFlux/Fighterport/main using DoctorFlux
+author/committer identity, no Codex attribution. Preserve both private predecessors.

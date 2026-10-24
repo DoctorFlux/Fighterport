@@ -104,6 +104,7 @@ namespace BrawlCrate.UI
             status.BringToFront();
             // Dock layout processes siblings in reverse order: allocate both bars before the fill editor.
             modelEditControl1.BringToFront();
+            InitializeSimpleWorkspace(toolbar, status);
             PerformLayout();
 
             modelEditControl1.FighterOpenRequested = (path, models, animations, etc) => RunFighterAction(() =>
@@ -175,6 +176,7 @@ namespace BrawlCrate.UI
                 ReadSettings();
                 modelEditControl1.ConfigureFighterView();
                 RunFighterAction(RebuildFighterScene);
+                ResumeSimpleWorkspace();
                 MainForm.Instance.Hide();
                 BeginInvoke(new Action(() =>
                 {
@@ -830,6 +832,7 @@ namespace BrawlCrate.UI
                 }
                 AppendFighterRetargetStatus();
             }
+            UpdateSimpleWorkspace();
         }
 
         private void RunFighterAction(Action action)
