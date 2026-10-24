@@ -489,6 +489,7 @@ namespace BrawlCrate.UI
         {
             ProtectCharacterWorkspaceOutput(manifestPath);
             if(_pinGesture!=null)throw new InvalidOperationException("Finish or cancel the active pin gesture before saving.");
+            FinishControlCurveEdit();
             MarkFighterChanged();
             _fighterDirty = true;
             int savedFrame = modelEditControl1.CurrentFrame;
@@ -504,6 +505,16 @@ namespace BrawlCrate.UI
             foreach (FighterAsset asset in RegisteredFighterAssets())
             {
                 ResourceNode root = FighterRoot(asset);
+                // Native field edits also need the existing precise encoder on
+                // project Save. Default recompression can round untouched keys
+                // in the edited clip, including protected motion controls.
+                foreach (var clip in DiscoverFighterAnimations(root).OfType<CHR0Node>()
+                    .Where(c => c.IsDirty || c.IsBranch).ToArray())
+                {
+                    var previous = clip.Children.OfType<CHR0EntryNode>().ToArray();
+                    PreciseCHR0EntryNode.Promote(clip);
+                    modelEditControl1.RebindSavedCurveTargets(clip, previous);
+                }
                 if (root.IsDirty)
                 {
                     root.Merge();
@@ -526,6 +537,8 @@ namespace BrawlCrate.UI
 
             _fighterDirty = false;
             UpdateFighterStatus();
+            WorkspaceRecentProjects.Current.Record(_fighterProject.ManifestPath);
+            if (WorkspaceRecentProjects.Current.LastError != null) _fighterStatus.Text = WorkspaceRecentProjects.Current.LastError;
         }
 
         private string _fighterSaveError;

@@ -337,7 +337,7 @@ namespace BrawlCrate.UI
             modelEditControl1.StopAnim();
             using (var choose = new WorkspaceFileDialog("Open Fighter Project",
                 "Resume a saved Fighterport project in the full native Model Previewer.",
-                "Fighterport project (*.fpstudio)|*.fpstudio", "Open project"))
+                "Fighterport project (*.fpstudio)|*.fpstudio", "Open project", recent: WorkspaceRecentProjects.Current))
             {
                 if (choose.ShowDialog(this) == DialogResult.OK)
                     MainForm.Instance.OpenFighterProject(choose.SelectedPath, this);

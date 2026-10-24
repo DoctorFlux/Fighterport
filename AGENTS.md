@@ -8,7 +8,16 @@ Record imported revisions and preserve upstream source authorship and notices.
 
 ## Plans and current work
 
-Latest 24 October continuation is preview.20-workspace-walkthrough, explicitly
+Latest 24 October continuation is preview.21-workspace-recent. Fresh background-only
+acceptance: 2,398 scoped assertions and 87 individually inspected PNGs; see
+docs/WORKSPACE_RECENT_PROJECTS_ACCEPTANCE_2026-10-24.md. Keep recent history outside
+project formats and capture tests isolated from real profile history. Publish
+history only on successful Save/Open. Preserve exact project curve data via the
+existing precise encoder and rebind native curve/keyframe targets; retain shared
+native Undo. Keep full previewer, original Next and source-local controls. Human/
+physical-input/DPI gates stay open in the ONE incomplete G1/M2 slice.
+
+Preceding 24 October continuation is preview.20-workspace-walkthrough, explicitly
 background-only. Fresh acceptance: 2,292 assertions and 73 individually inspected
 PNGs; see docs/WORKSPACE_WALKTHROUGH_ACCEPTANCE_2026-10-24.md. Preserve exact native
 bone Undo channels/tangents/flags through the existing shared stack and owner

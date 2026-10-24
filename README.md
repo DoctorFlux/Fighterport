@@ -2,7 +2,7 @@
 
 This is the public unified source repository at https://github.com/DoctorFlux/Fighterport.
 It imports the BrawlCrate-based Next preview.14 source and integrated owned engine;
-the current implementation is **preview.20-workspace-walkthrough**.
+the current implementation is **preview.21-workspace-recent**.
 The two predecessor repositories are private preserved histories.
 Upstream copyrights, licenses and notices remain intact.
 
@@ -30,6 +30,12 @@ The source library collapses, **Focus editor** restores editing room, and
 the Bones panel, camera/materials, transform tools, autokeys, interpolation,
 timeline and Undo remain together in the original native control.
 
+**Open project** includes the ten most recent saved/opened project paths. Choose a
+path, then Open; **Forget selected** and **Clear history** only remove history.
+Missing projects can be located with a pasted path or Browse. History stays local
+and separate from project files. Project Save now preserves exact edited native
+curve values/tangents and keeps the original curve/keyframe panels connected.
+
 Use **Text** for 100/125/150/175/200% workspace text. **Workflow** recovers
 the task panel in compact windows; **Focus editor** gives the native previewer
 more room. Task details scroll while the primary action stays visible. Project
@@ -43,12 +49,11 @@ return focus to their invoking control. Native editing shortcuts retain their
 existing routes. Compact drawers may overlay the editor; close them or use Focus
 editor for all native tools.
 
-Fresh preview.20 background verification passes **2,292 scoped assertions**, with
-**73 individually inspected PNGs**. Continuous first/repeat workflows reuse one
-registered source across independent projects and preserve the first project's
-files. Native body Undo/Redo now preserves exact keys, neighboring tangents and
-flags, including missing tracks/keys and recovery after a failed save. See the
-[walkthrough acceptance record](docs/WORKSPACE_WALKTHROUGH_ACCEPTANCE_2026-10-24.md).
+Fresh preview.21 background verification passes **2,398 scoped assertions**, with
+**87 individually inspected PNGs**. Recent-project persistence/recovery, exact
+native body Undo/save/reopen, both workflow directions and relevant workspace/root
+regressions pass. See the [recent-project acceptance record](docs/WORKSPACE_RECENT_PROJECTS_ACCEPTANCE_2026-10-24.md).
+Preview.20 retains its separate [workflow replay receipt](docs/WORKSPACE_WALKTHROUGH_ACCEPTANCE_2026-10-24.md).
 The [human walkthrough](docs/WORKSPACE_USER_WALKTHROUGH_2026-10-24.md) remains
 prepared, not performed; physical input/DPI and human outcomes remain unverified.
 Preview.19 has its separate [keyboard/focus record](docs/WORKSPACE_KEYBOARD_ACCEPTANCE_2026-10-24.md)

@@ -26,12 +26,12 @@ namespace BrawlCrate.Studio
         internal string SelectedPath { get; private set; }
 
         internal WorkspaceFileDialog(string title, string description, string filter,
-            string actionText, string initialPath = null, bool save = false)
+            string actionText, string initialPath = null, bool save = false, WorkspaceRecentProjects recent = null)
         {
             Name = "workspaceFileDialog";
             Text = title;
             AccessibleName = title;
-            ClientSize = new Size(650, 210);
+            ClientSize = new Size(650, recent == null ? 210 : 300);
             FormBorderStyle = FormBorderStyle.FixedDialog;
             StartPosition = FormStartPosition.CenterParent;
             ShowInTaskbar = false;
@@ -46,12 +46,13 @@ namespace BrawlCrate.Studio
                 Dock = DockStyle.Fill,
                 Padding = new Padding(12),
                 ColumnCount = 1,
-                RowCount = 5
+                RowCount = recent == null ? 5 : 6
             };
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
+            if (recent != null) layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 90));
             layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
             layout.Controls.Add(new Label
@@ -112,7 +113,7 @@ namespace BrawlCrate.Studio
                 Margin = new Padding(0, 6, 0, 6),
                 UseMnemonic = false
             };
-            layout.Controls.Add(_validation, 0, 3);
+            layout.Controls.Add(_validation, 0, recent == null ? 3 : 4);
 
             var actions = new FlowLayoutPanel
             {
@@ -145,7 +146,7 @@ namespace BrawlCrate.Studio
             _accept.Click += (sender, args) => AcceptPath();
             actions.Controls.Add(cancel);
             actions.Controls.Add(_accept);
-            layout.Controls.Add(actions, 0, 4);
+            layout.Controls.Add(actions, 0, recent == null ? 4 : 5);
             Controls.Add(layout);
             AcceptButton = _accept;
             CancelButton = cancel;
@@ -157,7 +158,62 @@ namespace BrawlCrate.Studio
             Shown += (sender, args) => { _path.Focus(); _path.SelectAll(); };
             WorkspaceAppearance.SizeDialog(this);
             layout.RowStyles[2].Height = Math.Max(Font.Height+20,WorkspaceAppearance.Pixels(38));
-            layout.RowStyles[4].Height = Math.Max(Font.Height+24,WorkspaceAppearance.Pixels(36));
+            layout.RowStyles[recent == null ? 4 : 5].Height = Math.Max(Font.Height+24,WorkspaceAppearance.Pixels(36));
+            if (recent != null) AddRecentProjects(layout, recent);
+        }
+
+        private void AddRecentProjects(TableLayoutPanel layout, WorkspaceRecentProjects recent)
+        {
+            var panel = new TableLayoutPanel { Name="workspaceRecentPanel", Dock=DockStyle.Fill,
+                ColumnCount=3, RowCount=2, Margin=Padding.Empty, TabIndex=4 };
+            panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
+            panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,WorkspaceAppearance.Pixels(120)));
+            panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,WorkspaceAppearance.Pixels(105)));
+            panel.RowStyles.Add(new RowStyle(SizeType.Percent,50));
+            panel.RowStyles.Add(new RowStyle(SizeType.Percent,50));
+            var status = new Label { Name="workspaceRecentStatus", Dock=DockStyle.Fill,
+                AutoEllipsis=true, UseMnemonic=false, TabStop=false };
+            panel.Controls.Add(status,0,0); panel.SetColumnSpan(status,3);
+            var paths = new ComboBox { Name="workspaceRecentProjects", AccessibleName="Recent project full paths",
+                AccessibleDescription="Choose a recent path, then use Open project. Selection does not open or change a project.",
+                Dock=DockStyle.Fill, DropDownStyle=ComboBoxStyle.DropDownList, TabIndex=0, IntegralHeight=false, DropDownHeight=WorkspaceAppearance.Pixels(200) };
+            var forget = new WorkspaceButton { Name="workspaceForgetRecent", Text="Forget selected", Dock=DockStyle.Fill, TabIndex=1,
+                AccessibleDescription="Remove only this path from recent history. Keep all project files." };
+            var clear = new WorkspaceButton { Name="workspaceClearRecent", Text="Clear history", Dock=DockStyle.Fill, TabIndex=2,
+                AccessibleDescription="Clear only recent history. Keep all project files." };
+            var tips = new ToolTip();
+            Disposed+=(sender,args)=>tips.Dispose();
+            Action<string> refresh = message =>
+            {
+                paths.Items.Clear(); paths.Items.AddRange(recent.Paths);
+                int widest=0;
+                foreach(string path in recent.Paths) widest=Math.Max(widest,TextRenderer.MeasureText(path,paths.Font).Width+32);
+                paths.DropDownWidth=Math.Min(Screen.FromControl(this).WorkingArea.Width-48,Math.Max(WorkspaceAppearance.Pixels(350),widest));
+                paths.Enabled=clear.Enabled=paths.Items.Count>0; forget.Enabled=false;
+                status.Text=recent.LastError ?? message ?? (paths.Items.Count==0 ? "Recent projects — none yet" : "Recent projects — choose a full path, then Open project");
+                status.AccessibleDescription=status.Text;
+            };
+            paths.SelectedIndexChanged+=(sender,args)=>
+            {
+                forget.Enabled=paths.SelectedItem!=null;
+                if (paths.SelectedItem is string path)
+                {
+                    _path.Text=path; _path.SelectAll();
+                    paths.AccessibleDescription="Recent project: "+path+". Use Open project to continue.";
+                    tips.SetToolTip(paths,path); tips.SetToolTip(_path,path);
+                }
+            };
+            forget.Click+=(sender,args)=>
+            {
+                if (paths.SelectedItem is string path) { recent.Forget(path); refresh("Removed from history. Project files were kept."); }
+                if (paths.Enabled) paths.Focus(); else _path.Focus();
+            };
+            clear.Click+=(sender,args)=> { recent.Clear(); refresh("History cleared. Project files were kept."); _path.Focus(); };
+            panel.Controls.Add(paths,0,1);panel.Controls.Add(forget,1,1);panel.Controls.Add(clear,2,1);
+            layout.Controls.Add(panel,0,3);
+            layout.RowStyles[3].Height=WorkspaceAppearance.Pixels(90);
+            DarkTheme.Apply(panel);
+            refresh(null);
         }
 
         private void Browse()

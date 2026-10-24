@@ -55,18 +55,28 @@ namespace BrawlCrate.UI
 
         internal bool OpenFighterProject(string path, IWin32Window owner = null)
         {
+            bool opened = TryOpenFighterProject(path, out string error);
+            if (error != null) MessageBox.Show(owner ?? this, error, "Could not open fighter", MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+            return opened;
+        }
+
+        internal bool TryOpenFighterProject(string path, out string error)
+        {
+            error = null;
             FighterProject project = null;
             try
             {
                 project = FighterProject.Open(path);
                 ModelForm.ValidateFighterProjectAssets(project);
-                return StartFighterProject(project);
+                bool opened = StartFighterProject(project);
+                if (opened) WorkspaceRecentProjects.Current.Record(project.ManifestPath);
+                return opened;
             }
             catch (Exception ex)
             {
                 project?.Dispose();
-                MessageBox.Show(owner ?? this, ex.Message, "Could not open fighter", MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
+                error = ex.Message;
                 return false;
             }
         }

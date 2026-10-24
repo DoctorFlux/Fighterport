@@ -1,6 +1,16 @@
 # Format support and evidence
 
-Latest 24 October continuation: preview.20-workspace-walkthrough follows the
+Latest 24 October continuation: preview.21-workspace-recent implements recent
+project selection inside Open project and exact native project resume. Fresh
+background-only acceptance passes 2,398 scoped assertions with all 87 final PNGs
+individually inspected; see [commands and limits](WORKSPACE_RECENT_PROJECTS_ACCEPTANCE_2026-10-24.md).
+History is separate local state; selecting/forgetting/clearing never changes project
+files. Successful Save/Open alone publishes history. Project Save uses the existing
+precise encoder for edited CHR0 clips and preserves native curve/keyframe targets
+and Undo. Full previewer, original Next and source-local root controls remain;
+no schema/game/DPI change. Human/physical-input/DPI gates and broader G1/M2 stay open.
+
+Preceding 24 October continuation: preview.20-workspace-walkthrough follows the
 user's explicit background-only choice. Two continuous first/repeat task replays
 and fresh regressions pass 2,292 scoped assertions; all 73 final PNGs were
 individually inspected. Exact native bone Undo now restores keys, neighboring

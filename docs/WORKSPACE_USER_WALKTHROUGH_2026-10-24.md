@@ -52,3 +52,9 @@ evidence, not measured human steps or task times. This checklist is still prepar
 not performed. Leave command discovery, repeated setup burden, physical keyboard/
 mouse use, completion rates and wrong-document mistakes unscored until a person
 performs the tasks. Respect the user's current background-only choice.
+
+Preview.21 adds [recent-project background evidence](WORKSPACE_RECENT_PROJECTS_ACCEPTANCE_2026-10-24.md).
+For a future human returning-user task, open a project through the recent selector,
+verify the full path before opening, cancel replacement with Keep editing, and
+forget a moved project's history entry without deleting its files. Record command
+discovery and wrong-document observations only when actually performed by a person.

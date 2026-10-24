@@ -5,7 +5,39 @@ with the simpler workspace while retaining the COMPLETE BrawlCrate Model Preview
 and original Next retargeter. This supersedes the earlier planning-only/contact-first
 ordering. M2 remains the ONE incomplete milestone; this is its sole executable queue.
 
-Latest continuation: the user requested the prepared walkthrough but explicitly
+Latest authorized continuation: preview.21 recent-project resume within the same
+G1/M2 slice, with background-only testing. Add a bounded full-path recent list to
+Open project, recording only successful native project saves/opens. Choosing a
+recent item fills the existing path field; acceptance keeps original validation,
+replacement/unsaved guards and native document ownership. Forget/Clear affect only
+local history, never projects/assets. Persist local history atomically outside
+project formats; corrupt/unavailable history must not prevent ordinary Open/Save.
+Background harnesses isolate history under their capture output. Qualify actual
+disk reload, bounded/deduplicated entries, same-named projects, missing/corrupt
+inputs, cancelled replacement/save, busy guards and exact clip/frame/Undo/root
+preservation. Keep full native editor, original Next and root-local policy;
+physical input/DPI/human outcomes remain open. Prior receipts are historical.
+Fresh development evidence additionally exposed native project Save recompressing
+an edited imported clip with small value drift. Reuse the existing precise native
+CHR0 encoder for edited/branched clips before Save/merge, flush pending curve Undo
+and refresh curve targets. Keep full native keys/tangents/flags exact at reopen;
+no solver, root-policy or project-format changes. Qualify Undo after failed saves
+and preserve native/model-only fallback. Direct resource export remains its
+separate qualified routes; this fixes project resume.
+
+Preview.21 bounded acceptance is complete: 2,398 fresh scoped assertions; all 87
+final PNGs individually inspected. See [commands, development findings and limits](../WORKSPACE_RECENT_PROJECTS_ACCEPTANCE_2026-10-24.md).
+Both recent-project cases pass actual isolated disk persistence, same-name/missing
+paths, cancelled replacement, failed saves, exact native body Undo/reopen and
+curve/keyframe references. Fresh bidirectional walkthrough/keyboard/scaling and
+native transfer/lifecycle/root regressions pass on the final app. Launcher selects
+that qualified package. This accepts only the recent/resume increment; G1/M2
+remains the ONE open slice. Human command discovery/first-repeat task outcomes,
+physical input/DPI, config disk roundtrip and contact/game gates remain open.
+Respect background-only testing; future workspace work needs bounded acceptance,
+and human observation waits until the user chooses hands-on operation.
+
+Preceding continuation: the user requested the prepared walkthrough but explicitly
 selected background-only execution. Keep human/physical input and DPI unverified.
 Add one continuous private-desktop first/repeat replay across independent saved
 projects using real source/target/Next/body-edit/Undo/save/reopen handlers. Freeze
