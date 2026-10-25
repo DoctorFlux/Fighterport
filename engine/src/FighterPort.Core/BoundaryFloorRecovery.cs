@@ -24,6 +24,7 @@ internal sealed record BoundaryFloorResult(AnimationClip Clip,BoneTrack[] Change
 public static class BoundaryFloorRecovery
 {
     public const string BaselinePolicy="per-region min(0, original, authentic reference body under source-root placement)";
+    public const string ReferenceControlBaselinePolicy="per-region min(0, original, authentic reference under retained motion-position control)";
     public const double PositionBound=.0002;
     const int KeyLimit=8192,EvaluationLimit=200000;
     const double LiftFraction=.20,DerivativeStep=1d/1024;
@@ -75,7 +76,7 @@ public static class BoundaryFloorRecovery
         int parent=scene.Bones[body].Parent;
         Vector3 LocalNormal(double frame)
         {
-            var pose=Evaluate(original,frame);var matrix=parent<0?Matrix4x4.Identity:pose.World[parent];
+            var pose=Evaluate(candidate,frame);var matrix=parent<0?Matrix4x4.Identity:pose.World[parent];
             if(!Matrix4x4.Invert(matrix,out var inverse)||!Finite(inverse))
                 throw new NotSupportedException("A singular protected parent transform contradicts body-normal floor recovery; source roots are retained.");
             var local=Vector3.TransformNormal(normal,inverse);
@@ -178,7 +179,7 @@ public static class BoundaryFloorRecovery
         if(maximumAdded>PositionBound)
             throw new NotSupportedException("Floor recovery did not converge at independent 1/64-frame/.37/.73 witnesses within the integral-key envelope. No result was published.");
         if(maximumLift>liftLimit)throw new NotSupportedException("The independently sampled floor correction exceeds the reviewed leg-length lift budget.");
-        var receipt=new BoundaryFloorReceipt(BoundaryFitting.FloorVersion,GeometryHash(scene,legs),BaselinePolicy,
+        var receipt=new BoundaryFloorReceipt(BoundaryFitting.FloorVersion,GeometryHash(scene,legs),settings.MatchReferenceControls?ReferenceControlBaselinePolicy:BaselinePolicy,
             plane with{Normal=plane.Normal.ToArray()},maximumLift,maximumAdded,evaluations,validationTimes.Length,amplitude==0?0:3*(span+1),
             regions.Select((r,i)=>new BoundaryFloorRegionReceipt(r.Role,scene.Bones[r.Bone].Name,r.Points.Length,r.LegacyPoints,
                 measurements[i].Source,measurements[i].Reference,measurements[i].Before,measurements[i].After,measurements[i].Added)).ToArray())

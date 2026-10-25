@@ -20,7 +20,7 @@ internal static partial class Program
         if(!PrivateDesktop)throw new InvalidOperationException("Contact transition acceptance requires the private desktop.");
         var project=FighterProject.Open(projectPath);var form=new ModelForm();form.InitializeFighterProject(project);form.Show();var editor=form.FighterEditor;
         await Wait(()=>editor.TargetModel!=null&&!(bool)Field(form,"_controlBusy")&&!(bool)Field(form,"_controlSetupQueued"));
-        var native=(ResourceNode)Call(form,"FighterRoot",project.Animations.Last(a=>a.Retarget?.Algorithm==HumanoidRetargeter.Algorithm));var chosen=Walk(native).OfType<CHR0Node>().Single();editor.leftPanel.listAnims.SelectedItems.Clear();foreach(ListViewItem row in editor.leftPanel.listAnims.Items)row.Selected=ReferenceEquals(row.Tag,chosen);editor.SelectedCHR0=chosen;editor.SetFrame(1);editor.FrameFighterModel();await Wait(()=>!(bool)Field(form,"_controlBusy")&&!(bool)Field(form,"_controlSetupQueued"));
+        var native=(ResourceNode)Call(form,"FighterRoot",project.Animations.Last(a=>a.Retarget?.Algorithm==HumanoidRetargeter.Algorithm&&a.TransitionFit==null));var chosen=Walk(native).OfType<CHR0Node>().Single();editor.leftPanel.listAnims.SelectedItems.Clear();foreach(ListViewItem row in editor.leftPanel.listAnims.Items)row.Selected=ReferenceEquals(row.Tag,chosen);editor.SelectedCHR0=chosen;editor.SetFrame(1);editor.FrameFighterModel();await Wait(()=>!(bool)Field(form,"_controlBusy")&&!(bool)Field(form,"_controlSetupQueued"));
         string result=await ContactTransitions(form,project,output);
         ((AnimationControlClient)Field(form,"_controlEngine")).Dispose();project.Dispose();BrawlCrate.UI.Model_Previewer.ModelEditControl.ModelEditControl.Instances.Remove(editor);form.Dispose();GC.Collect();GC.WaitForPendingFinalizers();
         await ControlGizmos(modelPath,result,output);
@@ -43,11 +43,12 @@ internal static partial class Program
         {
             try
             {
+                ((CheckBox)window.Controls.Find("transition_matchReferenceControls",true).Single()).Checked=false;
                 foreach(string side in new[]{"entry","exit"}){var choices=(ComboBox)window.Controls.Find("transition_"+side,true).Single();choices.SelectedIndex=choices.Items.Cast<object>().Select((v,i)=>new{Value=v as TransitionClipChoice,Index=i}).Single(v=>v.Value?.Asset==referenceAsset).Index;}
                 ((CheckBox)window.Controls.Find("transition_binding",true).Single()).Checked=true;var protection=(CheckBox)window.Controls.Find("transition_contacts",true).Single();protection.Checked=true;
                 var mask=(CheckedListBox)window.Controls.Find("transitionBones",true).Single();for(int i=0;i<mask.Items.Count;i++)mask.SetItemChecked(i,protectedBones.Contains(Convert.ToString(mask.Items[i]))||Convert.ToString(mask.Items[i])==free.Name);
                 ((Button)window.Controls.Find("prepareTransition",true).Single()).PerformClick();await Wait(()=>!window.Busy);var report=(TextBox)window.Controls.Find("transitionReport",true).Single();File.WriteAllText(Path.Combine(output,"contact-transition-report.txt"),report.Text);
-                Check(window.Candidate!=null&&report.Text.Contains("contact-trajectory-preserve-1"),"Real native contact-preserving preparation succeeds on the original Next result");
+                Check(window.Candidate!=null&&report.Text.Contains("contact-trajectory-preserve-2"),"Real native contact-preserving preparation succeeds on the original Next result");
                 Check(project.Animations.Count==count&&report.Text.Contains("excluded from endpoint matching"),"Contact exclusions are reported before explicit independent import");
                 Check(ContactTrackKey(source,protectedBones)==ContactTrackKey(window.Candidate,protectedBones),"Every protected native key, tangent, duplicate side and transform flag remains exact");
                 var changed=window.Candidate.Children.OfType<CHR0EntryNode>().Single(e=>e.Name==free.Name);Check(Math.Abs(changed.GetFrameValue(3,0)-free.BindState[3]-12)<.0001f,"Unprotected native branch still matches the requested contact-aware transition endpoint");
@@ -61,12 +62,12 @@ internal static partial class Program
             catch(Exception error){failure=error;window.Close();}finally{finished=true;}
         };
         Call(form,"ShowTransitionFit");await Wait(()=>finished);if(failure!=null)throw failure;await Wait(()=>!(bool)Field(form,"_controlBusy")&&!(bool)Field(form,"_controlSetupQueued"));
-        var generated=project.Animations.Last();Check(generated.TransitionFit.Algorithm=="contact-trajectory-preserve-1"&&generated.Retarget.Algorithm==HumanoidRetargeter.Algorithm,"Independent result retains both original Next provenance and explicit contact-protection receipt");
+        var generated=project.Animations.Last();Check(generated.TransitionFit.Algorithm=="contact-trajectory-preserve-2"&&generated.Retarget.Algorithm==HumanoidRetargeter.Algorithm,"Independent result retains both original Next provenance and explicit contact-protection receipt");
         editor.Undo();Check(project.Animations.Count==count,"Contact-preserving import is one native Undo transaction");editor.Redo();Check(project.Animations.Count==count+1,"Contact-preserving Redo restores the same prepared result without a solver");await Wait(()=>!(bool)Field(form,"_controlBusy")&&!(bool)Field(form,"_controlSetupQueued"));
         string result=Path.Combine(output,"contact-fitted.chr0");form.ExportFighterResource(result);
         using(var reopened=(CHR0Node)NodeFactory.FromFile(null,result))Check(ContactTrackKey(source,protectedBones)==ContactTrackKey(reopened,protectedBones),"Fresh CHR0 decode retains the exact contact-path keys and native semantics");
         await SlotWorkflow(form,project,output);string saved=Path.Combine(output,"contact-slots.fpstudio");form.SaveFighterProject(saved);
-        using(var reopened=FighterProject.Open(saved))Check(reopened.Animations.Last().TransitionFit.Algorithm=="contact-trajectory-preserve-1"&&reopened.AnimationSlots.Single().AnimationKey==project.AnimationSlots.Single().AnimationKey,"Fresh native project retains contact protection and exact slot assignment together");
+        using(var reopened=FighterProject.Open(saved))Check(reopened.Animations.Last().TransitionFit.Algorithm=="contact-trajectory-preserve-2"&&reopened.AnimationSlots.Single().AnimationKey==project.AnimationSlots.Single().AnimationKey,"Fresh native project retains contact protection and exact slot assignment together");
         Check((string)Call(form,"NativeControlHash",source,".chr0")==sourceHash,"Contact-preserving fitting and slot operations leave the original Next result immutable");
         return result;
     }

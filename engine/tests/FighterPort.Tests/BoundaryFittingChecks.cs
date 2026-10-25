@@ -61,6 +61,8 @@ internal static class BoundaryFittingChecks
         Directory.CreateDirectory(dir);string path=Path.Combine(dir,"boundary.fighterport");await ProjectStore.SaveAsync(project with{Clips=[fit.Clip]},path);var reopened=await ProjectStore.LoadAsync(path);
         check(reopened.Clips[0].Transition?.CurveFit?.Version==BoundaryFitting.Version&&reopened.Clips[0].Transition?.Start?.Frozen==true,"Project storage retains the transition recipe, exact anchors and bounded FK receipt");
         check(reopened.Clips[0].Tracks[1].Channels[3]!.Keys.SequenceEqual(curve.Keys),"Project reopen retains fitted Hermite keys and duplicate/tangent state exactly");
+        BoundaryRotationChecks.Run(check);
+        BoundaryReferenceControlChecks.Run(check);
         await ExitRecoveryAsync(dir,check);
         await BoundaryFloorRecoveryChecks.RunAsync(dir,check);
     }

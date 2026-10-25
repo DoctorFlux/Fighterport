@@ -21,6 +21,7 @@ namespace BrawlCrate.Studio
         public int EntrySamples {get;set;}public int ExitSamples {get;set;}public int Components {get;set;}
         public string[] Bones {get;set;}public TransitionProtected[] Protected {get;set;}public bool PreserveRootTranslation {get;set;}
         public bool NearestEquivalentAngles {get;set;}
+        public bool MatchReferenceControls {get;set;}
         public bool BindingReviewed {get;set;}
         public bool PreserveContacts {get;set;}
         public bool ExitContactRecovery {get;set;}
@@ -42,14 +43,28 @@ namespace BrawlCrate.Studio
         internal void Validate()
         {
             bool Hash(string s)=>s!=null&&s.Length==64&&s.All(Uri.IsHexDigit);
-            bool recovery=Algorithm=="contact-exit-recovery-1"||Algorithm=="contact-exit-recovery-2"||Algorithm=="contact-floor-recovery-1";
-            if((Algorithm!="fixed-duration-fk-hermite-1"&&Algorithm!="contact-trajectory-preserve-1"&&!recovery)||!Hash(ModelSha256)||!Hash(InitialResultSha256)||string.IsNullOrEmpty(Options)||Options.Length>65536||string.IsNullOrEmpty(Receipt)||Receipt.Length>1024*1024||Inputs==null||Inputs.Length<2||Inputs.Length>3||Inputs.Any(i=>i==null)||Inputs.Select(i=>i.Role).Distinct().Count()!=Inputs.Length)throw new InvalidDataException("Invalid native transition recipe.");
+            bool floor=Algorithm=="contact-floor-recovery-1"||Algorithm=="contact-floor-recovery-2";
+            bool recovery=Algorithm=="contact-exit-recovery-1"||Algorithm=="contact-exit-recovery-2"||Algorithm=="contact-exit-recovery-3"||floor;
+            if((Algorithm!="fixed-duration-fk-hermite-1"&&Algorithm!="fixed-duration-fk-hermite-2"&&Algorithm!="contact-trajectory-preserve-1"&&Algorithm!="contact-trajectory-preserve-2"&&!recovery)||!Hash(ModelSha256)||!Hash(InitialResultSha256)||string.IsNullOrEmpty(Options)||Options.Length>65536||string.IsNullOrEmpty(Receipt)||Receipt.Length>1024*1024||Inputs==null||Inputs.Length<2||Inputs.Length>3||Inputs.Any(i=>i==null)||Inputs.Select(i=>i.Role).Distinct().Count()!=Inputs.Length)throw new InvalidDataException("Invalid native transition recipe.");
             var settings=new System.Web.Script.Serialization.JavaScriptSerializer().Deserialize<TransitionFitOptions>(Options);
-            if(settings==null||settings.ExitContactRecovery!=recovery||settings.ExitContactRecovery&&(!settings.PreserveContacts||settings.Entry!=null||settings.Exit==null||!settings.ExitFrozen||settings.ExitFrame!=0||settings.Components!=7)||settings.PreventFootDipping!=(Algorithm=="contact-floor-recovery-1"))throw new InvalidDataException("Invalid saved exit contact recovery policy.");
-            if(Algorithm=="contact-exit-recovery-2"||Algorithm=="contact-floor-recovery-1")
+            if(settings==null||settings.ExitContactRecovery!=recovery||settings.ExitContactRecovery&&(!settings.PreserveContacts||settings.Entry!=null||settings.Exit==null||!settings.ExitFrozen||settings.ExitFrame!=0||settings.Components!=7)||settings.PreventFootDipping!=floor)throw new InvalidDataException("Invalid saved exit contact recovery policy.");
+            if(new[]{"fixed-duration-fk-hermite-2","contact-trajectory-preserve-2","contact-exit-recovery-3","contact-floor-recovery-2"}.Contains(Algorithm))
+            {
+                var savedSettings=ReceiptValue(SavedReceipt(),"Settings") as IDictionary<string,object>;
+                if(!(ReceiptValue(savedSettings,"MatchReferenceControls") is bool enabled)||enabled!=settings.MatchReferenceControls)throw new InvalidDataException("Saved reference control options and receipt disagree.");
+            }
+            if(Algorithm=="contact-exit-recovery-2"||Algorithm=="contact-exit-recovery-3"||floor||settings.MatchReferenceControls)
             {
                 var receipt=SavedReceipt();
-                if(!string.Equals(Convert.ToString(ReceiptValue(receipt,"Version")),Algorithm,StringComparison.Ordinal)||!string.Equals(Convert.ToString(ReceiptValue(receipt,"ReferenceRootPolicy")),"authentic reference body under source-authored protected locals at each time",StringComparison.Ordinal))throw new InvalidDataException("The saved recovery receipt does not retain the source-authored root placement policy.");
+                string policy=settings.MatchReferenceControls?"reference controls with source-authored motion-position control retained":"authentic reference body under source-authored protected locals at each time";
+                if(settings.MatchReferenceControls)
+                {
+                    if(Algorithm=="fixed-duration-fk-hermite-1"||Algorithm=="contact-trajectory-preserve-1"||Algorithm=="contact-exit-recovery-1"||Algorithm=="contact-exit-recovery-2"||Algorithm=="contact-floor-recovery-1")throw new InvalidDataException("Legacy recipes cannot assert reference control fitting.");
+                    var matched=(ReceiptValue(receipt,"MatchedReferenceControls") as IEnumerable)?.Cast<object>().Select(Convert.ToString).ToArray();
+                    var savedSettings=ReceiptValue(receipt,"Settings") as IDictionary<string,object>;
+                    if(!(ReceiptValue(savedSettings,"MatchReferenceControls") is bool enabled)||!enabled||matched==null||matched.Length==0||matched.Length>3||matched.Distinct(StringComparer.Ordinal).Count()!=matched.Length||settings.Bones==null||matched.Any(name=>string.IsNullOrWhiteSpace(name)||!settings.Bones.Contains(name,StringComparer.Ordinal)))throw new InvalidDataException("Invalid saved reference control fitting policy.");
+                }
+                if(!string.Equals(Convert.ToString(ReceiptValue(receipt,"Version")),Algorithm,StringComparison.Ordinal)||!string.Equals(Convert.ToString(ReceiptValue(receipt,"ReferenceRootPolicy")),policy,StringComparison.Ordinal))throw new InvalidDataException("The saved recovery receipt does not retain the source-authored root placement policy.");
             }
             if(settings.PreventFootDipping)
             {
@@ -82,7 +97,7 @@ namespace BrawlCrate.Studio
             var normal=Get(plane,"Normal") as IEnumerable;
             double[] components=normal?.Cast<object>().Select(Numeric).ToArray();
             string evidence=Get(plane,"Evidence") as string;
-            if(!string.Equals(Convert.ToString(Get(receipt,"Version")),Algorithm,StringComparison.Ordinal)||!string.Equals(Convert.ToString(Get(floor,"BaselinePolicy")),"per-region min(0, original, authentic reference body under source-root placement)",StringComparison.Ordinal)||plane==null||components==null||components.Length!=3||components[0]!=0||components[1]!=1||components[2]!=0||(float)Number(plane,"Height")!=(float)settings.FloorHeight||!(Get(plane,"Reviewed") is bool reviewed)||!reviewed||string.IsNullOrWhiteSpace(evidence)||evidence.Length>2048)throw new InvalidDataException("The saved floor receipt does not match its reviewed native Y plane and recovery policy.");
+            if(!string.Equals(Convert.ToString(Get(receipt,"Version")),Algorithm,StringComparison.Ordinal)||!string.Equals(Convert.ToString(Get(floor,"BaselinePolicy")),settings.MatchReferenceControls?"per-region min(0, original, authentic reference under retained motion-position control)":"per-region min(0, original, authentic reference body under source-root placement)",StringComparison.Ordinal)||plane==null||components==null||components.Length!=3||components[0]!=0||components[1]!=1||components[2]!=0||(float)Number(plane,"Height")!=(float)settings.FloorHeight||!(Get(plane,"Reviewed") is bool reviewed)||!reviewed||string.IsNullOrWhiteSpace(evidence)||evidence.Length>2048)throw new InvalidDataException("The saved floor receipt does not match its reviewed native Y plane and recovery policy.");
             string geometry=Convert.ToString(Get(floor,"GeometryHash"));
             if(!string.Equals(Convert.ToString(Get(floor,"Version")),Algorithm,StringComparison.Ordinal)||geometry==null||geometry.Length!=64||!geometry.All(Uri.IsHexDigit))throw Invalid();
             double added=Number(floor,"MaximumAddedPenetration"),lift=Number(floor,"MaximumLift"),limit=Number(floor,"LiftLimit");

@@ -1,5 +1,22 @@
 # Fighterport master plan
 
+Latest authorized continuation: preview.31-boundary-controls fixes the shared
+entry/exit XYZ-equivalence choice and explicitly fits reviewed reference controls
+at animation boundaries. The latest user correction supersedes all-control
+preservation FOR THIS FIT OPTION: retain the reviewed RootMotion (TransN equivalent)
+complete source S/R/T; fit other reviewed ancestor controls, including X/Y orientation
+and their local height, inside the selected windows. Original Next and ordinary
+body editing keep their existing source-local protection. No name-based role
+classification, replacement rig, body-height concealment or playback solve.
+Require exact reviewed ancestor roles; reject ambiguity, preserved supports and
+fixed-pin contradictions. Existing recipes default to their previous policy;
+new fitting dialogs enable this policy only with valid reviewed bindings.
+Keep the complete BrawlCrate Model Previewer, native Undo and ONE incomplete G1/M2.
+Fresh bounded acceptance: 2,883 checks / 15 runs / 77 inspected native PNGs;
+supplement: 2,468 checks / five GIFs / 241 decoded frames / 35 PNGs inspected.
+See BOUNDARY_CONTROLS_ACCEPTANCE_2026-10-25.md for commands and limits.
+Human/input/DPI, universal recovery/contact quality and games remain unverified.
+
 Latest authorized continuation: preview.30-root-reference corrects the native
 boundary reference preview: reference BODY under the attack's own reviewed local
 motion controls, through scrubbing and playback. Never substitute Wait/Fall roots.

@@ -123,6 +123,7 @@ namespace BrawlCrate.UI
             finally {if(File.Exists(modelPath))File.Delete(modelPath);if(motionPath!=null&&File.Exists(motionPath))File.Delete(motionPath);}
         }
         private readonly HashSet<string> _protectedMotionBones = new HashSet<string>(StringComparer.Ordinal);
+        private string[] _referenceFitControls = new string[0];
         private bool _bodyBindingReady;
         private bool CanEditBodyBone(string name) => _bodyBindingReady && ReferenceEquals(_loadedControlModel,modelEditControl1.TargetModel) && !_protectedMotionBones.Contains(name);
         private void PublishPins(ControlReply reply)
@@ -133,6 +134,9 @@ namespace BrawlCrate.UI
                 _protectedMotionBones.Clear();
                 foreach(int index in reply.ProtectedMotionBones)_protectedMotionBones.Add(reply.BoneNames[index]);
             }
+            var ancestorRoles=(reply.Roles??new ControlRole[0]).Where(r=>r.Reviewed&&r.Bone.HasValue&&new[]{"SceneRoot","RootMotion","RootOrientation","BodyOrientation"}.Contains(r.Role)).ToArray();
+            _referenceFitControls=ancestorRoles.Length==_protectedMotionBones.Count&&ancestorRoles.Length>=2&&ancestorRoles.Select(r=>r.Role).Distinct().Count()==ancestorRoles.Length&&ancestorRoles.Select(r=>r.Bone.Value).Distinct().Count()==ancestorRoles.Length&&ancestorRoles.Count(r=>r.Role=="RootMotion")==1&&ancestorRoles.All(r=>r.Bone.Value>=0&&r.Bone.Value<reply.BoneNames.Length&&_protectedMotionBones.Contains(reply.BoneNames[r.Bone.Value])&&!string.IsNullOrWhiteSpace(r.Evidence))
+                ?ancestorRoles.Where(r=>r.Role!="RootMotion").Select(r=>reply.BoneNames[r.Bone.Value]).ToArray():new string[0];
             modelEditControl1.CanEditAnimationBone = CanEditBodyBone;
             modelEditControl1.AnimationPins=(reply.Pins??new ControlPin[0]).Where(p=>CanEditBodyBone(p.BoneName)).ToArray();
             if(reply.BoneNames!=null)modelEditControl1.AnimationHandles=reply.BoneNames.Select((name,i)=>new ControlPin{Id="fk:"+i,Bone=i,BoneName=name,Name=name}).Where(p=>CanEditBodyBone(p.BoneName)).Concat((reply.Chains??new ControlChain[0]).Select(c=>new ControlPin{Id="ik:"+c.Effector,Bone=c.Effector,BoneName=reply.BoneNames[c.Effector],Name=c.Role,Soft=true})).Concat((reply.Chains??new ControlChain[0]).Select(c=>new ControlPin{Id="pole:"+c.Effector,Bone=c.Effector,BoneName=reply.BoneNames[c.Effector],Name=c.Role,RootName=reply.BoneNames[c.Root],MiddleName=reply.BoneNames[c.Middle],Pole=c.Pole,PoleParent=c.PoleParent})).ToArray();

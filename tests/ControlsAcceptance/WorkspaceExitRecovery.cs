@@ -67,7 +67,7 @@ internal static partial class Program
                 var donor = library.Browse(Arg("--clip")).Single(i => i.Clip.Name == Arg("--clip") && i.Model != null);
                 var sourceAsset = await ComparisonRevision(form, library, donor.Clip.Id, null); var source = editor.SelectedCHR0;
                 var setup = await Await<ControlReply>(Call(form, "LoadControls"));
-                var roots = setup.ProtectedMotionBones.Select(i => setup.BoneNames[i]).ToArray();
+                var roots = args.Contains("--reference-controls")?setup.Roles.Where(r=>r.Reviewed&&r.Role=="RootMotion").Select(r=>setup.BoneNames[r.Bone.Value]).ToArray():setup.ProtectedMotionBones.Select(i => setup.BoneNames[i]).ToArray();
                 bool floorRecovery = args.Contains("--workspace-foot-recovery");
                 if (args.Contains("--moving-root-fixture"))
                 {
@@ -87,6 +87,7 @@ internal static partial class Program
                 int originalCount = form.FighterProject.Animations.Count;
                 void Configure(TransitionFitDialog window, bool recover)
                 {
+                    SimpleControl<CheckBox>(window, "transition_matchReferenceControls").Checked = args.Contains("--reference-controls");
                     SimpleControl<ComboBox>(window, "transition_entry").SelectedIndex = 0;
                     var exit = SimpleControl<ComboBox>(window, "transition_exit");
                     exit.SelectedIndex = exit.Items.Cast<object>().Select((item, i) => new { Item = item as TransitionClipChoice, Index = i }).Single(i => ReferenceEquals(i.Item?.Clip, reference)).Index;
@@ -126,8 +127,21 @@ internal static partial class Program
                 {
                     try
                     {
+                        if(args.Contains("--reference-controls"))Check(window.ReadOptions().MatchReferenceControls,"Exact reviewed control roles enable the new reference-control policy on a new fit");
                         Check(!window.ReadOptions().ExitContactRecovery, "Contact recovery is an explicit opt-in; whole-clip preservation remains the default");
-                        Configure(window, contacts.Length > 0); var prepare = SimpleControl<Button>(window, "prepareTransition");
+                        Configure(window, contacts.Length > 0);
+                        if(args.Contains("--reference-controls"))
+                        {
+                            var match=SimpleControl<CheckBox>(window,"transition_matchReferenceControls");
+                            foreach(string key in new[]{"matchReferenceControls","nearest","contacts","exitContactRecovery"})
+                            {
+                                var action=SimpleControl<CheckBox>(window,"transition_"+key);
+                                Check(TextRenderer.MeasureText(action.Text,action.Font).Width+20<=action.ClientSize.Width,"Complete native transition option caption remains visible: "+key);
+                            }
+                            ((FlowLayoutPanel)match.Parent).ScrollControlIntoView(match);
+                            await CaptureWindow(window,Path.Combine(output,"reference-control-options.png"));
+                        }
+                        var prepare = SimpleControl<Button>(window, "prepareTransition");
                         var report = SimpleControl<TextBox>(window, "transitionReport");
                         if (args.Contains("--moving-root-fixture"))
                         {
@@ -175,6 +189,15 @@ internal static partial class Program
                             SimpleControl<TextBox>(window, "transitionProtected").Clear();
                         }
                         prepare.PerformClick(); await Wait(() => !window.Busy); Check(window.Candidate != null, "The native workflow prepares a separate exact first-pose exit candidate: " + report.Text);
+                        if(args.Contains("--reference-controls"))
+                        {
+                            SimpleControl<CheckBox>(window,"transition_matchReferenceControls").Checked=false;
+                            Check(window.Candidate==null&&form.FighterProject.Animations.Count==originalCount,"Changing reference-control policy invalidates the prepared candidate before Apply");
+                            SimpleControl<CheckBox>(window,"transition_matchReferenceControls").Checked=true;
+                            if(floorRecovery){Check(!window.ReadOptions().FloorReviewed,"Changing control placement clears the previous plane/baseline review");SimpleControl<CheckBox>(window,"transition_floorReviewed").Checked=true;}
+                            prepare.PerformClick();await Wait(()=>!window.Busy);
+                            Check(window.Candidate!=null,"New control-policy review prepares a fresh independently validated result");
+                        }
                         fitted = window.Candidate;
                         Check(form.FighterProject.Animations.Count == originalCount && !SimpleControl<Button>(window, "applyTransition").Enabled, "Preparation requires explicit loss/result review before project publication");
                         Check(model._linker.BoneCache.All(b => RecoverySamePose(RecoverySample(fitted, b, fitted.FrameCount - 1), RecoverySample(roots.Contains(b.Name) ? source : reference, b, roots.Contains(b.Name) ? source.FrameCount - 1 : 0))), "Every body endpoint matches authentic reference frame one while protected controls retain their own source endpoint");
@@ -211,13 +234,21 @@ internal static partial class Program
                 };
                 Call(form, "ShowTransitionFit"); await Wait(() => finished); if (failure != null) throw failure; await SimpleControlsReady(form);
                 var generated = form.FighterProject.Animations.Last(); string content = SetNativeContent(editor.SelectedCHR0);
-                Check(generated.TransitionFit.Algorithm == (floorRecovery ? "contact-floor-recovery-1" : contacts.Length > 0 ? "contact-exit-recovery-2" : "fixed-duration-fk-hermite-1") && generated.TransitionFit.Options.Contains("ExitFrozen\":true"), "Independent result records frozen-first-frame policy and the exact recovery algorithm");
+                Check(generated.TransitionFit.Algorithm == (floorRecovery ? "contact-floor-recovery-2" : contacts.Length > 0 ? "contact-exit-recovery-3" : "fixed-duration-fk-hermite-2") && generated.TransitionFit.Options.Contains("ExitFrozen\":true"), "Independent result records frozen-first-frame policy and the exact recovery algorithm");
                 generated.TransitionFit.Validate();
+                if(args.Contains("--reference-controls"))
+                {
+                    string savedOptions=generated.TransitionFit.Options;
+                    var settings=new System.Web.Script.Serialization.JavaScriptSerializer().Deserialize<TransitionFitOptions>(savedOptions);
+                    settings.MatchReferenceControls=false;generated.TransitionFit.Options=new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(settings);
+                    bool rejected=false;try{generated.TransitionFit.Validate();}catch(InvalidDataException){rejected=true;}finally{generated.TransitionFit.Options=savedOptions;}
+                    Check(rejected,"Saved recipe rejects mismatched reference-control options and receipt");
+                }
                 if (floorRecovery)
                 {
                     WorkspaceFootReceiptValidation(generated.TransitionFit);
                     string receipt = generated.TransitionFit.Receipt;
-                    generated.TransitionFit.Receipt = receipt.Replace("per-region min(0, original, authentic reference body under source-root placement)", "unreviewed baseline");
+                    generated.TransitionFit.Receipt = receipt.Replace(args.Contains("--reference-controls")?"per-region min(0, original, authentic reference under retained motion-position control)":"per-region min(0, original, authentic reference body under source-root placement)", "unreviewed baseline");
                     bool rejected = false; try { generated.TransitionFit.Validate(); } catch (InvalidDataException) { rejected = true; }
                     generated.TransitionFit.Receipt = receipt;
                     Check(rejected, "Saved recovery validation binds the explicit floor baseline rather than accepting a changed clearance claim");

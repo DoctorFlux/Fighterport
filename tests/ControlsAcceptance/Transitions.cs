@@ -27,7 +27,7 @@ internal static partial class Program
         using(var reference=NodeFactory.FromFile(null,snapshot) as CHR0Node)
         {
             reference.Name="BoundaryReference";var entry=reference.Children.OfType<CHR0EntryNode>().SingleOrDefault(e=>e.Name==boneName)??reference.CreateEntry(boneName);
-            for(int channel=3;channel<6;channel++){while(entry.KeyArrays[channel].KeyCount>0)entry.KeyArrays[channel].Remove(entry.KeyArrays[channel].Entries.First()._index);float value=bone.BindState[channel]+(channel==3?20:0);entry.SetKeyframe(channel,0,value,true,true)._tangent=0;entry.SetKeyframe(channel,reference.FrameCount-1,value,true,true)._tangent=0;}entry.UseModelRotate=false;
+            for(int channel=3;channel<6;channel++){while(entry.KeyArrays[channel].KeyCount>0)entry.KeyArrays[channel].Remove(entry.KeyArrays[channel].Entries.First()._index);float value=channel==3?bone.BindState[3]+200:channel==4?180-bone.BindState[4]:bone.BindState[5]+180;entry.SetKeyframe(channel,0,value,true,true)._tangent=0;entry.SetKeyframe(channel,reference.FrameCount-1,value,true,true)._tangent=0;}entry.UseModelRotate=false;
             referenceAsset=project.CreateAnimation("BoundaryReference.chr0",reference.Export);project.Animations.Add(referenceAsset);
         }
         project.SelectedAnimation=sourceKey;project.Frame=1;Call(form,"RebuildFighterScene");await Wait(()=>!(bool)Field(form,"_controlBusy")&&!(bool)Field(form,"_controlSetupQueued"));int count=project.Animations.Count;
@@ -37,6 +37,7 @@ internal static partial class Program
         {
             try
             {
+                ((CheckBox)window.Controls.Find("transition_matchReferenceControls",true).Single()).Checked=false;
                 Check(window.SourceView.Model!=model&&window.TargetView.Model!=model,"Transition previews own native model copies rather than posing the authoring rig");
                 Check(window.SourceView.Viewport.CurrentViewport._renderAttrib._renderShaders==editor.ModelPanel.CurrentViewport._renderAttrib._renderShaders&&window.TargetView.Viewport.CurrentViewport._ambient==editor.ModelPanel.CurrentViewport._ambient,"Transition previews reuse the main native shader and lighting settings");
                 var prepare=(Button)window.Controls.Find("prepareTransition",true).Single();var apply=(Button)window.Controls.Find("applyTransition",true).Single();var review=(CheckBox)window.Controls.Find("reviewTransition",true).Single();var report=(TextBox)window.Controls.Find("transitionReport",true).Single();
@@ -50,6 +51,7 @@ internal static partial class Program
                 Check(window.Candidate.FrameCount==source.FrameCount&&window.Candidate.Loop==source.Loop,"Native fit preserves total samples and source loop policy");
                 Check(RecoveryRetainedKeysExact(source,window.Candidate,samples-1,source.FrameCount-samples),"Imported pre-Save high-precision body keys/tangents survive transition snapshots exactly");
                 Check(Math.Abs(NativeValue(window.Candidate,3,0)-bone.BindState[3]-20)<.0001&&Math.Abs(NativeValue(window.Candidate,3,source.FrameCount-1)-bone.BindState[3]-20)<.0001,"Native fitted endpoints match the explicitly chosen same-rig reference pose");
+                Check(new[]{0f,(float)(source.FrameCount-1)}.All(t=>LoopIndependentAngle(Enumerable.Range(3,3).Select(c=>(double)NativeValue(window.Candidate,c,t)).ToArray(),new[]{(double)bone.BindState[3]+20,bone.BindState[4],bone.BindState[5]})<=LoopOrientationTolerance),"Entry and exit choose a complete equivalent native XYZ pose instead of independent 180-degree axis flips");
                 Check(Enumerable.Range(0,81).All(i=>Math.Abs(NativeValue(window.Candidate,3,samples-1+(source.FrameCount-2*samples+1)*(i/80f))-NativeValue(source,3,samples-1+(source.FrameCount-2*samples+1)*(i/80f)))<.0001),"Native fitted middle preserves the original curve at independent fractional times");
                 var originalEntry=source.Children.OfType<CHR0EntryNode>().SingleOrDefault(e=>e.Name==boneName);var fittedEntry=window.Candidate.Children.OfType<CHR0EntryNode>().Single(e=>e.Name==boneName);
                 bool unchanged=Enumerable.Range(0,9).Where(c=>c<3||c>=6).All(c=>
@@ -66,7 +68,7 @@ internal static partial class Program
             finally{finished=true;}
         };
         Call(form,"ShowTransitionFit");await Wait(()=>finished);if(failure!=null)throw failure;await Wait(()=>!(bool)Field(form,"_controlBusy")&&!(bool)Field(form,"_controlSetupQueued"));
-        var generated=project.Animations.Last();Check(generated.TransitionFit?.Algorithm=="fixed-duration-fk-hermite-1"&&generated.TransitionFit.Inputs.Length==3,"Independent result retains exact source/entry/exit native snapshots and Core recipe");generated.TransitionFit.Validate();
+        var generated=project.Animations.Last();Check(generated.TransitionFit?.Algorithm=="fixed-duration-fk-hermite-2"&&generated.TransitionFit.Inputs.Length==3,"Independent result retains exact source/entry/exit native snapshots and Core recipe");generated.TransitionFit.Validate();
         string authentic=generated.TransitionFit.Inputs[0].Snapshot;byte[] changed=Convert.FromBase64String(authentic);changed[changed.Length-1]^=1;generated.TransitionFit.Inputs[0].Snapshot=Convert.ToBase64String(changed);bool rejected=false;try{generated.TransitionFit.Validate();}catch(InvalidDataException){rejected=true;}finally{generated.TransitionFit.Inputs[0].Snapshot=authentic;}Check(rejected,"Corrupted portable reference bytes reject independently of the UI's stale-input check");
         Check(editor.AnimationPins.Any(p=>p.Id==pinId&&p.BoneName==boneName),"Existing FK pin identity is copied into the independent animation's own control state");
         editor.Undo();Check(project.Animations.Count==count&&ReferenceEquals(editor.SelectedCHR0,source),"One native Undo removes the fitted animation and restores the exact source selection");await Wait(()=>!(bool)Field(form,"_controlBusy")&&!(bool)Field(form,"_controlSetupQueued"));string history="Before redo: "+editor.CanRedo+" cursor "+editor._saveIndex+" undo "+editor._undoSaves.Count+" redo "+editor._redoSaves.Count;editor.Redo();history+="\r\nAfter: count "+project.Animations.Count+" name "+editor.SelectedCHR0?.Name+" cursor "+editor._saveIndex+" undo "+editor._undoSaves.Count+" redo "+editor._redoSaves.Count;File.WriteAllText(Path.Combine(output,"redo-diagnostic.txt"),history);Check(project.Animations.Count==count+1&&ReferenceEquals(editor.SelectedCHR0,Call(form,"FighterRoot",generated)),"Native Redo restores the prepared animation without recomputing fitting");await Wait(()=>!(bool)Field(form,"_controlBusy")&&!(bool)Field(form,"_controlSetupQueued"));

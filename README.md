@@ -2,7 +2,7 @@
 
 This is the public unified source repository at https://github.com/DoctorFlux/Fighterport.
 It imports the BrawlCrate-based Next preview.14 source and integrated owned engine;
-the current implementation is **preview.30-root-reference**.
+the current implementation is **preview.31-boundary-controls**.
 The two predecessor repositories are private preserved histories.
 Upstream copyrights, licenses and notices remain intact.
 
@@ -81,31 +81,32 @@ Use Close, focused Escape or Focus editor to recover editor space. See the
 [loop inspection acceptance record](docs/LOOP_INSPECTION_ACCEPTANCE_2026-10-25.md).
 Fresh preview.27 qualification passes **2,606 scoped assertions / 115 inspected PNGs**.
 
-**Prevent extra foot dipping** adds a reviewed native Y plane to exit recovery.
-It uses every positively influenced foot vertex with original weights and a shared
-body-translation envelope. It prevents additional penetration beyond the original
-motion or authentic reference first body pose. Authored penetration remains
-visible. Source-authored motion controls keep their own complete local animation,
-including nonzero final travel; the reference body follows beneath that placement.
-The [foot recovery record](docs/FOOT_RECOVERY_ACCEPTANCE_2026-10-25.md) describes
-fixed limits, independent background checks and unsupported cases.
+**Fit start or end** can match a frozen first Wait/Fall pose without replacing
+the attack's motion-position curves. **Fit reference controls; retain attack travel** fits
+reviewed ancestor controls (including XRotN/YRotN equivalents and local height)
+inside the chosen boundary windows, while the reviewed RootMotion/TransN keeps
+its complete source animation. Exact reviewed roles are required; names alone
+never enable this option. New dialogs enable it when those roles are available;
+reopened older recipes retain their previous policy until explicitly changed.
+Reference preview follows the same selected policy while scrubbing or playing.
 
-**Preview exit reference** now displays the reference body beneath the attack's
-own reviewed motion controls. Scrubbing or playing this view keeps the attack's
-control timeline; Wait/Fall cannot substitute their roots. Unresolved bindings
-require setup. Expanded side-view tests retain first-body holds and exact roots;
-one additional donor exposes a recovery spin, so universal quality remains open.
-See the [root reference record](docs/ROOT_REFERENCE_ACCEPTANCE_2026-10-25.md).
+Nearest-equivalent rotation fitting considers complete XYZ families, including
+coupled 180-degree changes and whole 360-degree turns, at both entry and exit.
+It preserves the reference orientation while avoiding manufactured Euler spins.
+Disabling the option retains authored reference turn counts. The original action
+outside the windows, reference clips, native Undo and original Next remain intact.
 
-**Fit start or end** can explicitly recover reviewed hip/leg paths in the final
-window of a non-looping attack, reaching the target's frozen first exit pose.
-Whole-clip contact preservation remains the default. Recovery preserves authored
-motion controls and all prejoin keys; conflicting pins, protected intervals and
-unsupported or singular root transforms reject. Preparation adds an independent animation only
-after review, with native Undo/Redo and exact saved permission/receipt. See the
-[exit recovery acceptance record](docs/EXIT_RECOVERY_ACCEPTANCE_2026-10-25.md):
-**1,822 scoped assertions / 66 inspected native PNGs**. This is endpoint recovery;
-planted-foot quality throughout the adapted window remains unverified.
+Reviewed hip/leg contact recovery remains an explicit non-looping **exit-only**
+option. Whole-clip contact preservation remains the default; baked-contact entry
+adaptation is still rejected. **Prevent extra foot dipping** uses complete authentic
+foot geometry, the selected control policy and an explicitly reviewed plane. Its
+bounded body correction prevents added penetration beyond the authentic baseline;
+it does not promise planted feet or absolute zero native penetration. Pins,
+protected intervals, unsupported geometry and work/lift contradictions reject.
+See the [boundary-control acceptance record](docs/BOUNDARY_CONTROLS_ACCEPTANCE_2026-10-25.md)
+for fresh evidence and limits; earlier [root-reference](docs/ROOT_REFERENCE_ACCEPTANCE_2026-10-25.md)
+and [foot-recovery](docs/FOOT_RECOVERY_ACCEPTANCE_2026-10-25.md) records describe their
+exact historical policies. This does not establish universal character/game support.
 
 The source library now has **Favorite / Favorited**, **Favorites only**, and
 combinable game/build, character/model, availability and channel filters alongside
@@ -145,8 +146,9 @@ record](docs/PROJECT_MOTION_CONTROLS_ACCEPTANCE_2026-10-24.md).
 New/Open/Close share Save, Discard and Keep editing; failed/cancelled saves keep
 the current document and Undo available. Untitled Save accepts a pasted path.
 Original Next v7 remains the base with a separately recorded source-local control
-policy: protected controls follow only their own source animation, while fitting
-and manual corrections use body bones. Names are examples; reviewed hierarchy
+policy: protected controls follow only their own source animation. Manual body
+corrections retain that protection; boundary fitting has the explicit reviewed
+reference-control exception described above. Names are examples; reviewed hierarchy
 identifies equivalent controls. Prior preview.16/15 receipts remain historical.
 M2/G1 human usability, physical input/DPI, broad contact quality and game acceptance
 remain incomplete.

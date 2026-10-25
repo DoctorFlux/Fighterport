@@ -37,6 +37,24 @@ internal static class BoundaryFloorRecoveryChecks
         Verify(weighted,weightedFit,check,"uncapped weighted geometry");
         check(weightedFit.Receipt.FloorRecovery!.Regions.All(r=>r.PointCount>1100&&r.LegacyPointCount<r.PointCount),
             "Complete foot regions retain more than 512 points and all tiny/partial positive influences instead of the legacy .8 subset or a sensor cap");
+        // Insert a reviewed orientation control between retained actor travel
+        // and the body. Its changing native parent matrix must drive the floor
+        // direction; using the original parent's inverse is incorrect here.
+        var controlBase=Create(1,1,.02f,.02f,true,true,101);
+        int Map(int index)=>index<1?index:index+1;
+        var controlBones=controlBase.Project.Scene.Bones.Select((b,i)=>b with{Parent=i==1?1:b.Parent<0?-1:Map(b.Parent)}).ToList();
+        controlBones.Insert(1,new("reviewed_orientation",0,Transform.Identity));
+        var controlScene=controlBase.Project.Scene with{Bones=controlBones.ToArray(),Meshes=controlBase.Project.Scene.Meshes.Select(m=>m with{Vertices=m.Vertices.Select(v=>v with{Joints=new Vector4(Map((int)v.Joints.X),Map((int)v.Joints.Y),Map((int)v.Joints.Z),Map((int)v.Joints.W))}).ToArray()}).ToArray()};
+        var controlChannels=new Curve?[9];controlChannels[5]=new([new(0,15),new(12,15)]);controlChannels[7]=new([new(0,.08f),new(12,.08f)]);
+        var controlSource=controlBase.Source with{Tracks=[..controlBase.Source.Tracks,new("reviewed_orientation",controlChannels)]};
+        var controlSetup=controlBase.Project.ControlRigs[0] with{SkeletonFingerprint=AnimationControls.Fingerprint(controlScene),BodyBone=2,
+            Chains=controlBase.Project.ControlRigs[0].Chains.Select(c=>c with{Root=Map(c.Root),Middle=Map(c.Middle),Effector=Map(c.Effector)}).ToArray(),
+            BoneRoles=[new("RootMotion",0,"Reviewed actor placement",true),new("BodyOrientation",1,"Reviewed native ancestor axes",true),new("Hips",2,"Reviewed body",true)]};
+        var controlFixture=controlBase with{Project=controlBase.Project with{Scene=controlScene,Clips=[controlSource,controlBase.Reference],ControlRigs=[controlSetup]},Source=controlSource,
+            Settings=controlBase.Settings with{Bones=controlScene.Bones.Select(b=>b.Name).ToArray(),MatchReferenceControls=true},Body=2,Ankles=controlBase.Ankles.Select(Map).ToArray()};
+        var controlFit=Fit(controlFixture);Verify(controlFixture,controlFit,check,"fitted reference parent under retained actor travel");
+        check(controlFit.Receipt.FloorRecovery!.BaselinePolicy==BoundaryFloorRecovery.ReferenceControlBaselinePolicy&&controlFit.Receipt.MatchedReferenceControls.SequenceEqual(new[]{"reviewed_orientation"}),
+            "Floor receipt distinguishes fitted reference controls from retained actor travel with no alternate geometry or limits");
         var changedVertex=weighted.Project.Scene.Meshes[0].Vertices.ToArray();changedVertex[^1]=changedVertex[^1] with{Position=changedVertex[^1].Position+new Vector3(.003f,0,0)};
         var changedScene=weighted.Project.Scene with{Meshes=[weighted.Project.Scene.Meshes[0] with{Vertices=changedVertex}]};
         var geometryChanged=Fit(weighted with{Project=weighted.Project with{Scene=changedScene}});

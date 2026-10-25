@@ -21,6 +21,7 @@ public static class ContactBoundaryProtection
             throw new InvalidDataException("Exit contact recovery requires exact reviewed body and leg bindings for this rig revision.");
         var eligible=Enumerable.Range(0,scene.Bones.Length).Where(i=>i==body||legs.Any(c=>PoseGeometry.Ancestor(scene,c.Root,i)||
             PoseGeometry.Ancestor(scene,body,i)&&PoseGeometry.Ancestor(scene,i,c.Root))).Select(i=>scene.Bones[i].Name).ToHashSet(StringComparer.Ordinal);
+        if(settings.MatchReferenceControls)eligible.UnionWith(BoundaryReferenceControls.Resolve(scene,controls));
         var released=contactBones.Where(name=>!protectedMotion.Contains(name)).ToArray();
         if(released.Length==0)throw new InvalidDataException("No reviewed body/leg contact dependency path is available for exit recovery.");
         if(released.Any(name=>!eligible.Contains(name)))throw new NotSupportedException("Exit contact recovery is bounded to reviewed hip/leg dependency paths. Hand, surface or other support paths require a separate recovery adapter.");

@@ -5,6 +5,70 @@ with the simpler workspace while retaining the COMPLETE BrawlCrate Model Preview
 and original Next retargeter. This supersedes the earlier planning-only/contact-first
 ordering. M2 remains the ONE incomplete milestone; this is its sole executable queue.
 
+25 October 2026 bounded preview.31-boundary-controls acceptance is complete:
+**2,883 checks / 15 runs / 77 inspected native PNGs**, plus **2,468 checks /
+five GIFs / 241 decoded frames / 35 supplementary PNGs inspected**. New fitting
+controls reach the first reference pose while the reviewed motion-position control
+retains exact attack curves. Both entry/exit share equivalent XYZ branch selection.
+The Sephiroth→Snake spin/hover witness is corrected; nonzero TransN travel survives
+Waluigi→Cloud. Actual older recipes reopen unchanged. Native Undo, original Next
+and the complete previewer remain. No new increment is promoted; ONE G1/M2 stays
+incomplete. Interior foot lifting/contact quality, baked-contact entry adaptation,
+physical input/usability, monitor DPI and game gates remain open. See
+[boundary-control evidence](../BOUNDARY_CONTROLS_ACCEPTANCE_2026-10-25.md).
+
+25 October 2026 latest user correction supersedes the all-control preservation
+policy ONLY for explicitly enabled boundary fitting: TransN's reviewed equivalent
+RootMotion retains the attack's complete authored local curves; the other reviewed
+ancestor controls (SceneRoot, RootOrientation, BodyOrientation) fit to the first
+reference pose inside the selected boundary windows. Original Next retains its
+source-local policy. Never classify these roles by names. Require exact reviewed
+fingerprint, unique distinct role bindings covering the ancestor chain; reject
+missing/ambiguous roles and conflicting contacts/pins. Old saved settings remain
+all-control preserving until the new option is explicitly enabled.
+
+Frozen expectations before implementation: a reviewed body-orientation control at
+translation Y=13 with reference Y=12 reaches 12 at exit, while the reviewed motion
+control's nonzero XYZ travel and all S/R/T keys/tangents remain bit-exact. Both entry
+and exit retain the original middle and joins; orientation-equivalent 180/360
+selection applies to fitted controls too. Authentic Sephiroth→Snake must match
+Wait1 frame 1 under retained TransN, with independent full skin/world checks and
+reported ground clearance. No compensating body-height offset is authorized merely
+to conceal incorrect X/Y-control placement. Floor correction uses the actual fitted
+parent transforms and the same frozen budgets and penetration gates. Reference
+preview uses reference controls except the retained motion control when enabled;
+no loading or solving during playback. Retest legacy disabled mode independently.
+
+25 October 2026 current authorized continuation: preview.31-boundary-controls.
+Fix the reproduced Sephiroth-to-Snake recovery spin with one shared native XYZ
+Euler-equivalence choice for BOTH entry and exit fitting. Existing nearest-angle
+option considers whole-turn offsets and the coupled alternate family
+(x+180, 180-y, z+180), choosing the smallest squared channel distance from the
+original join; ties prefer the original family. Do not subtract 180 from an
+isolated axis or change pose identity. Transform moving-reference Y tangents when
+using the alternate family. Off preserves authored reference turn counts.
+
+Freeze independent expectations before code: (166,141,175) toward (-2,-46,-1)
+selects (178,226,179), while (170,0,0) toward (-170,0,0) selects (190,0,0).
+Exercise entry/exit, +/-360 shifts, +/-90 middle-axis singularities, moving
+reference derivatives, sparse/bind fallback, paired keys, deterministic ties,
+renamed/permuted rigs, exact protected roots and unchanged original action/middle.
+Keep existing .0002 position, .00001 scale and .01-degree orientation gates and
+all floor/lift/key/work budgets. Reproduce numerically before changing code.
+Version changed fitting algorithms; keep prior recipes readable without migration.
+
+Use existing native snapshots/precise export and Undo. Original Next, binds,
+weights, retained motion-position curves and the complete BrawlCrate previewer
+remain intact; other reviewed controls follow the explicitly selected boundary policy.
+No global Euler normalization, quaternion solver, retiming or playback solving.
+Retest the actual diagnostic exit plus a native first-reference entry, produce
+fresh side GIFs/ground guides with only first reference BODY holds, and inspect
+all decoded frames. Recheck authentic ground/aerial cases, original Next roots,
+shared numerical constraints, native Undo/export/save/reopen and relevant workspace
+regressions on private desktops. Publish verified source only as DoctorFlux and
+update launcher/acceptance. Keep ONE incomplete G1/M2; broad quality/game/input/
+DPI acceptance remains open. No per-character/action/bone-name numerical exceptions.
+
 25 October 2026 bounded preview.30-root-reference acceptance is complete:
 **2,333 scoped assertions / 11 runs / 53 inspected native PNGs** on the final
 package. Reference-body preview keeps the attack's reviewed protected locals
