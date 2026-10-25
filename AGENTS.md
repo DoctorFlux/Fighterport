@@ -1,5 +1,19 @@
 # Fighterport
 
+Latest authorized continuation: preview.30-root-reference corrects the native
+boundary reference preview: reference BODY under the attack's own reviewed local
+motion controls, through scrubbing and playback. Never substitute Wait/Fall roots.
+Native sparse fallback and case-insensitive track lookup are retained; unavailable
+classification explains the missing setup. Original Next, full native previewer,
+source bytes, authored curves, Undo and project format remain intact. Expanded
+background fixtures/GIFs include Cloud, Waluigi and Ike targets and Sephiroth as a
+donor. Numeric endpoint/root success is separate from visual recovery quality:
+the Sephiroth tilt exposes a late body spin and remains a quality failure.
+All preview.29 numerical/constraint gates stay frozen. Keep ONE incomplete G1/M2;
+human/input/DPI, general contact quality and actual games remain unverified.
+Fresh bounded acceptance: 2,333 assertions / 11 runs / 53 inspected native PNGs.
+See docs/ROOT_REFERENCE_ACCEPTANCE_2026-10-25.md for evidence and fixture limits.
+
 Latest authorized continuation: preview.29-foot-recovery adds explicitly reviewed
 static-plane clearance to bounded non-looping exit recovery. Use complete authentic
 weighted foot geometry and one generic envelope; no character/action/name/hash/index

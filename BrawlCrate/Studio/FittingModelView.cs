@@ -7,6 +7,8 @@ using OpenTK.Graphics.OpenGL;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
+using System.Linq;
 using System.Windows.Forms;
 using N=System.Numerics;
 
@@ -35,6 +37,23 @@ namespace BrawlCrate.Studio
         }
         internal void ShownFrame(){if(!IsHandleCreated)return;var box=Model.GetBox();var center=(box.Min+box.Max)*.5f;var half=(box.Max-box.Min)*.65f;var camera=Viewport.Camera;if(camera.Orthographic){Viewport.SetCamWithBox(center-half,center+half);return;}float tangent=(float)Math.Tan(camera.VerticalFieldOfView*Math.PI/360),aspect=Math.Max(.1f,Viewport.Width/(float)Math.Max(1,Viewport.Height));float distance=Math.Max(half._y/tangent,half._x/(tangent*aspect))+half._z+Math.Max(1,camera.NearDepth*2);camera.Set(center+new Vector3(0,0,distance),Vector3.Zero,Vector3.One);Viewport.CurrentViewport._viewDistance=distance;Viewport.Invalidate();}
         internal void Pose(CHR0Node animation,float frame){Model.ApplyCHR(animation,frame);Viewport.Invalidate();}
+        internal void PoseBodyReference(CHR0Node reference,float referenceFrame,CHR0Node source,float sourceFrame,IEnumerable<string> protectedControls)
+        {
+            if(reference==null||source==null||protectedControls==null||float.IsNaN(referenceFrame)||float.IsInfinity(referenceFrame)||float.IsNaN(sourceFrame)||float.IsInfinity(sourceFrame)||referenceFrame<1||referenceFrame>reference.FrameCount||sourceFrame<1||sourceFrame>source.FrameCount)
+                throw new InvalidDataException("Reference-body preview requires valid native frames and reviewed source motion controls.");
+            Model.ApplyCHR(reference,referenceFrame);
+            foreach(string name in protectedControls.Distinct(StringComparer.Ordinal))
+            {
+                var bone=Model._linker.BoneCache.SingleOrDefault(b=>b.Name==name)??throw new InvalidDataException("A reviewed motion control is missing from the reference preview model: "+name);
+                var pose=bone.BindState;var track=source.Children.OfType<CHR0EntryNode>().SingleOrDefault(t=>string.Equals(t.Name,name,StringComparison.OrdinalIgnoreCase));
+                if(track!=null)for(int channel=0;channel<9;channel++)if(track.KeyArrays[channel].KeyCount>0)pose[channel]=track.GetFrameValue(channel,sourceFrame-1);
+                pose.CalcTransforms();bone.FrameState=pose;
+            }
+            // Recalculate complete native FK and skinning after replacing only
+            // reviewed control locals. The source and reference clips stay owned
+            // and unchanged; this path performs no loading, hashing or solving.
+            Model.WeightMeshes();Viewport.Invalidate();
+        }
         private void DrawSupport()
         {
             if(Options==null||Options.Scene==0||Up==null||Forward==null)return;

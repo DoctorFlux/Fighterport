@@ -2,7 +2,7 @@
 
 This is the public unified source repository at https://github.com/DoctorFlux/Fighterport.
 It imports the BrawlCrate-based Next preview.14 source and integrated owned engine;
-the current implementation is **preview.29-foot-recovery**.
+the current implementation is **preview.30-root-reference**.
 The two predecessor repositories are private preserved histories.
 Upstream copyrights, licenses and notices remain intact.
 
@@ -89,6 +89,13 @@ visible. Source-authored motion controls keep their own complete local animation
 including nonzero final travel; the reference body follows beneath that placement.
 The [foot recovery record](docs/FOOT_RECOVERY_ACCEPTANCE_2026-10-25.md) describes
 fixed limits, independent background checks and unsupported cases.
+
+**Preview exit reference** now displays the reference body beneath the attack's
+own reviewed motion controls. Scrubbing or playing this view keeps the attack's
+control timeline; Wait/Fall cannot substitute their roots. Unresolved bindings
+require setup. Expanded side-view tests retain first-body holds and exact roots;
+one additional donor exposes a recovery spin, so universal quality remains open.
+See the [root reference record](docs/ROOT_REFERENCE_ACCEPTANCE_2026-10-25.md).
 
 **Fit start or end** can explicitly recover reviewed hip/leg paths in the final
 window of a non-looping attack, reaching the target's frozen first exit pose.

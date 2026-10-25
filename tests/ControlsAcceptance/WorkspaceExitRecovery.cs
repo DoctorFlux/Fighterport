@@ -1,4 +1,5 @@
 using BrawlCrate.Studio;
+using BrawlCrate.Studio.Retargeting;
 using BrawlCrate.UI;
 using BrawlLib.Modeling;
 using BrawlLib.SSBB.ResourceNodes;
@@ -128,6 +129,30 @@ internal static partial class Program
                         Check(!window.ReadOptions().ExitContactRecovery, "Contact recovery is an explicit opt-in; whole-clip preservation remains the default");
                         Configure(window, contacts.Length > 0); var prepare = SimpleControl<Button>(window, "prepareTransition");
                         var report = SimpleControl<TextBox>(window, "transitionReport");
+                        if (args.Contains("--moving-root-fixture"))
+                        {
+                            int mainFrame = editor.CurrentFrame, undoCount = editor._undoSaves.Count, redoCount = editor._redoSaves.Count;
+                            int captures = BrawlRetargeter.DiagnosticCaptures, bakes = BrawlRetargeter.DiagnosticBakes;
+                            var selectedBone = editor.SelectedBone;
+                            WorkspaceRootReferenceSampling(window.TargetView, model, reference, roots);
+                            SimpleControl<TrackBar>(window, "transitionFrame").Value = source.FrameCount;
+                            SimpleControl<Button>(window, "preview_exit").PerformClick();
+                            Check(model._linker.BoneCache.Where(b => roots.Contains(b.Name)).All(b => RecoverySamePose(window.TargetView.Model._linker.BoneCache.Single(v => v.Name == b.Name).FrameState, RecoverySample(source, b, source.FrameCount - 1))), "Reference preview uses the attack's own protected controls instead of the frozen reference root values");
+                            Check(model._linker.BoneCache.Where(b => !roots.Contains(b.Name)).All(b => RecoverySamePose(window.TargetView.Model._linker.BoneCache.Single(v => v.Name == b.Name).FrameState, RecoverySample(reference, b, 0))), "Reference preview keeps the exact frozen first body pose under attack-root placement");
+                            foreach (int frame in new[] { 1, source.FrameCount / 2, source.FrameCount })
+                            {
+                                SimpleControl<TrackBar>(window, "transitionFrame").Value = frame;
+                                Check(window.TargetView.Model._linker.BoneCache.Where(b => roots.Contains(b.Name)).All(b => RecoverySamePose(b.FrameState, RecoverySample(source, b, frame - 1))), "Scrubbing reference-body preview retains attack-owned controls at display frame " + frame);
+                            }
+                            var play = (Button)Field(window, "play"); play.PerformClick(); await Task.Delay(90); play.PerformClick();
+                            int playingFrame = SimpleControl<TrackBar>(window, "transitionFrame").Value;
+                            Check(window.TargetView.Model._linker.BoneCache.All(b => RecoverySamePose(b.FrameState, RecoverySample(roots.Contains(b.Name) ? source : reference, b, roots.Contains(b.Name) ? playingFrame - 1 : 0))), "Reference preview playback follows attack controls while the first body pose remains frozen");
+                            Check(BrawlRetargeter.DiagnosticCaptures == captures && BrawlRetargeter.DiagnosticBakes == bakes, "Reference scrubbing and playback perform no rig capture or retarget bake");
+                            Check(editor.CurrentFrame == mainFrame && ReferenceEquals(editor.SelectedBone, selectedBone) && editor._undoSaves.Count == undoCount && editor._redoSaves.Count == redoCount && SetNativeContent(source) == original && SetNativeContent(reference) == referenceOriginal, "Reference inspection preserves main native selection, frame, Undo and both exact owned clips");
+                            SimpleControl<TrackBar>(window, "transitionFrame").Value = source.FrameCount;
+                            await CaptureWindow(window, Path.Combine(output,"reference-body-source-roots.png"));
+                            editor.UpdateModel();
+                        }
                         if (floorRecovery)
                         {
                             SimpleControl<CheckBox>(window, "transition_floorReviewed").Checked = false; prepare.PerformClick(); await Wait(() => !window.Busy);

@@ -5,7 +5,33 @@ with the simpler workspace while retaining the COMPLETE BrawlCrate Model Preview
 and original Next retargeter. This supersedes the earlier planning-only/contact-first
 ordering. M2 remains the ONE incomplete milestone; this is its sole executable queue.
 
-25 October 2026 current authorized follow-up: preview.29 shared foot-clearance
+25 October 2026 bounded preview.30-root-reference acceptance is complete:
+**2,333 scoped assertions / 11 runs / 53 inspected native PNGs** on the final
+package. Reference-body preview keeps the attack's reviewed protected locals
+through scrubbing/playback with native bind fallback and track lookup. The proven
+Wait1-root overwrite regression failed on the old application and passes now.
+Original Next, full native editor/Undo, exact authored roots, project format and
+all preview.29 numerical/constraint gates stay intact.
+
+Expanded background fixtures add Cloud, Waluigi and Ike targets and a Sephiroth
+donor: **3,793 scoped assertions / seven GIFs / 365 inspected decoded frames /
+49 inspected supplemental PNGs**. All holds retain the owned attack at its final
+frame with only the target's first Wait/Fall BODY pose. Waluigi's traveling dash
+retains TransN.Z 32.0007 through the Wait1 body hold. Numeric endpoint/root success
+is separate from quality: Sephiroth's tilt on Snake exposes a late body spin and
+is explicitly a visual quality failure. Unsupported/ambiguous supplied models
+remain recorded rejections, never trimmed or silently remapped.
+
+See [root-reference evidence and limitations](../ROOT_REFERENCE_ACCEPTANCE_2026-10-25.md).
+No next increment is promoted. Generic recovery orientation/continuity is a
+candidate follow-up, with frozen constraints, original-prefix/root preservation
+and held-out evidence required before any quality claim. Actor movement
+integration is separate from authored local root values. Exactly ONE G1/M2 stays
+incomplete; human input/usability, monitor DPI, broad contact/continuity quality,
+new adapters and actual games remain unverified. Keep testing background-only and
+publish verified source only under DoctorFlux to public Fighterport/main.
+
+25 October 2026 preceding authorized follow-up: preview.29 shared foot-clearance
 recovery and source-root reference placement. Correct additional foot dipping
 during the existing non-looping exit recovery using authentic weighted foot
 geometry and an explicitly reviewed support plane. Preserve every source-authored

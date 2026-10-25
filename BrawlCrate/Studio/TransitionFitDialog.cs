@@ -21,7 +21,7 @@ namespace BrawlCrate.Studio
         internal string PreparedReport;
         internal bool Busy {get;private set;}
         internal CHR0Node Candidate {get;private set;}
-        readonly CHR0Node source;readonly TransitionClipChoice[] clips;int generation;bool loading;
+        readonly CHR0Node source;readonly TransitionClipChoice[] clips;readonly string[] protectedMotion;string referenceSide;int generation;bool loading;
         readonly Dictionary<string,Control> inputs=new Dictionary<string,Control>();
         readonly FlowLayoutPanel fields=new FlowLayoutPanel{Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown,WrapContents=false,AutoScroll=true,Padding=new Padding(8)};
         readonly TextBox report=new TextBox{Name="transitionReport",Dock=DockStyle.Fill,ReadOnly=true,Multiline=true,ScrollBars=ScrollBars.Both,WordWrap=false};
@@ -31,9 +31,9 @@ namespace BrawlCrate.Studio
         readonly CheckedListBox bones=new CheckedListBox{Name="transitionBones",Width=306,Height=155,CheckOnClick=true};
         string preparedOptions;
         readonly Stopwatch previewTime=new Stopwatch();int previewStart;
-        internal TransitionFitDialog(ResourceNode sourceRoot,MDL0Node sourceModel,ResourceNode targetRoot,MDL0Node targetModel,CHR0Node motion,TransitionClipChoice[] choices,ModelPanelViewport viewer,IEnumerable<ResourceNode> references,string pinReview=null,bool preserveContactsByDefault=false)
+        internal TransitionFitDialog(ResourceNode sourceRoot,MDL0Node sourceModel,ResourceNode targetRoot,MDL0Node targetModel,CHR0Node motion,TransitionClipChoice[] choices,ModelPanelViewport viewer,IEnumerable<ResourceNode> references,string pinReview=null,bool preserveContactsByDefault=false,IEnumerable<string> protectedMotionControls=null)
         {
-            loading=true;source=motion;clips=choices;Text="Fit Animation Boundaries / Transitions";ClientSize=new Size(1240,820);MinimumSize=new Size(1040,720);StartPosition=FormStartPosition.CenterParent;ShowInTaskbar=false;
+            loading=true;source=motion;clips=choices;protectedMotion=protectedMotionControls?.Distinct(StringComparer.Ordinal).ToArray();Text="Fit Animation Boundaries / Transitions";ClientSize=new Size(1240,820);MinimumSize=new Size(1040,720);StartPosition=FormStartPosition.CenterParent;ShowInTaskbar=false;
             SourceView=new FittingModelView(sourceModel,sourceRoot,"SOURCE · existing native animation · read-only",true,viewer,references){Dock=DockStyle.Fill};
             TargetView=new FittingModelView(targetModel,targetRoot,"RESULT / REFERENCE · existing native rig",false,viewer,references){Dock=DockStyle.Fill};
             var views=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=2};views.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,50));views.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,50));views.Controls.Add(SourceView,0,0);views.Controls.Add(TargetView,1,0);
@@ -73,7 +73,7 @@ namespace BrawlCrate.Studio
             Check("binding","I reviewed these clips' native bones, bind space, units and listed pin protections");Label("Loop flag is retained. Inspect its seam. This authors FK curves; contacts, clearance, joint limits and game-state behavior are not validated.");
             var actions=new FlowLayoutPanel{Dock=DockStyle.Bottom,AutoSize=true,Padding=new Padding(6)};var close=new Button{Text="Close",AutoSize=true};actions.Controls.AddRange(new Control[]{prepare,cancel,review,apply,close});Controls.Add(right);Controls.Add(left);Controls.Add(actions);
             prepare.Click+=async(s,e)=>await PrepareFit();apply.Click+=(s,e)=>{try{if(Busy||Candidate==null||!review.Checked||preparedOptions!=Key(ReadOptions()))return;Apply(ReadOptions(),Candidate);Close();}catch(Exception error){report.Text=error.Message;Discard();}};cancel.Click+=(s,e)=>{generation++;CancelWork?.Invoke();SetBusy(false);Discard();report.Text="Preparation cancelled; no animation changed.";};
-            review.CheckedChanged+=(s,e)=>{apply.Enabled=!Busy&&Candidate!=null&&review.Checked;if(review.Checked&&Candidate!=null)ShowFrame();};
+            review.CheckedChanged+=(s,e)=>{apply.Enabled=!Busy&&Candidate!=null&&review.Checked;if(review.Checked&&Candidate!=null){referenceSide=null;ShowFrame();}};
             frame.ValueChanged+=(s,e)=>ShowFrame();play.Click+=(s,e)=>{if(Busy)return;if(clock.Enabled)Stop();else{previewStart=frame.Value;previewTime.Restart();clock.Start();play.Text="Pause Preview";}};clock.Tick+=(s,e)=>frame.Value=1+(previewStart-1+(int)(previewTime.Elapsed.TotalSeconds*60))%frame.Maximum;close.Click+=(s,e)=>Close();
             FormClosing+=(s,e)=>{generation++;CancelWork?.Invoke();Stop();};FormClosed+=(s,e)=>{clock.Dispose();Discard();};
             loading=false;UpdateReference("entry");UpdateReference("exit");ShowFrame();report.Text="Choose exact native references, review bindings, and prepare a separate result. No retargeter or contact solver runs during preview playback.";DarkTheme.Apply(this);Shown+=(s,e)=>{SourceView.ShownFrame();TargetView.ShownFrame();};
@@ -102,10 +102,15 @@ namespace BrawlCrate.Studio
             loading=false;Discard();report.Text="Saved fitting settings restored. This prepares from the CURRENT animation, including later pin edits. Review live reference bindings again; missing live references are disabled. Frozen originals remain available in Transition Fit Details.";
         }
         void UpdateReference(string side){var choice=Choice(side);var value=(NumericUpDown)inputs[side+"Frame"];value.Maximum=Math.Max(1,choice?.Clip.FrameCount??1);if(value.Value>value.Maximum)value.Value=value.Maximum;}
-        void PreviewReference(string side){if(loading||Busy)return;var choice=Choice(side);if(choice==null)return;Stop();review.Checked=false;TargetView.Pose(choice.Clip,(float)N(side+"Frame"));TargetView.Heading.Text="REFERENCE · "+side+" · "+choice.Clip.Name+" · frame "+N(side+"Frame");TargetView.ShownFrame();}
+        void PreviewReference(string side)
+        {
+            if(loading||Busy)return;var choice=Choice(side);if(choice==null)return;Stop();review.Checked=false;
+            if(protectedMotion==null){referenceSide=null;TargetView.Pose(null,0);TargetView.Heading.Text="REFERENCE BODY · reviewed controls unavailable";report.Text="Set Up Animation Controls for this exact animation before previewing a reference body beneath its source motion controls. No reference root values were substituted.";return;}
+            referenceSide=side;ShowFrame();TargetView.ShownFrame();
+        }
         void SetBusy(bool value){Busy=value;prepare.Enabled=play.Enabled=frame.Enabled=!value;cancel.Enabled=value;apply.Enabled=!value&&Candidate!=null&&review.Checked;}
         void Stop(){clock.Stop();previewTime.Stop();play.Text="Play Preview";}
-        void Discard(){Stop();TargetView.Pose(null,0);Candidate?.Dispose();Candidate=null;preparedOptions=null;review.Checked=false;apply.Enabled=false;TargetView.Heading.Text="RESULT · prepare a new independent animation";}
+        void Discard(){Stop();referenceSide=null;TargetView.Pose(null,0);Candidate?.Dispose();Candidate=null;preparedOptions=null;review.Checked=false;apply.Enabled=false;TargetView.Heading.Text="RESULT · prepare a new independent animation";}
         async Task PrepareFit()
         {
             if(Busy)return;Discard();int token=++generation;SetBusy(true);report.Text="Preparing fixed-duration native FK curves offline...";
@@ -113,6 +118,17 @@ namespace BrawlCrate.Studio
             catch(Exception error){if(!IsDisposed&&token==generation)report.Text=error.Message;}
             finally{if(!IsDisposed&&token==generation)SetBusy(false);}
         }
-        void ShowFrame(){SourceView.Pose(source,frame.Value);TargetView.Pose(Candidate,Candidate==null?0:frame.Value);if(Candidate!=null)TargetView.Heading.Text="RESULT · native fitted animation · review before adding";frameText.Text=frame.Value+" / "+source.FrameCount;}
+        void ShowFrame()
+        {
+            SourceView.Pose(source,frame.Value);
+            if(referenceSide!=null)
+            {
+                var choice=Choice(referenceSide);
+                TargetView.PoseBodyReference(choice.Clip,(float)N(referenceSide+"Frame"),source,frame.Value,protectedMotion);
+                TargetView.Heading.Text="REFERENCE BODY · "+choice.Clip.Name+" frame "+N(referenceSide+"Frame")+" · attack controls frame "+frame.Value;
+            }
+            else {TargetView.Pose(Candidate,Candidate==null?0:frame.Value);if(Candidate!=null)TargetView.Heading.Text="RESULT · native fitted animation · review before adding";}
+            frameText.Text=frame.Value+" / "+source.FrameCount;
+        }
     }
 }

@@ -50,7 +50,7 @@ namespace BrawlCrate.UI
                 var references=modelEditControl1.ModelPanel._resourceList.Select(r=>r.RootNode).Distinct().Where(r=>r!=model.RootNode).Select((r,i)=>CopyRoot(r,"reference-"+i)).ToArray();
                 CHR0Node prepared=null;string preparedKey=null,copiedState=null;NativeTransitionFit metadata=null;Dictionary<string,string> referenceHashes=null;
                 void VerifyReferences(){if(referenceHashes==null)throw new InvalidOperationException("Prepare the transition first.");foreach(var proof in referenceHashes){var native=choices.Single(c=>c.Key==proof.Key);if(!project.RegisteredAssets().Contains(native.Asset)||NativeControlHash(native.Clip,".chr0")!=proof.Value)throw new InvalidOperationException("A transition reference changed. Prepare the fit again.");}}
-                using(var window=new TransitionFitDialog(a,beforeModel,b,afterModel,source,choices,modelEditControl1.ModelPanel.CurrentViewport,references,pinReview,NativeTransitionContacts.HasBakedSupport(selected.Asset)||currentPins.Any(pin=>pin.Soft)))
+                using(var window=new TransitionFitDialog(a,beforeModel,b,afterModel,source,choices,modelEditControl1.ModelPanel.CurrentViewport,references,pinReview,NativeTransitionContacts.HasBakedSupport(selected.Asset)||currentPins.Any(pin=>pin.Soft),CurrentRecoveryBinding()?_protectedMotionBones.ToArray():null))
                 {
                     window.CancelWork=()=>{client?.Dispose();client=null;};
                     window.Prepare=async options=>
