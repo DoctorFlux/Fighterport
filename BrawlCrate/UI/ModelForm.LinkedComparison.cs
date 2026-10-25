@@ -63,7 +63,7 @@ namespace BrawlCrate.UI
         private void OpenLinkedComparison()
         {
             if (SimpleWorkspaceBusy) throw new InvalidOperationException("Finish the current operation before comparing.");
-            HideBatchReview();
+            HideBatchReview(); HideLoopInspection();
             BuildComparisonPane();
             _comparisonOpener = _workspaceInvoker ?? CurrentWorkspaceFocus();
             if (_libraryPane?.Visible == true) SetSimpleWorkspaceLibraryVisible(false);

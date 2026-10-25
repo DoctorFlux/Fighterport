@@ -1,15 +1,21 @@
 # Fighterport master plan
 
-Latest authorized continuation: preview.26-verified-set-export extends the
-published preview.25 review workspace with exact approved-set snapshots, independent
-full CHR0 verification and same-volume directory publication to a new folder.
-Keep full native ownership/Undo, original Next and source-local protected controls.
-Session approval is never persisted; no project-format migration is included.
-Fresh acceptance: 2,229 scoped assertions / all 97 PNGs inspected. See VERIFIED_SET_EXPORT_ACCEPTANCE_2026-10-24.md.
-Both requested bounded increments are accepted; no further feature is active.
-Keep ONE incomplete G1/M2. Human/input/DPI,
-broad contacts and game gates remain open. Publish verified source only under
+Latest authorized continuation: preview.27-loop-inspection adds a read-only
+single-animation endpoint drawer on the existing native viewport. Keep explicit
+First/Last/stored-loop Closing jumps, manual Refresh and change invalidation.
+Preserve full BrawlCrate native ownership/Undo, original Next and protected roots
+following only their own source-authored local animation. No playback correction,
+smoothing/quality score, project migration or persistent report is included.
+Bounded preview.27 acceptance is complete: 2,606 assertions / 115 inspected PNGs.
+Keep ONE incomplete G1/M2; see
+LOOP_INSPECTION_ACCEPTANCE_2026-10-25.md for commands, evidence and limits.
+Human/input/DPI/contact/game gates remain open. Publish verified source only under
 DoctorFlux attribution to public Fighterport/main.
+
+Preceding preview.26-verified-set-export extended published preview.25 with
+exact approved-set snapshots, independent full CHR0 verification and same-volume
+directory publication to a new folder. Its separate acceptance record retains
+2,229 assertions / 97 inspected PNGs.
 
 Preceding 24 October continuation: preview.25-batch-review adds recoverable exact
 result navigation and session-only content/target/recipe approval around the full

@@ -2,7 +2,7 @@
 
 This is the public unified source repository at https://github.com/DoctorFlux/Fighterport.
 It imports the BrawlCrate-based Next preview.14 source and integrated owned engine;
-the current implementation is **preview.26-verified-set-export**.
+the current implementation is **preview.27-loop-inspection**.
 The two predecessor repositories are private preserved histories.
 Upstream copyrights, licenses and notices remain intact.
 
@@ -66,7 +66,20 @@ validation publishes no set; existing folders are preserved. Export works before
 project Save and retains native selection, frame and Undo. Single-clip export keeps
 its existing overwrite confirmation. See the
 [verified set acceptance record](docs/VERIFIED_SET_EXPORT_ACCEPTANCE_2026-10-24.md).
-Fresh preview.26 qualification passes **2,229 scoped assertions / 97 inspected PNGs**.
+Preview.26 qualification passed **2,229 scoped assertions / 97 inspected PNGs**.
+
+**Inspect loop / seam** in Preview and fix reads the selected project-owned CHR0
+against the current native target, including donor-free animations. Compare local
+First → Last and stored-loop Closing → First differences, then read exact samples,
+raw Euler turns and authored boundary values/tangents. Root travel and full turns
+are observations. Reviewed bindings alone identify protected motion controls.
+Opening and **Refresh** pause without seeking; **First**, **Last** and **Closing
+frame** explicitly jump to native display frames 1, N and N+1. The stored clip loop
+and preview-loop checkbox stay separate. Edits/Undo/selection changes clear stale
+measurements until Refresh. Native playback and all editing tools remain intact.
+Use Close, focused Escape or Focus editor to recover editor space. See the
+[loop inspection acceptance record](docs/LOOP_INSPECTION_ACCEPTANCE_2026-10-25.md).
+Fresh preview.27 qualification passes **2,606 scoped assertions / 115 inspected PNGs**.
 
 The source library now has **Favorite / Favorited**, **Favorites only**, and
 combinable game/build, character/model, availability and channel filters alongside

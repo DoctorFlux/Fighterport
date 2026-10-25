@@ -11,7 +11,7 @@ namespace BrawlCrate.UI
         private object _workspaceInvoker, _workspaceLibraryOpener, _workspaceTaskOpener;
 
         private Control[] WorkspaceRegions => new Control[] { _simpleWorkspaceToolbar, _simpleWorkspaceActions,
-            _simpleWorkspaceNavigation, _libraryPane, _simpleWorkspaceTask, _comparisonPane, _batchReviewPane, modelEditControl1 }
+            _simpleWorkspaceNavigation, _libraryPane, _simpleWorkspaceTask, _comparisonPane, _batchReviewPane, _loopInspectionPane, modelEditControl1 }
             .Where(c => c != null && !c.IsDisposed && c.Visible && c.Enabled).ToArray();
 
         private static Control WorkspaceFocusedControl(Control root)
@@ -132,6 +132,7 @@ namespace BrawlCrate.UI
                 Control focused = WorkspaceFocusedControl(this);
                 if (keyData == Keys.Escape && !SimpleWorkspaceBusy)
                 {
+                    if (_loopInspectionPane?.ContainsFocus == true) { CloseLoopInspection(); return true; }
                     if (_batchReviewPane?.ContainsFocus == true) { CloseBatchReview(); return true; }
                     if (_comparisonPane?.ContainsFocus == true) { CloseLinkedComparison(); return true; }
                     if (_libraryPane?.ContainsFocus == true)

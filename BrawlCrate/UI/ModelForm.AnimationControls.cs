@@ -81,6 +81,7 @@ namespace BrawlCrate.UI
         }
         private void InvalidateControls()
         {
+            InvalidateLoopInspection("Control bindings changed. Refresh to inspect the current native data.");
             _controlEpoch++;_loadedControlKey=null;modelEditControl1.AnimationAuthoringPose=null;modelEditControl1.AnimationPins=new ControlPin[0];modelEditControl1.AnimationHandles=new ControlPin[0];modelEditControl1.SelectedAnimationPin=null;RefreshControlTree();
             // Setup after loading, including model-only documents. No donor needed.
             QueueControlSetup();

@@ -240,6 +240,7 @@ namespace BrawlCrate.UI
         {
             if (SimpleWorkspaceBusy) { _batchReviewOpenRequested = true; return; }
             _batchReviewOpenRequested = false;
+            HideLoopInspection();
             _batchReviewOpener = _workspaceInvoker ?? CurrentWorkspaceFocus();
             if (_batchReviewPane == null)
             {

@@ -21,6 +21,7 @@ namespace BrawlCrate.Studio
         private readonly Button _changeTarget;
         private readonly Button _audition;
         private readonly Button _compare;
+        private readonly Button _loopInspection;
         private readonly Button _review;
         private readonly Button _exportSet;
         private readonly Button _controls;
@@ -112,6 +113,9 @@ namespace BrawlCrate.Studio
             _tooltips.SetToolTip(_exportSet, _exportSet.AccessibleDescription);
             _review = AddAction("workspaceReviewResultsAction", "Review results", "review-results");
             _compare = AddAction("workspaceCompareSourceAction", "Compare source", "compare");
+            _loopInspection = AddAction("workspaceLoopInspectionAction", "Inspect loop / seam", "loop-inspection");
+            _loopInspection.AccessibleDescription = "Inspect native first, last and extra loop-closing poses without changing the animation. F6 moves regions; Refresh updates measurements after edits.";
+            _tooltips.SetToolTip(_loopInspection, _loopInspection.AccessibleDescription);
             _controls = AddAction("workspaceControlsAction", "Set up controls", "controls");
             _motions = AddAction("workspaceMotionsAction", "Add target animations", "motions");
             _transitions = AddAction("workspaceTransitionsAction", "Fit start or end", "transitions");
@@ -220,6 +224,8 @@ namespace BrawlCrate.Studio
                 _exportSet.Enabled = _hasTarget && !_busy;
                 _review.Visible = _stage == 2 || _stage == 3;
                 _review.Enabled = _hasTarget && !_busy;
+                _loopInspection.Visible = _stage == 2;
+                _loopInspection.Enabled = _hasTarget && _canExport && !_busy;
                 _compare.Visible = _stage == 2;
                 _compare.Enabled = _hasTarget && _canExport && !_busy;
                 _controls.Visible = _stage == 1 || _stage == 2;

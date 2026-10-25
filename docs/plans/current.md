@@ -5,13 +5,41 @@ with the simpler workspace while retaining the COMPLETE BrawlCrate Model Preview
 and original Next retargeter. This supersedes the earlier planning-only/contact-first
 ordering. M2 remains the ONE incomplete milestone; this is its sole executable queue.
 
-Latest authorized continuation: reviewed animation batches (preview.25), then
+25 October 2026 authorized continuation: preview.27-loop-inspection completes its
+bounded increment within incomplete G1/M2. Add a read-only single-clip
+endpoint inspector around the existing native viewport, with explicit First/Last/
+Closing frame jumps and manual Refresh. Preserve full native ownership/Undo,
+original Next and source-local protected controls. No playback correction, fitting,
+velocity score, loop writes, project schema or persistent report is included.
+Opening/refresh pauses normally without seeking; only explicit jumps move frames.
+Native frame 0 is bind; First=1, Last=N, stored-loop Closing=N+1. Closing evaluation
+is distinct from ordinary playback. Sample native bind fallback/curves unchanged,
+report full turns and authored paired keys/tangents, and invalidate on edits/Undo/
+resource/selection changes without analysis on scrub/playback. Two-million-key cap.
+Freeze comparison tolerances before implementation: translation 0.0002 native units,
+scale 0.00001 and local orientation 0.01 degrees; these are numeric test tolerances,
+not artistic quality thresholds. Qualify private-desktop numeric/native workflow,
+compact/wide 100/200% captures and relevant current regressions before source-only
+DoctorFlux publication. Fresh bounded acceptance passes 2,606 assertions across
+17 runs with all 115 PNGs inspected; see
+[commands and limits](../LOOP_INSPECTION_ACCEPTANCE_2026-10-25.md).
+Human/input/DPI/contact/game gates remain unverified.
+
+Current authorized follow-up uses the existing Fit start or end workflow for
+two background-only examples/GIFs: Mario AttackAirF on Snake ending in Snake Fall,
+and Snake AttackS3S (first part, excluding AttackS3S2) on Mario ending in Wait1.
+Preserve original Next, exact reviewed roots and contact protections; independently
+report eligible endpoint agreement and excluded-root/support differences. These
+examples do not establish arbitrary-character, contact or game acceptance and add
+no new solver or feature milestone.
+
+Preceding authorized continuation: reviewed animation batches (preview.25), then
 atomic verified set export (preview.26). Preview.25 bounded acceptance is complete: 1,925 assertions and 81 inspected PNGs.
 See [commands and limits](../BATCH_REVIEW_ACCEPTANCE_2026-10-24.md). Preview.25 was published as 62a18a50fa922688d1d56a35fa9c9c34afec6b4c.
 Preview.26 (`2.0.0-preview.26-verified-set-export`) has fresh bounded acceptance:
 2,229 assertions across 15 passing runs and all 97 PNGs inspected. See
 [commands and limits](../VERIFIED_SET_EXPORT_ACCEPTANCE_2026-10-24.md).
-Both requested increments are accepted. No further feature increment is active;
+Both preceding increments and bounded preview.27 above are accepted;
 remain inside ONE incomplete G1/M2 for the human/input/DPI/contact/game gates.
 Use session-only exact-content approval, original Next, existing native selection/
 Undo, 64-clip/two-million-key bounds and background-only private desktop evidence.

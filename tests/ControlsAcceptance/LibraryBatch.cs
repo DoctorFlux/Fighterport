@@ -34,7 +34,7 @@ internal static partial class Program
         if(!PrivateDesktop)throw new InvalidOperationException("Batch acceptance requires a private desktop.");TimingFitOracle();
         string donor=args.Contains("--retarget-source")?args[Array.IndexOf(args,"--retarget-source")+1]:args[0];string motion=args[1];
         string modelHash=FighterProject.HashFile(donor),motionHash=FighterProject.HashFile(motion),targetHash=FighterProject.HashFile(args[0]);
-        if(args.Contains("--workspace-batch-review")||args.Contains("--workspace-set-export"))
+        if(args.Contains("--workspace-batch-review")||args.Contains("--workspace-set-export")||args.Contains("--workspace-loop-inspection"))
         {
             string ownedDonor=Path.Combine(output,"owned-source-model.pac"),ownedMotion=Path.Combine(output,"owned-source-motion.pac");
             File.Copy(donor,ownedDonor);File.Copy(motion,ownedMotion);donor=ownedDonor;motion=ownedMotion;
@@ -44,7 +44,7 @@ internal static partial class Program
         var project=FighterProject.Create("Native batch fitting");var form=new ModelForm();form.InitializeFighterProject(project);form.Show();Call(form,"ImportFighterModel",args[0]);
         await Task.Delay(150);await Wait(()=>!(bool)Field(form,"_controlBusy")&&!(bool)Field(form,"_controlSetupQueued"));
         Call(form,"BuildLibraryPane");form.GetType().GetField("_library",Private).SetValue(form,library);((TextBox)Field(form,"_librarySearch")).Text="Wait";((Timer)Field(form,"_librarySearchTimer")).Stop();
-        if(args.Contains("--workspace-batch-review")||args.Contains("--workspace-set-export"))
+        if(args.Contains("--workspace-batch-review")||args.Contains("--workspace-set-export")||args.Contains("--workspace-loop-inspection"))
         {
             foreach(var item in library.Browse("Wait").Where(i=>i.Clip.Name=="Wait1"||i.Clip.Name=="Wait2").Where(i=>i.Model!=null))library.SetFavorite(item.Clip.Id,true);
             SimpleControl<CheckBox>(form,"libraryFavoritesOnly").Checked=true;((Timer)Field(form,"_librarySearchTimer")).Stop();
@@ -56,7 +56,7 @@ internal static partial class Program
             {
                 var grid=(DataGridView)window.Controls.Find("batchClips",true).Single();var prepare=(Button)window.Controls.Find("prepareBatch",true).Single();var apply=(Button)window.Controls.Find("applyBatch",true).Single();var review=(CheckBox)window.Controls.Find("reviewBatch",true).Single();var shared=(NumericUpDown)window.Controls.Find("sharedFrames",true).Single();
                 var rows=grid.Rows.Cast<DataGridViewRow>().Where(r=>((LibrarySearchItem)r.Tag).State==LibrarySourceState.Available&&((LibrarySearchItem)r.Tag).Clip.FrameCount>=5).OrderBy(r=>((LibrarySearchItem)r.Tag).Clip.Name=="Wait1"?0:((LibrarySearchItem)r.Tag).Clip.Name=="Wait2"?1:2).Take(2).ToArray();Check(rows.Length==2,"Batch window lists verified source-bound clips from the shared library");
-                if(args.Contains("--workspace-batch-review")||args.Contains("--workspace-set-export"))Check(grid.Rows.Count==2&&SimpleControl<Label>(window,"batchHeading").Text.Contains("2 of 2 matches"),"Favorites/current filters apply before batch counts and the 200-row display boundary is explicit");
+                if(args.Contains("--workspace-batch-review")||args.Contains("--workspace-set-export")||args.Contains("--workspace-loop-inspection"))Check(grid.Rows.Count==2&&SimpleControl<Label>(window,"batchHeading").Text.Contains("2 of 2 matches"),"Favorites/current filters apply before batch counts and the 200-row display boundary is explicit");
                 shared.Value=9;foreach(var row in rows){row.Cells["Use"].Value=true;row.Cells["Start"].Value=2;row.Cells["End"].Value=5;}rows[1].Cells["Frames"].Value=7;
                 prepare.PerformClick();Check(rows.All(r=>Convert.ToString(r.Cells["Result"].Value).StartsWith("Review:")),"Both rows run the original Next retargeter with shared timing and a per-row override");
                 grid.CurrentCell=rows[0].Cells["Clip"];var details=(TextBox)window.Controls.Find("batchDetails",true).Single();Check(details.Text.Contains(Convert.ToString(rows[0].Cells["Result"].Value)),"The selected native batch report exposes the full untruncated residual and channel-loss list");
@@ -74,6 +74,7 @@ internal static partial class Program
         Call(form,"ShowLibraryBatch");await Wait(()=>finished);if(failure!=null)throw failure;
         var assets=project.Animations.Skip(before).ToArray();Check(assets.All(a=>a.Retarget.Algorithm==HumanoidRetargeter.Algorithm&&a.Retarget.Library!=null&&a.Retarget.Timing!=null),"Batch saves original Next provenance, authentic source ownership and explicit timing recipes");
         Check(assets.Select(a=>a.Retarget.Timing.Frames).OrderBy(i=>i).SequenceEqual(new[]{7,9}),"Shared fitting and per-row timing remain distinct in persisted recipes");
+        if(args.Contains("--workspace-loop-inspection")) await LoopInspectionCases(form,assets,output);
         if(args.Contains("--workspace-set-export")) await SetExportCases(form,assets,output);
         if(args.Contains("--workspace-batch-review")) { await ReviewBatchCases(form,assets,output); await ReviewBatchFailureCases(form,assets,output,motion); }
         string save=Path.Combine(output,"batch.fpstudio");form.SaveFighterProject(save);using(var fresh=FighterProject.Open(save))

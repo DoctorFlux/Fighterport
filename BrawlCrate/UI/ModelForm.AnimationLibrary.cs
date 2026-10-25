@@ -91,7 +91,7 @@ namespace BrawlCrate.UI
             if (SimpleWorkspaceBusy) return;
             if(_libraryPane==null)BuildLibraryPane();
             bool opening = !_libraryPane.Visible;
-            if (opening) HideBatchReview();
+            if (opening) { HideBatchReview(); HideLoopInspection(); }
             if (opening && _comparisonPane != null) _comparisonPane.Visible = false;
             if (opening) _workspaceLibraryOpener = _workspaceInvoker ?? CurrentWorkspaceFocus() ?? _simpleWorkspaceLibrary;
             _libraryPane.Visible=!_libraryPane.Visible;
@@ -293,7 +293,7 @@ namespace BrawlCrate.UI
         }
         private void DisposeAnimationLibrary()
         {
-            ResetBatchReview();
+            ResetBatchReview(); ResetLoopInspection();
             CloseLinkedComparison();
             _librarySearchGeneration++;CancelLibraryTreeWork();
             ReleaseLibraryPreview();_libraryTimer?.Dispose();_librarySearchTimer?.Dispose();_libraryPopulateTimer?.Dispose();_libraryPendingGroups.Clear();
