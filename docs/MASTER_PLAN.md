@@ -1,6 +1,19 @@
 # Fighterport master plan
 
-Latest authorized continuation: preview.28-exit-recovery adds explicit bounded
+Latest authorized continuation: preview.29-foot-recovery adds explicitly reviewed
+static-plane clearance to bounded non-looping exit recovery. Use complete authentic
+weighted foot geometry and one generic envelope; no character/action/name/hash/index
+numerical exceptions. Preserve source-authored protected local controls at every
+time, including nonzero final travel. The frozen reference contributes its first
+BODY pose beneath those controls, never root alignment. Record authentic penetration
+baselines and prevent added dipping; do not claim zero penetration or foot locking.
+Keep fixed pins/protected intervals, exact native prefix/Undo and all frozen gates.
+New typed receipt transport stores actual measurements; legacy v1 stays readable.
+Fresh bounded background qualification passes 2,356 assertions in 15 runs and
+77 inspected native PNGs; see FOOT_RECOVERY_ACCEPTANCE_2026-10-25.md.
+Preserve full native previewer/original Next and the ONE incomplete G1/M2.
+
+Preceding authorized continuation: preview.28-exit-recovery adds explicit bounded
 hip/leg exit recovery to the existing native Fit start or end workflow. Keep the
 whole-clip contact-preservation default; opt-in recovery is non-looping, exit-only,
 all S/R/T and frozen authentic reference frame 1, with exact reviewed body/leg

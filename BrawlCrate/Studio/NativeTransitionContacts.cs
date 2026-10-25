@@ -38,6 +38,7 @@ namespace BrawlCrate.Studio
 
         internal static string[] ReviewExitRecovery(TransitionFitOptions options,int frames,bool loop,string[] contactBones,ISet<string> protectedMotion,bool currentBinding)
         {
+            if(options.PreventFootDipping&&(!options.ExitContactRecovery||!options.FloorReviewed||double.IsNaN(options.FloorHeight)||double.IsInfinity(options.FloorHeight)||float.IsInfinity((float)options.FloorHeight)))throw new InvalidOperationException("Preventing extra foot dipping requires exit contact recovery and explicit review of the finite native floor plane and authentic source/reference penetration baseline.");
             if(!options.ExitContactRecovery)return new string[0];
             if(loop)throw new NotSupportedException("Exit contact recovery requires a non-looping attack. Stored-loop wrap adaptation remains separate work.");
             if(!currentBinding||protectedMotion==null)throw new InvalidOperationException("Set up the current animation controls and review this exact native rig before enabling exit contact recovery.");

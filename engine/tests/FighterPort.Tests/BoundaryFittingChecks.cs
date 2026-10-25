@@ -62,6 +62,7 @@ internal static class BoundaryFittingChecks
         check(reopened.Clips[0].Transition?.CurveFit?.Version==BoundaryFitting.Version&&reopened.Clips[0].Transition?.Start?.Frozen==true,"Project storage retains the transition recipe, exact anchors and bounded FK receipt");
         check(reopened.Clips[0].Tracks[1].Channels[3]!.Keys.SequenceEqual(curve.Keys),"Project reopen retains fitted Hermite keys and duplicate/tangent state exactly");
         await ExitRecoveryAsync(dir,check);
+        await BoundaryFloorRecoveryChecks.RunAsync(dir,check);
     }
 
     static async Task ExitRecoveryAsync(string dir,Action<bool,string> check)
@@ -162,13 +163,15 @@ internal static class BoundaryFittingChecks
         {
             var contradictory=reference.Tracks[0].Channels.ToArray();contradictory[component]=new([new(0,component==0?1.001f:component==3?.1f:98.99f)]);
             var other=reference with{Tracks=reference.Tracks.Select(t=>t.Bone=="global"?t with{Channels=contradictory}:t).ToArray()};
-            check(Reject(project,settings,x:anchor with{Clip=other},text:"protected motion-control endpoint"),
-                "Recovery rejects contradictory protected root "+(component==0?"scale":component==3?"orientation":"translation")+" rather than changing source-authored controls");
+            var placed=BoundaryFitting.Prepare(project,source,null,anchor with{Clip=other},settings);
+            check(ReferenceEquals(placed.Clip.Tracks[0],source.Tracks[0])&&placed.Receipt.ReferenceRootPolicy==BoundaryFitting.SourceRootReferencePolicy&&
+                placed.Clip.Tracks.Skip(1).SelectMany(t=>t.Channels).Zip(fit.Clip.Tracks.Skip(1).SelectMany(t=>t.Channels)).All(pair=>pair.First is null?pair.Second is null:pair.Second is not null&&pair.First.Keys.SequenceEqual(pair.Second.Keys)),
+                "Recovery separates authentic body pose from differing reference root "+(component==0?"scale":component==3?"orientation":"translation")+" and retains exact source-authored controls");
         }
         var equivalentRoot=reference.Tracks[0].Channels.ToArray();equivalentRoot[3]=new([new(0,360)]);
         var equivalent=reference with{Tracks=reference.Tracks.Select(t=>t.Bone=="global"?t with{Channels=equivalentRoot}:t).ToArray()};
         var equivalentFit=BoundaryFitting.Prepare(project,source,null,anchor with{Clip=equivalent},settings);
-        check(ReferenceEquals(equivalentFit.Clip.Tracks[0],source.Tracks[0]),"Equivalent full-turn reference roots pass orientation comparison without rewriting original root channels");
+        check(ReferenceEquals(equivalentFit.Clip.Tracks[0],source.Tracks[0]),"Full-turn reference roots never replace or realign original source root channels");
         var loopSource=source with{Loop=true,Tracks=source.Tracks.Select(t=>t.Bone=="pelvis"?t with{Channels=new Curve?[9]}:t with{Channels=t.Channels.Select(c=>c is null?null:c with{LoopFrameLimit=27}).ToArray()}).ToArray()};
         string loopOriginal=JsonSerializer.Serialize(loopSource,ProjectStore.Json);bool loopRejected=false;
         try{BoundaryFitting.Prepare(project with{Clips=[loopSource,reference]},loopSource,null,anchor,settings);}catch(NotSupportedException error){loopRejected=error.Message.Contains("non-looping",StringComparison.Ordinal);}

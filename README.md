@@ -2,7 +2,7 @@
 
 This is the public unified source repository at https://github.com/DoctorFlux/Fighterport.
 It imports the BrawlCrate-based Next preview.14 source and integrated owned engine;
-the current implementation is **preview.28-exit-recovery**.
+the current implementation is **preview.29-foot-recovery**.
 The two predecessor repositories are private preserved histories.
 Upstream copyrights, licenses and notices remain intact.
 
@@ -81,11 +81,20 @@ Use Close, focused Escape or Focus editor to recover editor space. See the
 [loop inspection acceptance record](docs/LOOP_INSPECTION_ACCEPTANCE_2026-10-25.md).
 Fresh preview.27 qualification passes **2,606 scoped assertions / 115 inspected PNGs**.
 
+**Prevent extra foot dipping** adds a reviewed native Y plane to exit recovery.
+It uses every positively influenced foot vertex with original weights and a shared
+body-translation envelope. It prevents additional penetration beyond the original
+motion or authentic reference first body pose. Authored penetration remains
+visible. Source-authored motion controls keep their own complete local animation,
+including nonzero final travel; the reference body follows beneath that placement.
+The [foot recovery record](docs/FOOT_RECOVERY_ACCEPTANCE_2026-10-25.md) describes
+fixed limits, independent background checks and unsupported cases.
+
 **Fit start or end** can explicitly recover reviewed hip/leg paths in the final
 window of a non-looping attack, reaching the target's frozen first exit pose.
 Whole-clip contact preservation remains the default. Recovery preserves authored
 motion controls and all prejoin keys; conflicting pins, protected intervals and
-incompatible root endpoints reject. Preparation adds an independent animation only
+unsupported or singular root transforms reject. Preparation adds an independent animation only
 after review, with native Undo/Redo and exact saved permission/receipt. See the
 [exit recovery acceptance record](docs/EXIT_RECOVERY_ACCEPTANCE_2026-10-25.md):
 **1,822 scoped assertions / 66 inspected native PNGs**. This is endpoint recovery;

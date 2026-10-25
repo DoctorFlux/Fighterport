@@ -3,6 +3,9 @@ using FighterPort.Core;
 using FighterPort.Adapters.Brawl;
 
 sealed record BoundaryRequest(string? EntryMotion,string? ExitMotion,double EntryFrame,double ExitFrame,bool EntryFrozen,bool ExitFrozen,double EntryRate,double ExitRate,BoundaryFitSettings Settings);
+// Init properties survive the project serializer's intentional exclusion of
+// getter-only computed properties. An anonymous wrapper serialized as {}.
+sealed record BoundaryReceiptEnvelope(BoundaryFitReceipt Receipt,TransitionRecipe? Transition);
 sealed partial class ControlSession
 {
     async Task<object> Transition(Request request)
@@ -31,7 +34,7 @@ sealed partial class ControlSession
         // authored contact/pin records on the independent clip; never erase a
         // conflicting constraint to make an endpoint appear successful.
         string copiedState=JsonSerializer.Serialize(state with{Clip=fit.Clip.Id,Contacts=state.Contacts.Select(c=>c.Clip==clip.Id?c with{Clip=fit.Clip.Id}:c).ToArray(),BonePins=state.BonePins?.Select(p=>p.Clip==clip.Id?p with{Clip=fit.Clip.Id}:p).ToArray()},ProjectStore.Json);
-        string receipt=JsonSerializer.Serialize(new{fit.Receipt,fit.Clip.Transition},ProjectStore.Json);
+        string receipt=JsonSerializer.Serialize(new BoundaryReceiptEnvelope(fit.Receipt,fit.Clip.Transition),ProjectStore.Json);
         return new{Ok=true,Name=fit.Clip.Name,SampleCount=fit.Clip.SampleCount,fit.Clip.Loop,State=copiedState,Algorithm=fit.Receipt.Version,Receipt=receipt,
             Tracks=fit.Changed.Select(t=>NativeTrack(source.Scene,t)).ToArray(),Diagnostics=fit.Receipt.Limits};
     }

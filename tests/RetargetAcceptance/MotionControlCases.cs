@@ -110,6 +110,54 @@ internal static partial class Program
             var result=anonymous.Evaluate(pose).Pose;
             foreach(int control in anonymous.TargetMotionControls.Where(i=>i!=root.TargetIndex))
                 Check(Math.Abs(Quaternion.Dot(result.Local[control].Rotation,anonymous.Target.Joints[control].Bind.Rotation))>1-1e-6,"Renamed/permuted child control does not compensate inherited rotation");
+
+            // Each reviewed ancestor owns its translation independently of the
+            // character's limb proportions and its parent's rest-coordinate
+            // basis. Child controls have no authored delta in these fixtures.
+            Rig MotionVariant(Rig rig,float legRatio,float phase)
+            {
+                var legEnds=new[]{"left.lowerLeg","left.foot","right.lowerLeg","right.foot"}.Select(r=>rig.Roles[r]).ToArray();
+                var basis=Enumerable.Range(0,rig.Joints.Length).Select(i=>Quaternion.CreateFromYawPitchRoll(phase+i*.13f,phase*-.7f+i*.09f,phase*.4f-i*.11f)).ToArray();
+                var joints=rig.Joints.Select((j,i)=>
+                {
+                    var bind=j.Bind;if(legEnds.Contains(i))bind.Translation*=legRatio;
+                    return new RigJoint(j.Name,j.Parent,RebaseLocal(bind,j.Parent,i,basis));
+                });
+                return Anonymous(new Rig("anonymous motion proportions","reviewed",joints,rig.Roles,rig.HeadRadius));
+            }
+            foreach(float factor in new[]{.65f,1.6f})
+            {
+                var changed=new HumanoidRetargeter(MotionVariant(source.Rig,factor,.37f),MotionVariant(target.Rig,1/factor,-.51f));
+                Check(Math.Abs(changed.LegScale-plan.LegScale)>.01,"Motion-control fixture changes anatomy without changing gameplay units",new{factor,changed.LegScale,Original=plan.LegScale});
+                foreach(var selected in changed.Mapping.Where(changed.IsTrajectory))
+                foreach(var axis in new[]{Vector3.UnitX,Vector3.UnitY,Vector3.UnitZ})
+                {
+                    var own=new RigPose(changed.Source);var delta=axis*3.25f;
+                    own.Local[selected.SourceIndex].Translation+=delta;own.Update();
+                    var transferred=changed.Evaluate(own,false).Pose;
+                    int sourceParent=changed.Source.Joints[selected.SourceIndex].Parent,targetParent=changed.Target.Joints[selected.TargetIndex].Parent;
+                    var sourceMatrix=sourceParent<0?Matrix4x4.Identity:Matrix4x4.CreateFromQuaternion(changed.Source.Rest.Orientation[sourceParent]);
+                    var targetMatrix=targetParent<0?Matrix4x4.Identity:Matrix4x4.CreateFromQuaternion(changed.Target.Rest.Orientation[targetParent]);
+                    if(sourceParent>=0)Check(Math.Abs(changed.Source.Rest.Orientation[sourceParent].W)<.999f && Math.Abs(changed.Target.Rest.Orientation[targetParent].W)<.999f,"Own translation is tested under nonneutral reviewed parent bases");
+                    Check(Matrix4x4.Invert(targetMatrix,out Matrix4x4 targetInverse),"Independent reviewed parent basis is invertible");
+                    // Matrix FK is the oracle, independent of the production
+                    // quaternion delta-transfer helper and anatomical scaling.
+                    var worldDelta=Vector3.TransformNormal(delta,sourceMatrix);
+                    var expectedDelta=Vector3.TransformNormal(worldDelta,targetInverse);
+                    foreach(int control in changed.TargetMotionControls)
+                    {
+                        var bind=changed.Target.Joints[control].Bind;var actual=transferred.Local[control];
+                        var expected=bind.Translation+(control==selected.TargetIndex?expectedDelta:Vector3.Zero);
+                        var rotation=Quaternion.Normalize(actual.Rotation*Quaternion.Inverse(bind.Rotation));
+                        double angle=2*Math.Atan2(new Vector3(rotation.X,rotation.Y,rotation.Z).Length(),Math.Abs(rotation.W))*180/Math.PI;
+                        Check(Vector3.Distance(actual.Translation,expected)<=.0002 && Vector3.Distance(actual.Scale,bind.Scale)<=.00001 && angle<=.01,
+                            "Each reviewed motion ancestor transfers only its own XYZ translation; unauthored child locals retain bind",new{factor,Selected=selected.Role,Control=control,Axis=axis.ToString(),angle});
+                    }
+                    var actualDelta=transferred.Local[selected.TargetIndex].Translation-changed.Target.Joints[selected.TargetIndex].Bind.Translation;
+                    Check(Vector3.Distance(Vector3.TransformNormal(actualDelta,targetMatrix),worldDelta)<=.0002 && Math.Abs(actualDelta.Length()-delta.Length())<=.0002,
+                        "Reviewed gameplay translation retains source units beneath differing nonneutral parent bases",new{factor,Selected=selected.Role,Axis=axis.ToString()});
+                }
+            }
         }
         Check(hashes.All(p=>FighterProject.HashFile(p.Key)==p.Value),"Authentic native model source bytes remain immutable");
         File.WriteAllText(Path.Combine(output,"motion-controls.json"),new JavaScriptSerializer{MaxJsonLength=16000000}.Serialize(new{Passed=true,Policy=HumanoidRetargeter.MotionControlPolicy,Checks}));

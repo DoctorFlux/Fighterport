@@ -5,7 +5,58 @@ with the simpler workspace while retaining the COMPLETE BrawlCrate Model Preview
 and original Next retargeter. This supersedes the earlier planning-only/contact-first
 ordering. M2 remains the ONE incomplete milestone; this is its sole executable queue.
 
-25 October 2026 current authorized follow-up: bounded exit recovery within the
+25 October 2026 current authorized follow-up: preview.29 shared foot-clearance
+recovery and source-root reference placement. Correct additional foot dipping
+during the existing non-looping exit recovery using authentic weighted foot
+geometry and an explicitly reviewed support plane. Preserve every source-authored
+protected control curve, including TransN travel that remains nonzero while the
+exit body reaches Wait1's first pose. Reference body pose and source-root placement
+are separate; never zero or align source controls to the reference's controls.
+One algorithm must use reviewed bindings, unchanged native skin weights and axes,
+with no character/action/name/hash/index numerical exceptions. Test varied rig
+proportions, body/foot volumes, renamed/permuted storage, moving/rotating roots and
+explicit constraint contradictions. Keep original Next and the full native editor.
+
+The reviewed clearance policy prevents ADDED penetration beyond the authentic
+source motion or authentic frozen reference body under the same source-root
+placement. Record the baseline explicitly: native original Wait1 itself is not
+strictly above the previous Y=0 guide, so do not silently move that pose or claim
+absolute zero penetration. Use every vertex with positive reviewed foot-path
+influence, retaining all original weights, without sensor capping. The existing
+0.8-weight contact region remains an additional diagnostic, not the acceptance set.
+Freeze gates before implementation: maximum added penetration 0.0002 native units;
+existing endpoint/prefix translation 0.0002, scale 0.00001 and orientation 0.01
+degrees; independent 1/64-frame and held-out fractional witnesses; at most 8192
+new hip keys / 200000 evaluations and maximum lift 0.20 of the shorter reviewed
+leg-chain length. Native keys stay integral. Reject impossible pins, intervals,
+unsupported geometry or nonconvergence rather than changing roots or tolerances.
+
+The first global quartic envelope failed the unchanged native lift budget because
+near-join curvature forced excess lift at unrelated times. Use a conservative
+piecewise native Hermite envelope: zero value/slope at join/end; unit world-normal
+value and zero world-normal derivative at each interior integer knot, transformed
+through the actual protected-parent inverse. Solve its single amplitude against
+actual baked native response, then independently validate. No minimum-lift or
+planted-foot claim is made; all frozen numeric, work and contradiction gates stay.
+
+Testing remains background-only on private desktops with the shared offscreen
+renderer. Produce a new level orthographic side GIF of Mario using Snake's first
+AttackS3S, with full feet, native Y=0 line and ONLY Wait1 frame 1 held afterward.
+Preserve projection/camera after native frame/selection handling and inspect all
+decoded frames. Qualify root transfer, native interpolation, exact prefix/Undo,
+save/export/reopen and relevant workflow regressions before source-only DoctorFlux
+publication. Keep ONE incomplete G1/M2; broad contact/game acceptance stays open.
+
+Preview.29 bounded acceptance is complete: **2,356 assertions in 15 runs** and
+**77 inspected native PNGs**. Shared weighted-foot recovery, source-root reference
+placement, actual typed receipts, native Undo/save/export/reopen and affected
+regressions pass. Both requested GIFs pass with only first reference body holds;
+all 109 decoded frames and 13 supplementary PNGs were inspected. See
+[commands, measurements and limits](../FOOT_RECOVERY_ACCEPTANCE_2026-10-25.md).
+No further feature increment is active. ONE G1/M2 remains incomplete; physical
+input, monitor DPI, human usability, broad contact quality and game gates stay open.
+
+25 October 2026 preceding authorized follow-up: bounded exit recovery within the
 existing native Fit start or end workflow. The user requests hip/leg recovery for
 Snake's first AttackS3S on Mario into Wait1 without an endpoint jump, rechecking
 Mario AttackAirF on Snake into Fall. Both anchors are authentic display frame 1,
@@ -29,7 +80,8 @@ first reference pose in local/world/skin checks while roots remain exact. The
 Mario foot-inspection GIF uses a level orthographic side view and Y=0 guide;
 reference playback is excluded. Adapted-window planted-foot quality remains an
 open contact gate. See [commands and limits](../EXIT_RECOVERY_ACCEPTANCE_2026-10-25.md).
-No further feature increment is active; retain ONE incomplete G1/M2.
+This completed preview.28; the current preview.29 continuation is recorded above.
+Retain ONE incomplete G1/M2.
 
 25 October 2026 authorized continuation: preview.27-loop-inspection completes its
 bounded increment within incomplete G1/M2. Add a read-only single-clip

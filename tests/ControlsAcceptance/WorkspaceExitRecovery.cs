@@ -23,7 +23,7 @@ internal static partial class Program
         Enumerable.Range(6, 3).Sum(c => Math.Pow((double)a[c] - b[c], 2)) <= LoopPositionTolerance * LoopPositionTolerance &&
         LoopIndependentAngle(Enumerable.Range(3, 3).Select(c => (double)a[c]).ToArray(), Enumerable.Range(3, 3).Select(c => (double)b[c]).ToArray()) <= LoopOrientationTolerance;
     static string RecoveryKeys(CHR0Node clip, string[] names) => new System.Web.Script.Serialization.JavaScriptSerializer { MaxJsonLength = 32000000 }.Serialize(
-        clip.Children.OfType<CHR0EntryNode>().Where(t => names.Contains(t.Name, StringComparer.Ordinal)).Select(t => new {
+        clip.Children.OfType<CHR0EntryNode>().Where(t => names.Contains(t.Name, StringComparer.Ordinal)).OrderBy(t => t.Name, StringComparer.Ordinal).Select(t => new {
             t.Name, t.UseModelScale, t.UseModelRotate, t.UseModelTranslate, t.ScaleCompensateApply, t.ScaleCompensateParent, t.ClassicScaleOff,
             Keys = t.KeyArrays.Select(a => a.Entries.Select(k => new { k._index, Value = BitConverter.ToInt32(BitConverter.GetBytes(k._value), 0), Tangent = BitConverter.ToInt32(BitConverter.GetBytes(k._tangent), 0) }).ToArray()).ToArray()
         }).ToArray());
@@ -67,6 +67,18 @@ internal static partial class Program
                 var sourceAsset = await ComparisonRevision(form, library, donor.Clip.Id, null); var source = editor.SelectedCHR0;
                 var setup = await Await<ControlReply>(Call(form, "LoadControls"));
                 var roots = setup.ProtectedMotionBones.Select(i => setup.BoneNames[i]).ToArray();
+                bool floorRecovery = args.Contains("--workspace-foot-recovery");
+                if (args.Contains("--moving-root-fixture"))
+                {
+                    // A separately authored procedural witness, never a production
+                    // exception: authentic AttackS3S returns to zero before recovery.
+                    var moving = source.Children.OfType<CHR0EntryNode>().First(t => roots.Contains(t.Name) && t.KeyArrays[8].KeyCount > 2);
+                    var channel = moving.KeyArrays[8]; while (channel.KeyCount > 0) channel.Remove(channel.Entries.First()._index);
+                    moving.SetKeyframe(8, 0, 0, true, true)._tangent = 1.25f / (source.FrameCount - 1);
+                    moving.SetKeyframe(8, source.FrameCount - 1, 1.25f, true, true)._tangent = 1.25f / (source.FrameCount - 1);
+                    moving.SignalPropertyChange(); source.SignalPropertyChange(); editor.UpdateModel();
+                    Check(moving.GetFrameValue(8, source.FrameCount - 1) == 1.25f, "Procedural source-authored protected control stays displaced and moving at the final frame");
+                }
                 var contacts = NativeTransitionContacts.Resolve(model, sourceAsset, true);
                 var body = model._linker.BoneCache.Where(b => (bool)Call(form, "CanEditBodyBone", b.Name)).Select(b => b.Name).ToArray();
                 string original = SetNativeContent(source), referenceOriginal = SetNativeContent(reference), rootKeys = RecoveryKeys(source, roots);
@@ -83,6 +95,12 @@ internal static partial class Program
                     foreach (string key in new[] { "scale", "rotation", "translation", "root", "nearest", "binding" }) SimpleControl<CheckBox>(window, "transition_" + key).Checked = true;
                     SimpleControl<CheckBox>(window, "transition_contacts").Checked = contacts.Length > 0;
                     SimpleControl<CheckBox>(window, "transition_exitContactRecovery").Checked = recover;
+                    if (floorRecovery)
+                    {
+                        SimpleControl<CheckBox>(window, "transition_preventFootDipping").Checked = true;
+                        SimpleControl<NumericUpDown>(window, "transition_floorHeight").Value = 0;
+                        SimpleControl<CheckBox>(window, "transition_floorReviewed").Checked = true;
+                    }
                     var mask = SimpleControl<CheckedListBox>(window, "transitionBones");
                     for (int i = 0; i < mask.Items.Count; i++) mask.SetItemChecked(i, body.Contains(Convert.ToString(mask.Items[i])));
                 }
@@ -110,6 +128,16 @@ internal static partial class Program
                         Check(!window.ReadOptions().ExitContactRecovery, "Contact recovery is an explicit opt-in; whole-clip preservation remains the default");
                         Configure(window, contacts.Length > 0); var prepare = SimpleControl<Button>(window, "prepareTransition");
                         var report = SimpleControl<TextBox>(window, "transitionReport");
+                        if (floorRecovery)
+                        {
+                            SimpleControl<CheckBox>(window, "transition_floorReviewed").Checked = false; prepare.PerformClick(); await Wait(() => !window.Busy);
+                            Check(window.Candidate == null && report.Text.ToLowerInvariant().Contains("review"), "Floor correction rejects an unreviewed plane and authentic penetration baseline");
+                            SimpleControl<CheckBox>(window, "transition_floorReviewed").Checked = true;
+                            SimpleControl<NumericUpDown>(window, "transition_floorHeight").Value = 1;
+                            Check(!window.ReadOptions().FloorReviewed, "Changing floor height clears its prior explicit review");
+                            SimpleControl<NumericUpDown>(window, "transition_floorHeight").Value = 0;
+                            SimpleControl<CheckBox>(window, "transition_floorReviewed").Checked = true;
+                        }
                         if (contacts.Length > 0)
                         {
                             SimpleControl<NumericUpDown>(window, "transition_exitFrame").Value = 2; prepare.PerformClick(); await Wait(() => !window.Busy);
@@ -124,17 +152,33 @@ internal static partial class Program
                         prepare.PerformClick(); await Wait(() => !window.Busy); Check(window.Candidate != null, "The native workflow prepares a separate exact first-pose exit candidate: " + report.Text);
                         fitted = window.Candidate;
                         Check(form.FighterProject.Animations.Count == originalCount && !SimpleControl<Button>(window, "applyTransition").Enabled, "Preparation requires explicit loss/result review before project publication");
-                        Check(model._linker.BoneCache.All(b => RecoverySamePose(RecoverySample(fitted, b, fitted.FrameCount - 1), RecoverySample(reference, b, 0))), "Every local endpoint including hip/leg and protected controls matches authentic reference frame one");
+                        Check(model._linker.BoneCache.All(b => RecoverySamePose(RecoverySample(fitted, b, fitted.FrameCount - 1), RecoverySample(roots.Contains(b.Name) ? source : reference, b, roots.Contains(b.Name) ? source.FrameCount - 1 : 0))), "Every body endpoint matches authentic reference frame one while protected controls retain their own source endpoint");
                         Check(rootKeys == RecoveryKeys(fitted, roots), "Recovery retains every protected-root key bit, tangent and native flag");
                         Check(RecoveryRetainedKeysExact(source, fitted, 0, join), "Every retained source-prefix key and paired side keeps exact value/tangent bits and scale-compensation flags");
                         Check(Enumerable.Range(0, join * 4 + 1).All(i => model._linker.BoneCache.All(b => RecoverySamePose(RecoverySample(source, b, i / 4f), RecoverySample(fitted, b, i / 4f)))), "All pre-recovery local poses remain unchanged at independent quarter frames");
-                        model.ApplyCHR(reference, 1); var expected = model._linker.BoneCache.Select(b => b.Matrix).ToArray();
+                        using (var aligned = RecoveryReferenceUnderSourceRoots(model, source, reference, roots))
+                        {
+                        model.ApplyCHR(aligned, source.FrameCount); var expected = model._linker.BoneCache.Select(b => b.Matrix).ToArray();
                         model.ApplyCHR(fitted, fitted.FrameCount);
-                        Check(model._linker.BoneCache.Select((b, i) => Enumerable.Range(0, 16).All(c => Math.Abs((double)b.Matrix[c] - expected[i][c]) <= LoopPositionTolerance)).All(v => v), "Native evaluated world matrices match first reference pose without root or camera compensation");
+                        Check(model._linker.BoneCache.Select((b, i) => Enumerable.Range(0, 16).All(c => Math.Abs((double)b.Matrix[c] - expected[i][c]) <= LoopPositionTolerance)).All(v => v), "Native world matrices match reference first body pose under unchanged source-authored root placement");
+                        if (floorRecovery) RecoveryVerifyNativeFloor(model, source, fitted, aligned, setup, join, output);
+                        }
                         editor.UpdateModel();
                         File.WriteAllText(Path.Combine(output, "exit-recovery-report.txt"), report.Text);
                         SimpleControl<TrackBar>(window, "transitionFrame").Value = source.FrameCount;
                         await CaptureWindow(window, Path.Combine(output, "exit-recovery-native-review.png"));
+                        if (floorRecovery)
+                        {
+                            var floor = SimpleControl<CheckBox>(window, "transition_preventFootDipping");
+                            var fields = (FlowLayoutPanel)floor.Parent; fields.ScrollControlIntoView(floor);
+                            var height = SimpleControl<NumericUpDown>(window, "transition_floorHeight");
+                            var reviewed = SimpleControl<CheckBox>(window, "transition_floorReviewed");
+                            fields.ScrollControlIntoView(reviewed); fields.PerformLayout();
+                            await CaptureWindow(window, Path.Combine(output, "foot-floor-options-native.png"));
+                            Check(fields.ClientRectangle.Contains(floor.Bounds) && fields.ClientRectangle.Contains(height.Bounds) && fields.ClientRectangle.Contains(reviewed.Bounds), "Explicit floor controls and baseline review remain visible together in the native scroll panel");
+                            Check(TextRenderer.MeasureText(reviewed.Text, reviewed.Font).Width + 18 <= reviewed.ClientSize.Width, "The complete plane and penetration-baseline consent fits beside its native checkbox");
+                            reviewed.Focus();
+                        }
                         Check(SetNativeContent(source) == original && SetNativeContent(reference) == referenceOriginal, "Review and renderer sampling preserve exact original attack and native reference");
                         SimpleControl<CheckBox>(window, "reviewTransition").Checked = true; SimpleControl<Button>(window, "applyTransition").PerformClick(); fitted = editor.SelectedCHR0;
                     }
@@ -142,8 +186,23 @@ internal static partial class Program
                 };
                 Call(form, "ShowTransitionFit"); await Wait(() => finished); if (failure != null) throw failure; await SimpleControlsReady(form);
                 var generated = form.FighterProject.Animations.Last(); string content = SetNativeContent(editor.SelectedCHR0);
-                Check(generated.TransitionFit.Algorithm == (contacts.Length > 0 ? "contact-exit-recovery-1" : "fixed-duration-fk-hermite-1") && generated.TransitionFit.Options.Contains("ExitFrozen\":true"), "Independent result records frozen-first-frame policy and the exact recovery algorithm");
+                Check(generated.TransitionFit.Algorithm == (floorRecovery ? "contact-floor-recovery-1" : contacts.Length > 0 ? "contact-exit-recovery-2" : "fixed-duration-fk-hermite-1") && generated.TransitionFit.Options.Contains("ExitFrozen\":true"), "Independent result records frozen-first-frame policy and the exact recovery algorithm");
                 generated.TransitionFit.Validate();
+                if (floorRecovery)
+                {
+                    WorkspaceFootReceiptValidation(generated.TransitionFit);
+                    string receipt = generated.TransitionFit.Receipt;
+                    generated.TransitionFit.Receipt = receipt.Replace("per-region min(0, original, authentic reference body under source-root placement)", "unreviewed baseline");
+                    bool rejected = false; try { generated.TransitionFit.Validate(); } catch (InvalidDataException) { rejected = true; }
+                    generated.TransitionFit.Receipt = receipt;
+                    Check(rejected, "Saved recovery validation binds the explicit floor baseline rather than accepting a changed clearance claim");
+                    foreach (int text in new[] { 100, 200 }) foreach (int width in new[] { 1050, 1700 })
+                    {
+                        form.ClientSize = new Size(width, 950); Call(form, "SetWorkspaceTextSize", text); await SimpleControlsReady(form);
+                        await CaptureSimpleWorkspace(form, Path.Combine(output, "foot-recovery-workspace-" + width + "-" + text + ".png"));
+                        Check(SetNativeContent(editor.SelectedCHR0) == content, "Workspace size/text changes preserve exact recovered clip at " + width + "/" + text);
+                    }
+                }
                 editor.Undo(); await SimpleControlsReady(form); Check(form.FighterProject.Animations.Count == originalCount && ReferenceEquals(editor.SelectedCHR0, source), "One native Undo removes recovery and restores the exact original attack");
                 editor.Redo(); await SimpleControlsReady(form); Check(SetNativeContent(editor.SelectedCHR0) == content, "Native Redo restores exact recovery curves without solving again");
                 Call(form, "AddSelectedBatchReviewClip"); Call(form, "MarkBatchReview");
