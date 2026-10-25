@@ -149,7 +149,8 @@ internal static partial class Program
                             int mainFrame = editor.CurrentFrame, undoCount = editor._undoSaves.Count, redoCount = editor._redoSaves.Count;
                             int captures = BrawlRetargeter.DiagnosticCaptures, bakes = BrawlRetargeter.DiagnosticBakes;
                             var selectedBone = editor.SelectedBone;
-                            WorkspaceRootReferenceSampling(window.TargetView, model, reference, roots);
+                            var alternateRoots=args.Contains("--reference-controls")?setup.ProtectedMotionBones.Select(i=>setup.BoneNames[i]).ToArray():setup.Roles.Where(r=>r.Reviewed&&r.Role=="RootMotion").Select(r=>setup.BoneNames[r.Bone.Value]).ToArray();
+                            WorkspaceRootReferenceSampling(window.TargetView, model, reference, roots,alternateRoots);
                             SimpleControl<TrackBar>(window, "transitionFrame").Value = source.FrameCount;
                             SimpleControl<Button>(window, "preview_exit").PerformClick();
                             Check(model._linker.BoneCache.Where(b => roots.Contains(b.Name)).All(b => RecoverySamePose(window.TargetView.Model._linker.BoneCache.Single(v => v.Name == b.Name).FrameState, RecoverySample(source, b, source.FrameCount - 1))), "Reference preview uses the attack's own protected controls instead of the frozen reference root values");

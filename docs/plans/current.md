@@ -1,5 +1,36 @@
 # Current milestone M2 — simpler native workspace
 
+25 October 2026 bounded preview.33-workspace-performance acceptance is complete:
+**3,829 checks / 19 runs / 124 inspected native PNGs**, plus a separate
+matched preview.32 baseline. Stable status avoids repeated layout/measurements;
+hidden comparison does no source skinning, duplicate selection avoids reloads,
+reference preview skins once and exact review recipes avoid large JSON copies.
+Primary workspace actions stay visible; secondary actions and advanced library
+filters disclose without changing queries or native documents. Drawer geometry
+and dynamic fitting-summary clipping are corrected. Full native previewer,
+original Next, shared Undo and current reviewed root policies remain unchanged.
+See [acceptance evidence](../WORKSPACE_PERFORMANCE_ACCEPTANCE_2026-10-25.md). No next increment is promoted. ONE G1/M2 stays
+incomplete for human/input/DPI, broad contact quality and actual game acceptance.
+
+25 October 2026 authorized preview.33-workspace-performance: reduce the reported
+workspace lag and simplify the accumulated feature controls within the same ONE
+incomplete G1/M2. Measure warmed UI status, navigation and native-sampling paths
+against the accepted preview.32 package using the same private-desktop workload.
+Avoid repeated unchanged panel/layout measurements, hidden source skinning,
+redundant same-selection control setup and duplicate fitting preparation. Keep
+exact publication hashes/stale guards, native document/Undo ownership, original
+Next and current reviewed boundary/root policies. No solver or numeric gate changes.
+Frozen correctness gates: repeated unchanged status requires zero extra outer
+geometry/bar/library measurement passes; hidden comparison requires zero source
+pose evaluations; same-selection notifications require zero engine reloads;
+reference-preview optimization must match the old full local/world/weighted-vertex
+result. Timings are descriptive same-machine evidence, not physical-input/FPS claims.
+Group primary workspace actions, disclose secondary tools and advanced library
+filters, preserve their queries, exact actions, keyboard focus and 100–200% text.
+Qualify affected background workflows and inspect fresh captures before source-only
+DoctorFlux publication. Human usability/input/DPI, broad contacts and games remain
+unverified. The preceding preview.32 evidence below applies to its exact baseline.
+
 25 October 2026 bounded preview.32-simple-boundaries acceptance is complete:
 **3,691 checks / 23 runs / 117 inspected native PNGs**. The simple panel selects
 start/end target poses and native join frames; Advanced retains all technical

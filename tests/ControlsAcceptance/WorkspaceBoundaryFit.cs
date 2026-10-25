@@ -12,6 +12,42 @@ using System.Windows.Forms;
 
 internal static partial class Program
 {
+    static void BoundaryRangeTextFits(TransitionFitDialog window,string context)
+    {
+        var summary=SimpleControl<Label>(window,"transitionRanges");
+        // Ask the native label to measure its complete text independently of
+        // the dialog's TextRenderer-based fixed-height layout implementation.
+        int required=summary.GetPreferredSize(new Size(summary.ClientSize.Width,int.MaxValue)).Height;
+        Check(summary.ClientSize.Height>=required,"Complete inclusive range summary fits its native label without clipping: "+context+" (required "+required+", actual "+summary.ClientSize.Height+")");
+    }
+    static void BoundaryRangeSelectionLayout(ModelForm form,TransitionFitDialog window)
+    {
+        var entry=SimpleControl<ComboBox>(window,"transition_entry");var exit=SimpleControl<ComboBox>(window,"transition_exit");
+        int entryIndex=entry.SelectedIndex,exitIndex=exit.SelectedIndex,text=WorkspaceAppearance.TextPercent;var originalSize=window.ClientSize;
+        string originalOptions=new JavaScriptSerializer().Serialize(window.ReadOptions());
+        try
+        {
+            foreach(int percent in new[]{100,200})
+            {
+                Call(form,"SetWorkspaceTextSize",percent);window.ApplyTextSize();window.ClientSize=new Size(980,720);window.PerformLayout();
+                var fixedSize=window.ClientSize;
+                void Selection(int start,int end,string name)
+                {
+                    entry.SelectedIndex=start;exit.SelectedIndex=end;
+                    BoundaryRangeTextFits(window,percent+"% "+name+" without dialog resize");
+                    Check(window.ClientSize==fixedSize,"Range selection relayout preserves dialog size: "+percent+"% "+name);
+                }
+                Selection(0,0,"original boundaries");Selection(entryIndex,0,"start only");Selection(entryIndex,exitIndex,"both boundaries");
+                Selection(0,exitIndex,"end only");Selection(0,0,"cleared boundaries");Selection(entryIndex,exitIndex,"restored boundaries");
+            }
+        }
+        finally
+        {
+            entry.SelectedIndex=entryIndex;exit.SelectedIndex=exitIndex;
+            Call(form,"SetWorkspaceTextSize",text);window.ApplyTextSize();window.ClientSize=originalSize;window.PerformLayout();
+        }
+        Check(new JavaScriptSerializer().Serialize(window.ReadOptions())==originalOptions,"Range layout probes restore every fitting setting before preparation");
+    }
     static async Task WorkspaceBoundaryFit(string[] args,string output)
     {
         if(!PrivateDesktop)throw new InvalidOperationException("Start/end fitting uses a private desktop only.");
@@ -64,6 +100,7 @@ internal static partial class Program
                         Check(window.ReadOptions().EntrySamples==5&&window.ReadOptions().ExitSamples==exitSamples,"Simple displayed join frames map exactly to existing inclusive native sample settings");
                         var summary=SimpleControl<Label>(window,"transitionRanges");
                         Check(summary.Text.Contains("1–5")&&summary.Text.Contains((exitJoin+1)+"–"+source.FrameCount)&&summary.Text.Contains("join frames shared"),"Live summary exposes both transition ranges, unchanged middle and shared joins");
+                        BoundaryRangeSelectionLayout(form,window);
                         SimpleControl<CheckBox>(window,"transition_boundaryContactRecovery").Checked=contacts.Length>0;
                         SimpleControl<CheckBox>(window,"transition_binding").Checked=true;
                         if(args.Contains("--workspace-foot-recovery")){SimpleControl<CheckBox>(window,"transition_preventFootDipping").Checked=true;SimpleControl<CheckBox>(window,"transition_floorReviewed").Checked=true;}
@@ -109,6 +146,7 @@ internal static partial class Program
                         foreach(int percent in new[]{100,200})foreach(var size in new[]{new Size(980,720),new Size(1600,960)})
                         {
                             Call(form,"SetWorkspaceTextSize",percent);window.ApplyTextSize();window.ClientSize=size;window.PerformLayout();
+                            BoundaryRangeTextFits(window,size.Width+" / "+percent+"% final prepared settings");
                             await CaptureWindow(window,Path.Combine(output,"simple-fit-"+size.Width+"-"+percent+".png"));
                             var panel=(FlowLayoutPanel)Field(window,"fields");var visible=panel.Controls.Cast<Control>().Where(c=>c.Visible).OrderBy(c=>c.Top).ToArray();
                             File.WriteAllText(Path.Combine(output,"layout-"+size.Width+"-"+percent+".json"),new JavaScriptSerializer().Serialize(visible.Select(c=>new{c.Name,c.Text,c.Bounds,c.MinimumSize,c.MaximumSize,c.AutoSize}).ToArray()));

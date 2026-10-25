@@ -32,6 +32,7 @@ internal static partial class Program
         int undo=editor._undoSaves.Count;bool dirty=(bool)Field(form,"_fighterDirty"),targetDirty=target.IsDirty;
         var children=selected.Children.ToArray();var pose=target._linker.BoneCache.Select(b=>b.FrameState).ToArray();
         Call(form,"SetSimpleWorkspaceStage",2);var action=SimpleControl<Button>(form,"workspaceLoopInspectionAction");
+        if(!action.Visible)SimpleControl<Button>(form,"workspaceMoreActions").PerformClick();
         Check(action.Visible&&action.Enabled,"Preview and fix exposes Inspect loop / seam for the exact project-owned CHR0");
         Call(form,"RestoreWorkspaceFocus",action);action.PerformClick();var report=LoopReport(form);
         Check(report!=null&&report.Frames==selected.FrameCount&&!report.Loop&&report.Bones.Length==target._linker.BoneCache.Length,"Inspector reads already-owned original Next result and native target without a donor requirement");

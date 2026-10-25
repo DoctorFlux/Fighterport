@@ -27,6 +27,13 @@ namespace BrawlCrate.UI
         private string _loadedControlModelHash,_loadedControlClipHash;
         private string[] _controlBoneNames;
         private Form _controlsWindow;
+        private FighterProject _controlObservedProject;
+        private object _controlObservedModel;
+        private CHR0Node _controlObservedClip;
+        private bool _controlSelectionObserved;
+        internal int ControlSelectionEvents { get; private set; }
+        internal int ControlSelectionInvalidations { get; private set; }
+        internal int ControlLoadRequests { get; private set; }
         internal int ControlRotationAxis=1;
 
         private string ControlKey()=> (_fighterProject.Model?.Id??"model")+"|"+(_fighterProject.ModelNodePath??"")+"|"+(SelectedFighterAnimationKey()??"pose");
@@ -75,12 +82,35 @@ namespace BrawlCrate.UI
             modelEditControl1.AnimationCurveTargetChanged=ObserveControlCurve;
             modelEditControl1.AnimationCurveEdited=QueueControlCurveEdit;
             modelEditControl1.ControlChannelEdited=EditControlChannel;
-            modelEditControl1.TargetModelChanged+=(s,e)=>InvalidateControls();
-            modelEditControl1.leftPanel.listAnims.SelectedIndexChanged+=(s,e)=>InvalidateControls();
+            modelEditControl1.TargetModelChanged+=(s,e)=>ObserveControlSelection();
+            modelEditControl1.leftPanel.listAnims.SelectedIndexChanged+=(s,e)=>ObserveControlSelection();
+            // A selection made during playback must prepare only after native
+            // playback stops. Idle checks flags only; it never snapshots a
+            // model or calls the engine while the clock is running.
+            EventHandler deferredSetup=(s,e)=>
+            {
+                if(_controlReloadRequested&&!IsDisposed&&!Disposing&&!modelEditControl1.Playing&&
+                    !_controlBusy&&!_retargetBusy&&!_workspaceBusy)QueueControlSetup();
+            };
+            Application.Idle+=deferredSetup;
+            Disposed+=(s,e)=>Application.Idle-=deferredSetup;
             FormClosed+=(s,e)=>{_controlEpoch++;_controlEngine.Dispose();_controlsWindow?.Dispose();try{if(Directory.Exists(_controlStage))Directory.Delete(_controlStage,true);}catch(IOException){}};
+        }
+        private void ObserveControlSelection()
+        {
+            ControlSelectionEvents++;
+            var model=modelEditControl1.TargetModel;var clip=modelEditControl1.SelectedCHR0;
+            if(_controlSelectionObserved&&ReferenceEquals(_controlObservedProject,_fighterProject)&&
+                ReferenceEquals(_controlObservedModel,model)&&ReferenceEquals(_controlObservedClip,clip))return;
+            ControlSelectionInvalidations++;
+            InvalidateControls();
         }
         private void InvalidateControls()
         {
+            // Explicit invalidation (including a reviewed rig-coordinate change)
+            // always wins, even when native selection identities are unchanged.
+            _controlSelectionObserved=true;_controlObservedProject=_fighterProject;
+            _controlObservedModel=modelEditControl1.TargetModel;_controlObservedClip=modelEditControl1.SelectedCHR0;
             InvalidateLoopInspection("Control bindings changed. Refresh to inspect the current native data.");
             _controlEpoch++;_loadedControlKey=null;modelEditControl1.AnimationAuthoringPose=null;modelEditControl1.AnimationPins=new ControlPin[0];modelEditControl1.AnimationHandles=new ControlPin[0];modelEditControl1.SelectedAnimationPin=null;RefreshControlTree();
             // Setup after loading, including model-only documents. No donor needed.
@@ -89,9 +119,9 @@ namespace BrawlCrate.UI
         private void QueueControlSetup()
         {
             if(!IsHandleCreated||IsDisposed)return;
-            if(_controlBusy||_retargetBusy||_workspaceBusy){_controlReloadRequested=true;return;}
+            if(_controlBusy||_retargetBusy||_workspaceBusy||modelEditControl1.Playing){_controlReloadRequested=true;return;}
             if(_controlSetupQueued)return;_controlSetupQueued=true;
-            BeginInvoke(new Action(()=>{_controlSetupQueued=false;if(_controlBusy||_retargetBusy||_workspaceBusy){_controlReloadRequested=true;return;}_controlReloadRequested=false;if(modelEditControl1.TargetModel!=null&&!modelEditControl1.Playing)ControlAction(async()=>{await LoadControls();});}));
+            BeginInvoke(new Action(()=>{_controlSetupQueued=false;if(IsDisposed||Disposing)return;if(_controlBusy||_retargetBusy||_workspaceBusy||modelEditControl1.Playing){_controlReloadRequested=true;return;}_controlReloadRequested=false;if(modelEditControl1.TargetModel!=null)ControlAction(async()=>{await LoadControls();});}));
         }
         private async void ControlAction(Func<Task> action)
         {
@@ -105,6 +135,7 @@ namespace BrawlCrate.UI
             if(modelEditControl1.Playing)throw new InvalidOperationException("Pause playback before setting up or editing controls.");
             var model=modelEditControl1.TargetModel as MDL0Node??throw new InvalidOperationException("Open a supported native model first.");
             var clip=modelEditControl1.SelectedCHR0;string key=ControlKey();int epoch=++_controlEpoch,frame=modelEditControl1.CurrentFrame;
+            ControlLoadRequests++;
             Directory.CreateDirectory(_controlStage);string modelPath=Path.Combine(_controlStage,Guid.NewGuid().ToString("N")+".mdl0"),motionPath=clip==null?null:Path.Combine(_controlStage,Guid.NewGuid().ToString("N")+".chr0");
             // Snapshot actual edited native nodes on their owner thread. Workers
             // never touch controls/native scene objects or run during playback.

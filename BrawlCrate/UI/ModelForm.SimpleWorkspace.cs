@@ -27,6 +27,9 @@ namespace BrawlCrate.UI
         private bool _simpleWorkspaceFocused, _simpleWorkspaceLayingOut;
         private bool _simpleWorkspaceLastBusy;
         private string _simpleWorkspaceSourceIssue, _simpleWorkspaceIssueClip;
+        private Size _workspaceLayoutSize = new Size(-1, -1);
+        private int _workspaceLayoutFlags = -1, _workspaceLayoutText = -1, _workspaceLayoutMinimum;
+        private long DiagnosticWorkspaceLayouts;
 
         private bool SimpleWorkspaceBusy =>
             _controlBusy || _retargetBusy || _workspaceBusy || _pinGesture != null;
@@ -477,11 +480,11 @@ namespace BrawlCrate.UI
             _simpleWorkspaceSummary.Text = (_comparisonPane?.Visible == true ? "Compare: " + (savedSourceName ?? "No recorded source") : sourceReady ? selectedSource.Clip.Name :
                 savedSource == null ? "Choose a source" : "Saved source: " + savedSourceName) +
                 "  →  " + (hasTarget ? targetModel.Name : "Choose a target");
+            _simpleWorkspaceSummary.ToolTipText = _simpleWorkspaceSummary.Text;
             _simpleWorkspaceLibrary.Checked = _libraryPane?.Visible == true;
             _simpleWorkspaceWorkflow.Enabled = !busy;
             _simpleWorkspaceOptions.Enabled = !busy;
             _simpleWorkspaceFocus.Checked = _simpleWorkspaceFocused;
-            _simpleWorkspaceFocus.Text = _simpleWorkspaceFocused ? "Show workflow" : "Focus editor";
             _simpleWorkspaceNewProject.Enabled = _simpleWorkspaceOpenProject.Enabled =
                 _simpleWorkspaceMoreTools.Enabled = _simpleWorkspaceLibrary.Enabled = !busy;
             LayoutSimpleWorkspace();
@@ -490,9 +493,33 @@ namespace BrawlCrate.UI
         private void LayoutSimpleWorkspace()
         {
             if (_simpleWorkspaceBody == null || _simpleWorkspaceLayingOut) return;
+            // Status/Undo notifications often carry the same presentation state.
+            // Do not resize the complete native editor again for those updates.
+            // Content-dependent drawers still measure themselves when visible.
+            int flags = (_loopInspectionPane?.Visible == true ? 1 : 0) |
+                (_batchReviewPane?.Visible == true ? 2 : 0) | (_comparisonPane?.Visible == true ? 4 : 0) |
+                (_libraryPane?.Visible == true ? 8 : 0) | (_simpleWorkspaceFocused ? 16 : 0) |
+                (_simpleWorkspaceDrawer ? 32 : 0) | (_libraryLease != null ? 64 : 0);
+            int minimum = NativeWorkspaceMinimumWidth;
+            if (_workspaceLayoutSize == _simpleWorkspaceBody.ClientSize && _workspaceLayoutFlags == flags &&
+                _workspaceLayoutText == WorkspaceAppearance.TextPercent && _workspaceLayoutMinimum == minimum)
+            {
+                _simpleWorkspaceLayingOut = true;
+                try
+                {
+                    if ((flags & 1) != 0) LayoutLoopInspection(_workspaceLayoutSize.Width, _workspaceLayoutSize.Height);
+                    if ((flags & 2) != 0) LayoutBatchReview(_workspaceLayoutSize.Width, _workspaceLayoutSize.Height);
+                    if ((flags & 8) != 0) LayoutSimpleWorkspaceLibraryPreview();
+                    RestoreWorkspaceOverlayOrder();
+                }
+                finally { _simpleWorkspaceLayingOut = false; }
+                return;
+            }
             _simpleWorkspaceLayingOut = true;
+            _simpleWorkspaceBody.SuspendLayout();
             try
             {
+                DiagnosticWorkspaceLayouts++;
                 LayoutWorkspaceBars();
                 int width=_simpleWorkspaceBody.ClientSize.Width;
                 int height=_simpleWorkspaceBody.ClientSize.Height;
@@ -517,10 +544,10 @@ namespace BrawlCrate.UI
                 _simpleWorkspaceTask.Dock=fits?DockStyle.Right:DockStyle.None;
                 _simpleWorkspaceTask.Width=taskWidth;
                 if(!fits)_simpleWorkspaceTask.Bounds=new Rectangle(width-taskWidth,0,taskWidth,height);
-                LayoutBatchReview(width, height); LayoutLoopInspection(width, height);
+                if (reviewing) LayoutBatchReview(width, height);
+                if (inspecting) LayoutLoopInspection(width, height);
                 modelEditControl1.BringToFront();
-                LayoutSimpleWorkspaceLibraryPreview();
-                _simpleWorkspaceBody.PerformLayout();
+                if (libraryVisible) LayoutSimpleWorkspaceLibraryPreview();
                 if(reviewing && _batchReviewPane.Dock==DockStyle.None)_batchReviewPane.BringToFront();
                 if(inspecting && _loopInspectionPane.Dock==DockStyle.None)_loopInspectionPane.BringToFront();
                 if(libraryOverlay)_libraryPane.BringToFront();
@@ -528,8 +555,30 @@ namespace BrawlCrate.UI
                 _simpleWorkspaceWorkflow.Checked=showTask;
                 _simpleWorkspaceWorkflow.ToolTipText=showTask?"Hide workflow tasks to make room for the native editor":"Show the current task and next action";
                 _simpleWorkspaceWorkflow.ToolTipText += ". F6 moves between regions; Escape closes tasks when they have focus.";
+                _workspaceLayoutSize = _simpleWorkspaceBody.ClientSize;
+                _workspaceLayoutFlags = flags;
+                _workspaceLayoutText = WorkspaceAppearance.TextPercent;
+                _workspaceLayoutMinimum = minimum;
             }
-            finally { _simpleWorkspaceLayingOut = false; }
+            finally
+            {
+                _simpleWorkspaceBody.ResumeLayout(true);
+                RestoreWorkspaceOverlayOrder();
+                _simpleWorkspaceLayingOut = false;
+            }
+            // A text/bar resize can settle the fill region during ResumeLayout.
+            // Its SizeChanged was guarded above; finish that geometry once here.
+            if (_workspaceLayoutSize != _simpleWorkspaceBody.ClientSize) LayoutSimpleWorkspace();
+        }
+
+        private void RestoreWorkspaceOverlayOrder()
+        {
+            // Native layout can raise its fill editor while a text/size change
+            // settles. Restore visible overlays after that layout, without
+            // forcing another editor resize on unchanged status notifications.
+            foreach (Control pane in new Control[] { _batchReviewPane, _loopInspectionPane, _libraryPane, _simpleWorkspaceTask })
+                if (pane?.Visible == true && pane.Dock == DockStyle.None &&
+                    _simpleWorkspaceBody.Controls.GetChildIndex(pane) != 0) pane.BringToFront();
         }
 
         private void LayoutSimpleWorkspaceLibraryPreview()

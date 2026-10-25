@@ -100,6 +100,12 @@ internal static partial class Program
                 foreach(int text in new[]{100,200})foreach(int width in new[]{1050,1700})
                 {
                     form.ClientSize=new Size(width,950);Call(form,"SetWorkspaceTextSize",text);Call(form,"ClearLibraryFilters");await LibraryQuerySettled(form);
+                    var filters=SimpleControl<Control>(form,"libraryFilters");
+                    var toggle=SimpleControl<Button>(form,"libraryToggleFilters");
+                    if(filters.Visible)toggle.PerformClick();
+                    Check(!filters.Visible&&SimpleControl<CheckBox>(form,"libraryFavoritesOnly").Visible&&SimpleControl<Button>(form,"libraryClearFilters").Visible,
+                        "Advanced filters collapse while the common query controls stay available at "+width+"/"+text);
+                    toggle.PerformClick();
                     SimpleControl<TextBox>(form,"librarySearch").Text="Wait1";
                     SimpleControl<TextBox>(form,"libraryGameFilter").Text="Brawl Local fixture";
                     SimpleControl<TextBox>(form,"libraryCharacterFilter").Text=model.Name;
@@ -109,7 +115,15 @@ internal static partial class Program
                     await LibraryQuerySettled(form);
                     var tree=SimpleControl<TreeView>(form,"libraryClips");var rows=AllNodes(tree.Nodes).Select(n=>n.Tag as LibrarySearchItem).Where(i=>i!=null).ToArray();
                     Check(rows.Length==1&&rows[0].Clip.Id==selected.Clip.Id&&SimpleControl<Label>(form,"libraryPage").Text.StartsWith("1 matches"),"Combined UI filters precede outline and count at "+width+"/"+text);
+                    Check(toggle.Text.Contains("4 active"),"Advanced filter disclosure reports all four active criteria at "+width+"/"+text);
+                    int expandedTreeHeight=tree.Height;
                     await CaptureSimpleWorkspace(form,Path.Combine(output,"library-filters-"+width+"-"+text+".png"));
+                    toggle.PerformClick();
+                    var collapsedRows=AllNodes(tree.Nodes).Select(n=>n.Tag as LibrarySearchItem).Where(i=>i!=null).ToArray();
+                    Check(!filters.Visible&&toggle.Text.Contains("4 active")&&collapsedRows.Length==1&&collapsedRows[0].Clip.Id==selected.Clip.Id&&
+                        SimpleControl<TextBox>(form,"libraryGameFilter").Text=="Brawl Local fixture"&&tree.Height>=expandedTreeHeight,
+                        "Hiding advanced filters retains exact criteria/results and restores tree space at "+width+"/"+text);
+                    await CaptureSimpleWorkspace(form,Path.Combine(output,"library-collapsed-"+width+"-"+text+".png"));
                     Check(ReferenceEquals(comparison,Field(form,"_comparisonLease"))&&LifecycleContent(editor.SelectedCHR0)==content&&editor.CurrentFrame==3&&editor._undoSaves.Count==undo,"Filtering preserves exact target/frame/Undo and retained comparison at "+width+"/"+text);
                 }
                 typeof(ModelForm).GetMethod("FocusWorkspaceTarget",System.Reflection.BindingFlags.Static|System.Reflection.BindingFlags.NonPublic).Invoke(null,new object[]{favorite});

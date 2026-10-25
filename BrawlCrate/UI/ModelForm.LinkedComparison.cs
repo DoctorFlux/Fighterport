@@ -25,6 +25,7 @@ namespace BrawlCrate.UI
         private object _comparisonOpener;
         private string _comparisonProvenance;
         internal float ComparisonSourceFrame { get; private set; }
+        internal int ComparisonSampleCount { get; private set; }
 
         private static string ComparisonSourceKey(LibraryClipReference source)
         {
@@ -145,14 +146,16 @@ namespace BrawlCrate.UI
                 !ReferenceEquals(_comparisonTarget, modelEditControl1.TargetModel) ||
                 _comparisonClip.FrameCount != _comparisonFrames || _comparisonClip.Loop != _comparisonLoop)
             { ReleaseComparisonSource(); _comparisonStatus.Text = "Linked comparison unavailable\nTarget selection or timing changed. Choose Compare source again."; return; }
+            // A retained lease lets the drawer reopen without loading again.
+            // Hidden comparison is dormant: native skinning can be expensive
+            // even when the source viewport itself is not being painted.
+            if (_comparisonPane?.Visible != true) return;
             ComparisonSourceFrame = _comparisonMap(frame);
             _comparisonLease.Model.ApplyCHR(frame <= 0 ? null : _comparisonLease.Animation, ComparisonSourceFrame);
-            if (_comparisonPane.Visible)
-            {
-                _comparisonTime.Text = frame <= 0 ? "Bind poses · use the target timeline" :
-                    "Source " + ComparisonSourceFrame.ToString("0.###") + " / target " + frame.ToString("0.###");
-                _comparisonViewport.Invalidate();
-            }
+            ComparisonSampleCount++;
+            _comparisonTime.Text = frame <= 0 ? "Bind poses · use the target timeline" :
+                "Source " + ComparisonSourceFrame.ToString("0.###") + " / target " + frame.ToString("0.###");
+            _comparisonViewport.Invalidate();
         }
 
         private void FrameComparisonSource()

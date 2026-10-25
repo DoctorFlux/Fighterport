@@ -19,6 +19,8 @@ namespace BrawlCrate.Studio
         internal readonly ModelPanel Viewport=new ModelPanel{Dock=DockStyle.Fill};
         internal readonly MDL0Node Model;internal readonly Label Heading=new Label{Dock=DockStyle.Top,Height=38,Padding=new Padding(5)};
         internal SceneFittingOptions Options;internal float[] Up,Forward;internal bool Source;
+        internal int ReferencePreviewSamples { get; private set; }
+        internal int ReferencePreviewSkinPasses { get; private set; }
         internal FittingModelView(MDL0Node model,ResourceNode root,string title,bool source,ModelPanelViewport viewer,IEnumerable<ResourceNode> references=null)
         {
             Model=model;Source=source;Heading.Text=title;
@@ -41,7 +43,13 @@ namespace BrawlCrate.Studio
         {
             if(reference==null||source==null||protectedControls==null||float.IsNaN(referenceFrame)||float.IsInfinity(referenceFrame)||float.IsNaN(sourceFrame)||float.IsInfinity(sourceFrame)||referenceFrame<1||referenceFrame>reference.FrameCount||sourceFrame<1||sourceFrame>source.FrameCount)
                 throw new InvalidDataException("Reference-body preview requires valid native frames and reviewed source motion controls.");
-            Model.ApplyCHR(reference,referenceFrame);
+            // This model belongs to the independent preview. The reference
+            // pose is intermediate: its geometry is never shown before the
+            // reviewed controls below have been replaced. Keep native curve/FK
+            // evaluation, and skin the final composed pose only once.
+            bool suppressMesh=Model._dontUpdateMesh;
+            try { Model._dontUpdateMesh=true;Model.ApplyCHR(reference,referenceFrame); }
+            finally { Model._dontUpdateMesh=suppressMesh; }
             foreach(string name in protectedControls.Distinct(StringComparer.Ordinal))
             {
                 var bone=Model._linker.BoneCache.SingleOrDefault(b=>b.Name==name)??throw new InvalidDataException("A reviewed motion control is missing from the reference preview model: "+name);
@@ -52,7 +60,9 @@ namespace BrawlCrate.Studio
             // Recalculate complete native FK and skinning after replacing only
             // reviewed control locals. The source and reference clips stay owned
             // and unchanged; this path performs no loading, hashing or solving.
-            Model.WeightMeshes();Viewport.Invalidate();
+            Model.WeightMeshes();ReferencePreviewSamples++;
+            if(!suppressMesh)ReferencePreviewSkinPasses++;
+            Viewport.Invalidate();
         }
         private void DrawSupport()
         {

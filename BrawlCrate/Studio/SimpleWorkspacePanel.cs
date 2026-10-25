@@ -29,6 +29,7 @@ namespace BrawlCrate.Studio
         private readonly Button _transitions;
         private readonly Button _timing;
         private readonly Button _save;
+        private readonly Button _moreActions;
         private readonly Button _details;
         private Font _headingFont;
         private Font _sectionFont;
@@ -43,6 +44,11 @@ namespace BrawlCrate.Studio
         private bool _busy;
         private bool _canRepair;
         private string _readinessText;
+        private bool _hasState, _showMoreActions;
+        private int _lastTextWidth = -1, _lastTextHeight = -1;
+
+        internal int ActionRefreshes { get; private set; }
+        internal int TextWidthUpdates { get; private set; }
 
         internal event Action<int> StageRequested;
         internal event Action<string> ActionRequested;
@@ -113,14 +119,26 @@ namespace BrawlCrate.Studio
             _tooltips.SetToolTip(_exportSet, _exportSet.AccessibleDescription);
             _review = AddAction("workspaceReviewResultsAction", "Review results", "review-results");
             _compare = AddAction("workspaceCompareSourceAction", "Compare source", "compare");
+            _transitions = AddAction("workspaceTransitionsAction", "Fit start and end", "transitions");
+            _motions = AddAction("workspaceMotionsAction", "Add target animations", "motions");
+            _save = AddAction("workspaceSaveAction", "Save project", "save");
+            _moreActions = ActionButton("workspaceMoreActions", "More actions", null);
+            _moreActions.AccessibleDescription = "Show additional inspection, control and source-timing actions. Expanding changes only this workspace panel.";
+            _tooltips.SetToolTip(_moreActions, _moreActions.AccessibleDescription);
+            _moreActions.Click += (sender, args) =>
+            {
+                if (_busy) return;
+                _showMoreActions = !_showMoreActions;
+                UpdateActions();
+                _scroll.ScrollControlIntoView(_moreActions);
+                _moreActions.Focus();
+            };
+            AddRow(_moreActions);
             _loopInspection = AddAction("workspaceLoopInspectionAction", "Inspect loop / seam", "loop-inspection");
             _loopInspection.AccessibleDescription = "Inspect native first, last and extra loop-closing poses without changing the animation. F6 moves regions; Refresh updates measurements after edits.";
             _tooltips.SetToolTip(_loopInspection, _loopInspection.AccessibleDescription);
             _controls = AddAction("workspaceControlsAction", "Set up controls", "controls");
-            _motions = AddAction("workspaceMotionsAction", "Add target animations", "motions");
-            _transitions = AddAction("workspaceTransitionsAction", "Fit start and end", "transitions");
             _timing = AddAction("workspaceTimingAction", "Source timing / batch", "timing");
-            _save = AddAction("workspaceSaveAction", "Save project", "save");
             _details = AddAction("workspaceDetailsAction", "More tools", "details");
             _details.Margin = new Padding(0, 12, 0, 6);
 
@@ -140,6 +158,7 @@ namespace BrawlCrate.Studio
         {
             if (stage < 0 || stage > 3)
                 throw new ArgumentOutOfRangeException(nameof(stage));
+            if (_stage == stage) return;
             _stage = stage;
             UpdateActions();
         }
@@ -148,9 +167,16 @@ namespace BrawlCrate.Studio
             bool hasSource, bool hasTarget, bool canTransfer, bool canExport, bool busy,
             string readiness = null, bool canRepair = false)
         {
-            _source.Text = Summary(source, "No source selected");
-            _target.Text = Summary(target, "No target model open");
-            _result.Text = Summary(result, "No transfer result");
+            source = Summary(source, "No source selected");
+            target = Summary(target, "No target model open");
+            result = Summary(result, "No transfer result");
+            if (_hasState && _source.Text == source && _target.Text == target && _result.Text == result &&
+                _hasSource == hasSource && _hasTarget == hasTarget && _canTransfer == canTransfer &&
+                _canExport == canExport && _busy == busy && _readinessText == readiness && _canRepair == canRepair) return;
+            _hasState = true;
+            _source.Text = source;
+            _target.Text = target;
+            _result.Text = result;
             _hasSource = hasSource;
             _hasTarget = hasTarget;
             _canTransfer = canTransfer;
@@ -163,6 +189,7 @@ namespace BrawlCrate.Studio
 
         private void UpdateActions()
         {
+            ActionRefreshes++;
             SuspendLayout();
             _layout.SuspendLayout();
             try
@@ -170,10 +197,10 @@ namespace BrawlCrate.Studio
                 _heading.Text = new[] { "1  Source", "2  Target", "3  Preview and fix", "4  Export" }[_stage];
                 _hint.Text = new[]
                 {
-                    "Choose animations from the source library. Each clip keeps its original model.",
-                    "Open the model you want to animate. Native editing also works without a source clip.",
-                    "Preview the transfer, then use the full native editor to review and adjust the result.",
-                    "Export the selected target animation or save the project to continue later."
+                    "Choose an animation and its original model.",
+                    "Choose the model you want to animate.",
+                    "Review the selected animation in the native editor.",
+                    "Export animations or save your project."
                 }[_stage];
                 string action;
                 string label;
@@ -224,11 +251,14 @@ namespace BrawlCrate.Studio
                 _exportSet.Enabled = _hasTarget && !_busy;
                 _review.Visible = _stage == 2 || _stage == 3;
                 _review.Enabled = _hasTarget && !_busy;
-                _loopInspection.Visible = _stage == 2;
+                _moreActions.Text = _showMoreActions ? "Fewer actions" : "More actions";
+                _moreActions.AccessibleName = _moreActions.Text;
+                _moreActions.Enabled = !_busy;
+                _loopInspection.Visible = _stage == 2 && _showMoreActions;
                 _loopInspection.Enabled = _hasTarget && _canExport && !_busy;
                 _compare.Visible = _stage == 2;
                 _compare.Enabled = _hasTarget && _canExport && !_busy;
-                _controls.Visible = _stage == 1 || _stage == 2;
+                _controls.Visible = (_stage == 1 || _stage == 2) && _showMoreActions;
                 _controls.Text = _stage == 2 ? "Fix hand or foot" : "Set up controls";
                 _controls.AccessibleName = _controls.Text;
                 _controls.Enabled = _hasTarget && !_busy;
@@ -236,10 +266,11 @@ namespace BrawlCrate.Studio
                 _motions.Enabled = _hasTarget && !_busy;
                 _transitions.Visible = _stage == 2;
                 _transitions.Enabled = _hasTarget && _canExport && !_busy;
-                _timing.Visible = _stage == 2;
+                _timing.Visible = _stage == 2 && _showMoreActions;
                 _timing.Enabled = _hasSource && _hasTarget && !_busy;
                 _save.Visible = _stage == 3;
                 _save.Enabled = _hasTarget && !_busy;
+                _details.Visible = _showMoreActions;
                 _details.Enabled = !_busy;
             }
             finally
@@ -247,6 +278,7 @@ namespace BrawlCrate.Studio
                 _layout.ResumeLayout(true);
                 ResumeLayout(true);
             }
+            UpdateTextWidths();
         }
 
         private string DefaultReadiness()
@@ -322,7 +354,7 @@ namespace BrawlCrate.Studio
                 Margin = new Padding(0, 0, 0, 6),
                 UseMnemonic = false
             };
-            button.Click += (sender, args) => ActionRequested?.Invoke((string)button.Tag);
+            button.Click += (sender, args) => { if (button.Tag is string command) ActionRequested?.Invoke(command); };
             return button;
         }
 
@@ -343,6 +375,8 @@ namespace BrawlCrate.Studio
         private void UpdateTextWidths()
         {
             int width = Math.Max(1, ClientSize.Width - Padding.Horizontal - SystemInformation.VerticalScrollBarWidth);
+            if (_lastTextWidth == width && _lastTextHeight == Font.Height) return;
+            _lastTextWidth = width; _lastTextHeight = Font.Height; TextWidthUpdates++;
             _readiness.MaximumSize = new Size(width, Font.Height*4);
             foreach (Control control in _layout.Controls)
                 if (control is Label)

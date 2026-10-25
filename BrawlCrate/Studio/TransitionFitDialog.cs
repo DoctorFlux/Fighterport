@@ -144,6 +144,7 @@ namespace BrawlCrate.Studio
                         int inset=c is CheckBox?Font.Height+8:c is Button?20:0;
                         int textWidth=Math.Max(80,content-inset);var measured=TextRenderer.MeasureText(c.Text,c.Font,new Size(textWidth,int.MaxValue),TextFormatFlags.WordBreak|TextFormatFlags.NoPadding);
                         c.AutoSize=false;c.Width=c is Button?Math.Min(content,measured.Width+24):content;c.Height=measured.Height+(c is Button?16:8);
+                        if(c is Label)c.Height=Math.Max(c.Height,c.GetPreferredSize(new Size(content,int.MaxValue)).Height);
                     }
                     else {c.Width=content;if(c is NumericUpDown||c is ComboBox||c is TextBox box&&!box.Multiline)c.MinimumSize=new Size(0,c.Font.Height+10);}
                 }
@@ -201,7 +202,16 @@ namespace BrawlCrate.Studio
             if(!inputs.ContainsKey("exitStart"))return;
             bool entry=Choice("entry")!=null,exit=Choice("exit")!=null;int first=entry?(int)N("entrySamples"):1,last=exit?(int)N("exitStart"):source.FrameCount;
             inputs["both"].Enabled=entry;inputs["entrySamples"].Enabled=entry;inputs["exitStart"].Enabled=exit;
-            ranges.Text=(entry?"Start: 1–"+first+"\r\n":"")+"Attack unchanged: "+first+"–"+last+(exit?"\r\nEnd: "+last+"–"+source.FrameCount:"")+"\r\nTotal: "+source.FrameCount+" frames · join frames shared"+(first>=last?"\r\nTransitions overlap; shorten a range.":"");
+            string text=(entry?"Start: 1–"+first+"\r\n":"")+"Attack unchanged: "+first+"–"+last+(exit?"\r\nEnd: "+last+"–"+source.FrameCount:"")+"\r\nTotal: "+source.FrameCount+" frames · join frames shared"+(first>=last?"\r\nTransitions overlap; shorten a range.":"");
+            if(ranges.Text!=text)
+            {
+                ranges.Text=text;
+                // LayoutFields fixes label heights after measuring their text.
+                // Adding/removing a boundary changes this label's line count
+                // without resizing the dialog. Measure the new text now; the
+                // timeline never invokes this settings-only path.
+                layoutFields?.Invoke();
+            }
             ranges.AccessibleDescription=ranges.Text+". Inclusive native display frames; unchanged join poses belong to both adjacent sections.";
         }
         void Changed(){if(loading)return;generation++;if(Busy){CancelWork?.Invoke();SetBusy(false);}Discard();report.Text="Settings changed; prepare a new result.";}

@@ -15,7 +15,8 @@ namespace BrawlCrate.UI
         // Navigation/preferences only. All authored data and Undo stay native.
         private sealed class BatchReviewRow
         {
-            internal string Key, AssetId, NativeId, Content, TargetContent, Recipe, SourceLabel;
+            internal string Key, AssetId, NativeId, Content, TargetContent, SourceLabel;
+            internal BatchReviewRecipe Recipe;
             internal CHR0Node Clip;
             internal MDL0Node Target;
             internal bool Approved;
@@ -35,14 +36,56 @@ namespace BrawlCrate.UI
         private object _batchReviewLastTarget;
         private bool _batchReviewLastBusy;
 
+        // Large receipts and frozen native snapshots are immutable strings.
+        // Retain their exact values instead of escaping/copying them through
+        // JSON on every approval dependency check. Small mutable metadata is
+        // serialized afresh, so direct in-place recipe changes remain visible.
+        private sealed class BatchReviewRecipe
+        {
+            internal string Scalars;
+            internal string[] Text;
+            public static bool operator ==(BatchReviewRecipe a,BatchReviewRecipe b)=>ReferenceEquals(a,b)||
+                !ReferenceEquals(a,null)&&!ReferenceEquals(b,null)&&string.Equals(a.Scalars,b.Scalars,StringComparison.Ordinal)&&a.Text.SequenceEqual(b.Text,StringComparer.Ordinal);
+            public static bool operator !=(BatchReviewRecipe a,BatchReviewRecipe b)=>!(a==b);
+            public override bool Equals(object value)=>this==value as BatchReviewRecipe;
+            public override int GetHashCode()=>Scalars.GetHashCode();
+        }
+        internal int BatchReviewRecipeCaptures { get; private set; }
+        internal long BatchReviewRecipeScalarCharacters { get; private set; }
+        internal long BatchReviewRecipeRetainedCharacters { get; private set; }
+
         private FighterAsset ReviewAsset(BatchReviewRow row) => RegisteredFighterAssets().FirstOrDefault(a => a.Id == row.AssetId);
-        private string ReviewRecipe(FighterAsset asset)
+        private BatchReviewRecipe ReviewRecipe(FighterAsset asset)
         {
             var json = new JavaScriptSerializer { MaxJsonLength = 32 * 1024 * 1024 };
-            var data = json.DeserializeObject(json.Serialize(asset.Retarget)) as Dictionary<string, object>;
-            if (data != null && data.TryGetValue("Library", out var value) && value is Dictionary<string, object> library)
-            { library.Remove("LastExportSha256"); library.Remove("LastExportFormat"); }
-            return json.Serialize(new { asset.RigIdentity, Recipe = data, asset.TransitionFit });
+            var text=new List<string>();long retained=0;
+            int Text(string value)
+            {
+                retained+=value?.Length??0;
+                if(retained>32L*1024*1024)throw new InvalidOperationException("The review recipe exceeds the 32 MiB text budget.");
+                text.Add(value);return text.Count-1;
+            }
+            object Retarget(RetargetProvenance recipe)
+            {
+                if(recipe==null)return null;
+                var library=recipe.Library?.Copy();
+                if(library!=null)library.LastExportSha256=library.LastExportFormat=null;
+                return new { recipe.Timing,recipe.ReviewDraft,EngineReceipt=Text(recipe.EngineReceipt),Library=library,
+                    recipe.Algorithm,recipe.MotionControlPolicy,recipe.SourceModelPath,recipe.SourceModelSha256,recipe.SourceRig,recipe.SourceAnimationId,recipe.SourceClip,
+                    recipe.FromProfile,recipe.ToProfile,recipe.LegScale,recipe.ArmScale,recipe.MaximumLimbResidual,recipe.ClampedLimbSamples,
+                    recipe.FloorContactsEnabled,recipe.SuspendedSupportEnabled,recipe.GroundMode,recipe.PlantedFootSamples,recipe.PlantedHandSamples,recipe.PlantedBodySamples,
+                    recipe.LockedContactSamples,recipe.MaximumContactResidual,recipe.MaximumPelvisCorrection,recipe.IgnoredSourceBones,recipe.Mapping };
+            }
+            object Transition(NativeTransitionFit fit)
+            {
+                if(fit==null)return null;
+                return new { fit.Algorithm,fit.ModelSha256,Options=Text(fit.Options),Receipt=Text(fit.Receipt),fit.InitialResultSha256,
+                    Inputs=fit.Inputs?.Select(input=>input==null?null:new { input.Role,input.AssetId,input.Entry,input.Sha256,Snapshot=Text(input.Snapshot),input.Name,input.Samples }).ToArray() };
+            }
+            string scalars=json.Serialize(new { asset.RigIdentity,Recipe=Retarget(asset.Retarget),TransitionFit=Transition(asset.TransitionFit) });
+            if(retained+scalars.Length>32L*1024*1024)throw new InvalidOperationException("The review recipe exceeds the 32 MiB text budget.");
+            BatchReviewRecipeCaptures++;BatchReviewRecipeScalarCharacters+=scalars.Length;BatchReviewRecipeRetainedCharacters+=retained;
+            return new BatchReviewRecipe { Scalars=scalars,Text=text.ToArray() };
         }
         private bool ReviewRowPresent(BatchReviewRow row) => ReviewAsset(row) != null &&
             _fighterRoots.TryGetValue(row.AssetId, out var root) && ReferenceEquals(root, row.Clip.RootNode) &&

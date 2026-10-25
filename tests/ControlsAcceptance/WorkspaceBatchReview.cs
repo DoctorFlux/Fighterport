@@ -3,10 +3,14 @@ using BrawlCrate.Studio.Retargeting;
 using BrawlCrate.UI;
 using BrawlLib.SSBB.ResourceNodes;
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
+using System.Web.Script.Serialization;
 using System.Windows.Forms;
 
 internal static partial class Program
@@ -14,6 +18,101 @@ internal static partial class Program
     static Task WorkspaceBatchReview(string[] args,string output) => LibraryBatch(args,output);
     static object[] ReviewRows(ModelForm form) => ((System.Collections.IEnumerable)Field(form,"_batchReviewRows")).Cast<object>().ToArray();
     static bool ReviewApproved(object row) => (bool)Field(row,"Approved");
+    static void SetField(object owner,string name,object value)=>owner.GetType().GetField(name,BindingFlags.Instance|BindingFlags.NonPublic).SetValue(owner,value);
+    static string LegacyReviewRecipe(FighterAsset asset)
+    {
+        // Frozen preview.32 observer, independent of the compact production
+        // snapshot. Its complete result defines the existing equality contract.
+        var json=new JavaScriptSerializer{MaxJsonLength=32*1024*1024};
+        var data=json.DeserializeObject(json.Serialize(asset.Retarget)) as Dictionary<string,object>;
+        if(data!=null&&data.TryGetValue("Library",out var value)&&value is Dictionary<string,object> library)
+        {library.Remove("LastExportSha256");library.Remove("LastExportFormat");}
+        return json.Serialize(new{asset.RigIdentity,Recipe=data,asset.TransitionFit});
+    }
+    static void ReviewRecipeProjectionCases(ModelForm form)
+    {
+        var probe=new FighterAsset{RigIdentity="Procedural exact rig",Retarget=new RetargetProvenance{
+            Timing=new NativeTimingFit{Start=1,End=8,Frames=9},Library=new LibraryClipReference(),
+            IgnoredSourceBones=new[]{"first omitted","second omitted"},Mapping=new List<RetargetBoneBinding>{new RetargetBoneBinding{Role="first",Source="source a",Target="target a"},new RetargetBoneBinding{Role="second",Source="source b",Target="target b"}}},
+            TransitionFit=new NativeTransitionFit{Inputs=new[]{new TransitionNativeInput{Role="source",Snapshot="AQID\r\n\"\\",Name="source",AssetId="asset a",Entry="entry a",Sha256="hash a",Samples=9},new TransitionNativeInput{Role="exit",Snapshot="BAUG",Name="exit",AssetId="asset b",Entry="entry b",Sha256="hash b",Samples=8}}}};
+        foreach(var owner in new object[]{probe.Retarget,probe.Retarget.Library,probe.TransitionFit})
+        foreach(var property in owner.GetType().GetProperties().Where(p=>p.PropertyType==typeof(string)))property.SetValue(owner,"Procedural "+property.Name+" \"\\\r\n");
+        string[] expectedRetarget="Timing ReviewDraft EngineReceipt Library Algorithm MotionControlPolicy SourceModelPath SourceModelSha256 SourceRig SourceAnimationId SourceClip FromProfile ToProfile LegScale ArmScale MaximumLimbResidual ClampedLimbSamples FloorContactsEnabled SuspendedSupportEnabled GroundMode PlantedFootSamples PlantedHandSamples PlantedBodySamples LockedContactSamples MaximumContactResidual MaximumPelvisCorrection IgnoredSourceBones Mapping".Split(' ');
+        Check(typeof(RetargetProvenance).GetProperties().Select(p=>p.Name).OrderBy(n=>n).SequenceEqual(expectedRetarget.OrderBy(n=>n)),"Compact review projection covers the complete current retarget metadata schema");
+        Check(typeof(NativeTransitionFit).GetProperties().Select(p=>p.Name).OrderBy(n=>n).SequenceEqual(new[]{"Algorithm","ModelSha256","Options","Receipt","InitialResultSha256","Inputs"}.OrderBy(n=>n))&&typeof(TransitionNativeInput).GetProperties().Select(p=>p.Name).OrderBy(n=>n).SequenceEqual(new[]{"Role","AssetId","Entry","Sha256","Snapshot","Name","Samples"}.OrderBy(n=>n)),"Compact review projection covers every transition and frozen-input field");
+        string original=LegacyReviewRecipe(probe);object snapshot=Call(form,"ReviewRecipe",probe);
+        void Mutation(string name,Action change,Action restore,bool same=false)
+        {
+            try{change();Check((LegacyReviewRecipe(probe)==original)==same&&snapshot.Equals(Call(form,"ReviewRecipe",probe))==same,"Compact review equality matches the complete legacy recipe: "+name);}
+            finally{restore();}
+        }
+        void Scalars(object owner,string prefix)
+        {
+            foreach(var property in owner.GetType().GetProperties())
+            {
+                object before=property.GetValue(owner),changed=null;Type type=property.PropertyType;
+                if(type==typeof(string))changed=(string)before+" changed";
+                else if(type==typeof(bool))changed=!(bool)before;
+                else if(type==typeof(int))changed=(int)before+1;
+                else if(type==typeof(float))changed=(float)before+.25f;
+                else if(type.IsEnum)changed=Enum.ToObject(type,Convert.ToInt32(before)+1);
+                else continue;
+                Mutation(prefix+property.Name,()=>property.SetValue(owner,changed),()=>property.SetValue(owner,before),prefix=="Library."&&(property.Name=="LastExportSha256"||property.Name=="LastExportFormat"));
+            }
+        }
+        Scalars(probe.Retarget,"Retarget.");Scalars(probe.Retarget.Timing,"Timing.");Scalars(probe.Retarget.Library,"Library.");Scalars(probe.TransitionFit,"Transition.");
+        foreach(var input in probe.TransitionFit.Inputs)Scalars(input,"Input "+input.Role+".");
+        foreach(var binding in probe.Retarget.Mapping)Scalars(binding,"Mapping "+binding.Role+".");
+        string rig=probe.RigIdentity;Mutation("exact target rig",()=>probe.RigIdentity+=" changed",()=>probe.RigIdentity=rig);
+        var recipe=probe.Retarget;Mutation("null retarget",()=>probe.Retarget=null,()=>probe.Retarget=recipe);
+        var timing=recipe.Timing;Mutation("null timing",()=>recipe.Timing=null,()=>recipe.Timing=timing);
+        var reference=recipe.Library;Mutation("null library",()=>recipe.Library=null,()=>recipe.Library=reference);
+        var fit=probe.TransitionFit;Mutation("null transition",()=>probe.TransitionFit=null,()=>probe.TransitionFit=fit);
+        var inputs=fit.Inputs;Mutation("null frozen inputs",()=>fit.Inputs=null,()=>fit.Inputs=inputs);
+        Mutation("frozen input order",()=>fit.Inputs=inputs.Reverse().ToArray(),()=>fit.Inputs=inputs);
+        var first=inputs[0];Mutation("null frozen input",()=>inputs[0]=null,()=>inputs[0]=first);
+        var mapping=recipe.Mapping;Mutation("null mapping",()=>recipe.Mapping=null,()=>recipe.Mapping=mapping);
+        Mutation("mapping order",()=>recipe.Mapping=mapping.AsEnumerable().Reverse().ToList(),()=>recipe.Mapping=mapping);
+        var ignored=recipe.IgnoredSourceBones;Mutation("null omitted tracks",()=>recipe.IgnoredSourceBones=null,()=>recipe.IgnoredSourceBones=ignored);
+        string omitted=ignored[0];Mutation("in-place omitted track",()=>ignored[0]+=" changed",()=>ignored[0]=omitted);
+        string engine=recipe.EngineReceipt;Mutation("null receipt",()=>recipe.EngineReceipt=null,()=>recipe.EngineReceipt=engine);
+        Mutation("equivalent immutable receipt value",()=>recipe.EngineReceipt=new string(engine.ToCharArray()),()=>recipe.EngineReceipt=engine,true);
+        var copy=new JavaScriptSerializer().Deserialize<FighterAsset>(new JavaScriptSerializer().Serialize(probe));
+        Check(snapshot.Equals(Call(form,"ReviewRecipe",copy)),"Deeply replaced but exactly equal recipe objects retain approval semantics");
+        var text=(string[])Field(snapshot,"Text");
+        Check(ReferenceEquals(text[0],recipe.EngineReceipt)&&text.Any(t=>ReferenceEquals(t,fit.Inputs[0].Snapshot)),"Large review fields retain exact immutable string identities without JSON copies");
+    }
+    static void ReviewLargeRecipeCases(ModelForm form,FighterAsset asset,object row,string output)
+    {
+        ReviewRecipeProjectionCases(form);
+        var editor=form.FighterEditor;var clip=editor.SelectedCHR0;var bone=editor.SelectedBone;int frame=editor.CurrentFrame,undo=editor._undoSaves.Count,redo=editor._redoSaves.Count;
+        string content=SetNativeContent(clip),oldEngine=asset.Retarget.EngineReceipt;var oldFit=asset.TransitionFit;
+        // Large original procedural metadata stresses observer work only. These
+        // opaque test snapshots are never baked, saved, exported or published.
+        var frozen=new string('A',2*1024*1024);
+        asset.Retarget.EngineReceipt=new string('r',128*1024);
+        asset.TransitionFit=new NativeTransitionFit{Algorithm="Procedural observer probe",ModelSha256="procedural model",InitialResultSha256="procedural result",Options="{}",Receipt=new string('d',128*1024),Inputs=new[]{new TransitionNativeInput{Role="source",Snapshot=frozen,Name="source",Samples=9},new TransitionNativeInput{Role="entry",Snapshot=new string('B',2*1024*1024),Name="entry",Samples=9},new TransitionNativeInput{Role="exit",Snapshot=new string('C',2*1024*1024),Name="exit",Samples=9}}};
+        try
+        {
+            Call(form,"MarkBatchReview");Check(ReviewApproved(row),"Large procedural recipe receives only explicit current session approval");
+            string baseline=LegacyReviewRecipe(asset);int hashes=FighterProject.DiagnosticFileHashes,opens=AnimationLibrary.DiagnosticOpens,bakes=BrawlRetargeter.DiagnosticBakes;
+            const int iterations=4;long oldCharacters=0;int oldGen0=GC.CollectionCount(0),oldGen1=GC.CollectionCount(1),oldGen2=GC.CollectionCount(2);
+            var watch=Stopwatch.StartNew();for(int i=0;i<iterations;i++){string value=LegacyReviewRecipe(asset);if(value!=baseline)throw new Exception("Legacy procedural baseline changed.");oldCharacters+=value.Length;}watch.Stop();double oldMs=watch.Elapsed.TotalMilliseconds;
+            oldGen0=GC.CollectionCount(0)-oldGen0;oldGen1=GC.CollectionCount(1)-oldGen1;oldGen2=GC.CollectionCount(2)-oldGen2;
+            long before=form.BatchReviewRecipeScalarCharacters,retained=form.BatchReviewRecipeRetainedCharacters;int captures=form.BatchReviewRecipeCaptures,newGen0=GC.CollectionCount(0),newGen1=GC.CollectionCount(1),newGen2=GC.CollectionCount(2);
+            watch.Restart();for(int i=0;i<iterations;i++){SetField(form,"_batchReviewDirty",true);Call(form,"SyncBatchReview");if(!ReviewApproved(row))throw new Exception("Unchanged procedural metadata lost approval.");}watch.Stop();
+            long scalar=form.BatchReviewRecipeScalarCharacters-before;
+            File.WriteAllText(Path.Combine(output,"review-recipe-performance.json"),new JavaScriptSerializer().Serialize(new{Workload="one approved large procedural recipe; four repeated unchanged observer checks",Iterations=iterations,LegacyRecipeMilliseconds=oldMs,CompactDirtySyncMilliseconds=watch.Elapsed.TotalMilliseconds,LegacyReturnedJsonCharacters=oldCharacters,CompactSerializedCharacters=scalar,RetainedImmutableCharacters=form.BatchReviewRecipeRetainedCharacters-retained,Captures=form.BatchReviewRecipeCaptures-captures,LegacyCollections=new[]{oldGen0,oldGen1,oldGen2},CompactCollections=new[]{GC.CollectionCount(0)-newGen0,GC.CollectionCount(1)-newGen1,GC.CollectionCount(2)-newGen2},TimingClaim="Descriptive background owner-thread cost; separate from viewport FPS or human input latency"}));
+            Check(form.BatchReviewRecipeCaptures-captures==iterations&&scalar<oldCharacters/100,"Repeated large-recipe dependency checks serialize under one percent of previous full recipe JSON while checking every field");
+            var input=asset.TransitionFit.Inputs[0];input.Snapshot=new string(frozen.ToCharArray());SetField(form,"_batchReviewDirty",true);Call(form,"SyncBatchReview");
+            Check(ReviewApproved(row),"An equal frozen snapshot in a different string object retains current approval");
+            input.Snapshot=frozen.Substring(0,frozen.Length-1)+"D";SetField(form,"_batchReviewDirty",true);Call(form,"SyncBatchReview");
+            Check(!ReviewApproved(row),"One changed character at the end of a large frozen snapshot invalidates approval");
+            Check(hashes==FighterProject.DiagnosticFileHashes&&opens==AnimationLibrary.DiagnosticOpens&&bakes==BrawlRetargeter.DiagnosticBakes,"Large metadata observation performs no file hashing, source opening or retarget bake");
+        }
+        finally{asset.Retarget.EngineReceipt=oldEngine;asset.TransitionFit=oldFit;SetField(row,"Approved",false);SetField(form,"_batchReviewDirty",true);Call(form,"SyncBatchReview");}
+        Check(ReferenceEquals(editor.SelectedCHR0,clip)&&ReferenceEquals(editor.SelectedBone,bone)&&editor.CurrentFrame==frame&&editor._undoSaves.Count==undo&&editor._redoSaves.Count==redo&&SetNativeContent(clip)==content,"Large procedural observer tests leave native content, selection, frame and Undo unchanged");
+    }
     static async Task ReviewBodyEdit(ModelForm form,float amount)
     {
         var editor=form.FighterEditor;editor.SetFrame(1);await SimpleControlsReady(form);
@@ -46,6 +145,7 @@ internal static partial class Program
             }
         }
         string baselineA=LifecycleContent(clips[0]),baselineB=LifecycleContent(clips[1]);
+        ReviewLargeRecipeCases(form,assets[0],rows[0],output);
         Call(form,"MarkBatchReview");Check(ReviewApproved(rows[0])&&!ReviewApproved(rows[1]),"Mark reviewed approves only the exact selected result");
         int hashes=FighterProject.DiagnosticFileHashes,opens=AnimationLibrary.DiagnosticOpens,bakes=BrawlRetargeter.DiagnosticBakes;
         editor.SetFrame(0);editor.SetFrame(2);editor.SetFrame(3);Call(form,"UpdateFighterStatus");editor.PlayAnim();await Task.Delay(300);editor.StopAnim();editor.SetFrame(3);

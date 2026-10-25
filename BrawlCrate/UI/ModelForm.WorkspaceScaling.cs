@@ -8,6 +8,11 @@ namespace BrawlCrate.UI
 {
     internal partial class ModelForm
     {
+        private int _workspaceBarsWidth = -1, _workspaceBarsText = -1;
+        private bool _workspaceBarsFocused;
+        private int _workspaceLibraryWidth = -1, _workspaceLibraryText = -1;
+        private string _workspaceLibraryFavoriteText;
+        private long DiagnosticWorkspaceBarMeasurements, DiagnosticWorkspaceLibraryMeasurements;
         private int NativeWorkspaceMinimumWidth => Math.Max(760,modelEditControl1.CHR0Editor.MinimumSize.Width+modelEditControl1.PlaybackPanel.MinimumSize.Width+16);
 
         private void ToggleSimpleWorkspaceWorkflow()
@@ -46,12 +51,20 @@ namespace BrawlCrate.UI
             foreach(ToolStripMenuItem item in _simpleWorkspaceOptions.DropDownItems)
                 item.Checked=(int)item.Tag==WorkspaceAppearance.TextPercent;
             _simpleWorkspaceOptions.Text="Text: "+WorkspaceAppearance.TextPercent+"%";
+            // Font setters can trigger nested layout before the task panel
+            // finishes resizing itself. Only the completed presentation may
+            // populate these caches; reconcile final bounds and wrapping now.
+            _workspaceLayoutText = _workspaceBarsText = _workspaceLibraryText = -1;
             LayoutSimpleWorkspace();
         }
 
         private void LayoutWorkspaceBars()
         {
             int width=ClientSize.Width;
+            if (_workspaceBarsWidth == width && _workspaceBarsText == WorkspaceAppearance.TextPercent &&
+                _workspaceBarsFocused == _simpleWorkspaceFocused) return;
+            _workspaceBarsWidth = width; _workspaceBarsText = WorkspaceAppearance.TextPercent;
+            _workspaceBarsFocused = _simpleWorkspaceFocused; DiagnosticWorkspaceBarMeasurements++;
             _fighterName.Width=Math.Min(WorkspaceAppearance.Pixels(145),Math.Max(140,width/5));
             var operation=_simpleWorkspaceToolbar.Items["workspaceOperation"];
             var game=_simpleWorkspaceToolbar.Items["workspaceTargetGame"];
@@ -84,6 +97,12 @@ namespace BrawlCrate.UI
         private void ApplyWorkspaceLibraryTextSize(TableLayoutPanel layout)
         {
             if(_libraryPane==null)return;
+            int width = _libraryPane.ClientSize.Width;
+            string favoriteText = _libraryFavorite?.Text;
+            if (_workspaceLibraryWidth == width && _workspaceLibraryText == WorkspaceAppearance.TextPercent &&
+                _workspaceLibraryFavoriteText == favoriteText) return;
+            _workspaceLibraryWidth = width; _workspaceLibraryText = WorkspaceAppearance.TextPercent;
+            _workspaceLibraryFavoriteText = favoriteText; DiagnosticWorkspaceLibraryMeasurements++;
             _libraryPane.Font=WorkspaceAppearance.Font;
             _libraryPane.AutoScroll=true;
             layout.Dock=DockStyle.Top;

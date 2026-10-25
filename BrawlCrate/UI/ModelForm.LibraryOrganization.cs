@@ -12,6 +12,9 @@ namespace BrawlCrate.UI
         private ComboBox _libraryAvailabilityFilter, _libraryChannelFilter;
         private CheckBox _libraryFavoritesOnly, _libraryFavorite;
         private TableLayoutPanel _libraryQueryStack, _libraryFilters;
+        private FlowLayoutPanel _libraryFilterActions;
+        private Button _libraryFilterToggle;
+        private bool _libraryFiltersExpanded;
         private bool _libraryUpdatingFilters, _libraryUpdatingFavorite;
 
         private LibraryQuery CurrentLibraryQuery() => new LibraryQuery {
@@ -24,6 +27,7 @@ namespace BrawlCrate.UI
         private void QueueLibrarySearch()
         {
             if (_libraryUpdatingFilters) return;
+            UpdateLibraryFilterDisclosure();
             ++_librarySearchGeneration; CancelLibraryTreeWork(); _libraryReplacingTree = true;
             _librarySearchTimer.Stop(); _librarySearchTimer.Start();
             if (_libraryUse != null) _libraryUse.Enabled = false;
@@ -36,15 +40,16 @@ namespace BrawlCrate.UI
         private void BuildLibraryFilters(TableLayoutPanel layout, Panel searchRow, FlowLayoutPanel actions)
         {
             searchRow.Name = "librarySearchRow";
-            _libraryQueryStack = new TableLayoutPanel { Name = "libraryQueryStack", Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2 };
+            _libraryQueryStack = new TableLayoutPanel { Name = "libraryQueryStack", Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, Margin = Padding.Empty };
             _libraryQueryStack.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             _libraryQueryStack.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
-            _libraryQueryStack.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            _libraryQueryStack.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));
+            _libraryQueryStack.RowStyles.Add(new RowStyle(SizeType.Absolute, 0));
             layout.Controls.Remove(searchRow); _libraryQueryStack.Controls.Add(searchRow, 0, 0);
-            _libraryFilters = new TableLayoutPanel { Name = "libraryFilters", Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 5 };
+            _libraryFilters = new TableLayoutPanel { Name = "libraryFilters", Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 4, Visible = false };
             _libraryFilters.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
             _libraryFilters.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            for (int row = 0; row < 5; row++) _libraryFilters.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
+            for (int row = 0; row < 4; row++) _libraryFilters.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
             _libraryGameFilter = new TextBox { Name = "libraryGameFilter", Dock = DockStyle.Fill, MaxLength = 512, AccessibleName = "Filter game and build",
                 AccessibleDescription = "Combine words from the game and build. This combines with all other filters and search." };
             _libraryCharacterFilter = new TextBox { Name = "libraryCharacterFilter", Dock = DockStyle.Fill, MaxLength = 512, AccessibleName = "Filter character and model",
@@ -62,13 +67,16 @@ namespace BrawlCrate.UI
                 _libraryFilters.Controls.Add(new Label { Text = labels[row], Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft, UseMnemonic = false }, 0, row);
                 _libraryFilters.Controls.Add(fields[row], 1, row);
             }
-            var filterActions = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, Margin = Padding.Empty };
+            _libraryFilterActions = new FlowLayoutPanel { Name = "libraryFilterActions", Dock = DockStyle.Fill, WrapContents = true, Margin = Padding.Empty };
+            _libraryFilterToggle = LibraryButton("libraryToggleFilters", "Filters", ToggleLibraryFilters);
+            _libraryFilterToggle.AccessibleName = "Show library filters";
+            _libraryFilterActions.Controls.Add(_libraryFilterToggle);
             _libraryFavoritesOnly = new CheckBox { Name = "libraryFavoritesOnly", Text = "Favorites only", AutoSize = true,
                 AccessibleDescription = "Show only exact clip identities marked as favorites in this library." };
-            filterActions.Controls.Add(_libraryFavoritesOnly);
-            filterActions.Controls.Add(LibraryButton("libraryClearFilters", "Clear filters", ClearLibraryFilters));
-            _libraryFilters.Controls.Add(filterActions, 0, 4); _libraryFilters.SetColumnSpan(filterActions, 2);
-            _libraryQueryStack.Controls.Add(_libraryFilters, 0, 1); layout.Controls.Add(_libraryQueryStack, 0, 1);
+            _libraryFilterActions.Controls.Add(_libraryFavoritesOnly);
+            _libraryFilterActions.Controls.Add(LibraryButton("libraryClearFilters", "Clear filters", ClearLibraryFilters));
+            _libraryQueryStack.Controls.Add(_libraryFilterActions, 0, 1);
+            _libraryQueryStack.Controls.Add(_libraryFilters, 0, 2); layout.Controls.Add(_libraryQueryStack, 0, 1);
             _libraryGameFilter.TextChanged += (s, e) => QueueLibrarySearch();
             _libraryCharacterFilter.TextChanged += (s, e) => QueueLibrarySearch();
             _libraryAvailabilityFilter.SelectedIndexChanged += (s, e) => QueueLibrarySearch();
@@ -87,6 +95,31 @@ namespace BrawlCrate.UI
             foreach (var field in fields) tips.SetToolTip(field, field.AccessibleDescription ?? field.AccessibleName);
             tips.SetToolTip(_libraryFavoritesOnly, _libraryFavoritesOnly.AccessibleDescription);
             tips.SetToolTip(_libraryFavorite, _libraryFavorite.AccessibleDescription);
+            UpdateLibraryFilterDisclosure();
+        }
+
+        private void ToggleLibraryFilters()
+        {
+            if (SimpleWorkspaceBusy) return;
+            _libraryFiltersExpanded = !_libraryFiltersExpanded;
+            _libraryFilters.Visible = _libraryFiltersExpanded;
+            UpdateLibraryFilterDisclosure();
+            LayoutSimpleWorkspace();
+            FocusWorkspaceTarget(_libraryFilterToggle);
+        }
+
+        private void UpdateLibraryFilterDisclosure()
+        {
+            if (_libraryFilterToggle == null) return;
+            int active = (string.IsNullOrWhiteSpace(_libraryGameFilter.Text) ? 0 : 1) +
+                (string.IsNullOrWhiteSpace(_libraryCharacterFilter.Text) ? 0 : 1) +
+                (_libraryAvailabilityFilter.SelectedIndex <= 0 ? 0 : 1) + (_libraryChannelFilter.SelectedIndex <= 0 ? 0 : 1);
+            string caption = (_libraryFiltersExpanded ? "Hide filters" : "Filters") + (active == 0 ? "" : " · " + active + " active");
+            bool resized = _libraryFilterToggle.Text != caption;
+            _libraryFilterToggle.Text = caption;
+            _libraryFilterToggle.AccessibleName = (_libraryFiltersExpanded ? "Hide" : "Show") + " library filters";
+            _libraryFilterToggle.AccessibleDescription = active + " advanced filters active. Hiding filters retains their values and the current query. Favorites and Clear filters remain available.";
+            if (resized) SizeLibraryFilters(WorkspaceAppearance.Font.Height);
         }
 
         private void ClearLibraryFilters()
@@ -132,17 +165,26 @@ namespace BrawlCrate.UI
         {
             int rowHeight = Math.Max(line + 12, WorkspaceAppearance.Pixels(32));
             _libraryQueryStack.RowStyles[0].Height = rowHeight;
-            int actionHeight = Math.Max(line + 22, WorkspaceAppearance.Pixels(38));
             for (int row = 0; row < 4; row++) _libraryFilters.RowStyles[row].Height = rowHeight;
-            _libraryFilters.RowStyles[4].Height = actionHeight;
-            foreach (Button button in _libraryFilters.GetControlFromPosition(0,4).Controls.OfType<Button>())
+            foreach (Button button in _libraryFilterActions.Controls.OfType<Button>())
             {
                 button.AutoSize=false;
                 button.Size=new Size(TextRenderer.MeasureText(button.Text,button.Font).Width+WorkspaceAppearance.Pixels(20),Math.Max(line+12,WorkspaceAppearance.Pixels(30)));
             }
+            int available = Math.Max(1, _libraryPane.ClientSize.Width - _libraryPane.Padding.Horizontal - SystemInformation.VerticalScrollBarWidth - 8);
+            int rows = 1, used = 0, actionHeight = 0;
+            foreach (Control control in _libraryFilterActions.Controls)
+            {
+                int itemWidth = control.Width + control.Margin.Horizontal;
+                if (used > 0 && used + itemWidth > available) { rows++; used = 0; }
+                used += itemWidth; actionHeight = Math.Max(actionHeight, control.Height + control.Margin.Vertical);
+            }
+            actionHeight = rows * actionHeight + 4;
+            _libraryQueryStack.RowStyles[1].Height = actionHeight;
+            _libraryQueryStack.RowStyles[2].Height = _libraryFiltersExpanded ? rowHeight * 4 + 8 : 0;
             _libraryFilters.ColumnStyles[0].Width = TextRenderer.MeasureText("Character / model", _libraryPane.Font).Width + WorkspaceAppearance.Pixels(8);
             var layout = (TableLayoutPanel)_libraryQueryStack.Parent;
-            layout.RowStyles[1].Height = rowHeight * 5 + actionHeight + 8;
+            layout.RowStyles[1].Height = rowHeight + actionHeight + (_libraryFiltersExpanded ? rowHeight * 4 + 8 : 0);
         }
     }
 }

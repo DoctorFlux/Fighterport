@@ -2,7 +2,7 @@
 
 This is the public unified source repository at https://github.com/DoctorFlux/Fighterport.
 It imports the BrawlCrate-based Next preview.14 source and integrated owned engine;
-the current implementation is **preview.32-simple-boundaries**.
+the current implementation is **preview.33-workspace-performance**.
 The two predecessor repositories are private preserved histories.
 Upstream copyrights, licenses and notices remain intact.
 
@@ -29,6 +29,14 @@ The source library collapses, **Focus editor** restores editing room, and
 **More tools** retains the expert commands. Original resources/animation lists,
 the Bones panel, camera/materials, transform tools, autokeys, interpolation,
 timeline and Undo remain together in the original native control.
+
+**Preview and fix** keeps Review results, Compare source and Fit start and end
+visible; **More actions** opens the remaining inspection, control and timing tools.
+Library **Filters** shows advanced criteria and their active count; hiding them
+keeps their values. Search, Favorites only and Clear filters stay available.
+Unchanged status refreshes skip repeated layout, hidden comparison stops source
+skinning, and exact review approval avoids copying large frozen snapshots. See the
+[performance and UI acceptance record](docs/WORKSPACE_PERFORMANCE_ACCEPTANCE_2026-10-25.md).
 
 **Open project** includes the ten most recent saved/opened project paths. Choose a
 path, then Open; **Forget selected** and **Clear history** only remove history.
@@ -68,7 +76,7 @@ its existing overwrite confirmation. See the
 [verified set acceptance record](docs/VERIFIED_SET_EXPORT_ACCEPTANCE_2026-10-24.md).
 Preview.26 qualification passed **2,229 scoped assertions / 97 inspected PNGs**.
 
-**Inspect loop / seam** in Preview and fix reads the selected project-owned CHR0
+**More actions → Inspect loop / seam** in Preview and fix reads the selected project-owned CHR0
 against the current native target, including donor-free animations. Compare local
 First → Last and stored-loop Closing → First differences, then read exact samples,
 raw Euler turns and authored boundary values/tangents. Root travel and full turns

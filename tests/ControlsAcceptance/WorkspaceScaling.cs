@@ -82,7 +82,16 @@ internal static partial class Program
                         string state=percent+" at "+size.Width+"x"+size.Height;
                         var task=SimpleControl<Control>(form,"workspaceTaskPane");
                         if(!task.Visible)SimpleToolbarItem(form,"workspaceWorkflow").PerformClick();
-                        if(task.Dock==DockStyle.None)Check(task.Parent.GetChildAtPoint(new Point(task.Right-8,task.Top+8))==task,"Compact workflow is the actual frontmost control for interaction: "+state);
+                        if(task.Dock==DockStyle.None)
+                        {
+                            var hit=task.Parent.GetChildAtPoint(new Point(task.Right-8,task.Top+8));
+                            if(hit!=task)
+                            {
+                                Console.WriteLine("TRACE overlay failure "+state+" task="+task.Bounds+" body="+task.Parent.ClientRectangle+" childIndex="+task.Parent.Controls.GetChildIndex(task)+" hit="+hit?.Name+" cache="+Field(form,"_workspaceLayoutSize"));
+                                await CaptureSimpleWorkspace(form,Path.Combine(output,"scaling-overlay-failure.png"));
+                            }
+                            Check(hit==task,"Compact workflow is the actual frontmost control for interaction: "+state);
+                        }
                         Check(task.Visible && InClient(SimpleControl<Button>(form,"workspacePrimaryAction"),task),
                             "Primary task action remains visible above the scrolling details: "+state);
                         Check(editor.Width>=760 && editor.ModelPanel.Width>250 && ReferenceEquals(editor.ModelPanel,viewport) &&

@@ -13,6 +13,8 @@ namespace BrawlCrate.UI
     internal partial class ModelForm
     {
         internal Action<TransitionFitDialog> TransitionFitReady;
+        internal int TransitionRootSnapshotExports { get; private set; }
+        internal int TransitionRootSnapshotOpens { get; private set; }
         private void ShowTransitionFit()
         {
             if(!(modelEditControl1.TargetModel is MDL0Node model)||modelEditControl1.SelectedCHR0==null)throw new InvalidOperationException("Open a native model and select the target animation to fit.");
@@ -36,6 +38,7 @@ namespace BrawlCrate.UI
             Action current=()=>{if(IsDisposed||_fighterProject!=project||modelEditControl1.TargetModel!=model||modelEditControl1.SelectedCHR0!=source||NativeControlHash(model,".mdl0")!=modelHash||NativeControlHash(source,".chr0")!=sourceHash||ControlState(controlKey)!=state||Provenance()!=sourceProvenance)throw new InvalidOperationException("The native model, source animation, contact/recovery provenance or pin setup changed. Reopen fitting; stale output was discarded.");};
             string stage=Path.Combine(_controlStage,"transition-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(stage);
             AnimationControlClient client=null;var roots=new List<ResourceNode>();
+            var rootSnapshots=new Dictionary<ResourceNode,string>();
             try
             {
                 void WriteSnapshot(TransitionClipChoice choice,string path)
@@ -48,7 +51,16 @@ namespace BrawlCrate.UI
                 string modelPath=Path.Combine(stage,"model.mdl0"),sourcePath=Path.Combine(stage,"source.chr0");model.Export(modelPath);WriteSnapshot(selected,sourcePath);
                 ResourceNode CopyRoot(ResourceNode root,string name)
                 {
-                    string extension=Path.GetExtension(root.FilePath);if(string.IsNullOrEmpty(extension))extension=".brres";string path=Path.Combine(stage,name+extension);root.Export(path);var copy=NodeFactory.FromFile(null,path)??throw new InvalidDataException("Native preview resource could not be reopened.");roots.Add(copy);return copy;
+                    // Reopen distinct native owners from one operation-local
+                    // snapshot. Source and target previews never share mutable
+                    // nodes, while the large model/container is exported once.
+                    if(!rootSnapshots.TryGetValue(root,out var path))
+                    {
+                        string extension=Path.GetExtension(root.FilePath);if(string.IsNullOrEmpty(extension))extension=".brres";
+                        path=Path.Combine(stage,name+extension);root.Export(path);rootSnapshots.Add(root,path);TransitionRootSnapshotExports++;
+                    }
+                    var copy=NodeFactory.FromFile(null,path)??throw new InvalidDataException("Native preview resource could not be reopened.");
+                    TransitionRootSnapshotOpens++;roots.Add(copy);return copy;
                 }
                 IEnumerable<ResourceNode> Walk(ResourceNode root){yield return root;foreach(var c in root.Children)foreach(var n in Walk(c))yield return n;}
                 ResourceNode a=CopyRoot(model.RootNode,"before-model"),b=CopyRoot(model.RootNode,"after-model");var beforeModel=Walk(a).OfType<MDL0Node>().Single(m=>NativeControlHash(m,".mdl0")==modelHash);var afterModel=Walk(b).OfType<MDL0Node>().Single(m=>NativeControlHash(m,".mdl0")==modelHash);

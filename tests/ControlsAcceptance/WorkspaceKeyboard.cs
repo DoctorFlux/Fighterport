@@ -79,7 +79,22 @@ internal static partial class Program
                     Check(primary.Focused,"Selecting a stage focuses its primary action: "+state);
                     Check(WorkspaceKey(form,Keys.Tab)&&SimpleControl<LinkLabel>(form,"workspaceSourceSummary").Focused,"Task Tab order starts with primary action then source summary: "+state);
                     Check(WorkspaceKey(form,Keys.Shift|Keys.Tab)&&primary.Focused,"Task reverse Tab returns to primary: "+state);
-                    var details=SimpleControl<Button>(form,"workspaceDetailsAction");details.Focus();
+                    var moreActions=SimpleControl<Button>(form,"workspaceMoreActions");
+                    if(moreActions.Text=="Fewer actions")moreActions.PerformClick();
+                    Check(new[]{"workspaceReviewResultsAction","workspaceCompareSourceAction","workspaceTransitionsAction"}.All(name=>SimpleControl<Button>(form,name).Visible)&&
+                        new[]{"workspaceLoopInspectionAction","workspaceControlsAction","workspaceTimingAction","workspaceDetailsAction"}.All(name=>!SimpleControl<Button>(form,name).Visible),
+                        "Preview keeps Review, Compare and Fit upfront and groups additional commands behind More actions: "+state);
+                    var taskPanel=SimpleControl<SimpleWorkspacePanel>(form,"workspaceTaskPane");
+                    int refreshes=taskPanel.ActionRefreshes;
+                    Call(form,"UpdateSimpleWorkspace");Call(form,"UpdateSimpleWorkspace");
+                    Check(taskPanel.ActionRefreshes==refreshes,"Unchanged workspace updates do not rebuild task actions: "+state);
+                    ButtonSpace(moreActions);
+                    Check(moreActions.Text=="Fewer actions"&&SimpleControl<Button>(form,"workspaceLoopInspectionAction").Visible&&
+                        SimpleControl<Button>(form,"workspaceControlsAction").Visible&&SimpleControl<Button>(form,"workspaceDetailsAction").Visible,
+                        "Keyboard Space reveals the original additional commands: "+state);
+                    var details=SimpleControl<Button>(form,"workspaceDetailsAction");details.Focus();moreActions.PerformClick();
+                    Check(moreActions.Focused&&!details.Visible,"Collapsing additional actions recovers focus from an action that becomes hidden: "+state);
+                    ButtonSpace(moreActions);details.Focus();
                     Check(InClient(details,SimpleControl<Control>(form,"workspaceTaskScroll")),"Keyboard focus scrolls task actions into view: "+state);
                     await CaptureSimpleWorkspace(form,Path.Combine(output,"keyboard-task-"+percent+"-"+size.Width+".png"));
                     Check(WorkspaceKey(form,Keys.Escape)&&!SimpleControl<Control>(form,"workspaceTaskPane").Visible,"Escape closes focused tasks: "+state);
@@ -120,11 +135,24 @@ internal static partial class Program
                 Check(search.Focused,"Opening the library focuses search");
                 Check(!SimpleControl<Control>(form,"workspaceTaskPane").Visible && editor.Width>=888,"At 200% the library yields task space to the intact native editor");
                 Check(WorkspaceKey(form,Keys.Tab)&&SimpleControl<Button>(form,"libraryClearSearch").Focused,"Library Tab proceeds from search to Clear");
-                string[] filterOrder={"libraryGameFilter","libraryCharacterFilter","libraryAvailabilityFilter","libraryChannelFilter","libraryFavoritesOnly","libraryClearFilters","libraryClips"};
+                var filterToggle=SimpleControl<Button>(form,"libraryToggleFilters");
+                Check(!SimpleControl<Control>(form,"libraryFilters").Visible&&SimpleControl<CheckBox>(form,"libraryFavoritesOnly").Visible&&SimpleControl<Button>(form,"libraryClearFilters").Visible,
+                    "Library starts with advanced filters collapsed while Favorites and Clear remain available");
+                string[] compactFilterOrder={"libraryToggleFilters","libraryFavoritesOnly","libraryClearFilters","libraryClips"};
+                foreach(string name in compactFilterOrder)Check(WorkspaceKey(form,Keys.Tab)&&SimpleControl<Control>(form,name).Focused,"Collapsed library Tab reaches "+name);
+                Call(form,"RestoreWorkspaceFocus",filterToggle);ButtonSpace(filterToggle);
+                Check(SimpleControl<Control>(form,"libraryFilters").Visible&&filterToggle.Focused,"Keyboard disclosure expands advanced filters and keeps its focus");
+                Call(form,"RestoreWorkspaceFocus",SimpleControl<Button>(form,"libraryClearSearch"));
+                string[] filterOrder={"libraryToggleFilters","libraryFavoritesOnly","libraryClearFilters","libraryGameFilter","libraryCharacterFilter","libraryAvailabilityFilter","libraryChannelFilter","libraryClips"};
                 foreach(string name in filterOrder)Check(WorkspaceKey(form,Keys.Tab)&&SimpleControl<Control>(form,name).Focused,"Library Tab reaches "+name);
                 foreach(string name in filterOrder.Take(filterOrder.Length-1).Reverse())Check(WorkspaceKey(form,Keys.Shift|Keys.Tab)&&SimpleControl<Control>(form,name).Focused,"Library reverse Tab reaches "+name);
                 Check(WorkspaceKey(form,Keys.Shift|Keys.Tab)&&SimpleControl<Button>(form,"libraryClearSearch").Focused,"Library reverse Tab returns to Clear");
                 Check(WorkspaceKey(form,Keys.Shift|Keys.Tab)&&search.Focused,"Library reverse Tab returns to search");
+                Call(form,"RestoreWorkspaceFocus",SimpleControl<TextBox>(form,"libraryGameFilter"));filterToggle.PerformClick();
+                Check(filterToggle.Focused&&!SimpleControl<Control>(form,"libraryFilters").Visible,"Collapsing filters recovers focus from a hidden field");
+                Check(WorkspaceKey(form,Keys.F6)&&editor.ContainsFocus&&WorkspaceKey(form,Keys.Shift|Keys.F6)&&filterToggle.Focused,
+                    "F6 recovery remembers the visible disclosure and skips its hidden filter fields");
+                search.Focus();
                 foreach(Keys key in new[]{Keys.A,Keys.Space,Keys.Control|Keys.A,Keys.Control|Keys.Z})
                     Check(!WorkspaceKey(form,key),"Workspace adds no typing/editing interception: "+key);
                 search.Text="Wait";await FlowLibrarySettled(form);
