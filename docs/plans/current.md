@@ -25,13 +25,17 @@ DoctorFlux publication. Fresh bounded acceptance passes 2,606 assertions across
 [commands and limits](../LOOP_INSPECTION_ACCEPTANCE_2026-10-25.md).
 Human/input/DPI/contact/game gates remain unverified.
 
-Current authorized follow-up uses the existing Fit start or end workflow for
-two background-only examples/GIFs: Mario AttackAirF on Snake ending in Snake Fall,
-and Snake AttackS3S (first part, excluding AttackS3S2) on Mario ending in Wait1.
-Preserve original Next, exact reviewed roots and contact protections; independently
-report eligible endpoint agreement and excluded-root/support differences. These
-examples do not establish arbitrary-character, contact or game acceptance and add
-no new solver or feature milestone.
+The authorized existing-workflow follow-up is now tested with two background-only
+examples and inspected GIFs. Mario AttackAirF on Snake reaches Snake Fall's first
+pose within the frozen local-transform tolerances. Snake AttackS3S (first part,
+excluding AttackS3S2) on Mario reaches Wait1 only on the 50 eligible local bone
+transforms: nine protected hip/leg endpoint transforms still differ, producing a
+visible jump to idle. This second example is partial, not a complete seam match.
+Original Next, reviewed root curves and contact dependency paths remain unchanged.
+See [settings, measurements and limits](../REQUESTED_TRANSITION_EXAMPLES_2026-10-25.md).
+These examples do not establish arbitrary-character, contact or game acceptance
+and add no new solver or feature milestone. Contact-aware recovery/release fitting
+is an identified remaining need, not an accepted or newly activated increment.
 
 Preceding authorized continuation: reviewed animation batches (preview.25), then
 atomic verified set export (preview.26). Preview.25 bounded acceptance is complete: 1,925 assertions and 81 inspected PNGs.
