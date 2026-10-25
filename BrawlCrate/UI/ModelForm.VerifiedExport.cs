@@ -49,7 +49,8 @@ namespace BrawlCrate.UI
             var project = _fighterProject;
             var root = clip.RootNode;
             string content = ExportContent(clip), rig = BrawlRetargeter.SkeletonFingerprint(target);
-            string provenance = new JavaScriptSerializer().Serialize(asset?.Retarget);
+            string Provenance() => new JavaScriptSerializer { MaxJsonLength = 32 * 1024 * 1024 }.Serialize(new { asset.Retarget, asset.TransitionFit });
+            string provenance = Provenance();
             if (asset?.Retarget != null && rig != asset.RigIdentity)
                 throw new InvalidOperationException("The target rig changed. Review the animation on its original target before export.");
             var copy = new CHR0Node { Name = clip.Name, Version = clip.Version, FrameCount = clip.FrameCount,
@@ -63,7 +64,7 @@ namespace BrawlCrate.UI
                     !ReferenceEquals(target, modelEditControl1.TargetModel) || requireSelection && !ReferenceEquals(clip, modelEditControl1.TargetAnimation) ||
                     !ReferenceEquals(root, clip.RootNode) || !OwnsFighterRoot(clip) || content != ExportContent(clip) ||
                     rig != BrawlRetargeter.SkeletonFingerprint(target) ||
-                    provenance != new JavaScriptSerializer().Serialize(asset?.Retarget))
+                    provenance != Provenance())
                     throw new InvalidOperationException("Export dependencies changed. Select Export again to review the current target and animation.");
             } };
         }

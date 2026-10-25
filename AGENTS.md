@@ -1,6 +1,19 @@
 # Fighterport
 
-Latest authorized continuation: preview.27-loop-inspection adds a read-only
+Latest authorized continuation: preview.28-exit-recovery adds explicit bounded
+hip/leg exit recovery to the existing native Fit start or end workflow. Keep the
+whole-clip contact-preservation default; opt-in recovery is non-looping, exit-only,
+all S/R/T and frozen authentic reference frame 1, with exact reviewed body/leg
+paths. Preserve source-authored motion-control curves and prejoin keys/tangents.
+Conflicting pins, protected intervals, unsupported paths and contradictory root
+endpoints reject. Precise independent snapshots retain imported edits before Save;
+recovery receipts bind session review/export. Fresh bounded qualification passes
+1,822 assertions in 14 runs with all 66 native PNGs inspected. Both requested
+attack-to-first-pose demos pass local/world/skin endpoint checks; GIFs use only
+reference frame 1. Contact quality through recovery remains unverified. Keep ONE
+incomplete G1/M2 and full native previewer/original Next. See docs/EXIT_RECOVERY_ACCEPTANCE_2026-10-25.md for commands and boundaries.
+
+Preceding authorized continuation: preview.27-loop-inspection adds a read-only
 single-animation endpoint drawer on the existing native viewport. Keep explicit
 First/Last/stored-loop Closing jumps, manual Refresh and change invalidation.
 Preserve full BrawlCrate native ownership/Undo, original Next and protected roots

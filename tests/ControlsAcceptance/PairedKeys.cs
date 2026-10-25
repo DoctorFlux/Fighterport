@@ -11,7 +11,13 @@ internal static partial class Program
 {
     static async Task NativePairedKeys(string modelPath,string output)
     {
-        string name;using(var root=NodeFactory.FromFile(null,modelPath)){var model=BrawlLib.Internal.Windows.Controls.Model_Panel.ModelPanel.CollectModels(root).OfType<MDL0Node>().First();EngineRigReview.FingerprintOf(model);name=model._linker.BoneCache.First().Name;}
+        string name;int body;
+        using(var setupClient=new AnimationControlClient())
+        {
+            var rig=await setupClient.Send(new{Operation="load",Model=modelPath,Frame=0});body=rig.BodyBone??-1;
+            if(body<0)throw new InvalidOperationException("Paired-key editing needs a reviewed body binding.");
+            name=rig.BoneNames[body];
+        }
         string input=Path.Combine(output,"original-paired.chr0");
         using(var clip=new CHR0Node{Name="OriginalPairedKeys",FrameCount=5,Loop=false})
         {
@@ -19,8 +25,8 @@ internal static partial class Program
         }
         using(var client=new AnimationControlClient())
         {
-            var loaded=await client.Send(new{Operation="load",Model=modelPath,Motion=input,Frame=2});var values=loaded.Pose[0].ToArray();values[6]+=1;
-            await client.Send(new{Operation="begin",Bone=0,Pin="fk:0",Frame=2});await client.Send(new{Operation="preview",Values=values});var result=await client.Send(new{Operation="commit"});
+            var loaded=await client.Send(new{Operation="load",Model=modelPath,Motion=input,Frame=2});var values=loaded.Pose[body].ToArray();values[6]+=1;
+            await client.Send(new{Operation="begin",Bone=body,Pin="fk:"+body,Frame=2});await client.Send(new{Operation="preview",Values=values});var result=await client.Send(new{Operation="commit"});
             var pair=result.Tracks.Single(t=>t.Bone==name).Channels[6].Where(k=>k.Frame==2).ToArray();
             Check(pair.Length==2&&pair[0].Value==3&&pair[1].Value==7&&pair[0].Tangent==.25f&&pair[1].Tangent==-.5f,"Control commit preserves a native discontinuity's outgoing value and both exact tangents");
             using(var clip=NodeFactory.FromFile(null,input) as CHR0Node)

@@ -1,11 +1,11 @@
 [CmdletBinding()]
-param([Parameter(Mandatory)][string]$Model,[Parameter(Mandatory)][string]$Motion,[Parameter(Mandatory)][string]$OutputDirectory,[switch]$SuppliedModel,[string]$RetargetSource,[string]$TargetMotion,[string]$Clip='Wait1',[switch]$ModelPose,[string]$NativeDirectory,[switch]$ControlGizmos,[switch]$ControlReview,[switch]$LibraryBatch,[switch]$SceneFitting,[switch]$TransitionFit,[switch]$ContactAuthoring,[switch]$CombinedStress,[string]$ContactTransitionsProject,[switch]$CharacterWorkspace,[switch]$SimpleWorkspace,[switch]$WorkspaceFlow,[switch]$WorkspaceWalkthrough,[switch]$WorkspaceRecent,[switch]$WorkspaceExport,[switch]$WorkspaceComparison,[switch]$WorkspaceLibrary,[switch]$WorkspaceBatchReview,[switch]$WorkspaceSetExport,[switch]$WorkspaceLoopInspection,[switch]$ProjectLifecycle,[switch]$WorkspaceKeyboard,[switch]$WorkspaceScaling,[switch]$WorkspaceDialogs,[string]$CompatibilityProject,[string]$LegacyProject)
+param([Parameter(Mandatory)][string]$Model,[Parameter(Mandatory)][string]$Motion,[Parameter(Mandatory)][string]$OutputDirectory,[switch]$SuppliedModel,[string]$RetargetSource,[string]$TargetMotion,[string]$Clip='Wait1',[switch]$ModelPose,[string]$NativeDirectory,[switch]$ControlGizmos,[switch]$ControlReview,[switch]$LibraryBatch,[switch]$SceneFitting,[switch]$TransitionFit,[switch]$ContactAuthoring,[switch]$CombinedStress,[string]$ContactTransitionsProject,[switch]$CharacterWorkspace,[switch]$SimpleWorkspace,[switch]$WorkspaceFlow,[switch]$WorkspaceWalkthrough,[switch]$WorkspaceRecent,[switch]$WorkspaceExport,[switch]$WorkspaceComparison,[switch]$WorkspaceLibrary,[switch]$WorkspaceBatchReview,[switch]$WorkspaceSetExport,[switch]$WorkspaceLoopInspection,[switch]$WorkspaceExitRecovery,[string]$ReferenceClip='Wait1',[int]$ExitSamples=8,[switch]$ProjectLifecycle,[switch]$WorkspaceKeyboard,[switch]$WorkspaceScaling,[switch]$WorkspaceDialogs,[string]$CompatibilityProject,[string]$LegacyProject)
 $ErrorActionPreference='Stop'
 $root=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $modelPath=(Resolve-Path -LiteralPath $Model).Path
 $motionPath=(Resolve-Path -LiteralPath $Motion).Path
 if(($SimpleWorkspace -or $WorkspaceFlow -or $WorkspaceWalkthrough) -and !$RetargetSource){throw 'Workspace acceptance requires RetargetSource pointing to the authentic donor model.'}
-if($WorkspaceWalkthrough -and !$TargetMotion){throw 'Walkthrough replay requires TargetMotion for the donor-free native edit case.'}
+if(($WorkspaceWalkthrough -or $WorkspaceExitRecovery) -and !$TargetMotion){throw 'Workflow/recovery replay requires TargetMotion for the authentic target reference clips.'}
 $output=[IO.Path]::GetFullPath($OutputDirectory)
 if(Test-Path -LiteralPath $output){throw 'Choose a new output directory; prior evidence is preserved.'}
 $harness=Join-Path $root 'tests/ControlsAcceptance/bin/x86/Release/net472/ControlsAcceptance.exe'
@@ -34,6 +34,7 @@ try {
     if($WorkspaceBatchReview){$captureArgs+='--workspace-batch-review'}
     if($WorkspaceSetExport){$captureArgs+='--workspace-set-export'}
     if($WorkspaceLoopInspection){$captureArgs+='--workspace-loop-inspection'}
+    if($WorkspaceExitRecovery){$captureArgs+=@('--workspace-exit-recovery','--target-motion',(Resolve-Path -LiteralPath $TargetMotion).Path,'--reference-clip',$ReferenceClip,'--exit-samples',[string]$ExitSamples)}
     if($WorkspaceLibrary){$captureArgs+='--workspace-library'}
     if($WorkspaceComparison){$captureArgs+='--workspace-comparison'}
     if($WorkspaceExport){$captureArgs+='--workspace-export'}

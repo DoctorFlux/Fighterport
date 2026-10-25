@@ -27,7 +27,9 @@ sealed partial class ControlSession
         state??=new(fingerprint,clip.Id,BrawlControlProfiles.SetUp(source),[],[],null,[]);
         source=source with{ControlRigs=[state.Setup]};
         var fit=await Task.Run(()=>BoundaryFitting.Prepare(source,clip,entry,exit,options.Settings));
-        state??=new(fingerprint,clip.Id,BrawlControlProfiles.SetUp(source),[],[],null,[]);
+        // Recovery permission lives in the exact transition receipt. Preserve
+        // authored contact/pin records on the independent clip; never erase a
+        // conflicting constraint to make an endpoint appear successful.
         string copiedState=JsonSerializer.Serialize(state with{Clip=fit.Clip.Id,Contacts=state.Contacts.Select(c=>c.Clip==clip.Id?c with{Clip=fit.Clip.Id}:c).ToArray(),BonePins=state.BonePins?.Select(p=>p.Clip==clip.Id?p with{Clip=fit.Clip.Id}:p).ToArray()},ProjectStore.Json);
         string receipt=JsonSerializer.Serialize(new{fit.Receipt,fit.Clip.Transition},ProjectStore.Json);
         return new{Ok=true,Name=fit.Clip.Name,SampleCount=fit.Clip.SampleCount,fit.Clip.Loop,State=copiedState,Algorithm=fit.Receipt.Version,Receipt=receipt,

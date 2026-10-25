@@ -17,7 +17,11 @@ internal static partial class Program
         var project=FighterProject.Create("Native boundary fitting");var form=new ModelForm();form.InitializeFighterProject(project);form.Show();Call(form,"ImportFighterModel",modelPath);Call(form,"ImportFighterAnimations",new[]{new[]{motionPath}});
         var editor=form.FighterEditor;var source=editor._openedFiles.SelectMany(Walk).OfType<CHR0Node>().FirstOrDefault(c=>c.Name=="Wait1")??editor._openedFiles.SelectMany(Walk).OfType<CHR0Node>().First();foreach(ListViewItem item in editor.leftPanel.listAnims.Items)item.Selected=ReferenceEquals(item.Tag,source);
         editor.SetFrame(1);editor.FrameFighterModel();await Wait(()=>!(bool)Field(form,"_controlBusy")&&!(bool)Field(form,"_controlSetupQueued"));
-        var model=(MDL0Node)editor.TargetModel;var setup=await Await<ControlReply>(Call(form,"LoadControls"));string boneName=setup.BoneNames[0];var bone=model._linker.BoneCache.Single(b=>b.Name==boneName);editor.SelectedBone=bone;await(Task)Call(form,"AttachControlPin",false);string pinId=editor.AnimationPins.Single().Id;
+        var model=(MDL0Node)editor.TargetModel;var setup=await Await<ControlReply>(Call(form,"LoadControls"));string boneName=setup.BoneNames[setup.Roles.Single(r=>r.Role=="Hips").Bone.Value];var bone=model._linker.BoneCache.Single(b=>b.Name==boneName);editor.SelectedBone=bone;await(Task)Call(form,"AttachControlPin",false);string pinId=editor.AnimationPins.Single().Id;
+        // Imported live edit before Save: a normal native export may quantize
+        // this retained value/tangent. Transition staging must use precise clones.
+        var editedTrack=source.Children.OfType<CHR0EntryNode>().SingleOrDefault(e=>e.Name==boneName)??source.CreateEntry(boneName);
+        editedTrack.SetKeyframe(4,7,13.1234567f,true,true)._tangent=.012345679f;source.SignalPropertyChange();
         string sourceKey=(string)Call(form,"SelectedFighterAnimationKey"),nativeHash=(string)Call(form,"NativeControlHash",model,".mdl0"),sourceHash=(string)Call(form,"NativeControlHash",source,".chr0");
         string snapshot=Path.Combine(output,"source-snapshot.chr0");source.Export(snapshot);FighterAsset referenceAsset;
         using(var reference=NodeFactory.FromFile(null,snapshot) as CHR0Node)
@@ -44,6 +48,7 @@ internal static partial class Program
                 prepare.PerformClick();await Wait(()=>!window.Busy);File.WriteAllText(Path.Combine(output,"transition-report.txt"),report.Text);Check(window.Candidate!=null,"The real transition action prepares fixed-duration native curves through Core");
                 Check(project.Animations.Count==count&&!apply.Enabled,"Preparation remains separate from authoring until explicit result review");
                 Check(window.Candidate.FrameCount==source.FrameCount&&window.Candidate.Loop==source.Loop,"Native fit preserves total samples and source loop policy");
+                Check(RecoveryRetainedKeysExact(source,window.Candidate,samples-1,source.FrameCount-samples),"Imported pre-Save high-precision body keys/tangents survive transition snapshots exactly");
                 Check(Math.Abs(NativeValue(window.Candidate,3,0)-bone.BindState[3]-20)<.0001&&Math.Abs(NativeValue(window.Candidate,3,source.FrameCount-1)-bone.BindState[3]-20)<.0001,"Native fitted endpoints match the explicitly chosen same-rig reference pose");
                 Check(Enumerable.Range(0,81).All(i=>Math.Abs(NativeValue(window.Candidate,3,samples-1+(source.FrameCount-2*samples+1)*(i/80f))-NativeValue(source,3,samples-1+(source.FrameCount-2*samples+1)*(i/80f)))<.0001),"Native fitted middle preserves the original curve at independent fractional times");
                 var originalEntry=source.Children.OfType<CHR0EntryNode>().SingleOrDefault(e=>e.Name==boneName);var fittedEntry=window.Candidate.Children.OfType<CHR0EntryNode>().Single(e=>e.Name==boneName);

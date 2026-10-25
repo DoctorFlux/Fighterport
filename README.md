@@ -2,7 +2,7 @@
 
 This is the public unified source repository at https://github.com/DoctorFlux/Fighterport.
 It imports the BrawlCrate-based Next preview.14 source and integrated owned engine;
-the current implementation is **preview.27-loop-inspection**.
+the current implementation is **preview.28-exit-recovery**.
 The two predecessor repositories are private preserved histories.
 Upstream copyrights, licenses and notices remain intact.
 
@@ -80,6 +80,16 @@ measurements until Refresh. Native playback and all editing tools remain intact.
 Use Close, focused Escape or Focus editor to recover editor space. See the
 [loop inspection acceptance record](docs/LOOP_INSPECTION_ACCEPTANCE_2026-10-25.md).
 Fresh preview.27 qualification passes **2,606 scoped assertions / 115 inspected PNGs**.
+
+**Fit start or end** can explicitly recover reviewed hip/leg paths in the final
+window of a non-looping attack, reaching the target's frozen first exit pose.
+Whole-clip contact preservation remains the default. Recovery preserves authored
+motion controls and all prejoin keys; conflicting pins, protected intervals and
+incompatible root endpoints reject. Preparation adds an independent animation only
+after review, with native Undo/Redo and exact saved permission/receipt. See the
+[exit recovery acceptance record](docs/EXIT_RECOVERY_ACCEPTANCE_2026-10-25.md):
+**1,822 scoped assertions / 66 inspected native PNGs**. This is endpoint recovery;
+planted-foot quality throughout the adapted window remains unverified.
 
 The source library now has **Favorite / Favorited**, **Favorites only**, and
 combinable game/build, character/model, availability and channel filters alongside

@@ -38,11 +38,11 @@ namespace BrawlCrate.UI
         private FighterAsset ReviewAsset(BatchReviewRow row) => RegisteredFighterAssets().FirstOrDefault(a => a.Id == row.AssetId);
         private string ReviewRecipe(FighterAsset asset)
         {
-            var json = new JavaScriptSerializer();
+            var json = new JavaScriptSerializer { MaxJsonLength = 32 * 1024 * 1024 };
             var data = json.DeserializeObject(json.Serialize(asset.Retarget)) as Dictionary<string, object>;
             if (data != null && data.TryGetValue("Library", out var value) && value is Dictionary<string, object> library)
             { library.Remove("LastExportSha256"); library.Remove("LastExportFormat"); }
-            return json.Serialize(new { asset.RigIdentity, Recipe = data });
+            return json.Serialize(new { asset.RigIdentity, Recipe = data, asset.TransitionFit });
         }
         private bool ReviewRowPresent(BatchReviewRow row) => ReviewAsset(row) != null &&
             _fighterRoots.TryGetValue(row.AssetId, out var root) && ReferenceEquals(root, row.Clip.RootNode) &&

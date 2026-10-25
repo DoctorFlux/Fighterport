@@ -21,6 +21,7 @@ namespace BrawlCrate.Studio
         public bool NearestEquivalentAngles {get;set;}
         public bool BindingReviewed {get;set;}
         public bool PreserveContacts {get;set;}
+        public bool ExitContactRecovery {get;set;}
     }
     public sealed class TransitionProtected {public double Start {get;set;}public double End {get;set;}public string Reason {get;set;}="User protected action";}
     public sealed class TransitionNativeInput
@@ -36,7 +37,9 @@ namespace BrawlCrate.Studio
         internal void Validate()
         {
             bool Hash(string s)=>s!=null&&s.Length==64&&s.All(Uri.IsHexDigit);
-            if((Algorithm!="fixed-duration-fk-hermite-1"&&Algorithm!="contact-trajectory-preserve-1")||!Hash(ModelSha256)||!Hash(InitialResultSha256)||string.IsNullOrEmpty(Options)||Options.Length>65536||string.IsNullOrEmpty(Receipt)||Receipt.Length>1024*1024||Inputs==null||Inputs.Length<2||Inputs.Length>3||Inputs.Any(i=>i==null)||Inputs.Select(i=>i.Role).Distinct().Count()!=Inputs.Length)throw new InvalidDataException("Invalid native transition recipe.");
+            if((Algorithm!="fixed-duration-fk-hermite-1"&&Algorithm!="contact-trajectory-preserve-1"&&Algorithm!="contact-exit-recovery-1")||!Hash(ModelSha256)||!Hash(InitialResultSha256)||string.IsNullOrEmpty(Options)||Options.Length>65536||string.IsNullOrEmpty(Receipt)||Receipt.Length>1024*1024||Inputs==null||Inputs.Length<2||Inputs.Length>3||Inputs.Any(i=>i==null)||Inputs.Select(i=>i.Role).Distinct().Count()!=Inputs.Length)throw new InvalidDataException("Invalid native transition recipe.");
+            var settings=new System.Web.Script.Serialization.JavaScriptSerializer().Deserialize<TransitionFitOptions>(Options);
+            if(settings==null||settings.ExitContactRecovery!=(Algorithm=="contact-exit-recovery-1")||settings.ExitContactRecovery&&(!settings.PreserveContacts||settings.Entry!=null||settings.Exit==null||!settings.ExitFrozen||settings.ExitFrame!=0||settings.Components!=7))throw new InvalidDataException("Invalid saved exit contact recovery policy.");
             long bytes=0;foreach(var input in Inputs)
             {
                 if(input==null||!new[]{"source","entry","exit"}.Contains(input.Role)||string.IsNullOrEmpty(input.Name)||input.Name.Length>256||input.Samples<1||input.Samples>100000||string.IsNullOrEmpty(input.AssetId)||input.AssetId.Length>128||string.IsNullOrEmpty(input.Entry)||input.Entry.Length>16384||!Hash(input.Sha256)||string.IsNullOrEmpty(input.Snapshot)||input.Snapshot.Length>12*1024*1024)throw new InvalidDataException("Invalid frozen transition reference.");

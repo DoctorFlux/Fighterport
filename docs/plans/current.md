@@ -5,6 +5,32 @@ with the simpler workspace while retaining the COMPLETE BrawlCrate Model Preview
 and original Next retargeter. This supersedes the earlier planning-only/contact-first
 ordering. M2 remains the ONE incomplete milestone; this is its sole executable queue.
 
+25 October 2026 current authorized follow-up: bounded exit recovery within the
+existing native Fit start or end workflow. The user requests hip/leg recovery for
+Snake's first AttackS3S on Mario into Wait1 without an endpoint jump, rechecking
+Mario AttackAirF on Snake into Fall. Both anchors are authentic display frame 1,
+frozen; new GIFs show only that reference frame, never reference playback. Audit
+the reported rotated Wait1 pose against native sampling and the fixed camera.
+Preserve original Next and exact source-authored reviewed motion controls. Keep
+the existing whole-clip contact-preservation default; any permitted body-contact
+release must be explicit, bounded to the exit recovery window and recorded in the
+existing recipe/receipt. Active pins and protected intervals must reject conflicts,
+not silently release. Preserve all earlier curves and join continuity. Freeze
+numeric expectations before implementation, test procedural unfamiliar bindings
+and both authentic examples on private desktops, inspect every new GIF frame,
+and run affected transition/Undo/export/reopen/root regressions. No per-character
+numerical exceptions, new skeleton, root alignment or broad contact/game claim.
+This is the sole active increment within incomplete G1/M2, targeting preview.28
+after fresh bounded acceptance. Source-only DoctorFlux publication remains authorized.
+
+Preview.28 bounded acceptance is now complete: 1,822 assertions in 14 runs; all
+66 native PNGs inspected. Both requested attacks reach their authentic target
+first reference pose in local/world/skin checks while roots remain exact. The
+Mario foot-inspection GIF uses a level orthographic side view and Y=0 guide;
+reference playback is excluded. Adapted-window planted-foot quality remains an
+open contact gate. See [commands and limits](../EXIT_RECOVERY_ACCEPTANCE_2026-10-25.md).
+No further feature increment is active; retain ONE incomplete G1/M2.
+
 25 October 2026 authorized continuation: preview.27-loop-inspection completes its
 bounded increment within incomplete G1/M2. Add a read-only single-clip
 endpoint inspector around the existing native viewport, with explicit First/Last/
@@ -25,7 +51,7 @@ DoctorFlux publication. Fresh bounded acceptance passes 2,606 assertions across
 [commands and limits](../LOOP_INSPECTION_ACCEPTANCE_2026-10-25.md).
 Human/input/DPI/contact/game gates remain unverified.
 
-The authorized existing-workflow follow-up is now tested with two background-only
+The preceding preview.27 existing-workflow follow-up tested two background-only
 examples and inspected GIFs. Mario AttackAirF on Snake reaches Snake Fall's first
 pose within the frozen local-transform tolerances. Snake AttackS3S (first part,
 excluding AttackS3S2) on Mario reaches Wait1 only on the 50 eligible local bone
@@ -33,9 +59,9 @@ transforms: nine protected hip/leg endpoint transforms still differ, producing a
 visible jump to idle. This second example is partial, not a complete seam match.
 Original Next, reviewed root curves and contact dependency paths remain unchanged.
 See [settings, measurements and limits](../REQUESTED_TRANSITION_EXAMPLES_2026-10-25.md).
-These examples do not establish arbitrary-character, contact or game acceptance
-and add no new solver or feature milestone. Contact-aware recovery/release fitting
-is an identified remaining need, not an accepted or newly activated increment.
+Those earlier examples did not establish arbitrary-character, contact or game
+acceptance. Their hip/leg endpoint mismatch is addressed by bounded preview.28
+above; planted-foot recovery quality remains a separate open contact gate.
 
 Preceding authorized continuation: reviewed animation batches (preview.25), then
 atomic verified set export (preview.26). Preview.25 bounded acceptance is complete: 1,925 assertions and 81 inspected PNGs.

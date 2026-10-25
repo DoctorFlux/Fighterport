@@ -41,9 +41,9 @@ internal static partial class Program
         foreach(ListViewItem item in editor.leftPanel.listAnims.Items)item.Selected=ReferenceEquals(item.Tag,clip);
         editor.SetFrame(1);editor.FrameFighterModel();await Task.Delay(150);await Wait(()=>!(bool)Field(form,"_controlBusy")&&!(bool)Field(form,"_controlSetupQueued"));
         var loaded=await Await<ControlReply>(Call(form,"LoadControls"));
-        Check(editor.AnimationHandles.Count(h=>h.Id.StartsWith("fk:"))==loaded.BoneNames.Length,"Every authentic bone has an independent FK control without donor-specific exceptions");
+        Check(editor.AnimationHandles.Count(h=>h.Id.StartsWith("fk:"))==loaded.BoneNames.Length-loaded.ProtectedMotionBones.Length&&editor.AnimationHandles.Where(h=>h.Id.StartsWith("fk:")).All(h=>!loaded.ProtectedMotionBones.Contains(h.Bone)),"Every editable body bone has an independent FK control while reviewed motion controls remain protected");
         Check(editor.AnimationHandles.Any(h=>h.Id.StartsWith("ik:")),"Reviewed compatible limb chains expose IK controls automatically");
-        Call(form,"ShowAnimationControls");var tree=(TreeView)Field(form,"_controlTree");var root=editor.AnimationHandles.First(h=>h.Id=="fk:0");
+        Call(form,"ShowAnimationControls");var tree=(TreeView)Field(form,"_controlTree");var root=editor.AnimationHandles.Single(h=>h.Id=="fk:"+loaded.BodyBone);
         editor.SelectedBone=((MDL0Node)editor.TargetModel)._linker.BoneCache.Single(b=>b.Name==root.BoneName);
         Check(editor.SelectedAnimationPin==root.Id&&editor.SelectedBone==null,"Original bone picking routes to FK controls when control selection is enabled");
         tree.SelectedNode=AllNodes(tree.Nodes).Single(n=>(n.Tag as ControlPin)?.Id==root.Id);
