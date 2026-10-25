@@ -10,7 +10,7 @@ internal static partial class Program
 {
     // Called with a successfully prepared native floor recipe. Mutations affect
     // detached JSON/recipe copies only, never the live animation or its receipt.
-    static void WorkspaceFootReceiptValidation(NativeTransitionFit valid)
+    static void WorkspaceFootReceiptValidation(NativeTransitionFit valid,string windowSide=null)
     {
         valid.Validate();
         var json=new JavaScriptSerializer{MaxJsonLength=32*1024*1024};
@@ -21,7 +21,7 @@ internal static partial class Program
         {
             var root=(IDictionary<string,object>)json.DeserializeObject(valid.Receipt);
             var receipt=(IDictionary<string,object>)Get(root,"Receipt");
-            var floor=(IDictionary<string,object>)Get(receipt,"FloorRecovery");mutate(floor);
+            var floor=windowSide==null?(IDictionary<string,object>)Get(receipt,"FloorRecovery"):(IDictionary<string,object>)Get(((IEnumerable)Get(receipt,"RecoveryWindows")).Cast<IDictionary<string,object>>().Single(w=>Convert.ToString(Get(w,"Side"))==windowSide),"Floor");mutate(floor);
             var copy=new NativeTransitionFit{Algorithm=valid.Algorithm,ModelSha256=valid.ModelSha256,InitialResultSha256=valid.InitialResultSha256,Options=valid.Options,Receipt=json.Serialize(root),Inputs=valid.Inputs};
             bool rejected=false;try{copy.Validate();}catch(InvalidDataException){rejected=true;}
             Check(rejected,"Saved floor receipt rejects "+name);

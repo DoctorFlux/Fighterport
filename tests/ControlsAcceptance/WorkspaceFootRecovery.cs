@@ -30,7 +30,7 @@ internal static partial class Program
         return result;
     }
 
-    static void RecoveryVerifyNativeFloor(MDL0Node model, CHR0Node source, CHR0Node fitted, CHR0Node alignedReference, ControlReply setup, int join, string output)
+    static void RecoveryVerifyNativeFloor(MDL0Node model, CHR0Node source, CHR0Node fitted, CHR0Node alignedReference, ControlReply setup, int join, string output,int? windowEnd=null,string label=null)
     {
         var vertices = model.PolygonList.OfType<MDL0ObjectNode>().Where(o => o.Vertices != null).SelectMany(o => o.Vertices).ToArray();
         var regions = new Dictionary<string, int[]>();
@@ -46,8 +46,9 @@ internal static partial class Program
             model.ResetToBindState(); model.ApplySHP(null, 0); model.ApplyCHR(clip, time + 1);
             return regions.ToDictionary(r => r.Key, r => r.Value.Min(i => (double)vertices[i].WeightedPosition._y));
         }
-        var times = Enumerable.Range(join * 64, (source.FrameCount - 1 - join) * 64 + 1).Select(i => i / 64f)
-            .Concat(Enumerable.Range(join, source.FrameCount - 1 - join).SelectMany(i => new[] { i + .37f, i + .73f, i + (float)(Math.Sqrt(2) - 1), i + (float)((Math.Sqrt(5) - 1) / 2) })).Distinct().OrderBy(t => t).ToArray();
+        int last=windowEnd??source.FrameCount-1;
+        var times = Enumerable.Range(join * 64, (last - join) * 64 + 1).Select(i => i / 64f)
+            .Concat(Enumerable.Range(join, last - join).SelectMany(i => new[] { i + .37f, i + .73f, i + (float)(Math.Sqrt(2) - 1), i + (float)((Math.Sqrt(5) - 1) / 2) })).Distinct().OrderBy(t => t).ToArray();
         var rows = new List<object>(); double maximumAdded = 0;
         foreach (float time in times)
         {
@@ -59,7 +60,7 @@ internal static partial class Program
                 rows.Add(new { Frame = time, Role = region.Key, Source = original[region.Key], ReferenceBodyAtSourceRoots = reference[region.Key], Baseline = baseline, Actual = actual[region.Key], AddedPenetration = added });
             }
         }
-        File.WriteAllText(Path.Combine(output, "independent-native-floor.json"), new JavaScriptSerializer { MaxJsonLength = 32000000 }.Serialize(new { FrozenNativeVertexIdentities = regions, SampleCount = times.Length, MaximumAddedPenetration = maximumAdded, Tolerance = LoopPositionTolerance, Rows = rows, Coverage = "1/64 frames plus .37, .73 and irrational held-out fractions; sampled, not continuous-time certification" }));
+        File.WriteAllText(Path.Combine(output, "independent-native-floor"+(label==null?"":"-"+label)+".json"), new JavaScriptSerializer { MaxJsonLength = 32000000 }.Serialize(new { FrozenNativeVertexIdentities = regions, SampleCount = times.Length, MaximumAddedPenetration = maximumAdded, Tolerance = LoopPositionTolerance, Rows = rows, Coverage = "1/64 frames plus .37, .73 and irrational held-out fractions; sampled, not continuous-time certification" }));
         Check(maximumAdded <= LoopPositionTolerance, "Independent native skinning adds no penetration beyond source/reference baseline at 1/64 frames and held-out irrational samples");
     }
 }

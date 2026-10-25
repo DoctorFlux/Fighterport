@@ -34,8 +34,10 @@ public static class BoundaryFloorRecovery
         public double Source=double.PositiveInfinity,Reference=double.PositiveInfinity,Before=double.PositiveInfinity,After=double.PositiveInfinity,Added;
     }
 
+    internal static long PlannedEvaluations(int span)=>4*(98L*span+2)+3L*Math.Max(0,span-1)+17;
+
     internal static BoundaryFloorResult Prepare(FighterProject project,AnimationClip original,AnimationClip candidate,BoundaryAnchor reference,
-        BoundaryFitSettings settings,ControlRigSetup controls,ISet<string> protectedMotion,int join)
+        BoundaryFitSettings settings,ControlRigSetup controls,ISet<string> protectedMotion,int join,int? windowEnd=null)
     {
         var plane=settings.FloorSettings!;
         if(!plane.Reviewed||string.IsNullOrWhiteSpace(plane.Evidence)||plane.Evidence.Length>2048||plane.Normal is not {Length:3}||
@@ -44,7 +46,7 @@ public static class BoundaryFloorRecovery
         var normal=new Vector3(plane.Normal[0],plane.Normal[1],plane.Normal[2]);
         if(Math.Abs(normal.LengthSquared()-1)>.0001)
             throw new InvalidDataException("The reviewed floor normal must already be normalized; no implicit plane conversion is permitted.");
-        var scene=project.Scene;scene.Validate();int body=AnimationControls.ResolveBodyBone(scene,controls),last=original.SampleCount-1,span=last-join;
+        var scene=project.Scene;scene.Validate();int body=AnimationControls.ResolveBodyBone(scene,controls),last=windowEnd??original.SampleCount-1,span=last-join;
         if(body<0||!settings.Bones.Contains(scene.Bones[body].Name,StringComparer.Ordinal)||protectedMotion.Contains(scene.Bones[body].Name))
             throw new InvalidDataException("Floor recovery requires the reviewed editable body in the complete recovery mask.");
         if(3L*(span+1)>KeyLimit)throw new NotSupportedException("Floor recovery exceeds the 8192 integral body-key budget.");
@@ -104,7 +106,7 @@ public static class BoundaryFloorRecovery
             {
                 int channel=axis+6;var curve=channels[channel]??throw new InvalidDataException("Body recovery has no fitted translation channel.");
                 var keys=curve.Keys.Where(k=>k.Frame<=join).ToList();
-                for(int step=1;step<=span;step++)
+                for(int step=1;step<span;step++)
                 {
                     int frame=join+step;float value=curve.Sample(frame)+(float)(amplitude*offsets[step][axis]);
                     float incoming=BoundaryFitting.Derivative(curve,frame,false)+(float)(amplitude*slopes[step][axis]);
@@ -112,7 +114,7 @@ public static class BoundaryFloorRecovery
                     if(!float.IsFinite(value)||!float.IsFinite(incoming)||!float.IsFinite(outgoing))throw new InvalidDataException("The clearance envelope produced a nonfinite body key.");
                     keys.Add(new(frame,value,incoming,outgoing));
                 }
-                keys.AddRange(curve.Keys.Where(k=>k.Frame>last));
+                keys.AddRange(curve.Keys.Where(k=>k.Frame>=last));
                 channels[channel]=curve with{Keys=keys.ToArray()};
             }
             var lifted=hip with{Channels=channels};return candidate with{Tracks=candidate.Tracks.Select(t=>ReferenceEquals(t,hip)?lifted:t).ToArray()};
@@ -179,7 +181,7 @@ public static class BoundaryFloorRecovery
         if(maximumAdded>PositionBound)
             throw new NotSupportedException("Floor recovery did not converge at independent 1/64-frame/.37/.73 witnesses within the integral-key envelope. No result was published.");
         if(maximumLift>liftLimit)throw new NotSupportedException("The independently sampled floor correction exceeds the reviewed leg-length lift budget.");
-        var receipt=new BoundaryFloorReceipt(BoundaryFitting.FloorVersion,GeometryHash(scene,legs),settings.MatchReferenceControls?ReferenceControlBaselinePolicy:BaselinePolicy,
+        var receipt=new BoundaryFloorReceipt(settings.BoundaryContactRecovery?BoundaryFitting.BoundaryFloorVersion:BoundaryFitting.FloorVersion,GeometryHash(scene,legs),settings.MatchReferenceControls?ReferenceControlBaselinePolicy:BaselinePolicy,
             plane with{Normal=plane.Normal.ToArray()},maximumLift,maximumAdded,evaluations,validationTimes.Length,amplitude==0?0:3*(span+1),
             regions.Select((r,i)=>new BoundaryFloorRegionReceipt(r.Role,scene.Bones[r.Bone].Name,r.Points.Length,r.LegacyPoints,
                 measurements[i].Source,measurements[i].Reference,measurements[i].Before,measurements[i].After,measurements[i].Added)).ToArray())

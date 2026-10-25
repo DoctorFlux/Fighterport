@@ -30,7 +30,7 @@
     </Copyright>
     <AssemblyVersion>2.0.0.0</AssemblyVersion>
     <FileVersion>2.0.0.16</FileVersion>
-    <InformationalVersion>2.0.0-preview.31-boundary-controls</InformationalVersion>
+    <InformationalVersion>2.0.0-preview.32-simple-boundaries</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Platforms>AnyCPU;x64;x86</Platforms>

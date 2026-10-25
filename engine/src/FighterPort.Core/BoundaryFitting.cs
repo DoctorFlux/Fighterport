@@ -10,8 +10,10 @@ public sealed record BoundaryFitSettings(int EntrySamples,int ExitSamples,Transf
     public bool PreserveContacts {get;init;}
     public string[] ContactBones {get;init;}=[];
     public bool ExitContactRecovery {get;init;}
+    public bool BoundaryContactRecovery {get;init;}
     public BoundaryFloorSettings? FloorSettings {get;init;}
 }
+public sealed record BoundaryRecoveryWindow(string Side,int Start,int End,BoundaryFloorReceipt? Floor);
 public sealed record BoundaryFitReceipt(string Version,string Source,string? Entry,string? Exit,int SampleCount,bool Loop,
     BoundaryFitSettings Settings,int ChangedChannels,string[] Limits)
 {
@@ -22,6 +24,7 @@ public sealed record BoundaryFitReceipt(string Version,string Source,string? Ent
     public int? RecoveryEnd {get;init;}
     public string ReferenceRootPolicy {get;init;}="";
     public BoundaryFloorReceipt? FloorRecovery {get;init;}
+    public BoundaryRecoveryWindow[] RecoveryWindows {get;init;}=[];
 }
 public sealed record BoundaryFitResult(AnimationClip Clip,BoneTrack[] Changed,BoundaryFitReceipt Receipt);
 
@@ -33,6 +36,8 @@ public static class BoundaryFitting
     public const string ContactVersion="contact-trajectory-preserve-2";
     public const string ExitRecoveryVersion="contact-exit-recovery-3";
     public const string FloorVersion="contact-floor-recovery-2";
+    public const string BoundaryRecoveryVersion="contact-boundary-recovery-1";
+    public const string BoundaryFloorVersion="contact-boundary-floor-1";
     public const string SourceRootReferencePolicy="authentic reference body under source-authored protected locals at each time";
     public static BoundaryFitResult Prepare(FighterProject project,AnimationClip source,BoundaryAnchor? entry,BoundaryAnchor? exit,BoundaryFitSettings settings)
     {
@@ -48,11 +53,15 @@ public static class BoundaryFitting
         if(source.SampleCount<3||source.SampleCount>100000)throw new InvalidDataException("Boundary fitting requires 3–100000 existing samples.");
         if(entry is null&&exit is null)throw new InvalidDataException("Choose an entry or exit reference.");
         if(settings.Components==TransformComponents.None||(settings.Components&~TransformComponents.All)!=0)throw new InvalidDataException("Choose supported transform components.");
+        bool recovery=settings.ExitContactRecovery||settings.BoundaryContactRecovery;
+        if(settings.ExitContactRecovery&&settings.BoundaryContactRecovery)throw new InvalidDataException("Choose either legacy exit recovery or start/end recovery, not both.");
+        if(settings.BoundaryContactRecovery&&(!settings.PreserveContacts||settings.Components!=TransformComponents.All||entry is not null&&entry is not {Frozen:true,Frame:0}||exit is not null&&exit is not {Frozen:true,Frame:0}))
+            throw new InvalidDataException("Start/end contact recovery requires all S/R/T components, preserved contacts and frozen first-frame references.");
         if(settings.ExitContactRecovery&&(entry is not null||exit is not {Frozen:true,Frame:0}||!settings.PreserveContacts||settings.Components!=TransformComponents.All))
             throw new InvalidDataException("Exit contact recovery requires an exit-only frozen first-frame reference, all S/R/T components and existing contact preservation.");
-        if(settings.ExitContactRecovery&&source.Loop)
+        if(recovery&&source.Loop)
             throw new NotSupportedException("Exit contact recovery currently supports non-looping source animations only. Stored-loop wrap dependencies require a separate verified recovery adapter; the original animation and loop flag remain unchanged.");
-        if(settings.FloorSettings is not null&&!settings.ExitContactRecovery)
+        if(settings.FloorSettings is not null&&!recovery)
             throw new InvalidDataException("Reviewed floor recovery requires explicit exit contact recovery.");
         if(settings.Bones.Length==0||settings.Bones.Distinct(StringComparer.Ordinal).Count()!=settings.Bones.Length||settings.Bones.Any(n=>!project.Scene.Bones.Any(b=>b.Name==n)))throw new InvalidDataException("Choose existing bones from this exact rig revision.");
         int start=entry is null?0:settings.EntrySamples-1,end=exit is null?last:source.SampleCount-settings.ExitSamples;
@@ -60,9 +69,9 @@ public static class BoundaryFitting
         var protectedRanges=settings.Protected.Concat(project.Moves.SelectMany(m=>m.Events)).ToArray();
         if(protectedRanges.Any(p=>!double.IsFinite(p.Start)||!double.IsFinite(p.End)||p.Start<0||p.End<p.Start||p.End>last||entry is not null&&p.Start<start||exit is not null&&p.End>end))throw new InvalidDataException("A fit range intersects a protected frame/event interval. Shorten the fit or review that protection explicitly.");
         var contactBones=ContactBoundaryProtection.Resolve(project,source,settings);
-        if(settings.MatchReferenceControls&&!settings.ExitContactRecovery&&matchedControls.Any(name=>contactBones.Contains(name,StringComparer.Ordinal)))
+        if(settings.MatchReferenceControls&&!recovery&&matchedControls.Any(name=>contactBones.Contains(name,StringComparer.Ordinal)))
             throw new NotSupportedException("Reference controls affect preserved support trajectories. Use reviewed exit recovery or retain the original control curves.");
-        if(settings.MatchReferenceControls&&!settings.ExitContactRecovery&&(project.BonePins??[]).Any(pin=>(pin.Clip is null||pin.Clip==source.Id)&&matchedControls.Any(name=>PoseGeometry.Ancestor(project.Scene,Array.FindIndex(project.Scene.Bones,b=>b.Name==name),pin.Bone))))
+        if(settings.MatchReferenceControls&&!recovery&&(project.BonePins??[]).Any(pin=>(pin.Clip is null||pin.Clip==source.Id)&&matchedControls.Any(name=>PoseGeometry.Ancestor(project.Scene,Array.FindIndex(project.Scene.Bones,b=>b.Name==name),pin.Bone))))
             throw new NotSupportedException("An existing-bone pin intersects reference control fitting; no anchor is released.");
         if(project.NativeLayers.Any(l=>l.Kind!="SCN0"))throw new NotSupportedException("Composed companion layers require a synchronized fitting adapter; the body-only operation cannot rewrite that composition.");
         void Anchor(BoundaryAnchor? a)
@@ -73,8 +82,8 @@ public static class BoundaryFitting
             a.Clip.Rate.Validate();
         }
         Anchor(entry);Anchor(exit);source.Rate.Validate();
-        var recovered=ContactBoundaryProtection.ResolveExitRecovery(project,source,settings,controls,protectedMotion,contactBones,end);
-        if(settings.ExitContactRecovery)
+        var recovered=ContactBoundaryProtection.ResolveExitRecovery(project,source,settings,controls,protectedMotion,contactBones,end,entry is null?null:start);
+        if(recovery)
             foreach(var bone in project.Scene.Bones.Where(b=>protectedMotion.Contains(b.Name)))
                 if(bone.Rest.Channels().Any(v=>!float.IsFinite(v))||source.Tracks.Where(t=>t.Bone==bone.Name).SelectMany(t=>t.Channels.OfType<Curve>()).SelectMany(c=>c.Keys)
                     .Any(k=>!double.IsFinite(k.Frame)||!float.IsFinite(k.Value)||!float.IsFinite(k.InTangent)||!float.IsFinite(k.OutTangent)))
@@ -133,30 +142,44 @@ public static class BoundaryFitting
         }
         if(changed.Count==0)throw new InvalidDataException("The mask, root policy and protected contact paths leave no eligible channels to fit. Choose unprotected bones; repositioning these contacts needs a coupled solver. Protected: "+string.Join(", ",contactBones));
         BoundaryFloorReceipt? floorReceipt=null;
+        var windows=new List<BoundaryRecoveryWindow>();
+        if(settings.BoundaryContactRecovery)
+        {
+            if(entry is not null)windows.Add(new("entry",0,start,null));
+            if(exit is not null)windows.Add(new("exit",end,last,null));
+        }
         if(settings.FloorSettings is not null)
         {
-            var corrected=BoundaryFloorRecovery.Prepare(project,source,source with{Tracks=tracks.ToArray()},exit!,settings,controls!,protectedMotion,end);
-            tracks=corrected.Clip.Tracks.ToList();floorReceipt=corrected.Receipt;
-            foreach(var track in corrected.Changed)
+            var floorWindows=settings.BoundaryContactRecovery?windows.ToArray():[new BoundaryRecoveryWindow("exit",end,last,null)];
+            if(floorWindows.Sum(w=>3L*(w.End-w.Start+1))>8192)throw new NotSupportedException("Combined boundary floor recovery exceeds the 8192 integral body-key budget.");
+            if(floorWindows.Sum(w=>BoundaryFloorRecovery.PlannedEvaluations(w.End-w.Start))>200000)throw new NotSupportedException("Combined boundary floor recovery exceeds the 200000 pose-evaluation budget.");
+            int evaluations=0;
+            foreach(var w in floorWindows)
             {
-                int at=changed.FindIndex(t=>t.Bone==track.Bone);if(at<0)changed.Add(track);else changed[at]=track;
+                var corrected=BoundaryFloorRecovery.Prepare(project,source,source with{Tracks=tracks.ToArray()},w.Side=="entry"?entry!:exit!,settings,controls!,protectedMotion,w.Start,w.End);
+                tracks=corrected.Clip.Tracks.ToList();evaluations+=corrected.Receipt.Evaluations;
+                if(evaluations>200000)throw new NotSupportedException("Combined floor recovery exceeded its evaluation budget; no result was published.");
+                if(settings.BoundaryContactRecovery)windows[windows.FindIndex(v=>v.Side==w.Side)]=w with{Floor=corrected.Receipt};
+                else floorReceipt=corrected.Receipt;
+                foreach(var track in corrected.Changed){int at=changed.FindIndex(t=>t.Bone==track.Bone);if(at<0)changed.Add(track);else changed[at]=track;}
             }
         }
-        string[] limits=[floorReceipt is null?"FK component curves only; no contact, clearance, joint-limit, world-trajectory or game-state acceptance.":"FK component curves with bounded reviewed-plane clearance measurements only; no fixed-contact, joint-limit, whole-trajectory or game-state acceptance.","Existing duration, rate, loop flag, middle curves and unselected channels are retained; inspect the loop seam.",settings.NearestEquivalentAngles?"Reference XYZ Euler angles choose the nearest complete triplet from both equivalent families, including coupled 180-degree and whole 360-degree turns; alternate-family middle-axis tangents reverse. Authored action and control curves stay unchanged.":"Reference Euler channel values retain their authored turn counts, including full spins.","Native companion resources are not copied into this independent body animation."];
-        string version=floorReceipt is not null?FloorVersion:settings.ExitContactRecovery?ExitRecoveryVersion:settings.PreserveContacts?ContactVersion:Version;
+        string[] limits=[settings.FloorSettings is null?"FK component curves only; no contact, clearance, joint-limit, world-trajectory or game-state acceptance.":"FK component curves with bounded reviewed-plane clearance measurements only; no fixed-contact, joint-limit, whole-trajectory or game-state acceptance.","Existing duration, rate, loop flag, middle curves and unselected channels are retained; inspect the loop seam.",settings.NearestEquivalentAngles?"Reference XYZ Euler angles choose the nearest complete triplet from both equivalent families, including coupled 180-degree and whole 360-degree turns; alternate-family middle-axis tangents reverse. Authored action and control curves stay unchanged.":"Reference Euler channel values retain their authored turn counts, including full spins.","Native companion resources are not copied into this independent body animation."];
+        string version=settings.BoundaryContactRecovery?(settings.FloorSettings is null?BoundaryRecoveryVersion:BoundaryFloorVersion):floorReceipt is not null?FloorVersion:settings.ExitContactRecovery?ExitRecoveryVersion:settings.PreserveContacts?ContactVersion:Version;
         if(protectedMotion.Count>0)limits=[..limits,"Source-authored motion controls retain their original curves: "+string.Join(", ",protectedMotion.Order(StringComparer.Ordinal))];
         if(settings.ExitContactRecovery)limits=[..limits,
             "Explicit reviewed exit contact recovery: all original source motion is retained through key time "+end+"; only the final window to "+last+" adapts the selected body curves to the frozen reference first frame with zero endpoint slope.",
             "Recovered native support dependency paths: "+string.Join(", ",recovered)+". Existing baked support preservation is explicitly released only after the join in this window; no contact, clearance, release-trajectory or coupled-solver acceptance is claimed.",
             "Retained motion controls, fixed/authored pins and protected intervals are not released. Existing contact metadata remains recorded and is not silently removed."];
+        else if(settings.BoundaryContactRecovery)limits=[..limits,"Explicit reviewed start/end hip/leg recovery inside the recorded windows only. Shared joins and the complete original middle remain unchanged; frozen first reference poses have zero endpoint slopes. Baked support metadata is retained; adaptation does not promise planted contacts.","Retained motion-position controls, authored/editor pins and protected intervals are not released."];
         else if(settings.PreserveContacts)limits=[..limits,"Existing contact trajectories are preserved by retaining ALL original curves on their complete bone dependency paths for the whole clip. These protected bones are excluded from endpoint matching. No new contact, release, anchor correction or coupled IK solve is inferred.","Protected contact bones: "+string.Join(", ",contactBones)];
         var retainedContacts=contactBones.Except(recovered,StringComparer.Ordinal).ToArray();
-        if(settings.ExitContactRecovery)limits=[..limits,"Reference placement policy: "+referencePolicy+"."];
+        if(recovery)limits=[..limits,"Reference placement policy: "+referencePolicy+"."];
         if(matchedControls.Length>0)limits=[..limits,"Explicit boundary control fitting: "+string.Join(", ",matchedControls)+". Only reviewed motion-position curves stay source-authored; original control/action keys outside the fit windows remain exact."];
-        if(floorReceipt is not null)limits=[..limits,"Reviewed floor recovery uses every vertex with any positive reviewed foot-path influence, all original weights and authentic inverse binds. It prevents added penetration relative to the recorded per-foot original/reference baseline, not absolute zero penetration.",
-            "Body translation correction only, within the final window; integer Hermite keys, zero correction and slope at both ends. Maximum lift is 20% of the shorter reviewed leg chain. Fixed pins remain hard failures.",
+        if(settings.FloorSettings is not null)limits=[..limits,"Reviewed floor recovery uses every vertex with any positive reviewed foot-path influence, all original weights and authentic inverse binds. It prevents added penetration relative to the recorded per-foot original/reference baseline, not absolute zero penetration.",
+            "Body translation correction only, within explicitly selected windows; integer Hermite keys, zero correction and slope at both ends. Maximum lift is 20% of the shorter reviewed leg chain. Fixed pins remain hard failures.",
             "Clearance is checked at the receipt's bounded native-frame witnesses; this is not a continuous-time certificate, coupled contact solver, broad character or game acceptance."];
-        var receipt=new BoundaryFitReceipt(version,RetargetDependencies.Hash(source),entry is null?null:RetargetDependencies.Hash(entry),exit is null?null:RetargetDependencies.Hash(exit),source.SampleCount,source.Loop,settings,changedChannels,limits){MatchedReferenceControls=matchedControls,ProtectedContactBones=retainedContacts,RecoveredContactBones=recovered,RecoveryStart=settings.ExitContactRecovery?end:null,RecoveryEnd=settings.ExitContactRecovery?last:null,ReferenceRootPolicy=settings.ExitContactRecovery||settings.MatchReferenceControls?referencePolicy:"",FloorRecovery=floorReceipt};
+        var receipt=new BoundaryFitReceipt(version,RetargetDependencies.Hash(source),entry is null?null:RetargetDependencies.Hash(entry),exit is null?null:RetargetDependencies.Hash(exit),source.SampleCount,source.Loop,settings,changedChannels,limits){MatchedReferenceControls=matchedControls,ProtectedContactBones=retainedContacts,RecoveredContactBones=recovered,RecoveryStart=settings.ExitContactRecovery?end:null,RecoveryEnd=settings.ExitContactRecovery?last:null,RecoveryWindows=windows.ToArray(),ReferenceRootPolicy=recovery||settings.MatchReferenceControls?referencePolicy:"",FloorRecovery=floorReceipt};
         TransitionReference? Ref(BoundaryAnchor? a)=>a is null?null:new(a.Clip.Revision,project.Scene.SkeletonRevision,a.Frame,a.Rate,a.Frozen);
         var recipe=new TransitionRecipe(Ref(entry),Ref(exit),entry is null?0:settings.EntrySamples,exit is null?0:settings.ExitSamples,protectedRanges,RootMotionPolicy.Preserve,settings.Bones,retainedContacts,version){CurveFit=receipt};
         var result=source with{Id=Guid.NewGuid(),Revision=Guid.NewGuid(),Name=source.Name+" (boundary fit)",Tracks=tracks.ToArray(),Transition=recipe,NativeWrite=NativeWriteMode.NewResource,NativeWriteName=null};

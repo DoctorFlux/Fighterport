@@ -31,7 +31,7 @@ namespace BrawlCrate.UI
             menu.DropDownItems.Add("Retarget Options...",null,(s,e)=>ShowFighterRetargetOptions());
             menu.DropDownItems.Add("Advanced Scene / Body Fitting...",null,(s,e)=>RunFighterAction(OpenAdvancedSceneFitting));
             AddFighterButton(toolbar,"Fit / Transitions...","fighterTransitionFit",()=>RunFighterAction(ShowTransitionFit));
-            menu.DropDownItems.Add("Fit Animation Boundaries / Transitions...",null,(s,e)=>RunFighterAction(ShowTransitionFit));
+            menu.DropDownItems.Add("Fit start and end...",null,(s,e)=>RunFighterAction(ShowTransitionFit));
             menu.DropDownItems.Add("Transition Fit Details / Frozen References...",null,(s,e)=>RunFighterAction(ShowTransitionFitDetails));
             menu.DropDownItems.Add("Animation Slots / Assign to State...",null,(s,e)=>RunFighterAction(ShowAnimationSlots));
             menu.DropDownItems.Add("Contact Placement / Release...",null,(s,e)=>OpenContactPlacement());

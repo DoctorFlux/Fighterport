@@ -44,12 +44,13 @@ internal static partial class Program
             try
             {
                 ((CheckBox)window.Controls.Find("transition_matchReferenceControls",true).Single()).Checked=false;
+                ((CheckBox)window.Controls.Find("transition_boundaryContactRecovery",true).Single()).Checked=false;
                 foreach(string side in new[]{"entry","exit"}){var choices=(ComboBox)window.Controls.Find("transition_"+side,true).Single();choices.SelectedIndex=choices.Items.Cast<object>().Select((v,i)=>new{Value=v as TransitionClipChoice,Index=i}).Single(v=>v.Value?.Asset==referenceAsset).Index;}
                 ((CheckBox)window.Controls.Find("transition_binding",true).Single()).Checked=true;var protection=(CheckBox)window.Controls.Find("transition_contacts",true).Single();protection.Checked=true;
                 var mask=(CheckedListBox)window.Controls.Find("transitionBones",true).Single();for(int i=0;i<mask.Items.Count;i++)mask.SetItemChecked(i,protectedBones.Contains(Convert.ToString(mask.Items[i]))||Convert.ToString(mask.Items[i])==free.Name);
                 ((Button)window.Controls.Find("prepareTransition",true).Single()).PerformClick();await Wait(()=>!window.Busy);var report=(TextBox)window.Controls.Find("transitionReport",true).Single();File.WriteAllText(Path.Combine(output,"contact-transition-report.txt"),report.Text);
-                Check(window.Candidate!=null&&report.Text.Contains("contact-trajectory-preserve-2"),"Real native contact-preserving preparation succeeds on the original Next result");
-                Check(project.Animations.Count==count&&report.Text.Contains("excluded from endpoint matching"),"Contact exclusions are reported before explicit independent import");
+                Check(window.Candidate!=null&&window.PreparedReport.Contains("contact-trajectory-preserve-2"),"Real native contact-preserving preparation succeeds on the original Next result");
+                Check(project.Animations.Count==count&&window.PreparedReport.Contains("excluded from endpoint matching"),"Contact exclusions are reported before explicit independent import");
                 Check(ContactTrackKey(source,protectedBones)==ContactTrackKey(window.Candidate,protectedBones),"Every protected native key, tangent, duplicate side and transform flag remains exact");
                 var changed=window.Candidate.Children.OfType<CHR0EntryNode>().Single(e=>e.Name==free.Name);Check(Math.Abs(changed.GetFrameValue(3,0)-free.BindState[3]-12)<.0001f,"Unprotected native branch still matches the requested contact-aware transition endpoint");
                 var rig=BrawlRetargeter.Capture(model,asset.Retarget.Mapping.ToDictionary(m=>m.Role,m=>m.Target));

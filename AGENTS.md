@@ -1,5 +1,44 @@
 # Fighterport
 
+25 October 2026 bounded preview.32-simple-boundaries acceptance is complete:
+**3,691 checks / 23 runs / 117 inspected native PNGs**. The simple panel selects
+start/end target poses and native join frames; Advanced retains all technical
+options and full limits. Reviewed hip/leg recovery supports either/both windows
+while preserving the original middle, attack motion-position curves, original
+Next provenance, full previewer and native Undo. Both-window floor proof retains
+all frozen gates and rejects the longer contradictory window. Actual compact/wide
+100/200 text captures show no overlapping controls. See
+[acceptance evidence](docs/SIMPLE_BOUNDARIES_ACCEPTANCE_2026-10-25.md).
+No further increment is promoted. ONE G1/M2 remains incomplete for human/input/DPI,
+universal contact quality, moving-support/context and actual game acceptance.
+
+25 October 2026 authorized preview.32-simple-boundaries: implement the user-requested
+fixed-duration start / unchanged attack / end fitting flow with a simple default UI.
+Choose exact target reference poses, attack-reached frame and recovery-start frame;
+show inclusive native display ranges with shared unchanged join frames. Advanced
+contains native components, masks, reference timing, protections and floor review.
+Preview prepares an independent result; adding requires explicit result/limit review.
+Extend explicitly reviewed hip/leg contact recovery to either or both windows on
+non-looping clips, never the protected middle. Retain original Next provenance and
+all reviewed motion-position S/R/T. Other reviewed ancestor controls may fit only
+inside windows. Frozen first reference poses only for contact adaptation; fixed
+pins, intersecting timed pins/events and unsupported support paths reject.
+Old exit-only settings/recipes retain their exact meanings and remain readable.
+Frozen independent expectations: 40 samples, entry 1..5, exit 26..40 (15 inclusive
+samples), original middle 5..26 with both joins shared; no duration/timebase change.
+Endpoint translation .0002, scale .00001, orientation .01 degrees; original native
+middle keys/tangents/flags and motion-position tracks exact, including paired keys.
+Generalize the existing reviewed floor envelope to each selected window without
+time reversal, source-root changes or looser numeric bounds. Per-window lift <=20%
+of the shorter reviewed leg; combined <=8192 new hip keys / 200000 evaluations.
+Floor baseline remains min(0, authentic original, frozen authentic reference under
+retained attack travel), full positive-influence foot geometry, independent 1/64
+and held-out witnesses. Reject nonconvergence rather than imply foot locking.
+Use background private-desktop verification and inspect fresh native captures.
+ONE incomplete G1/M2 remains; physical input, human usability, DPI, universal
+contact quality and actual games stay open. Publish verified source only under
+DoctorFlux attribution to public Fighterport/main; no Codex attribution.
+
 Latest authorized continuation: preview.31-boundary-controls fixes the shared
 entry/exit XYZ-equivalence choice and explicitly fits reviewed reference controls
 at animation boundaries. The latest user correction supersedes all-control

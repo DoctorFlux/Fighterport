@@ -118,7 +118,7 @@ namespace BrawlCrate.Studio
             _tooltips.SetToolTip(_loopInspection, _loopInspection.AccessibleDescription);
             _controls = AddAction("workspaceControlsAction", "Set up controls", "controls");
             _motions = AddAction("workspaceMotionsAction", "Add target animations", "motions");
-            _transitions = AddAction("workspaceTransitionsAction", "Fit start or end", "transitions");
+            _transitions = AddAction("workspaceTransitionsAction", "Fit start and end", "transitions");
             _timing = AddAction("workspaceTimingAction", "Source timing / batch", "timing");
             _save = AddAction("workspaceSaveAction", "Save project", "save");
             _details = AddAction("workspaceDetailsAction", "More tools", "details");

@@ -18,7 +18,7 @@ namespace BrawlCrate.Studio
         {
             var proof=asset.Retarget;
             if(!HasBakedSupport(asset))return new string[0];
-            if(!preserve)throw new NotSupportedException("This retargeted clip has baked support contacts. Enable Preserve existing contact trajectories. Reviewed hip / leg recovery can be explicitly enabled only for the final exit window; general support repositioning still needs a coupled contact adapter. Original animation and pins remain unchanged.");
+            if(!preserve)throw new NotSupportedException("This retargeted clip has baked support contacts. Enable Preserve existing contact trajectories. Reviewed hip / leg recovery can be explicitly enabled inside explicitly selected start/end windows; general support repositioning still needs a coupled contact adapter. Original animation and pins remain unchanged.");
             if(proof.Algorithm!=HumanoidRetargeter.Algorithm||!string.IsNullOrEmpty(proof.EngineReceipt)||asset.RigIdentity!=BrawlRetargeter.SkeletonFingerprint(model))throw new InvalidDataException("Support protection requires the exact original Next target rig and its reviewed native mapping.");
             // Reuse the original native support regions and ALL their skin
             // influences. Counts do not identify individual intervals, so freeze
@@ -38,11 +38,13 @@ namespace BrawlCrate.Studio
 
         internal static string[] ReviewExitRecovery(TransitionFitOptions options,int frames,bool loop,string[] contactBones,ISet<string> protectedMotion,bool currentBinding)
         {
-            if(options.PreventFootDipping&&(!options.ExitContactRecovery||!options.FloorReviewed||double.IsNaN(options.FloorHeight)||double.IsInfinity(options.FloorHeight)||float.IsInfinity((float)options.FloorHeight)))throw new InvalidOperationException("Preventing extra foot dipping requires exit contact recovery and explicit review of the finite native floor plane and authentic source/reference penetration baseline.");
-            if(!options.ExitContactRecovery)return new string[0];
+            if(options.PreventFootDipping&&(!options.ExitContactRecovery&&!options.BoundaryContactRecovery||!options.FloorReviewed||double.IsNaN(options.FloorHeight)||double.IsInfinity(options.FloorHeight)||float.IsInfinity((float)options.FloorHeight)))throw new InvalidOperationException("Preventing extra foot dipping requires exit contact recovery and explicit review of the finite native floor plane and authentic source/reference penetration baseline.");
+            if(!options.ExitContactRecovery&&!options.BoundaryContactRecovery)return new string[0];
+            if(options.ExitContactRecovery&&options.BoundaryContactRecovery)throw new InvalidOperationException("Use either legacy exit recovery or start/end recovery.");
             if(loop)throw new NotSupportedException("Exit contact recovery requires a non-looping attack. Stored-loop wrap adaptation remains separate work.");
             if(!currentBinding||protectedMotion==null)throw new InvalidOperationException("Set up the current animation controls and review this exact native rig before enabling exit contact recovery.");
-            if(!options.PreserveContacts||options.Entry!=null||options.Exit==null||!options.ExitFrozen||options.ExitFrame!=0||options.Components!=7||options.ExitSamples<2||options.ExitSamples>=frames)
+            if(options.BoundaryContactRecovery&&(!options.PreserveContacts||options.Components!=7||options.Entry==null&&options.Exit==null||options.Entry!=null&&(!options.EntryFrozen||options.EntryFrame!=0||options.EntrySamples<2||options.EntrySamples>=frames)||options.Exit!=null&&(!options.ExitFrozen||options.ExitFrame!=0||options.ExitSamples<2||options.ExitSamples>=frames)||(options.Entry==null?0:options.EntrySamples-1)>=(options.Exit==null?frames-1:frames-options.ExitSamples)))throw new InvalidOperationException("Start/end recovery requires non-overlapping ranges, all components and the frozen first frame of each target pose.");
+            if(options.ExitContactRecovery&&(!options.PreserveContacts||options.Entry!=null||options.Exit==null||!options.ExitFrozen||options.ExitFrame!=0||options.Components!=7||options.ExitSamples<2||options.ExitSamples>=frames))
                 throw new InvalidOperationException("Exit contact recovery requires preserved contacts, no entry fit, all scale/rotation/translation components and the frozen first frame of an exact exit reference.");
             var released=contactBones.Where(name=>!protectedMotion.Contains(name)).ToArray();
             if(released.Length==0)throw new InvalidOperationException("No reviewed body contact paths are available for exit recovery. Use ordinary FK fitting without contact recovery.");

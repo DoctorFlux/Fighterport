@@ -38,6 +38,7 @@ internal static partial class Program
             try
             {
                 ((CheckBox)window.Controls.Find("transition_matchReferenceControls",true).Single()).Checked=false;
+                ((CheckBox)window.Controls.Find("transition_scale",true).Single()).Checked=false;((CheckBox)window.Controls.Find("transition_translation",true).Single()).Checked=false;
                 Check(window.SourceView.Model!=model&&window.TargetView.Model!=model,"Transition previews own native model copies rather than posing the authoring rig");
                 Check(window.SourceView.Viewport.CurrentViewport._renderAttrib._renderShaders==editor.ModelPanel.CurrentViewport._renderAttrib._renderShaders&&window.TargetView.Viewport.CurrentViewport._ambient==editor.ModelPanel.CurrentViewport._ambient,"Transition previews reuse the main native shader and lighting settings");
                 var prepare=(Button)window.Controls.Find("prepareTransition",true).Single();var apply=(Button)window.Controls.Find("applyTransition",true).Single();var review=(CheckBox)window.Controls.Find("reviewTransition",true).Single();var report=(TextBox)window.Controls.Find("transitionReport",true).Single();

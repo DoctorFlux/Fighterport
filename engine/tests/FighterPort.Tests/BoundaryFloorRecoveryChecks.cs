@@ -55,6 +55,26 @@ internal static class BoundaryFloorRecoveryChecks
         var controlFit=Fit(controlFixture);Verify(controlFixture,controlFit,check,"fitted reference parent under retained actor travel");
         check(controlFit.Receipt.FloorRecovery!.BaselinePolicy==BoundaryFloorRecovery.ReferenceControlBaselinePolicy&&controlFit.Receipt.MatchedReferenceControls.SequenceEqual(new[]{"reviewed_orientation"}),
             "Floor receipt distinguishes fitted reference controls from retained actor travel with no alternate geometry or limits");
+        // Two disjoint eight-interval windows in a 25-frame clip. The same
+        // analytic +/-45-degree knees require .2928932188 clearance at each
+        // midpoint; the original middle 8..16 must remain completely exact.
+        var bothSource=basic.Source with{SampleCount=25};
+        var bothProject=basic.Project with{Clips=[bothSource,basic.Reference]};
+        var bothSettings=basic.Settings with{EntrySamples=9,ExitSamples=9,Protected=[new(8,16,"Original middle")],ExitContactRecovery=false,BoundaryContactRecovery=true};
+        var bothAnchor=new BoundaryAnchor(basic.Reference,AnimationControls.Fingerprint(basic.Project.Scene),0);
+        var both=BoundaryFitting.Prepare(bothProject,bothSource,bothAnchor,bothAnchor,bothSettings);
+        check(both.Receipt.Version==BoundaryFitting.BoundaryFloorVersion&&both.Receipt.RecoveryWindows.Length==2&&both.Receipt.RecoveryWindows.All(w=>w.Floor is {MaximumAddedPenetration:<=PositionBound} r&&Math.Abs(r.MaximumLift-AnalyticDip)<.0002),
+            "The same native envelope independently clears entry and exit analytic dips with unchanged per-window lift and penetration gates");
+        bool bothClear=true,bothMiddle=true,bothEndpoints=true;
+        for(int tick=0;tick<=24*64;tick++)
+        {
+            double time=tick/64d;var originalPose=Evaluate(basic.Project.Scene,bothSource,time);var actualPose=Evaluate(basic.Project.Scene,both.Clip,time);
+            if(time>=8&&time<=16)bothMiddle&=originalPose.Local.Zip(actualPose.Local).All(p=>Distance(p.First,p.Second));
+            if(time<8||time>16)bothClear&=basic.Project.Scene.Meshes[0].Vertices.All(v=>Point(v,actualPose.Skin).Y>=-PositionBound);
+        }
+        foreach(int time in new[]{0,24})
+        {var actualPose=Evaluate(basic.Project.Scene,both.Clip,time);var expectedPose=Evaluate(basic.Project.Scene,basic.Reference,0,new Dictionary<int,Transform>{{0,bothSource.Sample(basic.Project.Scene.Bones[0],time)}});bothEndpoints&=actualPose.Local.Zip(expectedPose.Local).All(p=>Distance(p.First,p.Second));}
+        check(bothClear&&bothMiddle&&bothEndpoints&&ReferenceEquals(both.Clip.Tracks[0],bothSource.Tracks[0]),"Independent two-ended skinning verifies both floor windows, authentic endpoints, exact middle and source travel without time reversal");
         var changedVertex=weighted.Project.Scene.Meshes[0].Vertices.ToArray();changedVertex[^1]=changedVertex[^1] with{Position=changedVertex[^1].Position+new Vector3(.003f,0,0)};
         var changedScene=weighted.Project.Scene with{Meshes=[weighted.Project.Scene.Meshes[0] with{Vertices=changedVertex}]};
         var geometryChanged=Fit(weighted with{Project=weighted.Project with{Scene=changedScene}});

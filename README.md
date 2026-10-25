@@ -2,7 +2,7 @@
 
 This is the public unified source repository at https://github.com/DoctorFlux/Fighterport.
 It imports the BrawlCrate-based Next preview.14 source and integrated owned engine;
-the current implementation is **preview.31-boundary-controls**.
+the current implementation is **preview.32-simple-boundaries**.
 The two predecessor repositories are private preserved histories.
 Upstream copyrights, licenses and notices remain intact.
 
@@ -81,7 +81,7 @@ Use Close, focused Escape or Focus editor to recover editor space. See the
 [loop inspection acceptance record](docs/LOOP_INSPECTION_ACCEPTANCE_2026-10-25.md).
 Fresh preview.27 qualification passes **2,606 scoped assertions / 115 inspected PNGs**.
 
-**Fit start or end** can match a frozen first Wait/Fall pose without replacing
+**Fit start and end** can match a frozen first Wait/Fall pose without replacing
 the attack's motion-position curves. **Fit reference controls; retain attack travel** fits
 reviewed ancestor controls (including XRotN/YRotN equivalents and local height)
 inside the chosen boundary windows, while the reviewed RootMotion/TransN keeps
@@ -96,17 +96,31 @@ It preserves the reference orientation while avoiding manufactured Euler spins.
 Disabling the option retains authored reference turn counts. The original action
 outside the windows, reference clips, native Undo and original Next remain intact.
 
-Reviewed hip/leg contact recovery remains an explicit non-looping **exit-only**
-option. Whole-clip contact preservation remains the default; baked-contact entry
-adaptation is still rejected. **Prevent extra foot dipping** uses complete authentic
-foot geometry, the selected control policy and an explicitly reviewed plane. Its
-bounded body correction prevents added penetration beyond the authentic baseline;
-it does not promise planted feet or absolute zero native penetration. Pins,
+The simple fitting panel has **Start pose**, **Attack reached at frame**, **End
+pose** and **Recovery starts at frame**. **Use for both ends** reuses the exact
+start reference. The live ranges show the unchanged attack and shared joins.
+For 40 frames, choose attack frame 5 and recovery frame 26: start 1–5, original
+attack 5–26, end 26–40 (15 inclusive samples). Duration stays 40 frames. References
+use their first frozen pose by default. Preview, review the result, then add an
+independent animation with normal native Undo. **Advanced** contains component
+and bone masks, reference timing, protections, floor review and the full receipt.
+
+**Adapt hips and legs in transitions** explicitly releases reviewed baked support
+paths only inside enabled start/end windows on non-looping clips. The original
+middle, source travel and contact provenance remain intact. This option is visible
+in the simple panel and initially checked for clips with existing support paths;
+preparation and adding still require explicit binding/pin and result/limit review.
+Old exit-only settings/recipes keep their original meaning. **Prevent extra foot
+dipping** remains an Advanced option requiring a reviewed plane and baseline.
+It uses complete authentic foot geometry and the same bounded correction in each
+window; it does not promise planted feet or absolute zero penetration. Pins,
 protected intervals, unsupported geometry and work/lift contradictions reject.
-See the [boundary-control acceptance record](docs/BOUNDARY_CONTROLS_ACCEPTANCE_2026-10-25.md)
-for fresh evidence and limits; earlier [root-reference](docs/ROOT_REFERENCE_ACCEPTANCE_2026-10-25.md)
-and [foot-recovery](docs/FOOT_RECOVERY_ACCEPTANCE_2026-10-25.md) records describe their
-exact historical policies. This does not establish universal character/game support.
+
+See the [simple-boundary acceptance record](docs/SIMPLE_BOUNDARIES_ACCEPTANCE_2026-10-25.md)
+for current commands, evidence and limits. The [boundary-control record](docs/BOUNDARY_CONTROLS_ACCEPTANCE_2026-10-25.md)
+and earlier [foot-recovery record](docs/FOOT_RECOVERY_ACCEPTANCE_2026-10-25.md)
+describe their exact historical policies. Physical input/human usability, universal
+contact quality, monitor DPI and actual game acceptance remain unverified.
 
 The source library now has **Favorite / Favorited**, **Favorites only**, and
 combinable game/build, character/model, availability and channel filters alongside

@@ -65,6 +65,7 @@ internal static class BoundaryFittingChecks
         BoundaryReferenceControlChecks.Run(check);
         await ExitRecoveryAsync(dir,check);
         await BoundaryFloorRecoveryChecks.RunAsync(dir,check);
+        await BoundaryStartEndChecks.RunAsync(dir,check);
     }
 
     static async Task ExitRecoveryAsync(string dir,Action<bool,string> check)

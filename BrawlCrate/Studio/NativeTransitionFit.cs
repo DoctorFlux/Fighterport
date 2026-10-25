@@ -25,6 +25,7 @@ namespace BrawlCrate.Studio
         public bool BindingReviewed {get;set;}
         public bool PreserveContacts {get;set;}
         public bool ExitContactRecovery {get;set;}
+        public bool BoundaryContactRecovery {get;set;}
         public bool PreventFootDipping {get;set;}
         public double FloorHeight {get;set;}
         public bool FloorReviewed {get;set;}
@@ -43,17 +44,18 @@ namespace BrawlCrate.Studio
         internal void Validate()
         {
             bool Hash(string s)=>s!=null&&s.Length==64&&s.All(Uri.IsHexDigit);
-            bool floor=Algorithm=="contact-floor-recovery-1"||Algorithm=="contact-floor-recovery-2";
+            bool boundary=Algorithm=="contact-boundary-recovery-1"||Algorithm=="contact-boundary-floor-1";
+            bool floor=Algorithm=="contact-boundary-floor-1"||Algorithm=="contact-floor-recovery-1"||Algorithm=="contact-floor-recovery-2";
             bool recovery=Algorithm=="contact-exit-recovery-1"||Algorithm=="contact-exit-recovery-2"||Algorithm=="contact-exit-recovery-3"||floor;
-            if((Algorithm!="fixed-duration-fk-hermite-1"&&Algorithm!="fixed-duration-fk-hermite-2"&&Algorithm!="contact-trajectory-preserve-1"&&Algorithm!="contact-trajectory-preserve-2"&&!recovery)||!Hash(ModelSha256)||!Hash(InitialResultSha256)||string.IsNullOrEmpty(Options)||Options.Length>65536||string.IsNullOrEmpty(Receipt)||Receipt.Length>1024*1024||Inputs==null||Inputs.Length<2||Inputs.Length>3||Inputs.Any(i=>i==null)||Inputs.Select(i=>i.Role).Distinct().Count()!=Inputs.Length)throw new InvalidDataException("Invalid native transition recipe.");
+            if((Algorithm!="fixed-duration-fk-hermite-1"&&Algorithm!="fixed-duration-fk-hermite-2"&&Algorithm!="contact-trajectory-preserve-1"&&Algorithm!="contact-trajectory-preserve-2"&&!recovery&&!boundary)||!Hash(ModelSha256)||!Hash(InitialResultSha256)||string.IsNullOrEmpty(Options)||Options.Length>65536||string.IsNullOrEmpty(Receipt)||Receipt.Length>1024*1024||Inputs==null||Inputs.Length<2||Inputs.Length>3||Inputs.Any(i=>i==null)||Inputs.Select(i=>i.Role).Distinct().Count()!=Inputs.Length)throw new InvalidDataException("Invalid native transition recipe.");
             var settings=new System.Web.Script.Serialization.JavaScriptSerializer().Deserialize<TransitionFitOptions>(Options);
-            if(settings==null||settings.ExitContactRecovery!=recovery||settings.ExitContactRecovery&&(!settings.PreserveContacts||settings.Entry!=null||settings.Exit==null||!settings.ExitFrozen||settings.ExitFrame!=0||settings.Components!=7)||settings.PreventFootDipping!=floor)throw new InvalidDataException("Invalid saved exit contact recovery policy.");
-            if(new[]{"fixed-duration-fk-hermite-2","contact-trajectory-preserve-2","contact-exit-recovery-3","contact-floor-recovery-2"}.Contains(Algorithm))
+            if(settings==null||settings.ExitContactRecovery!=(recovery&&!boundary)||settings.BoundaryContactRecovery!=boundary||boundary&&(!settings.PreserveContacts||settings.Components!=7||settings.Entry==null&&settings.Exit==null||settings.Entry!=null&&(!settings.EntryFrozen||settings.EntryFrame!=0)||settings.Exit!=null&&(!settings.ExitFrozen||settings.ExitFrame!=0))||settings.ExitContactRecovery&&(!settings.PreserveContacts||settings.Entry!=null||settings.Exit==null||!settings.ExitFrozen||settings.ExitFrame!=0||settings.Components!=7)||settings.PreventFootDipping!=floor)throw new InvalidDataException("Invalid saved exit contact recovery policy.");
+            if(boundary||new[]{"fixed-duration-fk-hermite-2","contact-trajectory-preserve-2","contact-exit-recovery-3","contact-floor-recovery-2"}.Contains(Algorithm))
             {
                 var savedSettings=ReceiptValue(SavedReceipt(),"Settings") as IDictionary<string,object>;
                 if(!(ReceiptValue(savedSettings,"MatchReferenceControls") is bool enabled)||enabled!=settings.MatchReferenceControls)throw new InvalidDataException("Saved reference control options and receipt disagree.");
             }
-            if(Algorithm=="contact-exit-recovery-2"||Algorithm=="contact-exit-recovery-3"||floor||settings.MatchReferenceControls)
+            if(boundary||Algorithm=="contact-exit-recovery-2"||Algorithm=="contact-exit-recovery-3"||floor||settings.MatchReferenceControls)
             {
                 var receipt=SavedReceipt();
                 string policy=settings.MatchReferenceControls?"reference controls with source-authored motion-position control retained":"authentic reference body under source-authored protected locals at each time";
@@ -66,10 +68,11 @@ namespace BrawlCrate.Studio
                 }
                 if(!string.Equals(Convert.ToString(ReceiptValue(receipt,"Version")),Algorithm,StringComparison.Ordinal)||!string.Equals(Convert.ToString(ReceiptValue(receipt,"ReferenceRootPolicy")),policy,StringComparison.Ordinal))throw new InvalidDataException("The saved recovery receipt does not retain the source-authored root placement policy.");
             }
+            if(boundary)ValidateRecoveryWindows(settings);
             if(settings.PreventFootDipping)
             {
                 if(!settings.FloorReviewed||double.IsNaN(settings.FloorHeight)||double.IsInfinity(settings.FloorHeight)||float.IsInfinity((float)settings.FloorHeight))throw new InvalidDataException("The saved floor recovery requires an explicit finite reviewed plane and authentic penetration baseline.");
-                ValidateFloorReceipt(settings);
+                if(!boundary)ValidateFloorReceipt(settings);
             }
             long bytes=0;foreach(var input in Inputs)
             {
@@ -79,7 +82,40 @@ namespace BrawlCrate.Studio
             }
             if(!Inputs.Any(i=>i.Role=="source"))throw new InvalidDataException("Missing authentic transition source snapshot.");
         }
-        private void ValidateFloorReceipt(TransitionFitOptions settings)
+        private void ValidateRecoveryWindows(TransitionFitOptions settings)
+        {
+            int Integer(IDictionary<string,object> node,string name)
+            {
+                object value=ReceiptValue(node,name);
+                if(!(value is byte||value is sbyte||value is short||value is ushort||value is int||value is uint||value is long||value is ulong||value is float||value is double||value is decimal))throw new InvalidDataException("Boundary frames must be numeric integral values.");
+                double number=Convert.ToDouble(value);if(double.IsNaN(number)||double.IsInfinity(number)||number<0||number>100000||number!=Math.Truncate(number))throw new InvalidDataException("Invalid integral boundary frame.");return (int)number;
+            }
+            var receipt=SavedReceipt();var saved=ReceiptValue(receipt,"Settings") as IDictionary<string,object>;
+            if(!(ReceiptValue(saved,"BoundaryContactRecovery") is bool enabled)||!enabled||!(ReceiptValue(saved,"ExitContactRecovery") is bool legacy)||legacy||Integer(saved,"EntrySamples")!=settings.EntrySamples||Integer(saved,"ExitSamples")!=settings.ExitSamples)throw new InvalidDataException("Saved boundary options and receipt disagree.");
+            int frames=Integer(receipt,"SampleCount");int first=settings.Entry==null?0:settings.EntrySamples-1,last=settings.Exit==null?frames-1:frames-settings.ExitSamples;
+            if(frames<3||frames>100000||first>=last||settings.Entry!=null&&(settings.EntrySamples<2||settings.EntrySamples>=frames)||settings.Exit!=null&&(settings.ExitSamples<2||settings.ExitSamples>=frames)||!(ReceiptValue(receipt,"Loop") is bool loop)||loop)throw new InvalidDataException("Invalid saved boundary ranges.");
+            var windows=(ReceiptValue(receipt,"RecoveryWindows") as IEnumerable)?.Cast<object>().Select(w=>w as IDictionary<string,object>).ToArray();
+            int count=(settings.Entry==null?0:1)+(settings.Exit==null?0:1);
+            if(windows==null||windows.Length!=count||windows.Any(w=>w==null)||windows.Select(w=>Convert.ToString(ReceiptValue(w,"Side"))).Distinct().Count()!=count)throw new InvalidDataException("Missing or duplicate boundary recovery windows.");
+            var original=Inputs.SingleOrDefault(i=>i.Role=="source");
+            if(original==null||original.Samples!=frames)throw new InvalidDataException("Boundary frame count differs from its frozen native source.");
+            foreach(string side in new[]{"entry","exit"})
+            {
+                string key=side=="entry"?settings.Entry:settings.Exit;var frozen=Inputs.SingleOrDefault(i=>i.Role==side);
+                if(key==null?frozen!=null:frozen==null||frozen.Entry!=key)throw new InvalidDataException("Boundary reference differs from its frozen native input.");
+            }
+            int evaluations=0,keys=0;
+            foreach(var w in windows)
+            {
+                string side=Convert.ToString(ReceiptValue(w,"Side"));bool entry=side=="entry";
+                if(side!="entry"&&side!="exit"||entry&&settings.Entry==null||!entry&&settings.Exit==null||Integer(w,"Start")!=(entry?0:last)||Integer(w,"End")!=(entry?first:frames-1))throw new InvalidDataException("A boundary receipt does not match its explicit native window.");
+                var floor=ReceiptValue(w,"Floor") as IDictionary<string,object>;
+                if(settings.PreventFootDipping){ValidateFloorReceipt(settings,floor);evaluations+=Convert.ToInt32(ReceiptValue(floor,"Evaluations"));keys+=Convert.ToInt32(ReceiptValue(floor,"KnotCount"));}
+                else if(floor!=null)throw new InvalidDataException("Unexpected floor result in a non-floor boundary recipe.");
+            }
+            if(evaluations>200000||keys>8192)throw new InvalidDataException("Combined boundary floor work exceeds its bounded budget.");
+        }
+        private void ValidateFloorReceipt(TransitionFitOptions settings,IDictionary<string,object> windowFloor=null)
         {
             object Get(IDictionary<string,object> node,string name)=>ReceiptValue(node,name);
             InvalidDataException Invalid()=>new InvalidDataException("The saved floor verification has invalid geometry, limits or region measurements.");
@@ -92,7 +128,7 @@ namespace BrawlCrate.Studio
             int Count(IDictionary<string,object> node,string name,int maximum)
             {double number=Number(node,name);if(number<0||number>maximum||number!=Math.Truncate(number))throw Invalid();return (int)number;}
             var receipt=SavedReceipt();
-            var floor=Get(receipt,"FloorRecovery") as IDictionary<string,object>;
+            var floor=windowFloor??Get(receipt,"FloorRecovery") as IDictionary<string,object>;
             var plane=Get(floor,"Plane") as IDictionary<string,object>;
             var normal=Get(plane,"Normal") as IEnumerable;
             double[] components=normal?.Cast<object>().Select(Numeric).ToArray();

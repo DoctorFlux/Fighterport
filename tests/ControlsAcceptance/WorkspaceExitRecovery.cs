@@ -87,6 +87,7 @@ internal static partial class Program
                 int originalCount = form.FighterProject.Animations.Count;
                 void Configure(TransitionFitDialog window, bool recover)
                 {
+                    SimpleControl<CheckBox>(window,"transition_boundaryContactRecovery").Checked=false;
                     SimpleControl<CheckBox>(window, "transition_matchReferenceControls").Checked = args.Contains("--reference-controls");
                     SimpleControl<ComboBox>(window, "transition_entry").SelectedIndex = 0;
                     var exit = SimpleControl<ComboBox>(window, "transition_exit");
@@ -184,6 +185,7 @@ internal static partial class Program
                             SimpleControl<NumericUpDown>(window, "transition_exitFrame").Value = 1; SimpleControl<CheckBox>(window, "transition_exitFrozen").Checked = false; prepare.PerformClick(); await Wait(() => !window.Busy);
                             Check(window.Candidate == null, "Recovery rejects moving reference playback instead of claiming a frozen first-pose match");
                             SimpleControl<CheckBox>(window, "transition_exitFrozen").Checked = true;
+                            if(floorRecovery)SimpleControl<CheckBox>(window,"transition_floorReviewed").Checked=true;
                             SimpleControl<TextBox>(window, "transitionProtected").Text = source.FrameCount + "-" + source.FrameCount; prepare.PerformClick(); await Wait(() => !window.Busy);
                             Check(window.Candidate == null && report.Text.ToLowerInvariant().Contains("protected"), "Recovery retains explicit protected-frame conflicts");
                             SimpleControl<TextBox>(window, "transitionProtected").Clear();
@@ -218,13 +220,14 @@ internal static partial class Program
                         if (floorRecovery)
                         {
                             var floor = SimpleControl<CheckBox>(window, "transition_preventFootDipping");
-                            var fields = (FlowLayoutPanel)floor.Parent; fields.ScrollControlIntoView(floor);
+                            var fields=(FlowLayoutPanel)Field(window,"fields");
+                            if(!SimpleControl<FlowLayoutPanel>(window,"transitionAdvancedFields").Visible)SimpleControl<Button>(window,"transitionAdvanced").PerformClick();fields.ScrollControlIntoView(floor);
                             var height = SimpleControl<NumericUpDown>(window, "transition_floorHeight");
                             var reviewed = SimpleControl<CheckBox>(window, "transition_floorReviewed");
                             fields.ScrollControlIntoView(reviewed); fields.PerformLayout();
                             await CaptureWindow(window, Path.Combine(output, "foot-floor-options-native.png"));
-                            Check(fields.ClientRectangle.Contains(floor.Bounds) && fields.ClientRectangle.Contains(height.Bounds) && fields.ClientRectangle.Contains(reviewed.Bounds), "Explicit floor controls and baseline review remain visible together in the native scroll panel");
-                            Check(TextRenderer.MeasureText(reviewed.Text, reviewed.Font).Width + 18 <= reviewed.ClientSize.Width, "The complete plane and penetration-baseline consent fits beside its native checkbox");
+                            Check(new Control[]{floor,height,reviewed}.All(c=>fields.ClientRectangle.Contains(fields.RectangleToClient(c.RectangleToScreen(c.ClientRectangle)))), "Explicit floor controls and baseline review remain visible together in the native scroll panel");
+                            Check(TextRenderer.MeasureText(reviewed.Text,reviewed.Font,new Size(reviewed.Width-reviewed.Font.Height-8,int.MaxValue),TextFormatFlags.WordBreak|TextFormatFlags.NoPadding).Height<=reviewed.ClientSize.Height, "The complete plane and penetration-baseline consent fits beside its native checkbox");
                             reviewed.Focus();
                         }
                         Check(SetNativeContent(source) == original && SetNativeContent(reference) == referenceOriginal, "Review and renderer sampling preserve exact original attack and native reference");
