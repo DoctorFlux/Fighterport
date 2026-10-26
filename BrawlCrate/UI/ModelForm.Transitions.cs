@@ -106,7 +106,39 @@ namespace BrawlCrate.UI
                     {
                         current();var contactBones=NativeTransitionContacts.Resolve(model,selected.Asset,options.PreserveContacts);NativeTransitionContacts.ReviewExitRecovery(options,source.FrameCount,source.Loop,contactBones,RetainedControls(options),CurrentRecoveryBinding());VerifyReferences();if(candidate!=prepared||preparedKey!=json.Serialize(options))throw new InvalidOperationException("The prepared transition settings changed. Prepare again.");
                         if(_controlBusy||_retargetBusy||_workspaceBusy||_pinGesture!=null)throw new InvalidOperationException("Finish the current native edit before adding a fit.");metadata.Validate();
-                        long total=project.Animations.Where(asset=>asset.TransitionFit!=null).Sum(asset=>asset.TransitionFit.Inputs.Sum(i=>(long)i.Snapshot.Length))+metadata.Inputs.Sum(i=>(long)i.Snapshot.Length);if(total>32L*1024*1024)throw new InvalidOperationException("This project exceeds the frozen transition reference budget. Save an independent fighter copy for further fitting.");
+                        long total=project.Animations.Where(asset=>asset.TransitionFit!=null&&(window.SaveAsNew||!ReferenceEquals(asset,selected.Asset))).Sum(asset=>asset.TransitionFit.Inputs.Sum(i=>(long)i.Snapshot.Length))+metadata.Inputs.Sum(i=>(long)i.Snapshot.Length);if(total>32L*1024*1024)throw new InvalidOperationException("This project exceeds the frozen transition reference budget. Save an independent fighter copy for further fitting.");
+                        if(!window.SaveAsNew)
+                        {
+                            if(choices.Count(c=>ReferenceEquals(c.Asset,selected.Asset))!=1)throw new InvalidOperationException("This container owns several animations. Save as a new animation to retain its exact fitting recipe.");
+                            var names=source.Children.Concat(candidate.Children).Select(c=>c.Name).Distinct(StringComparer.Ordinal).ToArray();
+                            var before=NativeControlSnapshot.Capture(source,names);var after=NativeControlSnapshot.Capture(candidate,names);
+                            var previousFit=selected.Asset.TransitionFit;string previousState=ControlState(controlKey);
+                            void RestoreCurrent(bool fitted)
+                            {
+                                bool restoring=_restoringCurve;_restoringCurve=true;
+                                try
+                                {
+                                    (fitted?after:before).Restore(source);PreciseCHR0EntryNode.Promote(source);
+                                    selected.Asset.TransitionFit=fitted?metadata:previousFit;
+                                    project.AnimationControls.RemoveAll(s=>s.Key==controlKey);
+                                    string savedState=fitted?copiedState:previousState;if(savedState!=null)StoreControls(controlKey,savedState);
+                                    if(ReferenceEquals(modelEditControl1.SelectedCHR0,source))
+                                    {
+                                        modelEditControl1.UpdateModel();modelEditControl1.RefreshControlCurveTarget();
+                                        modelEditControl1.InterpolationEditor?.RootChanged();modelEditControl1.KeyframePanel?.UpdateKeyframes();
+                                        _curveBefore=_curveTarget?.Parent is CHR0Node curve?NativeControlSnapshot.Capture(curve,new[]{_curveTarget.Name}):null;
+                                    }
+                                    InvalidateControls();MarkFighterChanged();
+                                }
+                                finally{_restoringCurve=restoring;}
+                            }
+                            try{RestoreCurrent(true);metadata.InitialResultSha256=NativeControlHash(source,".chr0");}
+                            catch{RestoreCurrent(false);throw;}
+                            modelEditControl1.RecordEditorCommand(()=>RestoreCurrent(false),()=>RestoreCurrent(true));
+                            modelEditControl1.ModelPanel.Invalidate();UpdateFighterStatus();
+                            _fighterStatus.Text="Fit applied to "+source.Name+". Save to keep these changes, or export CHR0. Undo restores the previous animation.";
+                            return;
+                        }
                         var generated=project.CreateAnimation(options.Name+".chr0",candidate.Export);generated.TransitionFit=metadata;generated.RigIdentity=BrawlRetargeter.SkeletonFingerprint(model);if(selected.Asset.Retarget!=null)generated.Retarget=json.Deserialize<RetargetProvenance>(json.Serialize(selected.Asset.Retarget));metadata.InitialResultSha256=NativeControlHash(FighterRoot(generated),".chr0");
                         var assetsBefore=project.Animations.ToArray();string selectionBefore=SelectedFighterAnimationKey();int frameBefore=modelEditControl1.CurrentFrame;
                         project.Animations.Add(generated);project.SelectedAnimation=FighterAnimationKey(generated,FighterRoot(generated));project.Frame=1;RebuildTransitionScene();string generatedKey=ControlKey();StoreControls(generatedKey,copiedState);InvalidateControls();

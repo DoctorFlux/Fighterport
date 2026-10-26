@@ -18,7 +18,7 @@ namespace BrawlCrate.UI
 
         private sealed class SourceBrowserState
         {
-            internal string Search,Game,Character,Channel,Selected;
+            internal string Search,Game,Character,Channel,Selected,GameSourceId,GameSourceName;
             internal bool Favorites,Expanded;
             internal int Availability;
             internal string[] CollapsedGames,CollapsedCharacters,CollapsedModels,ExpandedCharacters,ExpandedModels;
@@ -67,7 +67,7 @@ namespace BrawlCrate.UI
             _sessionSourceCatalogues.Add(temporary);
             _sessionSourceLibrary=temporary;_sessionSourceRegistration=registration;
             ActivateSourceCatalogue(temporary,selected);
-            _fighterStatus.Text="Temporary source files loaded for this session. Choose a clip, Preview Original, then Use on This Model. Add to library is optional.";
+            _fighterStatus.Text="Temporary source files loaded for this session. Choose a clip, Load as source, then Use on This Model. Add to library is optional.";
             return selected;
         }
 
@@ -136,6 +136,7 @@ namespace BrawlCrate.UI
 
         private SourceBrowserState CaptureSourceBrowser()=>new SourceBrowserState{
             Search=_librarySearch.Text,Game=_libraryGameFilter.Text,Character=_libraryCharacterFilter.Text,
+            GameSourceId=_libraryGameSourceFilter,GameSourceName=_libraryGameSourceName,
             Channel=_libraryChannelFilter.SelectedItem as string,Favorites=_libraryFavoritesOnly.Checked,
             Availability=_libraryAvailabilityFilter.SelectedIndex,Expanded=_libraryFiltersExpanded,Selected=LibrarySelection?.Clip.Id,
             CollapsedGames=_libraryCollapsedGames.ToArray(),CollapsedCharacters=_libraryCollapsedCharacters.ToArray(),
@@ -149,6 +150,7 @@ namespace BrawlCrate.UI
             try
             {
                 _librarySearch.Text=state.Search??"";_libraryGameFilter.Text=state.Game??"";_libraryCharacterFilter.Text=state.Character??"";
+                _libraryGameSourceFilter=state.GameSourceId;_libraryGameSourceName=state.GameSourceName;
                 _libraryFavoritesOnly.Checked=state.Favorites;
                 _libraryAvailabilityFilter.SelectedIndex=Math.Max(0,Math.Min(_libraryAvailabilityFilter.Items.Count-1,state.Availability));
                 string channel=state.Channel??"All channels";
@@ -186,7 +188,7 @@ namespace BrawlCrate.UI
         private void UpdateSourceSessionCommands()
         {
             bool temporary=ReferenceEquals(_library,_sessionSourceLibrary)&&_sessionSourceLibrary!=null;
-            if(_sourceModeLabel!=null)_sourceModeLabel.Text=temporary?"Source files · temporary session":"Shared animation library";
+            if(_sourceModeLabel!=null)_sourceModeLabel.Text=temporary?"Source files · temporary session":_libraryGameSourceName??"Shared animation library";
             if(_sourceAddButton!=null)
             {
                 string caption=temporary?"Add to library":"Add source...";

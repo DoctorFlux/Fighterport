@@ -101,7 +101,7 @@ namespace BrawlCrate.Studio
 
         private static string[] DiscFiles(LibraryGameRequest request,CancellationToken cancellation)
         { using(var image=new BrawlDiscImage(request.Path,cancellation))return image.Files; }
-        private static string FighterFolder(string source)
+        internal static string FighterFolder(string source)
         {
             var candidates=new[]{source,System.IO.Path.Combine(source,"fighter"),System.IO.Path.Combine(source,"files","fighter"),System.IO.Path.Combine(source,"DATA","files","fighter"),
                 System.IO.Path.Combine(source,"pf","fighter"),System.IO.Path.Combine(source,"projectm","pf","fighter"),System.IO.Path.Combine(source,"project+","pf","fighter"),System.IO.Path.Combine(source,"private","wii","app","rsbe","pf","fighter")}

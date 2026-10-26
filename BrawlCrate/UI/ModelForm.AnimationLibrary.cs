@@ -37,9 +37,9 @@ namespace BrawlCrate.UI
         private string _librarySelectAfterRefresh;
         private bool _libraryExpandSearch;
         private bool _libraryRestoreExpansions;
-        private sealed class LibraryGroup {internal List<LibrarySearchItem> Items;internal bool Character;internal int Loaded,BatchEnd;internal LibraryBranch[] Models;}
+        private sealed class LibraryGroup {internal List<LibrarySearchItem> Items;internal bool Character,DirectAnimations;internal HashSet<string> DuplicateNames;internal int Loaded,BatchEnd;internal LibraryBranch[] Models;}
         private sealed class LibraryBranch {internal string Name,Text,ToolTip;internal LibraryGroup Group;internal bool HasSelection;}
-        private sealed class LibraryGameBranch {internal string Name;internal LibraryBranch[] Characters;}
+        private sealed class LibraryGameBranch {internal string Name,Text,ToolTip;internal bool Indexed;internal LibraryBranch[] Characters;}
         private readonly Queue<Action> _libraryTreeWork=new Queue<Action>();
         private bool _libraryClearingTree,_libraryReplacingTree,_libraryApplyingExpansion;
         private int _libraryTreeGeneration;
@@ -118,7 +118,7 @@ namespace BrawlCrate.UI
             _sourceAddButton=LibraryButton("libraryAddSource","Add source...",()=>{
                 if(ReferenceEquals(_library,_sessionSourceLibrary))AddSessionSourceToLibrary();else AddLibrarySource();
             });
-            header.Controls.Add(LibraryButton("libraryAddBrawlDisc","Add Brawl...",ShowBrawlDiscLibrary));
+            header.Controls.Add(LibraryButton("libraryAddBrawlDisc","Add game...",ShowBrawlDiscLibrary));
             _libraryUndo=LibraryButton("libraryUndo","Undo Source",()=>{ReleaseLibraryPreview();_library.UndoLastUpdate();RefreshLibrary();});
             header.Controls.Add(LibraryButton("libraryClose","Close",ToggleAnimationLibrary));layout.Controls.Add(header,0,0);
             _librarySearch=new TextBox{Name="librarySearch",AccessibleName="Search Animation Library",Dock=DockStyle.Fill,MaxLength=512};
@@ -140,14 +140,16 @@ namespace BrawlCrate.UI
             pages.Controls.Add(_libraryPage);layout.Controls.Add(pages,0,3);
             _libraryDetails=new TextBox{Name="libraryDetails",Multiline=true,ReadOnly=true,ScrollBars=ScrollBars.Vertical,Dock=DockStyle.Fill};layout.Controls.Add(_libraryDetails,0,4);
             var actions=new FlowLayoutPanel{Dock=DockStyle.Fill,WrapContents=true};
-            _libraryPreview=LibraryButton("libraryPreviewOriginal","Preview Original",PreviewLibraryOriginal);
-            _libraryOpenTarget=LibraryButton("libraryOpenTarget","Open model + animation",OpenLibraryAsTarget);
+            _libraryPreview=LibraryButton("libraryPreviewOriginal","Load as source",PreviewLibraryOriginal);
+            _libraryPreview.AccessibleDescription="Load the selected animation and costume into the small read-only source preview. Use on This Model retargets this source to the editable main model.";
+            _libraryOpenTarget=LibraryButton("libraryOpenTarget","Open as target",OpenLibraryAsTarget);
+            _libraryOpenTarget.AccessibleDescription="Open the selected model, costume and animation in the large editable main preview, with the existing unsaved-change handling.";
             _libraryUse=LibraryButton("libraryUseOnTarget","Use on This Model",UseLibraryOnTarget);
             _libraryRepair=LibraryButton("libraryRepairSource","Repair...",RepairLibrarySource);
             actions.Controls.AddRange(new Control[]{_libraryPreview,_libraryOpenTarget,_libraryUse,_libraryRepair,LibraryButton("libraryBatch","Batch / Fit...",ShowLibraryBatch),LibraryButton("libraryAdvancedFitting","Advanced Fitting...",OpenAdvancedSceneFitting),_sourceAddButton,_libraryUndo});layout.Controls.Add(actions,0,5);
             _libraryOriginalLabel=new Label{Name="libraryOriginalLabel",Text="Original source preview (read-only)",Dock=DockStyle.Fill,AutoEllipsis=true};layout.Controls.Add(_libraryOriginalLabel,0,6);
             _libraryViewport=new ModelPanel{Name="libraryOriginalViewport",Dock=DockStyle.Fill,Margin=Padding.Empty,
-                AccessibleName="Original source preview",AccessibleDescription="Read-only original source model. Choose Preview Original to load the selected source; browsing never loads or retargets a model."};
+                AccessibleName="Original source preview",AccessibleDescription="Read-only original source model. Choose Load as source to load the selected source; browsing never loads or retargets a model."};
             _libraryViewport.CurrentViewport.AllowSelection=false;
             _libraryViewport.CurrentViewport.RenderFloor=true;
             _libraryViewport.CurrentViewport.BackgroundColor=Color.FromArgb(35,39,46);
@@ -190,6 +192,9 @@ namespace BrawlCrate.UI
             _libraryLastTarget=modelEditControl1.TargetModel;
             var item=LibrarySelection;bool available=!_libraryReplacingTree&&!_librarySearchTimer.Enabled&&item?.State==LibrarySourceState.Available;
             UpdateLibraryCostumes(item);
+            if(item!=null&&!_libraryReplacingTree&&!_librarySearchTimer.Enabled&&_libraryLease!=null&&
+                (_libraryLease.Reference.ClipId!=item.Clip.Id||_libraryLease.Reference.ModelId!=(SelectedLibraryCostume?.ModelId??item.Model?.Id)))
+                ReleaseLibraryPreview();
             available=available&&LibraryCostumeReady;
             available=available&&!SimpleWorkspaceSourceNeedsRepair(item);
             _libraryPreview.Enabled=available;_libraryUse.Enabled=available&&modelEditControl1.TargetModel is MDL0Node;
@@ -243,7 +248,9 @@ namespace BrawlCrate.UI
                 cancel.ThrowIfCancellationRequested();progress.Report("Publishing the complete source catalogue...");added=_library.RegisterGame(plan,cancel);return plan;
             });
             if(indexed==null)return;
-            _librarySearch.Text="";_librarySearchTimer.Stop();RefreshLibrary();
+            var savedSource=_library.Read().GameLocations.Single(l=>l.Indexed&&l.Game==indexed.Source.Game&&l.GameVersion==indexed.Source.GameVersion&&
+                string.Equals(l.Path,indexed.Source.Path,StringComparison.OrdinalIgnoreCase)&&l.InventorySha256==indexed.Source.InventorySha256&&l.ContainerSha256==indexed.Source.ContainerSha256&&l.Provider==indexed.Source.Provider);
+            OpenSavedGameLibrary(_library,savedSource);
             _fighterStatus.Text="Added "+indexed.Mounts.Select(m=>m.VirtualPath.Split('/')).Where(p=>p.Length>=3).Select(p=>p[1]).Distinct().Count()+" characters · "+added+" native animation resources · "+indexed.Issues.Count+" source issues. Original game remains read-only.";
             if(indexed.Issues.Count>0)MessageBox.Show(owner,string.Join(Environment.NewLine,indexed.Issues.Take(12)),"Source inventory issues",MessageBoxButtons.OK,MessageBoxIcon.Information);
         }
@@ -272,17 +279,26 @@ namespace BrawlCrate.UI
             ReleaseLibraryPreview();
             _libraryLease=LoadSelectedLibrarySource();if(_libraryLease==null)return;
             LayoutSimpleWorkspaceLibraryPreview();
+            _libraryPane.PerformLayout();_sourcePreviewHost?.PerformLayout();
+            _libraryViewport.CreateControl();_libraryViewport.Capture();
             _libraryTime=0;_libraryFrame.Maximum=_libraryLease.Animation.FrameCount;_libraryFrame.Value=1;
             _libraryLease.Model.ResetToBindState();
             _libraryViewport.AddReference(_libraryLease.Model.RootNode);
             _libraryViewport.AddTarget(_libraryLease.Model);
             _libraryLease.Model.ApplyCHR(_libraryLease.Animation,1);
+            _libraryViewport.PrepareModelTextures(_libraryLease.Model);
             FrameLibraryOriginal();RenderLibraryFrame();
+            _libraryViewport.Update();
         }
         private void FrameLibraryOriginal()
         {
             var box=_libraryLease.Model.GetBox();var center=(box.Min+box.Max)*0.5f;var half=(box.Max-box.Min)*0.65f;
+            // Frame this viewport in its own projection and final laid-out size.
+            // A remembered orthographic view/zoom or an earlier zero-height
+            // layout must not leave a successfully loaded source out of view.
+            _libraryViewport.CurrentViewport.SetProjectionType(BrawlLib.OpenGL.ViewportProjection.Perspective);
             var camera=_libraryViewport.Camera;
+            camera.SetProjectionParams(Math.Max(.1f,(float)_libraryViewport.ClientSize.Width/Math.Max(1,_libraryViewport.ClientSize.Height)),45,200000,1);
             float tangent=(float)Math.Tan(camera.VerticalFieldOfView*Math.PI/360);
             float aspect=Math.Max(0.1f,(float)_libraryViewport.Width/Math.Max(1,_libraryViewport.Height));
             float distance=Math.Max(half._y/tangent,half._x/(tangent*aspect))+half._z+Math.Max(1,camera.NearDepth*2);

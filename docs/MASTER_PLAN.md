@@ -1,5 +1,31 @@
 # Fighterport master plan
 
+26 October 2026 bounded preview.37-source-fit-workflow is accepted:
+**3,410 checks / 21 runs / 157 reviewed native PNGs**. Current-clip fitting uses
+native Undo and ordinary Save/export; source preview initializes and frames actual
+geometry. Explicit source/target destinations, direct character lists and exact
+costume choices remain in the full native editor. Saved disc/install/SD paths have
+compact rename/edit/remove/Undo management; separate PM fixtures preserve exact
+source identities, including identical copies. Full native Next and root/boundary
+policies remain intact. See [acceptance record](SOURCE_FIT_WORKFLOW_ACCEPTANCE_2026-10-26.md).
+Inherited whole-catalogue capacity and full extracted-disc caching are not the
+user's final design; direct source reads and resource-aware capacity are the next
+authorized continuation, not accepted by these fixtures. ONE G1/M2 stays incomplete.
+
+26 October 2026 authorized preview.37-source-fit-workflow: repair the small
+original-source preview, pin explicit Load as source / Open as target destinations,
+and browse detected Brawl game-source characters directly through their animation
+lists, retaining exact costume choice. Apply boundary fits to the selected owned
+single-clip animation with native Undo, original Next provenance, portable recipe
+and ordinary Save/export; keep explicit independent-copy fitting. Verify exact
+current clip/rig/reference dependencies and source-only protected controls through
+background workflow, layout, library, fitting and lifecycle regressions. The sole
+executable scope remains [current M2](plans/current.md); broader gates stay open.
+Latest steering includes compact saved-source management and game-neutral
+disc/install/SD paths. Brawl and separately named Project M instances stay
+independent by exact source ID; unsupported games/formats remain path-only.
+Verified relocation and source-scoped queries preserve associations and originals.
+
 26 October 2026 Sonic/Mario follow-up: six original Next Wait1/tilt/aerial
 transfers passed fresh native export/reopen checks; both authentic-rig root
 suites passed 628 checks each. Side-view originals/results and separately labelled

@@ -16,10 +16,12 @@ namespace BrawlCrate.UI
         private Button _libraryFilterToggle;
         private bool _libraryFiltersExpanded;
         private bool _libraryUpdatingFilters, _libraryUpdatingFavorite;
+        private string _libraryGameSourceFilter,_libraryGameSourceName;
 
         private LibraryQuery CurrentLibraryQuery() => new LibraryQuery {
             Text = _librarySearch.Text, GameBuildText = _libraryGameFilter.Text,
             CharacterModelText = _libraryCharacterFilter.Text, FavoritesOnly = _libraryFavoritesOnly.Checked,
+            GameSourceId = _libraryGameSourceFilter,
             Availability = _libraryAvailabilityFilter.SelectedIndex <= 0 ? null : (LibrarySourceState?)(_libraryAvailabilityFilter.SelectedIndex - 1),
             Channel = _libraryChannelFilter.SelectedIndex <= 0 ? null : _libraryChannelFilter.SelectedItem as string
         };
@@ -111,7 +113,7 @@ namespace BrawlCrate.UI
         private void UpdateLibraryFilterDisclosure()
         {
             if (_libraryFilterToggle == null) return;
-            int active = (string.IsNullOrWhiteSpace(_libraryGameFilter.Text) ? 0 : 1) +
+            int active = (_libraryGameSourceFilter==null?0:1) + (string.IsNullOrWhiteSpace(_libraryGameFilter.Text) ? 0 : 1) +
                 (string.IsNullOrWhiteSpace(_libraryCharacterFilter.Text) ? 0 : 1) +
                 (_libraryAvailabilityFilter.SelectedIndex <= 0 ? 0 : 1) + (_libraryChannelFilter.SelectedIndex <= 0 ? 0 : 1);
             string caption = (_libraryFiltersExpanded ? "Hide filters" : "Filters") + (active == 0 ? "" : " · " + active + " active");
@@ -126,6 +128,7 @@ namespace BrawlCrate.UI
         {
             _libraryUpdatingFilters = true;
             try {
+                _libraryGameSourceFilter=_libraryGameSourceName=null;UpdateSourceSessionCommands();
                 _librarySearch.Clear(); _libraryGameFilter.Clear(); _libraryCharacterFilter.Clear();
                 _libraryFavoritesOnly.Checked = false; _libraryAvailabilityFilter.SelectedIndex = 0; _libraryChannelFilter.SelectedIndex = 0;
             }

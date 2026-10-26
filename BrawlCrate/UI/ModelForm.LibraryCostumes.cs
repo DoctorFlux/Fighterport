@@ -20,7 +20,9 @@ namespace BrawlCrate.UI
 
         private LibraryCostumeOption SelectedLibraryCostume => _libraryCostume?.SelectedItem as LibraryCostumeOption;
         private bool LibraryCostumeReady => _libraryCostume?.Items.Count == 0 || _libraryCostume == null || SelectedLibraryCostume?.Available == true;
-        private string LibraryCostumeKey(string clip) => _library.DirectoryPath + "|" + clip;
+        private string LibraryCostumeKey(LibrarySearchItem item) => _library.DirectoryPath + "|" +
+            (!string.IsNullOrEmpty(item.Motion.GameSourceId)&&item.Motion.Provider==BrawlLibrarySource.Provider?
+                item.Motion.GameSourceId+"|"+string.Join("/",(item.Motion.VirtualPath??"").Split('/').Take(2)):item.Clip.Id);
 
         private Control BuildLibraryCostumeRow()
         {
@@ -42,7 +44,7 @@ namespace BrawlCrate.UI
                 if (SelectedLibraryCostume != null)
                 {
                     if (_libraryCostumeChoices.Count >= 256) _libraryCostumeChoices.Clear();
-                    _libraryCostumeChoices[LibraryCostumeKey(LibrarySelection.Clip.Id)] = SelectedLibraryCostume.ModelId;
+                    _libraryCostumeChoices[LibraryCostumeKey(LibrarySelection)] = SelectedLibraryCostume.ModelId;
                 }
                 // Browser choices never redirect a recorded comparison or
                 // decode source data. An explicit Preview/Use loads the model.
@@ -68,7 +70,7 @@ namespace BrawlCrate.UI
                 {
                     var options = _library.GetCostumes(item.Clip.Id);
                     _libraryCostume.Items.AddRange(options);
-                    _libraryCostumeChoices.TryGetValue(LibraryCostumeKey(item.Clip.Id), out string remembered);
+                    _libraryCostumeChoices.TryGetValue(LibraryCostumeKey(item), out string remembered);
                     var selected = options.FirstOrDefault(option => option.ModelId == remembered) ?? options.FirstOrDefault(option => option.IsCanonical);
                     if (selected != null) _libraryCostume.SelectedItem = selected;
                 }

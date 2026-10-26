@@ -115,7 +115,8 @@ internal static partial class Program
                     string pins = (string)Call(form, "ControlState", (string)Call(form, "ControlKey"));
                     form.TransitionFitReady = async window =>
                     {
-                        try { Configure(window, true); SimpleControl<Button>(window, "prepareTransition").PerformClick(); await Wait(() => !window.Busy);
+                        try {
+                        SimpleControl<CheckBox>(window,"transition_saveAsNew").Checked=true; Configure(window, true); SimpleControl<Button>(window, "prepareTransition").PerformClick(); await Wait(() => !window.Busy);
                             Check(window.Candidate == null && SimpleControl<TextBox>(window, "transitionReport").Text.ToLowerInvariant().Contains("pin"), "Recovery rejects a fixed existing-bone pin instead of silently releasing it"); }
                         catch (Exception e) { failure = e; } finally { window.Close(); finished = true; }
                     };
@@ -128,6 +129,7 @@ internal static partial class Program
                 {
                     try
                     {
+                        SimpleControl<CheckBox>(window,"transition_saveAsNew").Checked=true;
                         if(args.Contains("--reference-controls"))Check(window.ReadOptions().MatchReferenceControls,"Exact reviewed control roles enable the new reference-control policy on a new fit");
                         Check(!window.ReadOptions().ExitContactRecovery, "Contact recovery is an explicit opt-in; whole-clip preservation remains the default");
                         Configure(window, contacts.Length > 0);

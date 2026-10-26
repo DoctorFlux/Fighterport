@@ -1,5 +1,47 @@
 # Current milestone M2 — simpler native workspace
 
+26 October 2026 bounded preview.37-source-fit-workflow is accepted:
+**3,410 checks / 21 runs / 157 reviewed native PNGs**. Current-clip fitting uses
+native Undo and ordinary Save/export; source preview initializes and frames actual
+geometry. Explicit source/target destinations, direct character lists and exact
+costume choices remain in the full native editor. Saved disc/install/SD paths have
+compact rename/edit/remove/Undo management; separate PM fixtures preserve exact
+source identities, including identical copies. Full native Next and root/boundary
+policies remain intact. See [acceptance record](../SOURCE_FIT_WORKFLOW_ACCEPTANCE_2026-10-26.md).
+Inherited whole-catalogue capacity and full extracted-disc caching are not the
+user's final design; direct source reads and resource-aware capacity are the next
+authorized continuation, not accepted by these fixtures. ONE G1/M2 stays incomplete.
+
+26 October 2026 authorized continuation — preview.37-source-fit-workflow:
+Latest steering adds a game-neutral saved disc/install/SD source chooser and a
+compact all-sources list with rename/edit/remove and existing library Undo.
+Remember unsupported games/formats as path-only locations; do not claim decoding.
+Reuse indexed sources without extraction. Distinct Project M/Project+ installs
+keep separate IDs/categories, including byte-identical copies and same-named
+characters. Instance names are editable labels, never rig/asset identities.
+Scope queries and costume choice by exact source ID. Verify indexed disc bytes
+or every registered folder package before an atomic path edit; cancellation,
+wrong bytes or stale metadata keeps existing links. Source removal unregisters
+only its own library records; original/cache files and saved projects remain.
+No catalogue or project schema changes, new game adapter or solver are included.
+repair small original-source presentation and expose pinned Load as source / Open
+as target actions. Brawl disc character branches show animations directly;
+costume choice remains in the exact compatible costume selector. Keep metadata
+search, identities, lazy population, unavailable states and source protections.
+Default boundary fitting applies to the selected single-clip owned animation,
+preserving its identity/selection, original Next provenance and native Undo;
+keep explicit Save as new for independent revisions and multi-clip containers.
+Freeze/revalidate current clip, rig, references and recipe before Apply, keep
+portable recipe snapshots, and verify Save/export/reopen plus cross-edit Undo.
+Source loading must initialize/frame its own native viewport after layout and
+prepare resources while paused; no source loading/hashing during playback.
+Retain full native editor, original Next and current root/boundary policies.
+Qualify background-only source/target/fit workflows, cancelled/stale Apply,
+compact/wide supported text and relevant library/fit/export/Undo regressions;
+inspect fresh captures. Publish verified source only with DoctorFlux attribution.
+This is the sole current G1/M2 slice; physical input/DPI, universal contacts,
+Sonic's optional-worker influence limit and tilt fractional-fit issue stay open.
+
 26 October 2026 Sonic/Mario follow-up: six original Next Wait1/tilt/aerial
 transfers passed fresh native export/reopen checks; both authentic-rig root
 suites passed 628 checks each. Side-view originals/results and separately labelled

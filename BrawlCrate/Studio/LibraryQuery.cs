@@ -10,16 +10,17 @@ namespace BrawlCrate.Studio
         public string Build { get; set; }
         public string Character { get; set; }
         public string ModelId { get; set; }
+        public string GameSourceId { get; set; }
         public string GameBuildText { get; set; }
         public string CharacterModelText { get; set; }
         public LibrarySourceState? Availability { get; set; }
         public string Channel { get; set; }
         public bool FavoritesOnly { get; set; }
-        public bool HasFilters => FavoritesOnly || Availability.HasValue || new[] { Text, Game, Build, Character, ModelId, GameBuildText, CharacterModelText, Channel }.Any(s => !string.IsNullOrWhiteSpace(s));
+        public bool HasFilters => FavoritesOnly || Availability.HasValue || new[] { Text, Game, Build, Character, ModelId, GameSourceId, GameBuildText, CharacterModelText, Channel }.Any(s => !string.IsNullOrWhiteSpace(s));
         internal LibraryQuery Snapshot()
         {
             var copy = (LibraryQuery)MemberwiseClone();
-            if (new[] { Text, Game, Build, Character, ModelId, GameBuildText, CharacterModelText, Channel }.Any(s => s != null && s.Length > 512) ||
+            if (new[] { Text, Game, Build, Character, ModelId, GameSourceId, GameBuildText, CharacterModelText, Channel }.Any(s => s != null && s.Length > 512) ||
                 Availability.HasValue && !Enum.IsDefined(typeof(LibrarySourceState), Availability.Value))
                 throw new ArgumentException("Invalid library filter.");
             return copy;

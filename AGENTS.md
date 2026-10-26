@@ -1,5 +1,35 @@
 # Fighterport
 
+26 October 2026 bounded preview.37-source-fit-workflow is accepted:
+**3,410 checks / 21 runs / 157 reviewed native PNGs**. Current-clip fitting uses
+native Undo and ordinary Save/export; source preview initializes and frames actual
+geometry. Explicit source/target destinations, direct character lists and exact
+costume choices remain in the full native editor. Saved disc/install/SD paths have
+compact rename/edit/remove/Undo management; separate PM fixtures preserve exact
+source identities, including identical copies. Full native Next and root/boundary
+policies remain intact. See [acceptance record](docs/SOURCE_FIT_WORKFLOW_ACCEPTANCE_2026-10-26.md).
+Inherited whole-catalogue capacity and full extracted-disc caching are not the
+user's final design; direct source reads and resource-aware capacity are the next
+authorized continuation, not accepted by these fixtures. ONE G1/M2 stays incomplete.
+
+26 October 2026 authorized preview.37-source-fit-workflow repairs source-preview
+initialization/framing, pins explicit Load as source / Open as target choices,
+and flattens detected Brawl game-source characters to direct animation lists.
+Costumes remain exact compatible model choices, remembered within their source
+family. Boundary fits default to the current single-clip owned animation with
+native Undo and unchanged original Next provenance; explicit Save as new remains.
+Keep exact stale guards, portable recipe snapshots and source/working protections.
+Qualify real native Apply/Undo/Save/export/reopen and source geometry on private
+desktops; retain full native editor/Next and current protected-root policies.
+ONE G1/M2 remains incomplete; no physical input/DPI, universal contact or game claim.
+Latest steering includes game-neutral saved disc/install/SD paths and compact
+rename/edit/remove management. Keep multiple named Project M/Project+ sources
+separate by ID/path/inventory, never character names or display labels. Root
+categories, queries and costumes retain exact source scope. Indexed relocation
+must verify original bytes before one metadata commit; removal unregisters only
+the selected source, retaining files/projects and existing library Undo. Unknown
+games/formats save locations only; no new adapter or schema is authorized here.
+
 26 October 2026 bounded preview.36-integrated-disc acceptance is complete:
 **4,550 checks / 26 runs / 157 reviewed native PNGs** (labelled overview review,
 plus three full-size new-UI views). Add Brawl indexes the complete fighter library

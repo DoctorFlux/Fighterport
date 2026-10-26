@@ -43,6 +43,7 @@ internal static partial class Program
         {
             try
             {
+                        SimpleControl<CheckBox>(window,"transition_saveAsNew").Checked=true;
                 ((CheckBox)window.Controls.Find("transition_matchReferenceControls",true).Single()).Checked=false;
                 ((CheckBox)window.Controls.Find("transition_boundaryContactRecovery",true).Single()).Checked=false;
                 foreach(string side in new[]{"entry","exit"}){var choices=(ComboBox)window.Controls.Find("transition_"+side,true).Single();choices.SelectedIndex=choices.Items.Cast<object>().Select((v,i)=>new{Value=v as TransitionClipChoice,Index=i}).Single(v=>v.Value?.Asset==referenceAsset).Index;}

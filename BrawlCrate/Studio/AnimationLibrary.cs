@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Xml;
 using System.Xml.Serialization;
@@ -264,7 +265,8 @@ namespace BrawlCrate.Studio
             }
             return Update(data=>{
                 bool changed=false;
-                var location=data.GameLocations.FirstOrDefault(l=>l.Indexed&&l.Game==plan.Source.Game&&l.GameVersion==plan.Source.GameVersion&&l.ContainerSha256==plan.Source.ContainerSha256&&l.Provider==plan.Source.Provider&&l.ToolSha256==plan.Source.ToolSha256);
+                var location=data.GameLocations.FirstOrDefault(l=>l.Indexed&&l.Game==plan.Source.Game&&l.GameVersion==plan.Source.GameVersion&&l.ContainerSha256==plan.Source.ContainerSha256&&l.Provider==plan.Source.Provider&&l.ToolSha256==plan.Source.ToolSha256&&
+                    string.Equals(l.Path,plan.Source.Path,StringComparison.OrdinalIgnoreCase)&&l.InventorySha256==plan.Source.InventorySha256);
                 if(location==null){location=plan.Source;data.GameLocations.Add(location);changed=true;}
                 var mounts=new Dictionary<string,string>();
                 foreach(var input in plan.Mounts)
@@ -294,6 +296,8 @@ namespace BrawlCrate.Studio
             },cancellation);
         }
         public void RepairGameSource(string sourceId,string replacement,CancellationToken cancellation=default)
+            =>RepairGameSource(sourceId,replacement,cancellation,null);
+        private void RepairGameSource(string sourceId,string replacement,CancellationToken cancellation,string name)
         {
             string path=OrdinaryPath(replacement);NoLinks(path);
             using(var held=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.Read))
@@ -303,6 +307,7 @@ namespace BrawlCrate.Studio
                 Update(data=>{
                     var source=data.GameLocations.Single(l=>l.Id==sourceId);
                     if(!source.Indexed||!BrawlGameSource.IsDiscProvider(source.Provider)||source.ContainerSha256!=hash||source.Bytes!=held.Length)throw new InvalidDataException("Select the exact indexed disc image. Its hash/size must match.");
+                    if(name!=null){ValidateSourceName(data,source,name);source.Label=name;}
                     source.Path=path;foreach(var mount in data.Mounts.Where(m=>m.GameSourceId==sourceId)){mount.OriginPath=path;mount.OriginWriteTicks=File.GetLastWriteTimeUtc(path).Ticks;}
                     data.LastOperation="Repair Disc Source";return Tuple.Create(true,true);
                 },cancellation);
@@ -357,11 +362,117 @@ namespace BrawlCrate.Studio
                 data.LastOperation="Set Game Path";return Tuple.Create(true,true);
             });
         }
+        public void RememberGameSource(string game,string version,string path)
+        {
+            if(!Text(game,128)||!Text(version,256))throw new InvalidDataException("Enter a game and explicit build/version (or mark it unknown).");
+            path=OrdinaryPath(path);NoLinks(path);
+            bool directory=Directory.Exists(path);
+            if(!directory&&!File.Exists(path))throw new FileNotFoundException("Choose an existing game/install folder, disc image or game file.");
+            Update(data=>{
+                if(data.GameLocations.Any(l=>l.Game==game&&l.GameVersion==version&&string.Equals(l.Path,path,StringComparison.OrdinalIgnoreCase)))return Tuple.Create(false,false);
+                data.GameLocations.Add(new LibraryGameLocation{Id=Guid.NewGuid().ToString("N"),Game=game,GameVersion=version,Path=path,Label=directory?new DirectoryInfo(path).Name:System.IO.Path.GetFileName(path),IsDirectory=directory});
+                data.LastOperation="Remember Game Source";return Tuple.Create(true,true);
+            });
+        }
         public void RemoveGameLocation(string id)
         {
             Update(data=>{if(data.Mounts.Any(m=>m.GameSourceId==id))throw new InvalidOperationException("Remove this build's registered model sources first. Saved target revisions remain independent.");
                 if(data.GameLocations.RemoveAll(l=>l.Id==id)==0)throw new InvalidDataException("Unknown game/build location.");
                 data.LastOperation="Remove Game Path";return Tuple.Create(true,true);});
+        }
+        public void EditSavedGameSource(string id,string game,string version,string replacement,CancellationToken cancellation=default,Action<string> progress=null,string name=null)
+        {
+            cancellation.ThrowIfCancellationRequested();
+            var snapshot=Read();var source=snapshot.GameLocations.SingleOrDefault(l=>l.Id==id)??throw new InvalidDataException("This saved source was removed. Refresh the list.");
+            string label=name?.Trim()??source.Label;ValidateSourceName(snapshot,source,label);
+            if(!Text(game,128)||!Text(version,256))throw new InvalidDataException("Enter a game and build/version, or mark the build unknown.");
+            string path=OrdinaryPath(replacement);bool same=string.Equals(path,source.Path,StringComparison.OrdinalIgnoreCase);
+            bool directory=Directory.Exists(path),file=File.Exists(path);
+            if(!same&&!directory&&!file)throw new FileNotFoundException("Choose an existing disc/file or game/install folder.");
+            if(directory||file)NoLinks(path);
+            if(!source.Indexed)
+            {
+                Update(data=>{
+                    if(data.Generation!=snapshot.Generation)throw new InvalidOperationException("Saved sources changed. Refresh and try the edit again.");
+                    var row=data.GameLocations.Single(l=>l.Id==id);
+                    if(data.GameLocations.Any(l=>l.Id!=id&&l.Game==game&&l.GameVersion==version&&string.Equals(l.Path,path,StringComparison.OrdinalIgnoreCase)))throw new InvalidOperationException("This source is already saved. Choose its existing row.");
+                    if(same&&row.Game==game&&row.GameVersion==version&&row.Label==label)return Tuple.Create(false,false);
+                    row.Game=game;row.GameVersion=version;row.Path=path;if(directory||file)row.IsDirectory=directory;row.Label=label;
+                    data.LastOperation="Edit Saved Game Source";return Tuple.Create(true,true);
+                },cancellation);return;
+            }
+            if(game!=source.Game||version!=source.GameVersion)throw new InvalidOperationException("Indexed game/build identities stay fixed. Add a separate source for another game/build.");
+            if(same){RenameSavedGameSource(id,label);return;}
+            if(!source.IsDirectory)
+            {
+                if(!file)throw new InvalidDataException("Choose the same original disc image at its new location.");
+                progress?.Invoke("Verifying the exact original disc before changing its saved path...");
+                RepairGameSource(id,path,cancellation,label);return;
+            }
+            if(!directory||source.Provider!="brawl-folder-v1")throw new InvalidDataException("Choose the same extracted game/install folder at its new location.");
+            string fighter=BrawlGameSource.FighterFolder(path);
+            var mounts=snapshot.Mounts.Where(m=>m.GameSourceId==id).ToArray();
+            if(mounts.Length==0||mounts.Length>10000||mounts.Sum(m=>m.Bytes)>4L*1024*1024*1024)throw new InvalidDataException("The saved source exceeds the bounded native inventory verification limit.");
+            var locks=new List<FileStream>();var relocated=new Dictionary<string,Tuple<string,long>>();
+            var buffer=new byte[256*1024];
+            try
+            {
+                foreach(var mount in mounts)
+                {
+                    cancellation.ThrowIfCancellationRequested();
+                    if(!mount.VirtualPath.StartsWith("fighter/",StringComparison.Ordinal))throw new InvalidDataException("This native source layout cannot be relocated by the current reader.");
+                    string candidate=OrdinaryPath(System.IO.Path.Combine(fighter,mount.VirtualPath.Substring(8).Replace('/',System.IO.Path.DirectorySeparatorChar)));
+                    if(!candidate.StartsWith(fighter.TrimEnd('\\','/')+System.IO.Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase))throw new InvalidDataException("A source file escapes the selected game folder.");
+                    NoLinks(candidate);var held=LockSource(candidate);locks.Add(held);
+                    if(held.Length!=mount.Bytes)throw new InvalidDataException("A replacement native package differs in size. The saved path was kept.");
+                    progress?.Invoke("Verifying original package "+(relocated.Count+1)+" / "+mounts.Length+": "+mount.VirtualPath);
+                    // Keep every verified file locked through the single metadata
+                    // commit; no half-relocated source or changed-byte race.
+                    string hash;
+                    using(var sha=SHA256.Create())
+                    {
+                        int count;while((count=held.Read(buffer,0,buffer.Length))>0){cancellation.ThrowIfCancellationRequested();sha.TransformBlock(buffer,0,count,buffer,0);}
+                        sha.TransformFinalBlock(new byte[0],0,0);hash=BrawlLibrarySource.Hex(sha.Hash);
+                    }
+                    if(hash!=mount.ContainerSha256)throw new InvalidDataException("A replacement native package differs from the indexed original. The saved path was kept.");
+                    relocated.Add(mount.Id,Tuple.Create(candidate,File.GetLastWriteTimeUtc(candidate).Ticks));
+                }
+                Update(data=>{
+                    if(data.Generation!=snapshot.Generation)throw new InvalidOperationException("Saved sources changed during verification. The path was kept; refresh and try again.");
+                    var row=data.GameLocations.Single(l=>l.Id==id);ValidateSourceName(data,row,label);row.Path=path;row.Label=label;
+                    foreach(var mount in data.Mounts.Where(m=>m.GameSourceId==id)){mount.LocalPath=relocated[mount.Id].Item1;mount.NativeWriteTicks=relocated[mount.Id].Item2;}
+                    data.LastOperation="Relocate Game Folder";return Tuple.Create(true,true);
+                },cancellation);
+            }
+            finally{foreach(var held in locks)held.Dispose();}
+        }
+        public void RemoveSavedGameSource(string id)
+        {
+            Update(data=>{
+                if(!data.GameLocations.Any(l=>l.Id==id))throw new InvalidDataException("This saved source was removed. Refresh the list.");
+                var mounts=new HashSet<string>(data.Mounts.Where(m=>m.GameSourceId==id).Select(m=>m.Id));
+                var models=new HashSet<string>(data.Models.Where(m=>mounts.Contains(m.MountId)).Select(m=>m.Id));
+                data.Clips.RemoveAll(c=>mounts.Contains(c.MountId));data.Models.RemoveAll(m=>models.Contains(m.Id));data.Mounts.RemoveAll(m=>mounts.Contains(m.Id));
+                foreach(var model in data.Models)model.MotionMountIds.RemoveAll(mounts.Contains);
+                foreach(var clip in data.Clips.Where(c=>c.ModelId!=null&&models.Contains(c.ModelId)))
+                {clip.ModelId=null;clip.AssociationEvidence=null;clip.AssociationIssue="Original model source removed. Review an exact model association again.";}
+                data.GameLocations.RemoveAll(l=>l.Id==id);data.LastOperation="Remove Saved Game Source";return Tuple.Create(true,true);
+            });
+        }
+        public void RenameSavedGameSource(string id,string name)
+        {
+            name=name?.Trim();if(!Text(name,240))throw new InvalidDataException("Enter a source name of at most 240 characters.");
+            Update(data=>{
+                var source=data.GameLocations.SingleOrDefault(l=>l.Id==id)??throw new InvalidDataException("This source was removed. Refresh the list.");
+                if(source.Label==name)return Tuple.Create(false,false);
+                ValidateSourceName(data,source,name);
+                source.Label=name;data.LastOperation="Rename Saved Game Source";return Tuple.Create(true,true);
+            });
+        }
+        private static void ValidateSourceName(LibraryCatalogue data,LibraryGameLocation source,string name)
+        {
+            if(!Text(name,512))throw new InvalidDataException("Enter a source instance name.");
+            if(name!=source.Label&&data.GameLocations.Any(l=>l.Id!=source.Id&&l.Game==source.Game&&string.Equals(l.Label,name,StringComparison.OrdinalIgnoreCase)))throw new InvalidOperationException("Another source for this game already has that name. Choose a distinct instance name.");
         }
         public void ProtectOutputPath(string destination)
         {
@@ -449,7 +560,7 @@ namespace BrawlCrate.Studio
             var states=new Dictionary<string,LibrarySourceState>();
             var files=new Dictionary<string,FileInfo>(StringComparer.OrdinalIgnoreCase);
             var found=indexedClips.Where(c=>LibraryQuery.WordsMatch(c.Text,words) &&
-                LibraryQuery.Exact(c.Motion.Game,query.Game) && LibraryQuery.Exact(c.Motion.GameVersion,query.Build) &&
+                LibraryQuery.Exact(c.Motion.Game,query.Game) && LibraryQuery.Exact(c.Motion.GameVersion,query.Build) && LibraryQuery.Exact(c.Motion.GameSourceId,query.GameSourceId) &&
                 LibraryQuery.Exact(c.Model?.Character??c.Clip.SourceCharacter,query.Character) && LibraryQuery.Exact(c.Model?.Id,query.ModelId) &&
                 LibraryQuery.Exact(c.Clip.Channel,query.Channel) &&
                 LibraryQuery.WordsMatch(c.GameText,gameWords) &&

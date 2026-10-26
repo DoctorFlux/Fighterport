@@ -17,16 +17,16 @@ namespace BrawlCrate.UI
         private LibraryCatalogue data;
         internal LibrarySourcesDialog(AnimationLibrary library,Action<IWin32Window,LibraryGameRequest> browse)
         {
-            this.library=library;Text="Library Sources and Game Paths";Name="LibrarySourcesDialog";
+            this.library=library;Text="Library sources and saved games";Name="LibrarySourcesDialog";
             ClientSize=new Size(670,435);StartPosition=FormStartPosition.CenterParent;MinimizeBox=MaximizeBox=false;FormBorderStyle=FormBorderStyle.FixedDialog;
-            var tabs=new TabControl{Dock=DockStyle.Fill,Name="librarySourceTabs"};var sourceTab=new TabPage("Registered Sources");var pathTab=new TabPage("Game / Build Paths");tabs.TabPages.AddRange(new[]{sourceTab,pathTab});
+            var tabs=new TabControl{Dock=DockStyle.Fill,Name="librarySourceTabs"};var sourceTab=new TabPage("Registered Sources");var pathTab=new TabPage("Saved game sources");tabs.TabPages.AddRange(new[]{sourceTab,pathTab});
             sourceTab.Controls.Add(new Label{Text="Removing a source unregisters its library entries. Original files and saved target revisions remain intact.",Bounds=new Rectangle(12,12,625,36)});
             sources.Name="libraryRegisteredSources";sources.Bounds=new Rectangle(12,52,625,273);sourceTab.Controls.Add(sources);
             var remove=new Button{Name="libraryRemoveSource",Text="Remove Selected Source",Bounds=new Rectangle(12,341,180,30)};
             remove.Click+=(s,e)=>Run(()=>{if(sources.SelectedIndex<0)return;library.RemoveSource(data.Models[sources.SelectedIndex].Id);Reload();});
             undo.Name="librarySourcesUndo";undo.Text="Undo Last Change";undo.Bounds=new Rectangle(204,341,145,30);undo.Click+=(s,e)=>Run(()=>{library.UndoLastUpdate();Reload();});
             sourceTab.Controls.AddRange(new Control[]{remove,undo});
-            pathTab.Controls.Add(new Label{Text="Save paths per game/build. Browse Brawl-family folders or ISO/WBFS directly with the built-in reader. Other games' native adapters remain pending.",Bounds=new Rectangle(12,12,625,36)});
+            pathTab.Controls.Add(new Label{Text="Remember disc images and game/install folders per game/build. Brawl can be indexed now; other games' locations stay saved for their future readers.",Bounds=new Rectangle(12,12,625,36)});
             locations.Name="libraryGameLocations";locations.Bounds=new Rectangle(12,52,625,150);pathTab.Controls.Add(locations);
             locations.SelectedIndexChanged+=(s,e)=>{if(locations.SelectedIndex<0)return;var l=data.GameLocations[locations.SelectedIndex];game.Text=l.Game;version.Text=l.GameVersion;path.Text=l.Path;};
             game.Name="libraryLocationGame";game.AccessibleName="Game name (choose or type a new game)";game.DropDownStyle=ComboBoxStyle.DropDown;game.MaxLength=128;game.Bounds=new Rectangle(12,216,165,26);game.Items.AddRange(AnimationLibrary.PlannedGames);game.SelectedIndex=0;
@@ -36,8 +36,8 @@ namespace BrawlCrate.UI
             folder.Click+=(s,e)=>{using(var choose=new FolderBrowserDialog{Description="Choose the game's installation or extracted build folder"})if(choose.ShowDialog(this)==DialogResult.OK)path.Text=choose.SelectedPath;};
             var file=new Button{Name="libraryLocationFile",Text="Choose ROM / SD / File...",Bounds=new Rectangle(148,292,175,29)};
             file.Click+=(s,e)=>{using(var choose=new OpenFileDialog{Title="Choose ROM, SD Card or Game Archive",Filter="ROMs / discs / SD images / archives|*.iso;*.wbfs;*.rvz;*.gcm;*.raw;*.img;*.xci;*.nsp;*.arc;*.pak|All files|*.*"})if(choose.ShowDialog(this)==DialogResult.OK)path.Text=choose.FileName;};
-            var save=new Button{Name="libraryLocationSave",Text="Save Game Path",Bounds=new Rectangle(12,341,145,30)};
-            save.Click+=(s,e)=>Run(()=>{library.SetGameLocation(game.Text.Trim(),version.Text.Trim(),path.Text.Trim());Reload();});
+            var save=new Button{Name="libraryLocationSave",Text="Save source",Bounds=new Rectangle(12,341,145,30)};
+            save.Click+=(s,e)=>Run(()=>{library.RememberGameSource(game.Text.Trim(),version.Text.Trim(),path.Text.Trim());Reload();});
             var removePath=new Button{Name="libraryLocationRemove",Text="Remove Selected Path",Bounds=new Rectangle(169,341,175,30)};
             removePath.Click+=(s,e)=>Run(()=>{if(locations.SelectedIndex<0)return;library.RemoveGameLocation(data.GameLocations[locations.SelectedIndex].Id);Reload();});
             var index=new Button{Name="libraryBrowseGame",Text="Add to Library",Bounds=new Rectangle(356,341,180,30)};
@@ -56,7 +56,7 @@ namespace BrawlCrate.UI
         {
             data=library.Read();sources.Items.Clear();locations.Items.Clear();
             foreach(var model in data.Models){var mount=data.Mounts.Single(m=>m.Id==model.MountId);sources.Items.Add(model.Name+" — "+mount.Game+" / "+mount.GameVersion+" — "+Path.GetFileName(mount.LocalPath));}
-            foreach(var location in data.GameLocations)locations.Items.Add(location.Game+" / "+location.GameVersion+" — "+location.Label+(location.Indexed?" (indexed native source)":" (path only)"));
+            foreach(var location in data.GameLocations)locations.Items.Add(location.Game+" / "+location.GameVersion+" — "+(location.IsDirectory?"folder":"disc / file")+" — "+location.Path+(location.Indexed?" (indexed)":" (saved location)"));
             undo.Enabled=library.CanUndo;
         }
     }

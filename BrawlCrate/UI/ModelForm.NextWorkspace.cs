@@ -34,7 +34,8 @@ namespace BrawlCrate.UI
             _simpleWorkspaceToolbar.Items.Insert(4, load);
             NextCommand(_nextAnimationMenu, "nextLoadSourceFiles", "Load source files...", LoadSessionSource);
             NextCommand(_nextAnimationMenu, "nextSharedLibrary", "Choose from library...", UseSharedSourceLibrary);
-            NextCommand(_nextAnimationMenu, "nextAddBrawlDisc", "Add Brawl disc / folder...", ShowBrawlDiscLibrary);
+            NextCommand(_nextAnimationMenu, "nextAddBrawlDisc", "Add game source...", ShowBrawlDiscLibrary);
+            NextCommand(_nextAnimationMenu, "nextSavedGameSources", "Saved games / paths...", ShowSavedGameSourceSettings);
             NextCommand(_nextAnimationMenu, "nextLibrarySources", "Manage library sources...", ShowLibrarySourceSettings);
             NextCommand(_nextAnimationMenu, "nextAddSourceToLibrary", "Add loaded source to library", AddSessionSourceToLibrary);
             NextCommand(_nextAnimationMenu, "nextPreviewLibraryOriginal", "Preview library original", PreviewLibraryOriginal);
@@ -100,7 +101,7 @@ namespace BrawlCrate.UI
                 { item.Enabled = !busy && _sessionSourceLibrary != null && ReferenceEquals(_library, _sessionSourceLibrary); continue; }
                 if (item.Name == "nextPreviewLibraryOriginal" || item.Name == "nextOpenLibraryTarget")
                 { item.Enabled = !busy && SimpleWorkspaceSourceReady; continue; }
-                if (item.Name == "nextLoadSourceFiles" || item.Name == "nextSharedLibrary" || item.Name == "nextAddBrawlDisc" || item.Name == "nextLibrarySources")
+                if (item.Name == "nextLoadSourceFiles" || item.Name == "nextSharedLibrary" || item.Name == "nextAddBrawlDisc" || item.Name == "nextLibrarySources" || item.Name == "nextSavedGameSources")
                 { item.Enabled = !busy; continue; }
                 item.Enabled = !busy && target && (item.Name == "nextReviewResults" || item.Name == "nextExportReviewedSet" ||
                     item.Name == "nextAnimationControls" || item.Name == "nextBatchFit" && SimpleWorkspaceSourceReady ||

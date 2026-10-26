@@ -13,15 +13,30 @@ namespace BrawlCrate.UI
     {
         // Prepare only metadata off-thread. Tree nodes and native handles belong
         // exclusively to the UI thread; no model/animation decoding happens here.
-        private static LibraryGameBranch[] PlanLibraryOutline(List<LibrarySearchItem> items,string[] configured,string selected)
+        private static LibraryGameBranch[] PlanLibraryOutline(List<LibrarySearchItem> items,string[] configured,string selected,LibraryGameLocation[] locations,bool includeEmptySources)
         {
-            var games=items.GroupBy(i=>i.Motion.Game).ToDictionary(g=>g.Key,g=>g.ToList());
-            return games.Keys.Concat(configured).Distinct().OrderBy(g=>g).Select(game=>{
-                var rows=games.TryGetValue(game,out var found)?found:new List<LibrarySearchItem>();
-                return new LibraryGameBranch{Name=game,Characters=rows
+            string Scope(LibrarySearchItem item)=>item.Motion.GameSourceId==null?"game:"+item.Motion.Game:"source:"+item.Motion.GameSourceId;
+            var groups=items.GroupBy(Scope).ToDictionary(g=>g.Key,g=>g.ToList());
+            var sources=locations.ToDictionary(l=>"source:"+l.Id);
+            var keys=groups.Keys.Concat(includeEmptySources?sources.Keys:Enumerable.Empty<string>())
+                .Concat(configured.Where(g=>!locations.Any(l=>l.Game==g)).Select(g=>"game:"+g)).Distinct();
+            return keys.Select(scope=>{
+                var rows=groups.TryGetValue(scope,out var found)?found:new List<LibrarySearchItem>();sources.TryGetValue(scope,out var location);
+                string game=location?.Game??rows.FirstOrDefault()?.Motion.Game??scope.Substring(5);
+                string sourceLabel=location==null?game:game+" · "+location.Label;
+                if(location!=null&&locations.Count(l=>l.Game==game&&l.Label==location.Label)>1)sourceLabel+=" · "+location.GameVersion+" ["+location.Id.Substring(0,8)+"]";
+                return new LibraryGameBranch{Name=scope,Text=sourceLabel,Indexed=location?.Indexed??rows.Count>0,ToolTip=location==null?game:location.GameVersion+" · "+location.Path,Characters=rows
                     .GroupBy(i=>i.Model?.Character??i.Clip.SourceCharacter??"Unverified",StringComparer.Ordinal)
                     .OrderBy(g=>g.Key,StringComparer.OrdinalIgnoreCase).Select(character=>{
                         var clips=character.ToList();
+                        // Disc/install catalogues already own verified original
+                        // associations. Browse a character's animations directly;
+                        // compatible costume selection belongs to its selector.
+                        bool direct=clips.Any(i=>!string.IsNullOrEmpty(i.Motion.GameSourceId));
+                        if(direct)return new LibraryBranch{Name="character:"+scope+"|"+character.Key,Text=character.Key,
+                            ToolTip=clips.Count+" indexed animations · choose a costume below",HasSelection=clips.Any(i=>i.Clip.Id==selected),
+                            Group=new LibraryGroup{Character=true,DirectAnimations=true,Items=clips.OrderBy(i=>i.Clip.Name,StringComparer.OrdinalIgnoreCase).ThenBy(i=>i.Clip.Channel,StringComparer.Ordinal).ThenBy(i=>i.Clip.ResourceKey,StringComparer.Ordinal).ToList(),
+                                DuplicateNames=new HashSet<string>(clips.GroupBy(i=>i.Clip.Name+"|"+i.Clip.Channel,StringComparer.Ordinal).Where(g=>g.Count()>1).Select(g=>g.Key),StringComparer.Ordinal)}};
                         var models=clips.GroupBy(i=>i.Model?.Id??"unassociated-"+i.Motion.Id)
                             .OrderBy(g=>g.First().Model?.Name??Path.GetFileNameWithoutExtension(g.First().Motion.LocalPath),StringComparer.OrdinalIgnoreCase)
                             .Select(model=>{
@@ -33,11 +48,11 @@ namespace BrawlCrate.UI
                                     HasSelection=motions.Any(i=>i.Clip.Id==selected),
                                     ToolTip=motions.Count+" indexed animations · "+first.Motion.GameVersion+" · "+(first.Model?.ResourcePath??"Model association required")};
                             }).ToArray();
-                        return new LibraryBranch{Name="character:"+game+"|"+character.Key,Text=character.Key,
+                        return new LibraryBranch{Name="character:"+scope+"|"+character.Key,Text=character.Key,
                             ToolTip=clips.Count+" indexed animations · "+game,HasSelection=models.Any(m=>m.HasSelection),
                             Group=new LibraryGroup{Items=clips,Character=true,Models=models}};
                     }).ToArray()};
-            }).ToArray();
+            }).OrderBy(g=>g.Text,StringComparer.OrdinalIgnoreCase).ToArray();
         }
 
         private void CancelLibraryTreeWork()
@@ -64,7 +79,7 @@ namespace BrawlCrate.UI
                 var result=await Task.Run(()=>{
                     if(generation!=_librarySearchGeneration)return null;
                     var rows=catalogue.Browse(query);
-                    return Tuple.Create(PlanLibraryOutline(rows,query.HasFilters?new string[0]:catalogue.ConfiguredGames,selected),rows.Count,catalogue.ClipCount,catalogue.CanUndo,catalogue.Channels);
+                    return Tuple.Create(PlanLibraryOutline(rows,query.HasFilters?new string[0]:catalogue.ConfiguredGames,selected,catalogue.Read().GameLocations.ToArray(),!query.HasFilters),rows.Count,catalogue.ClipCount,catalogue.CanUndo,catalogue.Channels);
                 });
                 if(result==null||IsDisposed||_libraryPane.IsDisposed||generation!=_librarySearchGeneration||!ReferenceEquals(catalogue,_library))return;
                 UpdateLibraryChannels(result.Item5);
@@ -75,8 +90,8 @@ namespace BrawlCrate.UI
                 try{_libraryList.SelectedNode=null;}finally{_libraryUpdatingTree=false;}
                 foreach(var game in result.Item1)
                     _libraryTreeWork.Enqueue(()=>{
-                        var node=new TreeNode(game.Name){Name=game.Name};_libraryList.Nodes.Add(node);
-                        node.Nodes.Add(game.Characters.Length==0?"Game/build path saved — not indexed":"Loading characters...");
+                        var node=new TreeNode(game.Text){Name=game.Name,ToolTipText=game.ToolTip};_libraryList.Nodes.Add(node);
+                        node.Nodes.Add(game.Characters.Length==0?(game.Indexed?"No matching animations":"Saved location — not indexed"):"Loading characters...");
                         if(!_libraryCollapsedGames.Contains(game.Name))ExpandLibraryBranch(node);
                         foreach(var character in game.Characters)
                             _libraryTreeWork.Enqueue(()=>AddLibraryBranch(node,character));
@@ -164,7 +179,7 @@ namespace BrawlCrate.UI
         {
             if(!(node?.Tag is LibraryGroup group)||group.Loaded>0&&!more)return;
             long start=Stopwatch.GetTimestamp();
-            if(group.Character)
+            if(group.Character&&!group.DirectAnimations)
             {
                 group.Loaded=group.Items.Count;
                 // Keep one child while BeforeExpand returns. Native TreeView
@@ -179,6 +194,8 @@ namespace BrawlCrate.UI
                 if(group.Loaded==0)node.Nodes.Clear(); // Only the single expansion placeholder.
                 else if(node.Nodes.Count>0&&node.Nodes[node.Nodes.Count-1].Name=="libraryMore")node.Nodes.RemoveAt(node.Nodes.Count-1);
                 group.BatchEnd=Math.Min(group.Items.Count,group.Loaded+1000);
+                int selected=group.Items.FindIndex(i=>i.Clip.Id==_librarySelectAfterRefresh);
+                if(selected>=group.BatchEnd)group.BatchEnd=selected+1;
                 node.Nodes.Insert(0,new TreeNode("Loading animations..."){Name="libraryLoading"});
                 _libraryPendingGroups.Add(node);
             }
@@ -191,7 +208,12 @@ namespace BrawlCrate.UI
             do
             {
                 var item=group.Items[group.Loaded];
-                var row=new TreeNode(item.Clip.Name+" · "+(item.Model?.Name??"Unassociated")+" · "+LibraryStateText(item.State))
+                string label=group.DirectAnimations?item.Clip.Name+
+                    (item.Clip.Channel=="CHR0 skeletal"?"":" · "+item.Clip.Channel.Replace("Node",""))+
+                    (group.DuplicateNames.Contains(item.Clip.Name+"|"+item.Clip.Channel)?" · "+(item.Model?.Name??Path.GetFileNameWithoutExtension(item.Motion.LocalPath))+" ["+item.Clip.ResourceKey+"]":"")+
+                    (item.State==LibrarySourceState.Available?"":" · "+LibraryStateText(item.State)):
+                    item.Clip.Name+" · "+(item.Model?.Name??"Unassociated")+" · "+LibraryStateText(item.State);
+                var row=new TreeNode(label)
                     {Name=item.Clip.Id,Tag=item,ToolTipText=item.Motion.GameVersion+" · "+item.Clip.ResourcePath+" ["+item.Clip.ResourceKey+"] · container SHA256 "+item.Motion.ContainerSha256+" · clip SHA256 "+item.Clip.ResourceSha256};
                 node.Nodes.Add(row);group.Loaded++;
                 if(item.Clip.Id==_librarySelectAfterRefresh){_libraryList.SelectedNode=row;selected=true;}

@@ -134,7 +134,7 @@ internal static partial class Program
                 Check(sourceLease != null && sourceLease.Reference.ClipId == sourceItem.Clip.Id &&
                     !sourceViewport.CurrentViewport.AllowSelection && ReferenceEquals(editor.TargetModel, target) && editor.SelectedCHR0 == null,
                     "Explicit source audition loads the exact verified original into an independent read-only native viewport");
-                Check(SimpleControl<Button>(form, "libraryPreviewOriginal").Text == "Preview Original" &&
+                Check(SimpleControl<Button>(form, "libraryPreviewOriginal").Text == "Load as source" &&
                     SimpleControl<Button>(form, "libraryUseOnTarget").Text == "Use on This Model",
                     "The source library restores Next's familiar preview and transfer command labels");
 

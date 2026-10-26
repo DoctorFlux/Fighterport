@@ -2,7 +2,8 @@
 
 This is the public unified source repository at https://github.com/DoctorFlux/Fighterport.
 It imports the BrawlCrate-based Next preview.14 source and integrated owned engine;
-the current implementation is **preview.36-integrated-disc**.
+the current implementation is **preview.37-source-fit-workflow**.
+See the [source/fit and saved-source acceptance](docs/SOURCE_FIT_WORKFLOW_ACCEPTANCE_2026-10-26.md).
 The two predecessor repositories are private preserved histories.
 Upstream copyrights, licenses and notices remain intact.
 
@@ -24,18 +25,29 @@ Open the target with **Open Model...**. Use **Add Animations...** for its native
 idle/fall references when fitting needs them. **Load source...** chooses an original
 model and motion set for this session; loading, previewing and retargeting never
 add those files to the shared library. **Add to library** is a separate explicit,
-verified operation. **Library → Add Brawl...** accepts a Brawl ISO/WBFS or extracted game folder.
+verified operation. **Add game...** accepts saved game sources, disc images, and
+game/install/SD folders. Brawl ISO/WBFS and Brawl-family extracted/SD builds can be
+indexed now; other games/formats can have their locations saved for future readers.
 Fighterport reads ISO/WBFS directly: no separate reader, emulator or key-file setup
 is needed. Add the disc once to index its complete fighter roster, animations and costumes
 in the shared library; there is no character picker. Extracted Brawl folders also work directly.
+For Project M or Project+, choose that game/mod and its SD root or build folder.
+Brawl and each mod installation have separate categories, even with identical
+character names. **Saved games / paths...** lists every saved source in a compact
+editor: rename instances, edit locations, remove an entry or undo the last change.
+Multiple Project M installations keep independent source IDs and editable names.
+An indexed path change verifies the same original bytes before updating its links.
+Removal unregisters library entries and preserves files and saved target projects.
+Choose **Open saved library** to reuse an indexed source without extracting it again.
 **Animation → Manage library sources...** retains source management. Existing
 indexed disc sources and saved provenance stay readable without their historical
 reader executable. Other games need their own adapters; paths alone are not support.
 See the [integrated reader record](docs/INTEGRATED_DISC_READER.md) and
 [background acceptance](docs/INTEGRATED_DISC_ACCEPTANCE_2026-10-26.md).
 
-Choose a source clip and its **Costume**, then **Preview Original** to see the
-original model and animation. **Open model + animation** opens an independent editable
+Choose a character and animation directly in the Brawl library, then its **Costume**.
+**Load as source** sends that exact model and animation to the small original
+preview. **Open as target** opens an independent editable
 target using the existing unsaved-change decision; the original remains read-only.
 **Use on This Model** instead retargets to the current target. Costume options come
 from the detected native Brawl source/build and exact compatible hierarchy/binds.
@@ -46,8 +58,11 @@ stay visible while the catalogue scrolls. The target result is an independent
 editable native animation. In fitting, enable **Fit start**, **Fit end**, or both;
 select exact target poses and join frames. Switching a side off retains its pose
 and settings. With both sides off, keep the retargeted animation directly. Preview
-and review an enabled fit before adding its independent result; then edit, save
-or use **Animation → Export verified animation...**.
+and review an enabled fit, then **Apply to current animation** to keep the fit on
+the same retargeted clip with native Undo. **Save** keeps those changes in the
+project; **Animation → Export verified animation...** writes the fitted CHR0.
+**Save as a new animation** is optional for an independent revision. Multi-clip
+native containers use that copy route to keep fitting recipes unambiguous.
 
 The **Animation** menu also provides review results, recorded-source comparison,
 loop inspection, controls, source timing/batches and verified set export. Native

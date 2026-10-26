@@ -108,6 +108,7 @@ internal static partial class Program
                 {
                     try
                     {
+                        SimpleControl<CheckBox>(window,"transition_saveAsNew").Checked=true;
                         Check(!SimpleControl<FlowLayoutPanel>(window,"transitionAdvancedFields").Visible,"Fitting opens with technical native options collapsed");
                         Check(window.ReadOptions().Components==7&&window.ReadOptions().MatchReferenceControls,"Simple defaults fit complete body transforms and reviewed controls while retaining attack travel");
                         var entryEnabled=SimpleControl<CheckBox>(window,"transition_entryEnabled");var exitEnabled=SimpleControl<CheckBox>(window,"transition_exitEnabled");
