@@ -91,6 +91,7 @@ internal static partial class Program
         window.RestoreOptions(explicitPreset);var restored=window.ReadOptions();Check(restored.Components==1&&restored.EntryFrame==2&&restored.ExitFrame==2&&!restored.EntryFrozen&&!restored.ExitFrozen&&!restored.PreserveContacts&&!restored.BoundaryContactRecovery&&!restored.ExitContactRecovery&&restored.Entry==explicitPreset.Entry&&restored.Exit==explicitPreset.Exit&&restored.Bones.OrderBy(n=>n,StringComparer.Ordinal).SequenceEqual(explicitPreset.Bones.OrderBy(n=>n,StringComparer.Ordinal)),"Explicitly restored FK settings replace recovery defaults and preserve the exact reference/mask identities: "+json.Serialize(restored));
         window.RestoreOptions(original);Check(window.ReadOptions().Components==7&&window.ReadOptions().EntryFrame==0&&window.ReadOptions().ExitFrame==0,"Restored recovery settings retain canonical first-pose/all-component policy");
     }
+    static CHR0Node UnmodifiedFitInput(CHR0Node clip)=>(CHR0Node)typeof(ModelForm).GetMethod("CopyFittingReference",System.Reflection.BindingFlags.Static|System.Reflection.BindingFlags.NonPublic).Invoke(null,new object[]{clip});
     static async Task WorkspaceBoundaryFit(string[] args,string output)
     {
         if(!PrivateDesktop)throw new InvalidOperationException("Start/end fitting uses a private desktop only.");
@@ -121,6 +122,7 @@ internal static partial class Program
                     var track=source.Children.OfType<CHR0EntryNode>().Single(t=>roots.Contains(t.Name));var channel=track.KeyArrays[8];while(channel.KeyCount>0)channel.Remove(channel.Entries.First()._index);
                     track.SetKeyframe(8,0,0,true,true)._tangent=1.25f/(source.FrameCount-1);track.SetKeyframe(8,source.FrameCount-1,1.25f,true,true)._tangent=1.25f/(source.FrameCount-1);source.SignalPropertyChange();editor.UpdateModel();
                 }
+                using var originalInput=UnmodifiedFitInput(source);Check(SetNativeContent(originalInput)==SetNativeContent(source),"Seal an exact independent pre-Apply input for post-Apply floor verification");
                 var before=SetNativeContent(source);var entryBefore=SetNativeContent(entryReference);var exitBefore=SetNativeContent(exitReference);
                 string rootKeys=RecoveryKeys(source,roots);int entryJoin=4,exitSamples=int.Parse(Arg("--exit-samples")),exitJoin=source.FrameCount-exitSamples;
                 Check(entryJoin<exitJoin,"Authentic original Next result leaves a nonempty middle between display frame 5 and the chosen recovery start");
@@ -130,7 +132,7 @@ internal static partial class Program
                 {
                     try
                     {
-                        SimpleControl<CheckBox>(window,"transition_saveAsNew").Checked=true;
+
                         Check(!SimpleControl<FlowLayoutPanel>(window,"transitionAdvancedFields").Visible,"Fitting opens with technical native options collapsed");
                         Check(window.ReadOptions().Components==7&&window.ReadOptions().MatchReferenceControls,"Simple defaults fit complete body transforms and reviewed controls while retaining attack travel");
                         var entryEnabled=SimpleControl<CheckBox>(window,"transition_entryEnabled");var exitEnabled=SimpleControl<CheckBox>(window,"transition_exitEnabled");
@@ -229,8 +231,8 @@ internal static partial class Program
                             Check(SimpleControl<Button>(window,"prepareTransition").Visible&&SimpleControl<NumericUpDown>(window,"transition_entrySamples").Parent.Visible&&!SimpleControl<FlowLayoutPanel>(window,"transitionAdvancedFields").Visible,"Simple flow remains available at "+size.Width+" / "+percent+"% text");
                         }
                         Call(form,"SetWorkspaceTextSize",100);window.ApplyTextSize();window.ClientSize=new Size(1240,820);
-                        Check(!SimpleControl<Button>(window,"applyTransition").Enabled,"Adding still requires explicit preview and limit review");
-                        SimpleControl<CheckBox>(window,"reviewTransition").Checked=true;SimpleControl<Button>(window,"applyTransition").PerformClick();
+                        Check(SimpleControl<Button>(window,"applyTransition").Enabled,"A prepared fit enables the explicit current-animation Apply action");
+                        SimpleControl<Button>(window,"applyTransition").PerformClick();
                     }
                     catch(Exception error){failure=error;window.Close();}
                     finally{finished=true;}
@@ -238,7 +240,7 @@ internal static partial class Program
                 Call(form,"ShowTransitionFit");await Wait(()=>finished);if(failure!=null)throw failure;
                 if(args.Contains("--boundary-floor-rejection")){Check(inputs.All(p=>FighterProject.HashFile(p.Key)==p.Value),"Rejected recovery leaves every original source container immutable");return;}
                 await SimpleControlsReady(form);var generated=form.FighterProject.Animations.Single(a=>a.TransitionFit!=null);
-                generated.TransitionFit.Validate();Check(form.FighterProject.Animations.Count==count+1&&ReferenceEquals(editor.SelectedCHR0,Call(form,"FighterRoot",generated)),"One native import adds and selects the independent two-ended fitted result");
+                generated.TransitionFit.Validate();Check(form.FighterProject.Animations.Count==count&&ReferenceEquals(editor.SelectedCHR0,source),"Apply updates the exact current animation without adding or selecting a duplicate");
                 if(contacts.Length>0)
                 {
                     Check(generated.TransitionFit.Algorithm==(args.Contains("--workspace-foot-recovery")?"contact-boundary-floor-1":"contact-boundary-recovery-1")&&generated.Retarget!=null&&NativeTransitionContacts.HasBakedSupport(generated),"Both-window receipt preserves original Next baked-support provenance instead of stripping contact ownership");
@@ -252,19 +254,19 @@ internal static partial class Program
                 if(args.Contains("--workspace-foot-recovery"))
                 {
                     WorkspaceFootReceiptValidation(generated.TransitionFit,"entry");WorkspaceFootReceiptValidation(generated.TransitionFit,"exit");
-                    using(var aligned=RecoveryReferenceUnderSourceRoots(model,source,entryReference,roots))RecoveryVerifyNativeFloor(model,source,editor.SelectedCHR0,aligned,setup,0,output,entryJoin,"entry");
-                    using(var aligned=RecoveryReferenceUnderSourceRoots(model,source,exitReference,roots))RecoveryVerifyNativeFloor(model,source,editor.SelectedCHR0,aligned,setup,exitJoin,output,null,"exit");
+                    using(var aligned=RecoveryReferenceUnderSourceRoots(model,originalInput,entryReference,roots))RecoveryVerifyNativeFloor(model,originalInput,editor.SelectedCHR0,aligned,setup,0,output,entryJoin,"entry");
+                    using(var aligned=RecoveryReferenceUnderSourceRoots(model,originalInput,exitReference,roots))RecoveryVerifyNativeFloor(model,originalInput,editor.SelectedCHR0,aligned,setup,exitJoin,output,null,"exit");
                     editor.UpdateModel();
                 }
                 string fittedContent=SetNativeContent(editor.SelectedCHR0);
-                editor.Undo();Check(form.FighterProject.Animations.Count==count&&ReferenceEquals(editor.SelectedCHR0,source),"One native Undo removes the independent fit and restores its exact source selection");await SimpleControlsReady(form);
+                editor.Undo();Check(form.FighterProject.Animations.Count==count&&ReferenceEquals(editor.SelectedCHR0,source)&&SetNativeContent(source)==before,"One native Undo restores exact current-clip curves without changing selection");await SimpleControlsReady(form);
                 editor.Redo();await SimpleControlsReady(form);Check(SetNativeContent(editor.SelectedCHR0)==fittedContent,"Native Redo restores the exact fitted result without preparing or solving again");
                 string export=Path.Combine(output,"two-ended.chr0");
                 form.ExportSimpleWorkspaceResult(export);
                 using(var reopened=NodeFactory.FromFile(null,export) as CHR0Node)Check(SetNativeContent(reopened)==fittedContent,"Verified precise native export before project Save reopens with every fitted key and tangent intact");
                 form.SaveFighterProject(Path.Combine(output,"two-ended.fpstudio"));
                 using(var reopened=FighterProject.Open(Path.Combine(output,"two-ended.fpstudio"))){var saved=reopened.Animations.Single(a=>a.Id==generated.Id);saved.TransitionFit.Validate();Check(saved.TransitionFit.Inputs.Count(i=>i.Role=="entry"||i.Role=="exit")==2,"Project reopen retains both exact frozen target references and current recipe validation");}
-                Check(SetNativeContent(source)==before&&SetNativeContent(entryReference)==entryBefore&&SetNativeContent(exitReference)==exitBefore&&inputs.All(p=>FighterProject.HashFile(p.Key)==p.Value),"Both-end fitting, Undo, export and reopen preserve authentic inputs, original Next result and target reference animations");
+                Check(SetNativeContent(source)==fittedContent&&SetNativeContent(entryReference)==entryBefore&&SetNativeContent(exitReference)==exitBefore&&inputs.All(p=>FighterProject.HashFile(p.Key)==p.Value),"Both-end fitting, Undo, export and reopen preserve authentic inputs, fitted Next provenance and target reference animations");
             }
             finally{SimpleDisposeForm(form);}
         }

@@ -2,8 +2,9 @@
 
 This is the public unified source repository at https://github.com/DoctorFlux/Fighterport.
 It imports the BrawlCrate-based Next preview.14 source and integrated owned engine;
-the current implementation is **preview.42-recovery-setup**.
-See the [recovery setup acceptance](docs/RECOVERY_SETUP_ACCEPTANCE_2026-10-26.md),
+the current implementation is **preview.43-apply-current-fit**.
+See the [current-animation fitting acceptance](docs/APPLY_CURRENT_FIT_ACCEPTANCE_2026-10-27.md),
+[recovery setup acceptance](docs/RECOVERY_SETUP_ACCEPTANCE_2026-10-26.md),
 [fitting reference acceptance](docs/FITTING_REFERENCES_ACCEPTANCE_2026-10-26.md),
 [automatic-preview and same-window acceptance](docs/LIBRARY_FLOW_ACCEPTANCE_2026-10-26.md)
 and the [source/fit and saved-source acceptance](docs/SOURCE_FIT_WORKFLOW_ACCEPTANCE_2026-10-26.md).
@@ -84,11 +85,12 @@ need the visible native-skeleton/units confirmation above the choices. An
 unprepared, invalidated or blocked result shows the labelled original animation.
 Switching a side off retains its pose
 and settings. With both sides off, keep the retargeted animation directly. Preview
-and review an enabled fit, then **Apply to current animation** to keep the fit on
-the same retargeted clip with native Undo. **Save** keeps those changes in the
-project; **Animation → Export verified animation...** writes the fitted CHR0.
-**Save as a new animation** is optional for an independent revision. Multi-clip
-native containers use that copy route to keep fitting recipes unambiguous.
+an enabled fit with **Preview fit**, then click **Apply fitting**. It updates the
+animation already selected in the Model Previewer, including a member of a motion
+PAC. Its name, target, selected bone and frame stay in place. Native Undo restores
+the previous curves. **Save** keeps the changes in the project; **Animation →
+Export verified animation...** exports the selected fitted CHR0. Sibling animations
+and original game files remain unchanged.
 Body fitting includes hips and legs. For an aerial without baked support contacts,
 choose the target Fall pose and **Preview fit**; no contact-recovery switch is
 needed. Where recorded support paths exist, **Adapt hips and legs in transitions**

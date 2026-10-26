@@ -79,7 +79,7 @@ namespace BrawlCrate.UI
                         throw new InvalidOperationException("Reviewed set dependencies changed. Review the current clips and open Export reviewed set again.");
                     bool changedTarget = NativeControlHash(target, ".mdl0") != targetContent;
                     foreach (var row in rows)
-                        if (changedTarget || !ReviewRowPresent(row) || row.Recipe != ReviewRecipe(ReviewAsset(row)) || row.Content != ExportContent(row.Clip)) row.Approved = false;
+                        if (changedTarget || !ReviewRowPresent(row) || row.Recipe != ReviewClipRecipe(ReviewAsset(row),row.Clip) || row.Content != ExportContent(row.Clip)) row.Approved = false;
                     if (rows.Any(r => !r.Approved))
                     {
                         _batchReviewDirty = true; SyncBatchReview();

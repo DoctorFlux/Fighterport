@@ -1,5 +1,28 @@
 # Current milestone M2 — simpler native workspace
 
+27 October 2026 preview.43-apply-current-fit is accepted: **1,271 checks /
+9 admitted background runs / 65 inspected native PNGs**. Fitting is Preview fit
+then Apply fitting to the exact current native clip, including motion PAC members.
+Copy/name and extra result-confirmation controls are removed. Target, clip identity,
+bone, frame, camera and sibling animations remain; native Undo, Save/export and
+reopen preserve fitted curves. Bounded optional per-member receipts retain exact
+identities/frozen references and legacy schema-1 single-clip compatibility. Review
+and export dependencies use the exact member's recipe. Full previewer, Next and
+root/boundary policies remain intact. See [acceptance](../APPLY_CURRENT_FIT_ACCEPTANCE_2026-10-27.md). ONE G1/M2 stays
+incomplete; physical input/DPI, human usability, broad contacts and games stay open.
+
+
+26 October 2026 authorized preview.43-apply-current-fit: remove the copy-mode
+choice from fitting and apply reviewed curves to the exact native animation already
+selected, including CHR0s inside multi-animation PACs. Preserve target/clip/bone/frame,
+sibling clips, source files, native Undo and ordinary Save/export. Retain frozen
+per-clip receipts through bounded optional native-identity metadata with legacy
+single-clip read compatibility and no schema-version migration or second owner.
+Update details, review/export dependency checks and background fixtures for exact
+current-clip Apply, cancelled/stale work, cross-clip Undo and fresh reopen. Preserve
+full previewer, original Next and root policy; ONE G1/M2 stays incomplete.
+
+
 26 October 2026 preview.42-recovery-setup is accepted: **829 checks /
 6 admitted background runs / 37 inspected native PNGs**. The exact original Next
 Sonic AttackAirLw to Mario Fall case prepares at 1-3 / 35-44, and end-only fitting

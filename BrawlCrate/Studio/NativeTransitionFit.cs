@@ -37,6 +37,11 @@ namespace BrawlCrate.Studio
         public string Role {get;set;}public string AssetId {get;set;}public string Entry {get;set;}public string Sha256 {get;set;}public string Snapshot {get;set;}
         public string Name {get;set;}public int Samples {get;set;}
     }
+    public sealed class NativeClipTransitionFit
+    {
+        public string Entry {get;set;}
+        public NativeTransitionFit Fit {get;set;}
+    }
     public sealed class NativeTransitionFit
     {
         public string Algorithm {get;set;}public string ModelSha256 {get;set;}public string Options {get;set;}public string Receipt {get;set;}

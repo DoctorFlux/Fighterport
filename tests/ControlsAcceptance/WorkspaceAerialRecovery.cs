@@ -45,7 +45,7 @@ internal static partial class Program
                 {
                     try
                     {
-                        SimpleControl<CheckBox>(window,"transition_saveAsNew").Checked=true;
+
                         foreach(string side in new[]{"entry","exit"}){var combo=SimpleControl<ComboBox>(window,"transition_"+side);combo.SelectedItem=combo.Items.OfType<TransitionClipChoice>().Single(c=>ReferenceEquals(c.Clip,fall));}
                         SimpleControl<NumericUpDown>(window,"transition_entrySamples").Value=3;SimpleControl<NumericUpDown>(window,"transition_exitStart").Value=35;
                         var adapt=SimpleControl<CheckBox>(window,"transition_boundaryContactRecovery");if(adapt.Enabled)adapt.Checked=true;
@@ -74,20 +74,20 @@ internal static partial class Program
                             Check(visible.Zip(visible.Skip(1),(a,b)=>a.Bottom<=b.Top).All(v=>v)&&visible.All(c=>c.Width+c.Margin.Horizontal<=panel.ClientSize.Width-panel.Padding.Horizontal),"Aerial fit controls fit without overlap at "+size.Width+" / "+percent+"%");
                             SimpleControl<TrackBar>(window,"transitionFrame").Value=44;await CaptureWindow(window,Path.Combine(output,"aerial-fall-"+size.Width+"-"+percent+".png"));
                         }
-                        SimpleControl<CheckBox>(window,"reviewTransition").Checked=true;SimpleControl<Button>(window,"applyTransition").PerformClick();
+                        SimpleControl<Button>(window,"applyTransition").PerformClick();
                     }
                     catch(Exception error){failure=error;window.Close();}
                     finally{finished=true;}
                 };
                 Call(form,"ShowTransitionFit");await GameLibraryWait(()=>finished,"Aerial fitting did not complete",150);if(failure!=null)throw failure;await SimpleControlsReady(form);
                 var generated=form.FighterProject.Animations.Single(a=>a.TransitionFit!=null);generated.TransitionFit.Validate();
-                Check(form.FighterProject.Animations.Count==count+1&&SetNativeContent(editor.SelectedCHR0)==result,"Aerial fit Apply imports exactly the prepared native curves and valid recipe");
-                editor.Undo();await SimpleControlsReady(form);Check(SetNativeContent(source)==before&&form.FighterProject.Animations.Count==count,"Native Undo restores the original aerial and removes only the fit");
+                Check(form.FighterProject.Animations.Count==count&&ReferenceEquals(editor.SelectedCHR0,source)&&SetNativeContent(source)==result,"Aerial fit Apply updates the current animation with exactly the prepared native curves and valid recipe");
+                editor.Undo();await SimpleControlsReady(form);Check(SetNativeContent(source)==before&&form.FighterProject.Animations.Count==count,"Native Undo restores the original aerial curves and recipe");
                 editor.Redo();await SimpleControlsReady(form);Check(SetNativeContent(editor.SelectedCHR0)==result,"Native Redo restores the exact aerial fit");
                 string export=Path.Combine(output,"aerial-fitted.chr0"),saved=Path.Combine(output,"aerial-fitted.fpstudio");form.ExportSimpleWorkspaceResult(export);form.SaveFighterProject(saved);
                 using(var decoded=NodeFactory.FromFile(null,export) as CHR0Node)Check(SetNativeContent(decoded)==result,"Verified export before Save retains all aerial fitted native curves");
                 using(var project=FighterProject.Open(saved))using(var root=NodeFactory.FromFile(null,project.Animations.Single(a=>a.Id==generated.Id).WorkingPath)){project.Animations.Single(a=>a.Id==generated.Id).TransitionFit.Validate();Check(SetNativeContent((CHR0Node)root)==result,"Aerial project reopen retains fitted curves and recipe");}
-                Check(SetNativeContent(source)==before&&SetNativeContent(fall)==reference&&FighterProject.HashFile(library.IndexPath)==catalogue,"Aerial fitting keeps original attack/reference and source catalogue unchanged");
+                Check(SetNativeContent(source)==result&&SetNativeContent(fall)==reference&&FighterProject.HashFile(library.IndexPath)==catalogue,"Aerial fitting keeps the applied attack, untouched reference and unchanged source catalogue");
             }
             finally{if(!form.IsDisposed)SimpleDisposeForm(form);}
         }

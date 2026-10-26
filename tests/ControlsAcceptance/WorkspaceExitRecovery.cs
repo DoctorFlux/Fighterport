@@ -116,7 +116,7 @@ internal static partial class Program
                     form.TransitionFitReady = async window =>
                     {
                         try {
-                        SimpleControl<CheckBox>(window,"transition_saveAsNew").Checked=true; Configure(window, true); SimpleControl<Button>(window, "prepareTransition").PerformClick(); await Wait(() => !window.Busy);
+                         Configure(window, true); SimpleControl<Button>(window, "prepareTransition").PerformClick(); await Wait(() => !window.Busy);
                             Check(window.Candidate == null && SimpleControl<TextBox>(window, "transitionReport").Text.ToLowerInvariant().Contains("pin"), "Recovery rejects a fixed existing-bone pin instead of silently releasing it"); }
                         catch (Exception e) { failure = e; } finally { window.Close(); finished = true; }
                     };
@@ -129,7 +129,7 @@ internal static partial class Program
                 {
                     try
                     {
-                        SimpleControl<CheckBox>(window,"transition_saveAsNew").Checked=true;
+
                         if(args.Contains("--reference-controls"))Check(window.ReadOptions().MatchReferenceControls,"Exact reviewed control roles enable the new reference-control policy on a new fit");
                         Check(!window.ReadOptions().ExitContactRecovery, "Contact recovery is an explicit opt-in; whole-clip preservation remains the default");
                         Configure(window, contacts.Length > 0);
@@ -204,7 +204,7 @@ internal static partial class Program
                             Check(window.Candidate!=null,"New control-policy review prepares a fresh independently validated result");
                         }
                         fitted = window.Candidate;
-                        Check(form.FighterProject.Animations.Count == originalCount && !SimpleControl<Button>(window, "applyTransition").Enabled, "Preparation requires explicit loss/result review before project publication");
+                        Check(form.FighterProject.Animations.Count == originalCount && SimpleControl<Button>(window, "applyTransition").Enabled, "Prepared recovery enables the explicit current-animation Apply action");
                         Check(model._linker.BoneCache.All(b => RecoverySamePose(RecoverySample(fitted, b, fitted.FrameCount - 1), RecoverySample(roots.Contains(b.Name) ? source : reference, b, roots.Contains(b.Name) ? source.FrameCount - 1 : 0))), "Every body endpoint matches authentic reference frame one while protected controls retain their own source endpoint");
                         Check(rootKeys == RecoveryKeys(fitted, roots), "Recovery retains every protected-root key bit, tangent and native flag");
                         Check(RecoveryRetainedKeysExact(source, fitted, 0, join), "Every retained source-prefix key and paired side keeps exact value/tangent bits and scale-compensation flags");
@@ -234,7 +234,7 @@ internal static partial class Program
                             reviewed.Focus();
                         }
                         Check(SetNativeContent(source) == original && SetNativeContent(reference) == referenceOriginal, "Review and renderer sampling preserve exact original attack and native reference");
-                        SimpleControl<CheckBox>(window, "reviewTransition").Checked = true; SimpleControl<Button>(window, "applyTransition").PerformClick(); fitted = editor.SelectedCHR0;
+                         SimpleControl<Button>(window, "applyTransition").PerformClick(); fitted = editor.SelectedCHR0;
                     }
                     catch (Exception e) { failure = e; window.Close(); } finally { finished = true; }
                 };
@@ -265,7 +265,7 @@ internal static partial class Program
                         Check(SetNativeContent(editor.SelectedCHR0) == content, "Workspace size/text changes preserve exact recovered clip at " + width + "/" + text);
                     }
                 }
-                editor.Undo(); await SimpleControlsReady(form); Check(form.FighterProject.Animations.Count == originalCount && ReferenceEquals(editor.SelectedCHR0, source), "One native Undo removes recovery and restores the exact original attack");
+                editor.Undo(); await SimpleControlsReady(form); Check(form.FighterProject.Animations.Count == originalCount && ReferenceEquals(editor.SelectedCHR0, source) && SetNativeContent(source)==original, "One native Undo restores the exact original attack curves on the current clip");
                 editor.Redo(); await SimpleControlsReady(form); Check(SetNativeContent(editor.SelectedCHR0) == content, "Native Redo restores exact recovery curves without solving again");
                 Call(form, "AddSelectedBatchReviewClip"); Call(form, "MarkBatchReview");
                 var reviewRow = ReviewRows(form).Single();

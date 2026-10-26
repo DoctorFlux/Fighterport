@@ -306,7 +306,16 @@ namespace BrawlCrate.Studio
             if (!Enum.IsDefined(typeof(Retargeting.GroundContactMode),GroundMode) || Frame < 0 || Frame > 10000000 || (SelectedAnimation?.Length ?? 0) > 16384 || (ModelNodePath?.Length ?? 0) > 8192)
                 throw new InvalidDataException("The saved preview selection is invalid.");
             var ids = new HashSet<string>(StringComparer.Ordinal);
-            if(Animations.Where(a=>a.TransitionFit!=null).Sum(a=>(long)(a.TransitionFit.Inputs?.Sum(i=>i?.Snapshot?.Length??0)??0))>32L*1024*1024)throw new InvalidDataException("Frozen transition inputs exceed the project review budget.");
+            foreach(var asset in RegisteredAssets())
+            {
+                if(asset.ClipTransitionFits==null||asset.ClipTransitionFits.Count>4096||asset.ClipTransitionFits.Any(f=>f==null||f.Fit==null||string.IsNullOrEmpty(f.Entry)||f.Entry.Length>16384||f.Entry.Split('/')[0]!="root"||f.Entry.Split('/').Skip(1).Any(part=>!int.TryParse(part,out int index)||index<0||part!=index.ToString(System.Globalization.CultureInfo.InvariantCulture)))||asset.ClipTransitionFits.Select(f=>f.Entry).Distinct(StringComparer.Ordinal).Count()!=asset.ClipTransitionFits.Count)throw new InvalidDataException("Invalid native clip fitting identities.");
+                foreach(var record in asset.ClipTransitionFits)
+                {
+                    record.Fit.Validate();var original=record.Fit.Inputs.Single(i=>i.Role=="source");
+                    if(asset.Role!="animation"||original.AssetId!=asset.Id||original.Entry!=asset.Id+"|@"+record.Entry)throw new InvalidDataException("A fitting receipt belongs to another native animation.");
+                }
+            }
+            if(Animations.SelectMany(a=>a.TransitionRecipes()).Sum(f=>(long)(f.Inputs?.Sum(i=>i?.Snapshot?.Length??0)??0))>32L*1024*1024)throw new InvalidDataException("Frozen transition inputs exceed the project review budget.");
             if(Animations.Sum(a=>(long)(a.ContactBake?.BaseSnapshot?.Length??0))>32L*1024*1024)throw new InvalidDataException("Frozen contact originals exceed the project review budget.");
             foreach (FighterAsset asset in RegisteredAssets())
             {
@@ -542,6 +551,14 @@ namespace BrawlCrate.Studio
         public string RigIdentity { get; set; }
         public RetargetProvenance Retarget { get; set; }
         public NativeTransitionFit TransitionFit {get;set;}
+        [XmlArrayItem("Fit")] public List<NativeClipTransitionFit> ClipTransitionFits {get;set;}=new List<NativeClipTransitionFit>();
+        public bool ShouldSerializeClipTransitionFits()=>ClipTransitionFits?.Count>0;
+        public IEnumerable<NativeTransitionFit> TransitionRecipes()
+        {
+            if(TransitionFit!=null)yield return TransitionFit;
+            foreach(var item in ClipTransitionFits??new List<NativeClipTransitionFit>())if(item?.Fit!=null)yield return item.Fit;
+        }
+
         public NativeContactBake ContactBake {get;set;}
         [XmlIgnore] public string WorkingPath { get; set; }
     }

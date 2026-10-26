@@ -13,7 +13,7 @@ namespace BrawlCrate.UI
         internal Action<Form> TransitionDetailsReady;
         private void ShowTransitionFitDetails()
         {
-            var asset=SelectedFighterAsset();var recipe=asset?.TransitionFit??throw new InvalidOperationException("Select an animation made by Fit / Transitions first.");recipe.Validate();
+            var asset=SelectedFighterAsset();var recipe=TransitionRecipeFor(asset,modelEditControl1.SelectedCHR0)??throw new InvalidOperationException("Select an animation made by Fit / Transitions first.");recipe.Validate();
             var options=new JavaScriptSerializer().Deserialize<TransitionFitOptions>(recipe.Options);
             int originalFrames=recipe.Inputs.Single(input=>input.Role=="source").Samples;
             bool edited=!string.Equals(recipe.InitialResultSha256,NativeControlHash(modelEditControl1.SelectedCHR0,".chr0"),StringComparison.OrdinalIgnoreCase);

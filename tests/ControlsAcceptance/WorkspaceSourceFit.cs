@@ -128,7 +128,7 @@ internal static partial class Program
                 {
                     try
                     {
-                        Check(!window.SaveAsNew&&window.ReadOptions().Name==clip.Name,"Retargeted single-clip fitting defaults to the current exact animation identity/name");
+                        Check(!window.Controls.Find("transition_saveAsNew",true).Any()&&window.ReadOptions().Name==clip.Name,"Retargeted single-clip fitting defaults to the current exact animation identity/name");
                         foreach(string side in new[]{"entry","exit"})
                         {var combo=SimpleControl<ComboBox>(window,"transition_"+side);combo.SelectedItem=combo.Items.OfType<TransitionClipChoice>().Single(c=>ReferenceEquals(c.Clip,reference));}
                         SimpleControl<CheckBox>(window,"transition_contacts").Checked=true;
@@ -144,12 +144,12 @@ internal static partial class Program
                         candidate=SetNativeContent(window.Candidate);
                         // A changed reference must reject even after review.
                         var entry=reference.Children.OfType<CHR0EntryNode>().First(e=>e.KeyArrays[3].KeyCount>0);var sample=entry.KeyArrays[3].Entries.First();float value=sample._value;
-                        sample._value+=1;reference.SignalPropertyChange();SimpleControl<CheckBox>(window,"reviewTransition").Checked=true;SimpleControl<Button>(window,"applyTransition").PerformClick();
+                        sample._value+=1;reference.SignalPropertyChange();SimpleControl<Button>(window,"applyTransition").PerformClick();
                         Check(window.Candidate==null&&SetNativeContent(clip)==before&&asset.TransitionFit==null,"Stale current-clip Apply publishes no curves or recipe");
                         sample._value=value;reference.SignalPropertyChange();
                         SimpleControl<Button>(window,"prepareTransition").PerformClick();await Wait(()=>!window.Busy);Check(window.Candidate!=null,"Reprepare after restoring the exact native reference");candidate=SetNativeContent(window.Candidate);
                         await CaptureWindow(window,Path.Combine(output,"fit-current-review.png"));
-                        SimpleControl<CheckBox>(window,"reviewTransition").Checked=true;SimpleControl<Button>(window,"applyTransition").PerformClick();
+                        SimpleControl<Button>(window,"applyTransition").PerformClick();
                     }
                     catch(Exception error){failure=error;window.Close();}
                     finally{finished=true;}

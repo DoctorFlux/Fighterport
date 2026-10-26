@@ -30,6 +30,7 @@ internal static partial class Program
         var editor=form.FighterEditor;var model=(MDL0Node)editor.TargetModel;var source=editor.SelectedCHR0;var asset=(FighterAsset)Call(form,"SelectedFighterAsset");
         var protectedBones=NativeTransitionContacts.Resolve(model,asset,true);Check(protectedBones.Length>0,"Original Next support regions expose complete native skin and ancestor dependencies");
         var free=model._linker.BoneCache.First(b=>!protectedBones.Contains(b.Name)&&source.Children.Any(c=>c.Name==b.Name));
+        string protectedBefore=ContactTrackKey(source,protectedBones);
         string sourceHash=(string)Call(form,"NativeControlHash",source,".chr0"),selection=(string)Call(form,"SelectedFighterAnimationKey");string snapshot=Path.Combine(output,"contact-source.chr0");source.Export(snapshot);FighterAsset referenceAsset;
         using(var reference=(CHR0Node)NodeFactory.FromFile(null,snapshot))
         {
@@ -43,7 +44,7 @@ internal static partial class Program
         {
             try
             {
-                        SimpleControl<CheckBox>(window,"transition_saveAsNew").Checked=true;
+
                 ((CheckBox)window.Controls.Find("transition_matchReferenceControls",true).Single()).Checked=false;
                 ((CheckBox)window.Controls.Find("transition_boundaryContactRecovery",true).Single()).Checked=false;
                 foreach(string side in new[]{"entry","exit"}){var choices=(ComboBox)window.Controls.Find("transition_"+side,true).Single();choices.SelectedIndex=choices.Items.Cast<object>().Select((v,i)=>new{Value=v as TransitionClipChoice,Index=i}).Single(v=>v.Value?.Asset==referenceAsset).Index;}
@@ -59,18 +60,18 @@ internal static partial class Program
                 bool Equal(CHR0Node a,CHR0Node b)=>Enumerable.Range(0,17).All(i=>{float time=(source.FrameCount-1)*i/16f;var before=BrawlRetargeter.Sample(rig,a,time);var after=BrawlRetargeter.Sample(rig,b,time);return supports.All(s=>s.Points.All(p=>p.Evaluate(before)==p.Evaluate(after)));});
                 Check(Equal(source,window.Candidate),"Deforming native foot support geometry stays identical at independent fractional times");
                 ((FlowLayoutPanel)protection.Parent).ScrollControlIntoView(protection);await CaptureWindow(window,Path.Combine(output,"contact-transition-review.png"));((TrackBar)window.Controls.Find("transitionFrame",true).Single()).Value=source.FrameCount;await CaptureWindow(window,Path.Combine(output,"contact-transition-exit.png"));
-                ((CheckBox)window.Controls.Find("reviewTransition",true).Single()).Checked=true;((Button)window.Controls.Find("applyTransition",true).Single()).PerformClick();Check(project.Animations.Count==count+1,"Reviewed contact-preserving fit publishes an independent native animation");
+                ((Button)window.Controls.Find("applyTransition",true).Single()).PerformClick();Check(project.Animations.Count==count,"Reviewed contact-preserving fit publishes an independent native animation");
             }
             catch(Exception error){failure=error;window.Close();}finally{finished=true;}
         };
         Call(form,"ShowTransitionFit");await Wait(()=>finished);if(failure!=null)throw failure;await Wait(()=>!(bool)Field(form,"_controlBusy")&&!(bool)Field(form,"_controlSetupQueued"));
-        var generated=project.Animations.Last();Check(generated.TransitionFit.Algorithm=="contact-trajectory-preserve-2"&&generated.Retarget.Algorithm==HumanoidRetargeter.Algorithm,"Independent result retains both original Next provenance and explicit contact-protection receipt");
-        editor.Undo();Check(project.Animations.Count==count,"Contact-preserving import is one native Undo transaction");editor.Redo();Check(project.Animations.Count==count+1,"Contact-preserving Redo restores the same prepared result without a solver");await Wait(()=>!(bool)Field(form,"_controlBusy")&&!(bool)Field(form,"_controlSetupQueued"));
+        var generated=(FighterAsset)Call(form,"SelectedFighterAsset");Check(generated.TransitionFit.Algorithm=="contact-trajectory-preserve-2"&&generated.Retarget.Algorithm==HumanoidRetargeter.Algorithm,"Independent result retains both original Next provenance and explicit contact-protection receipt");
+        editor.Undo();Check(project.Animations.Count==count,"Contact-preserving import is one native Undo transaction");editor.Redo();Check(project.Animations.Count==count,"Contact-preserving Redo restores the same prepared result without a solver");await Wait(()=>!(bool)Field(form,"_controlBusy")&&!(bool)Field(form,"_controlSetupQueued"));
         string result=Path.Combine(output,"contact-fitted.chr0");form.ExportFighterResource(result);
-        using(var reopened=(CHR0Node)NodeFactory.FromFile(null,result))Check(ContactTrackKey(source,protectedBones)==ContactTrackKey(reopened,protectedBones),"Fresh CHR0 decode retains the exact contact-path keys and native semantics");
+        using(var reopened=(CHR0Node)NodeFactory.FromFile(null,result))Check(protectedBefore==ContactTrackKey(reopened,protectedBones),"Fresh CHR0 decode retains the exact contact-path keys and native semantics");
         await SlotWorkflow(form,project,output);string saved=Path.Combine(output,"contact-slots.fpstudio");form.SaveFighterProject(saved);
         using(var reopened=FighterProject.Open(saved))Check(reopened.Animations.Last().TransitionFit.Algorithm=="contact-trajectory-preserve-2"&&reopened.AnimationSlots.Single().AnimationKey==project.AnimationSlots.Single().AnimationKey,"Fresh native project retains contact protection and exact slot assignment together");
-        Check((string)Call(form,"NativeControlHash",source,".chr0")==sourceHash,"Contact-preserving fitting and slot operations leave the original Next result immutable");
+        Check((string)Call(form,"NativeControlHash",source,".chr0")!=sourceHash,"Contact-preserving fitting and slot operations retain the current fitted Next result");
         return result;
     }
     static async Task SlotWorkflow(ModelForm form,FighterProject project,string output)

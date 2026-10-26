@@ -55,7 +55,9 @@ namespace BrawlCrate.UI
         internal long BatchReviewRecipeRetainedCharacters { get; private set; }
 
         private FighterAsset ReviewAsset(BatchReviewRow row) => RegisteredFighterAssets().FirstOrDefault(a => a.Id == row.AssetId);
-        private BatchReviewRecipe ReviewRecipe(FighterAsset asset)
+        private BatchReviewRecipe ReviewRecipe(FighterAsset asset)=>ReviewRecipeCore(asset,asset.TransitionFit);
+        private BatchReviewRecipe ReviewClipRecipe(FighterAsset asset,CHR0Node clip)=>ReviewRecipeCore(asset,TransitionRecipeFor(asset,clip));
+        private BatchReviewRecipe ReviewRecipeCore(FighterAsset asset,NativeTransitionFit currentFit)
         {
             var json = new JavaScriptSerializer { MaxJsonLength = 32 * 1024 * 1024 };
             var text=new List<string>();long retained=0;
@@ -82,7 +84,7 @@ namespace BrawlCrate.UI
                 return new { fit.Algorithm,fit.ModelSha256,Options=Text(fit.Options),Receipt=Text(fit.Receipt),fit.InitialResultSha256,
                     Inputs=fit.Inputs?.Select(input=>input==null?null:new { input.Role,input.AssetId,input.Entry,input.Sha256,Snapshot=Text(input.Snapshot),input.Name,input.Samples }).ToArray() };
             }
-            string scalars=json.Serialize(new { asset.RigIdentity,Recipe=Retarget(asset.Retarget),TransitionFit=Transition(asset.TransitionFit) });
+            string scalars=json.Serialize(new { asset.RigIdentity,Recipe=Retarget(asset.Retarget),TransitionFit=Transition(currentFit) });
             if(retained+scalars.Length>32L*1024*1024)throw new InvalidOperationException("The review recipe exceeds the 32 MiB text budget.");
             BatchReviewRecipeCaptures++;BatchReviewRecipeScalarCharacters+=scalars.Length;BatchReviewRecipeRetainedCharacters+=retained;
             return new BatchReviewRecipe { Scalars=scalars,Text=text.ToArray() };
@@ -176,7 +178,7 @@ namespace BrawlCrate.UI
                 int removed = _batchReviewRows.RemoveAll(r => !ReviewRowPresent(r));
                 if (removed > 0 || !ReferenceEquals(_batchReviewLastTarget, modelEditControl1.TargetModel)) RefreshBatchReviewWatches();
                 foreach (var row in _batchReviewRows)
-                    if (row.Approved && (!ReferenceEquals(row.Target, modelEditControl1.TargetModel) || row.Recipe != ReviewRecipe(ReviewAsset(row)))) row.Approved = false;
+                    if (row.Approved && (!ReferenceEquals(row.Target, modelEditControl1.TargetModel) || row.Recipe != ReviewClipRecipe(ReviewAsset(row),row.Clip))) row.Approved = false;
                 _batchReviewDirty = false; _batchReviewSelected = modelEditControl1.SelectedCHR0;
                 _batchReviewLastTarget = modelEditControl1.TargetModel; _batchReviewLastBusy = SimpleWorkspaceBusy;
                 if (_batchReviewList == null) return;
@@ -218,7 +220,7 @@ namespace BrawlCrate.UI
             try
             {
                 row.Content = ExportContent(row.Clip); row.TargetContent = NativeControlHash(target, ".mdl0");
-                row.Recipe = ReviewRecipe(ReviewAsset(row)); row.Target = target; row.Approved = true;
+                row.Recipe = ReviewClipRecipe(ReviewAsset(row),row.Clip); row.Target = target; row.Approved = true;
                 WatchBatchReviewNode(target); WatchBatchReviewNode(row.Clip);
             }
             finally { _batchReviewCapturing = false; }
@@ -236,7 +238,7 @@ namespace BrawlCrate.UI
             {
                 string targetContent = target == null ? null : NativeControlHash(target, ".mdl0");
                 foreach (var row in rows)
-                    if (!ReferenceEquals(row.Target, target) || row.TargetContent != targetContent || row.Content != ExportContent(row.Clip) || row.Recipe != ReviewRecipe(ReviewAsset(row))) row.Approved = false;
+                    if (!ReferenceEquals(row.Target, target) || row.TargetContent != targetContent || row.Content != ExportContent(row.Clip) || row.Recipe != ReviewClipRecipe(ReviewAsset(row),row.Clip)) row.Approved = false;
             }
             finally { _batchReviewCapturing = false; _batchReviewDirty = true; SyncBatchReview(); }
             if (rows.Any(r => !r.Approved)) throw new InvalidOperationException("Review every included animation's current content and target before exporting.");
@@ -251,7 +253,7 @@ namespace BrawlCrate.UI
                 string targetContent = modelEditControl1.TargetModel is MDL0Node target ? NativeControlHash(target, ".mdl0") : null;
                 foreach (var row in prior)
                     row.Approved = ReviewRowPresent(row) && ReferenceEquals(row.Target, modelEditControl1.TargetModel) &&
-                        row.TargetContent == targetContent && row.Content == ExportContent(row.Clip) && row.Recipe == ReviewRecipe(ReviewAsset(row));
+                        row.TargetContent == targetContent && row.Content == ExportContent(row.Clip) && row.Recipe == ReviewClipRecipe(ReviewAsset(row),row.Clip);
             }
             catch (Exception error) when (error is System.IO.IOException || error is UnauthorizedAccessException || error is InvalidOperationException)
             { foreach (var row in prior) row.Approved = false; }
