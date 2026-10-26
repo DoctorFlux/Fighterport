@@ -879,7 +879,9 @@ namespace BrawlCrate.UI
             }
         }
 
-        private bool PrepareFighterClose()
+        private bool PrepareFighterClose()=>PrepareFighterDocumentChange(true);
+
+        private bool PrepareFighterDocumentChange(bool closing)
         {
             int frame = modelEditControl1.CurrentFrame;
             modelEditControl1.StopAnim();
@@ -919,6 +921,7 @@ namespace BrawlCrate.UI
                 return false;
             }
 
+            if(!closing)return true;
             _fighterClosingRoots = new HashSet<ResourceNode>(modelEditControl1._openedFiles.Where(r => r != null));
             // All live roots are staged copies. The fighter prompt above owns their save/discard decision.
             foreach (ResourceNode root in _fighterClosingRoots)

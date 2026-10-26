@@ -25,6 +25,10 @@ namespace BrawlCrate.Studio
         internal NativeSourceScratch Scratch;
         public MDL0Node Model { get; internal set; }
         public CHR0Node Animation { get; internal set; }
+        public NW4RAnimationNode PreviewAnimation {get;internal set;}
+        internal NW4RAnimationNode[] PreviewBundle;
+        internal string PreviewNotice,LibraryDirectory,PreviewMotionMount;
+        internal long CatalogueGeneration;
         public LibraryClipReference Reference { get; internal set; }
         public string ModelPath { get; internal set; }
         internal string ProvenanceModelPath;

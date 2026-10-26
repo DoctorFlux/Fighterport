@@ -21,7 +21,7 @@ namespace BrawlCrate.Studio
     }
 
     /// <summary>One bounded metadata catalogue, independent of every fighter.</summary>
-    public sealed class AnimationLibrary
+    public sealed partial class AnimationLibrary
     {
         public static int DiagnosticOpens;
         // Legacy search API uses an int; capacity is governed by resource headroom.
@@ -638,17 +638,20 @@ namespace BrawlCrate.Studio
         public LibrarySourceLease Open(string clipId)=>Open(clipId,null,default);
 
         public LibrarySourceLease Open(string clipId,string modelId)=>Open(clipId,modelId,default);
-        public LibrarySourceLease Open(string clipId,string modelId,CancellationToken cancellation)
+        public LibrarySourceLease Open(string clipId,string modelId,CancellationToken cancellation)=>OpenNative(clipId,modelId,cancellation,false);
+        public LibrarySourceLease OpenPreview(string clipId,string modelId=null,CancellationToken cancellation=default)=>OpenNative(clipId,modelId,cancellation,true);
+        private LibrarySourceLease OpenNative(string clipId,string modelId,CancellationToken cancellation,bool preview)
         {
             cancellation.ThrowIfCancellationRequested();
             Interlocked.Increment(ref DiagnosticOpens);
             var data=Read();var clip=data.Clips.SingleOrDefault(c=>c.Id==clipId)??throw new InvalidDataException("This immutable library clip is no longer registered.");
-            var state=State(data,clip,true);
+            var anchor=preview?LibraryNativePreview.Anchor(data,clip):clip;
+            var state=preview?PreviewState(data,clip,true):State(data,clip,true);
             if(state!=LibrarySourceState.Available)throw new InvalidOperationException("Library source: "+state+". Repair the exact source or review its model association first.");
-            var model=data.Models.Single(m=>m.Id==clip.ModelId);
+            var model=data.Models.Single(m=>m.Id==anchor.ModelId);
             if(modelId!=null&&modelId!=model.Id)
             {
-                var choice=BrawlLibraryCostumes.Choices(data,clip).SingleOrDefault(c=>c.ModelId==modelId);
+                    var choice=BrawlLibraryCostumes.Choices(data,anchor).SingleOrDefault(c=>c.ModelId==modelId);
                 if(choice==null||!choice.Available)throw new InvalidDataException(choice?.UnavailableReason??"This exact model is not a verified Brawl costume for the selected source animation/build.");
                 model=data.Models.Single(m=>m.Id==modelId);
             }
@@ -684,22 +687,26 @@ namespace BrawlCrate.Studio
                 lease.ModelRoot=NodeFactory.FromFile(null,modelPath);lease.MotionRoot=NodeFactory.FromFile(null,motionPath);
                 if(lease.ModelRoot==null||lease.MotionRoot==null)throw new InvalidDataException("The indexed native source cannot be decoded.");
                 lease.Model=BrawlLibrarySource.Resolve(lease.ModelRoot,model.ResourceKey) as MDL0Node;
-                lease.Animation=BrawlLibrarySource.Resolve(lease.MotionRoot,clip.ResourceKey) as CHR0Node;
-                if(lease.Model==null||lease.Animation==null||BrawlLibrarySource.ResourceHash(lease.Model)!=model.ResourceSha256||BrawlLibrarySource.ResourceHash(lease.Animation)!=clip.ResourceSha256||
-                    BrawlRetargeter.SkeletonFingerprint(lease.Model)!=model.SkeletonSha256||lease.Model.Name!=model.Name||lease.Animation.Name!=clip.Name||
-                    lease.Model.Version!=model.NativeVersion||lease.Animation.Version!=clip.NativeVersion||lease.Animation.FrameCount!=clip.FrameCount||lease.Animation.Loop!=clip.Loop)
+                lease.PreviewAnimation=BrawlLibrarySource.Resolve(lease.MotionRoot,clip.ResourceKey) as NW4RAnimationNode;
+                lease.Animation=lease.PreviewAnimation as CHR0Node;
+                var animation=lease.PreviewAnimation;
+                if(lease.Model==null||!LibraryNativePreview.MatchesChannel(animation,clip.Channel)||BrawlLibrarySource.ResourceHash(lease.Model)!=model.ResourceSha256||BrawlLibrarySource.ResourceHash(animation)!=clip.ResourceSha256||
+                    BrawlRetargeter.SkeletonFingerprint(lease.Model)!=model.SkeletonSha256||lease.Model.Name!=model.Name||animation.Name!=clip.Name||
+                    lease.Model.Version!=model.NativeVersion||animation.Version!=clip.NativeVersion||animation.FrameCount!=clip.FrameCount||animation.Loop!=clip.Loop)
                     throw new InvalidDataException("Native source model, skeleton, resource or timing identity differs from the approved association.");
                 cancellation.ThrowIfCancellationRequested();
                 lease.Reference=new LibraryClipReference{ClipId=clip.Id,Revision=clip.Revision,ModelId=model.Id,Game=a.Game,GameVersion=a.GameVersion,Platform=a.Platform,
                     BuildEvidence=a.BuildEvidence,Adapter=a.Provider,ModelMountId=a.Id,MotionMountId=b.Id,ModelKey=model.ResourceKey,MotionKey=clip.ResourceKey,
                     ModelContainerSha256=a.ContainerSha256,MotionContainerSha256=b.ContainerSha256,ModelResourceSha256=model.ResourceSha256,MotionResourceSha256=clip.ResourceSha256,
-                    SourceRig=model.SkeletonSha256,RestInterpretation=model.RestInterpretation,AssociationEvidence=model.Id==clip.ModelId?clip.AssociationEvidence:BrawlLibraryCostumes.AssociationEvidence(clip,model),
+                    SourceRig=model.SkeletonSha256,RestInterpretation=model.RestInterpretation,AssociationEvidence=preview&&clip.Channel!="CHR0 skeletal"?"Read-only native channel preview on the selected source model; not a skeletal retarget association":model.Id==clip.ModelId?clip.AssociationEvidence:BrawlLibraryCostumes.AssociationEvidence(clip,model),
                     NativeVersion=clip.NativeVersion,FrameCount=clip.FrameCount,Loop=clip.Loop,TicksPerSecond=clip.TicksPerSecond,TimebaseEvidence=clip.TimebaseEvidence,Channel=clip.Channel,
                     GameSourceId=a.GameSourceId,GameSourceSha256=a.OriginSha256??(a.GameSourceId==null?null:data.GameLocations.Single(l=>l.Id==a.GameSourceId).ContainerSha256),
                     ModelVirtualPath=a.VirtualPath,MotionVirtualPath=b.VirtualPath,UnboundSourceTracks=clip.UnboundSourceTracks,
                     SourceProvider=originSource?.Provider,ExtractorSha256=originSource?.ToolSha256,
                     ModelPartition=a.OriginPartition??(BrawlGameSource.IsDiscProvider(originSource?.Provider)?"DATA":null),
                     MotionPartition=b.OriginPartition??(BrawlGameSource.IsDiscProvider(originSource?.Provider)?"DATA":null)};
+                lease.LibraryDirectory=DirectoryPath;lease.CatalogueGeneration=data.Generation;lease.PreviewMotionMount=b.Id;
+                lease.PreviewBundle=LibraryNativePreview.Bundle(lease.MotionRoot,animation,out lease.PreviewNotice);
                 return lease;
             }
             catch{lease.Dispose();throw;}

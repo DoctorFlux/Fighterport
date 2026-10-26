@@ -48,7 +48,11 @@ namespace BrawlCrate.UI
             opened = null;
             if (project == null) throw new ArgumentNullException(nameof(project));
             ModelForm.ValidateFighterProjectAssets(project);
-            if (!StartFighterProject(project)) return false;
+            if (_fighterForm != null && !_fighterForm.IsDisposed)
+            {
+                if(!_fighterForm.ReplaceLibraryTarget(project))return false;
+            }
+            else if (!StartFighterProject(project)) return false;
             opened = _fighterForm;
             return true;
         }

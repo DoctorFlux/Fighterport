@@ -269,7 +269,7 @@ internal static partial class Program
         }
         using (FlowModal("unsavedProjectDiscard", dialog => SimpleControl<Button>(dialog, "unsavedProjectDiscard").PerformClick()))
             NextItem(form, "nextOpenLibraryTarget").PerformClick();
-        Check(form.IsDisposed, "Explicit Discard allows the fully prepared library pair to replace the old viewer");
+        Check(!form.IsDisposed&&ReferenceEquals(form,Field(MainForm.Instance,"_fighterForm")), "Explicit Discard opens the fully prepared library pair inside the same native viewer");
         var opened = (ModelForm)Field(MainForm.Instance, "_fighterForm");
         opened.WindowState = FormWindowState.Normal; opened.ClientSize = new Size(1700, 950);
         await GameLibraryWait(() => opened.FighterEditor.SelectedCHR0 != null, "The exact target animation did not open.");
@@ -354,10 +354,10 @@ internal static partial class Program
                 string oldTemporaryDirectory = library.DirectoryPath;
                 form = await GameLibraryOpenTarget(form, library, chosen.Clip.Id, chosen.Model.Id, output, true);
                 var newLibrary = (AnimationLibrary)Field(form, "_library");
-                Check(!string.Equals(oldTemporaryDirectory, newLibrary.DirectoryPath, StringComparison.OrdinalIgnoreCase) &&
+                Check(ReferenceEquals(library,newLibrary)&&string.Equals(oldTemporaryDirectory, newLibrary.DirectoryPath, StringComparison.OrdinalIgnoreCase) &&
                     ReferenceEquals(newLibrary, Field(form, "_sessionSourceLibrary")) && newLibrary.Read().Clips.Any(c => c.Id == chosen.Clip.Id) &&
                     NextLibraryFiles(new AnimationLibrary()) == sharedBefore,
-                    "Opening temporary files as an editable target hands source metadata to the new window without registering the shared library");
+                    "Opening temporary files as an editable target retains the same session catalogue without registering the shared library");
                 Check(originals.All(p => FighterProject.HashFile(p.Key) == p.Value), "Library target tests leave every supplied original model and motion byte unchanged");
             }
         }

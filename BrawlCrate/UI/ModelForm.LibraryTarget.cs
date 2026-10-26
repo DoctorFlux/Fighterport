@@ -25,7 +25,7 @@ namespace BrawlCrate.UI
         // the editable scene, select by name, or create a retarget provenance.
         internal static FighterProject PrepareLibraryTarget(LibrarySourceLease source)
         {
-            if (source?.Reference == null || source.Model == null || source.Animation == null ||
+            if (source?.Reference == null || source.Model == null || source.PreviewAnimation == null ||
                 source.ModelLock == null || source.MotionLock == null)
                 throw new InvalidDataException("Open a verified library model and animation first.");
             var reference = source.Reference;
@@ -43,13 +43,13 @@ namespace BrawlCrate.UI
                     if (modelRoot == null || motionRoot == null)
                         throw new InvalidDataException("The staged native model or motion container could not be opened.");
                     var model = BrawlLibrarySource.Resolve(modelRoot, reference.ModelKey) as MDL0Node;
-                    var clip = BrawlLibrarySource.Resolve(motionRoot, reference.MotionKey) as CHR0Node;
+                    var clip = BrawlLibrarySource.Resolve(motionRoot, reference.MotionKey) as NW4RAnimationNode;
                     if (model == null || clip == null ||
                         BrawlLibrarySource.ResourceHash(model) != reference.ModelResourceSha256 ||
                         BrawlRetargeter.SkeletonFingerprint(model) != reference.SourceRig ||
                         BrawlLibrarySource.ResourceHash(clip) != reference.MotionResourceSha256 ||
                         model.Name != source.Model.Name || model.Version != source.Model.Version ||
-                        clip.Name != source.Animation.Name || clip.Version != reference.NativeVersion ||
+                        clip.Name != source.PreviewAnimation.Name || clip.Version != reference.NativeVersion ||
                         clip.FrameCount != reference.FrameCount || clip.Loop != reference.Loop)
                         throw new InvalidDataException("The independent target does not match the exact selected library model, skeleton, animation or timing.");
                     // Existing projects persist model TreePath identities.
@@ -120,7 +120,7 @@ namespace BrawlCrate.UI
         {
             if (SimpleWorkspaceBusy) throw new InvalidOperationException("Finish or cancel the current operation before opening another target.");
             var item = LibrarySelection;
-            if (item == null || !SimpleWorkspaceSourceReady)
+            if (item == null || !LibraryPreviewReady)
                 throw new InvalidOperationException("Select an available original library model and animation first.");
             var originalProject = _fighterProject;
             var catalogue = _library;
@@ -130,12 +130,15 @@ namespace BrawlCrate.UI
                 ReferenceEquals(catalogue, _library) && LibrarySelection?.Clip.Id == clipId &&
                 (SelectedLibraryCostume?.ModelId ?? LibrarySelection?.Model?.Id) == modelId;
             FighterProject prepared = null;
+            LibrarySourceLease pendingPreview=null;
             LibraryTargetContext context = null;
-            PauseSourceOperation();
+            CancelLibraryAutoPreview();PauseSourceOperation();
             _workspaceBusy = true; UpdateSimpleWorkspace();
             try
             {
-                using (var source = LoadSelectedLibrarySource())
+                bool borrowed=_libraryLease?.Reference.ClipId==clipId&&_libraryLease.Reference.ModelId==modelId;
+                var source=borrowed?_libraryLease:LibraryWork.Run(this,"Loading selected native source",(cancel,progress)=>catalogue.OpenPreview(clipId,modelId,cancel));
+                try
                 {
                     if (source == null) return;
                     if (!SelectionIsCurrent() || source.Reference.ClipId != clipId || source.Reference.ModelId != modelId)
@@ -156,10 +159,14 @@ namespace BrawlCrate.UI
                     if (prepared == null) return;
                     if (!SelectionIsCurrent())
                         throw new InvalidOperationException("The source or current project changed during preparation. Choose the exact library item again.");
-                    context = CaptureLibraryTargetContext(source);
+                    // This viewer retains its catalogue, source leases and worker.
+                    // Metadata handoff is needed only for a newly created viewer.
+                    context = null;
+                    if(!borrowed){pendingPreview=source;source=null;}
                 }
+                finally{if(!borrowed)source?.Dispose();}
             }
-            catch { prepared?.Dispose(); throw; }
+            catch { prepared?.Dispose(); pendingPreview?.Dispose(); throw; }
             finally
             {
                 _workspaceBusy = false;
@@ -173,11 +180,13 @@ namespace BrawlCrate.UI
                 // the selected pair has been copied and independently decoded.
                 if (MainForm.Instance.OpenLibraryFighterProject(prepared, out var opened))
                 {
-                    prepared = null; // New ModelForm now owns its project.
-                    opened.BeginLibraryTargetPreview(context);
+                    prepared = null; // The existing ModelForm now owns the independent project.
+                    if(ReferenceEquals(opened,this)&&pendingPreview!=null)
+                    {ReleaseLibraryPreview();_libraryLease=pendingPreview;pendingPreview=null;PrepareLibraryPreviewView(true);}
+                    if(!ReferenceEquals(opened,this)&&context!=null)opened.BeginLibraryTargetPreview(context);
                 }
             }
-            finally { prepared?.Dispose(); }
+            finally { prepared?.Dispose();pendingPreview?.Dispose(); }
         }
 
         private void BeginLibraryTargetPreview(LibraryTargetContext context)

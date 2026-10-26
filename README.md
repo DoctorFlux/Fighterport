@@ -2,8 +2,9 @@
 
 This is the public unified source repository at https://github.com/DoctorFlux/Fighterport.
 It imports the BrawlCrate-based Next preview.14 source and integrated owned engine;
-the current implementation is **preview.38-direct-game-sources**.
-See the [source/fit and saved-source acceptance](docs/SOURCE_FIT_WORKFLOW_ACCEPTANCE_2026-10-26.md).
+the current implementation is **preview.39-library-flow**.
+See the [automatic-preview and same-window acceptance](docs/LIBRARY_FLOW_ACCEPTANCE_2026-10-26.md)
+and the [source/fit and saved-source acceptance](docs/SOURCE_FIT_WORKFLOW_ACCEPTANCE_2026-10-26.md).
 The two predecessor repositories are private preserved histories.
 Upstream copyrights, licenses and notices remain intact.
 
@@ -51,10 +52,17 @@ See the [direct-source acceptance](docs/DIRECT_GAME_SOURCES_ACCEPTANCE_2026-10-2
 [integrated reader record](docs/INTEGRATED_DISC_READER.md) and
 [background acceptance](docs/INTEGRATED_DISC_ACCEPTANCE_2026-10-26.md).
 
-Choose a character and animation directly in the Brawl library, then its **Costume**.
-**Load as source** sends that exact model and animation to the small original
-preview. **Open as target** opens an independent editable
-target using the existing unsaved-change decision; the original remains read-only.
+Select a character in the Brawl library to preview its default original model.
+Choose an animation or **Costume** and the small read-only source preview follows
+automatically. Clips in the same prepared model/motion package reuse that data;
+rapid choices cancel obsolete loads. **Load as source** remains available to
+refresh and frame the selected original. CHR0, SRT0, PAT0, VIS0, CLR0, SHP0 and
+SCN0 use their native evaluators, including unique same-name companions in the
+same native resource container. Unmatched channels are reported. Non-skeletal
+channels preview on the selected character model; skeletal transfer remains CHR0.
+**Open as target** opens an independent editable target in the same window,
+retaining the native editor, viewport, library and source preview. It uses the
+existing Save/Discard/Cancel decision; the original remains read-only.
 **Use on This Model** instead retargets to the current target. Costume options come
 from the detected native Brawl source/build and exact compatible hierarchy/binds.
 Different binds require review; no model or skeleton is silently substituted.
@@ -78,8 +86,8 @@ Search, Favorites only and Clear filters remain available. Existing performance
 invalidation guards and the original Next retargeter remain intact.
 
 Temporary source catalogues belong to the current window and are discarded with
-it. Opening a source as an editable target carries its bounded source metadata to
-the replacement window without registering it in the shared library. Target
+it. Opening a source as an editable target keeps that same session catalogue and
+prepared source in the existing window, without registering the shared library. Target
 animations save normally. In-session comparison retains exact
 source identity across library switches; after reopening a project, unavailable
 temporary source provenance is explained without blocking native target editing.

@@ -97,7 +97,7 @@ namespace BrawlCrate.UI
             bool loaded = _libraryLease != null;
             _libraryPlay.Enabled = _libraryFrame.Enabled = loaded && !SimpleWorkspaceBusy;
             if (!loaded)
-                _libraryOriginalLabel.Text = "Source preview · choose Load as source";
+                _libraryOriginalLabel.Text = "Source preview · select a character or animation";
 
             // A useful catalogue and the fixed source viewport remain available
             // at normal sizes. Small windows or large text scroll the one

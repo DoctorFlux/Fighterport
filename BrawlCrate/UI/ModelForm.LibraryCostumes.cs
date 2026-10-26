@@ -46,10 +46,9 @@ namespace BrawlCrate.UI
                     if (_libraryCostumeChoices.Count >= 256) _libraryCostumeChoices.Clear();
                     _libraryCostumeChoices[LibraryCostumeKey(LibrarySelection)] = SelectedLibraryCostume.ModelId;
                 }
-                // Browser choices never redirect a recorded comparison or
-                // decode source data. An explicit Preview/Use loads the model.
-                ReleaseLibraryPreview();
-                UpdateLibrarySelection();
+                // Original preview follows this exact costume. Recorded
+                // comparison provenance remains independent of browser choices.
+                UpdateLibrarySelection();QueueLibraryAutoPreview();
                 if (SelectedLibraryCostume?.Available == false) _fighterStatus.Text = SelectedLibraryCostume.UnavailableReason;
             };
             return _libraryCostumeRow;
@@ -68,7 +67,7 @@ namespace BrawlCrate.UI
                 _libraryCostumeCatalogue = stable ? _library : null; _libraryCostumeClip = stable ? item.Clip.Id : null;
                 if (stable)
                 {
-                    var options = _library.GetCostumes(item.Clip.Id);
+                    var options = _library.GetPreviewCostumes(item.Clip.Id);
                     _libraryCostume.Items.AddRange(options);
                     _libraryCostumeChoices.TryGetValue(LibraryCostumeKey(item), out string remembered);
                     var selected = options.FirstOrDefault(option => option.ModelId == remembered) ?? options.FirstOrDefault(option => option.IsCanonical);

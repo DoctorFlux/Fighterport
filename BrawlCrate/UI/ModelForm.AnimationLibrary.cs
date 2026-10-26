@@ -48,7 +48,7 @@ namespace BrawlCrate.UI
         private bool _libraryScrubbing;
         private bool _libraryUpdatingTree;
         private object _libraryLastTarget;
-        private LibrarySearchItem LibrarySelection=>_libraryList?.SelectedNode?.Tag as LibrarySearchItem;
+        private LibrarySearchItem LibrarySelection=>(_libraryList?.SelectedNode?.Tag as LibrarySearchItem)??(_libraryList?.SelectedNode?.Tag is LibraryGroup?_libraryCharacterSelection:null);
         private readonly long[] _libraryUiMaximumTicks=new long[8];
         private readonly int[] _libraryUiCalls=new int[8];
         private void MeasureLibraryUi(int operation,long start)
@@ -95,7 +95,7 @@ namespace BrawlCrate.UI
             if (opening && _comparisonPane != null) _comparisonPane.Visible = false;
             if (opening) _workspaceLibraryOpener = _workspaceInvoker ?? CurrentWorkspaceFocus() ?? _simpleWorkspaceLibrary;
             _libraryPane.Visible=!_libraryPane.Visible;
-            if(_libraryPane.Visible)RunFighterAction(()=>RefreshLibrary(LibrarySelection?.Clip.Id??SelectedFighterAsset()?.Retarget?.Library?.ClipId));else{++_librarySearchGeneration;CancelLibraryTreeWork();ReleaseLibraryPreview();}
+            if(_libraryPane.Visible)RunFighterAction(()=>RefreshLibrary(LibrarySelection?.Clip.Id??SelectedFighterAsset()?.Retarget?.Library?.ClipId));else{CancelLibraryAutoPreview();++_librarySearchGeneration;CancelLibraryTreeWork();ReleaseLibraryPreview();}
             modelEditControl1.BringToFront();PerformLayout();
             UpdateSimpleWorkspace();
             if (opening) FocusWorkspaceTarget(_librarySearch);
@@ -132,7 +132,7 @@ namespace BrawlCrate.UI
             _libraryPopulateTimer=new System.Windows.Forms.Timer{Interval=8};
             _libraryPopulateTimer.Tick+=(s,e)=>RunFighterAction(ProcessLibraryTreeWork);
             _libraryList.BeforeExpand+=(s,e)=>{if(_libraryReplacingTree&&!_libraryApplyingExpansion){e.Cancel=true;return;}PopulateLibraryGroup(e.Node);};
-            _libraryList.AfterSelect+=(s,e)=>{if(_libraryUpdatingTree)return;if(e.Node?.Name=="libraryMore"&&e.Node.Parent!=null){var parent=e.Node.Parent;PopulateLibraryGroup(parent,true);_libraryList.SelectedNode=parent;}UpdateLibrarySelection();};
+            _libraryList.AfterSelect+=(s,e)=>{if(_libraryUpdatingTree)return;if(e.Node?.Name=="libraryMore"&&e.Node.Parent!=null){var parent=e.Node.Parent;PopulateLibraryGroup(parent,true);_libraryList.SelectedNode=parent;}LibraryBrowseSelectionChanged();};
             _libraryList.AfterCollapse+=(s,e)=>{if(_libraryUpdatingTree||e.Node==null)return;if(e.Node.Level==0)_libraryCollapsedGames.Add(e.Node.Name);else if(e.Node.Level==1){_libraryCollapsedCharacters.Add(e.Node.Name);_libraryExpandedCharacters.Remove(e.Node.Name);}else if(e.Node.Level==2){_libraryCollapsedModels.Add(e.Node.Name);_libraryExpandedModels.Remove(e.Node.Name);}};
             _libraryList.AfterExpand+=(s,e)=>{if(_libraryUpdatingTree||e.Node==null)return;if(e.Node.Level==0)_libraryCollapsedGames.Remove(e.Node.Name);else if(e.Node.Level==1){_libraryCollapsedCharacters.Remove(e.Node.Name);_libraryExpandedCharacters.Add(e.Node.Name);}else if(e.Node.Level==2){_libraryCollapsedModels.Remove(e.Node.Name);_libraryExpandedModels.Add(e.Node.Name);}};layout.Controls.Add(_libraryList,0,2);
             var pages=new FlowLayoutPanel{Dock=DockStyle.Fill,WrapContents=false};
@@ -141,7 +141,7 @@ namespace BrawlCrate.UI
             _libraryDetails=new TextBox{Name="libraryDetails",Multiline=true,ReadOnly=true,ScrollBars=ScrollBars.Vertical,Dock=DockStyle.Fill};layout.Controls.Add(_libraryDetails,0,4);
             var actions=new FlowLayoutPanel{Dock=DockStyle.Fill,WrapContents=true};
             _libraryPreview=LibraryButton("libraryPreviewOriginal","Load as source",PreviewLibraryOriginal);
-            _libraryPreview.AccessibleDescription="Load the selected animation and costume into the small read-only source preview. Use on This Model retargets this source to the editable main model.";
+            _libraryPreview.AccessibleDescription="Refresh and frame the selected original source in the small read-only preview. Selection previews automatically. Use on This Model retargets this source to the editable main model.";
             _libraryOpenTarget=LibraryButton("libraryOpenTarget","Open as target",OpenLibraryAsTarget);
             _libraryOpenTarget.AccessibleDescription="Open the selected model, costume and animation in the large editable main preview, with the existing unsaved-change handling.";
             _libraryUse=LibraryButton("libraryUseOnTarget","Use on This Model",UseLibraryOnTarget);
@@ -149,7 +149,7 @@ namespace BrawlCrate.UI
             actions.Controls.AddRange(new Control[]{_libraryPreview,_libraryOpenTarget,_libraryUse,_libraryRepair,LibraryButton("libraryBatch","Batch / Fit...",ShowLibraryBatch),LibraryButton("libraryAdvancedFitting","Advanced Fitting...",OpenAdvancedSceneFitting),_sourceAddButton,_libraryUndo});layout.Controls.Add(actions,0,5);
             _libraryOriginalLabel=new Label{Name="libraryOriginalLabel",Text="Original source preview (read-only)",Dock=DockStyle.Fill,AutoEllipsis=true};layout.Controls.Add(_libraryOriginalLabel,0,6);
             _libraryViewport=new ModelPanel{Name="libraryOriginalViewport",Dock=DockStyle.Fill,Margin=Padding.Empty,
-                AccessibleName="Original source preview",AccessibleDescription="Read-only original source model. Choose Load as source to load the selected source; browsing never loads or retargets a model."};
+                AccessibleName="Original source preview",AccessibleDescription="Read-only original source model. Selecting a character, animation or costume automatically previews its original source here. Open as target explicitly replaces the editable main model."};
             _libraryViewport.CurrentViewport.AllowSelection=false;
             _libraryViewport.CurrentViewport.RenderFloor=true;
             _libraryViewport.CurrentViewport.BackgroundColor=Color.FromArgb(35,39,46);
@@ -167,8 +167,8 @@ namespace BrawlCrate.UI
                 if(_libraryLease==null)return;
                 if(modelEditControl1.Playing){_libraryTimer.Stop();_libraryPlay.Text="Play";return;}
                 _libraryTime+=_libraryClock.Elapsed.TotalSeconds*60;_libraryClock.Restart();
-                int frames=_libraryLease.Animation.FrameCount;
-                if(_libraryTime>frames-1){if(_libraryLease.Animation.Loop)_libraryTime%=frames;else{_libraryTime=frames-1;_libraryTimer.Stop();_libraryPlay.Text="Play";}}
+                int frames=_libraryLease.PreviewAnimation.FrameCount;
+                if(_libraryTime>frames-1){if(_libraryLease.PreviewAnimation.Loop)_libraryTime%=frames;else{_libraryTime=frames-1;_libraryTimer.Stop();_libraryPlay.Text="Play";}}
                 RenderLibraryFrame();
             };
             BuildLibraryFilters(layout,searchRow,actions);
@@ -192,18 +192,17 @@ namespace BrawlCrate.UI
             _libraryLastTarget=modelEditControl1.TargetModel;
             var item=LibrarySelection;bool available=!_libraryReplacingTree&&!_librarySearchTimer.Enabled&&item?.State==LibrarySourceState.Available;
             UpdateLibraryCostumes(item);
-            if(item!=null&&!_libraryReplacingTree&&!_librarySearchTimer.Enabled&&_libraryLease!=null&&
-                (_libraryLease.Reference.ClipId!=item.Clip.Id||_libraryLease.Reference.ModelId!=(SelectedLibraryCostume?.ModelId??item.Model?.Id)))
-                ReleaseLibraryPreview();
-            available=available&&LibraryCostumeReady;
-            available=available&&!SimpleWorkspaceSourceNeedsRepair(item);
-            _libraryPreview.Enabled=available;_libraryUse.Enabled=available&&modelEditControl1.TargetModel is MDL0Node;
-            _libraryOpenTarget.Enabled=available&&!SimpleWorkspaceBusy;
+            string previewKey=item==null?null:_library.DirectoryPath+"|"+item.Clip.Id+"|"+_librarySearchGeneration;
+            if(previewKey!=_libraryPreviewStateKey)
+            {_libraryPreviewStateKey=previewKey;_libraryPreviewState=item==null?LibrarySourceState.Missing:_library.GetPreviewState(item.Clip.Id);}
+            bool preview=LibraryPreviewReady;
+            _libraryPreview.Enabled=preview;_libraryUse.Enabled=available&&LibraryCostumeReady&&!SimpleWorkspaceSourceNeedsRepair(item)&&item?.Clip.Channel=="CHR0 skeletal"&&modelEditControl1.TargetModel is MDL0Node;
+            _libraryOpenTarget.Enabled=preview&&!SimpleWorkspaceBusy;
             _libraryRepair.Enabled=SimpleWorkspaceSourceNeedsRepair(item)&&!_libraryReplacingTree&&!_librarySearchTimer.Enabled;
             _libraryDetails.Text=item==null?"One shared library across all fighters. Add an original model and its complete motion set.":
                 item.Motion.Game+" · "+item.Motion.GameVersion+" · "+item.Clip.Channel+" v"+item.Clip.NativeVersion+Environment.NewLine+
-                item.Clip.FrameCount+" ticks @ "+item.Clip.TicksPerSecond+" Hz · "+(item.Clip.Loop?"Loop":"No loop")+" · "+SimpleWorkspaceSourceStateText(item)+Environment.NewLine+
-                "Original: "+(item.Model?.Name??"Not verified")+" · "+item.Clip.ResourceKey+Environment.NewLine+
+                item.Clip.FrameCount+" ticks @ "+item.Clip.TicksPerSecond+" Hz · "+(item.Clip.Loop?"Loop":"No loop")+" · "+(preview&&item.Clip.Channel!="CHR0 skeletal"?"Original native preview; skeletal transfer unavailable":SimpleWorkspaceSourceStateText(item))+Environment.NewLine+
+                "Original: "+(SelectedLibraryCostume?.Name??item.Model?.Name??"Not verified")+" · "+item.Clip.ResourceKey+Environment.NewLine+
                 (item.Clip.AssociationEvidence??item.Clip.AssociationIssue)+Environment.NewLine+
                 (item.Clip.UnboundSourceTracks==null?"":"Native tracks absent on original model (not evaluated): "+item.Clip.UnboundSourceTracks+Environment.NewLine)+"SHA256: "+item.Clip.ResourceSha256;
             UpdateLibraryFavorite();
@@ -275,20 +274,11 @@ namespace BrawlCrate.UI
         private void PreviewLibraryOriginal()
         {
             var item=LibrarySelection;if(item==null)return;
-            modelEditControl1.StopAnim();
-            ReleaseLibraryPreview();
-            _libraryLease=LoadSelectedLibrarySource();if(_libraryLease==null)return;
-            LayoutSimpleWorkspaceLibraryPreview();
-            _libraryPane.PerformLayout();_sourcePreviewHost?.PerformLayout();
-            _libraryViewport.CreateControl();_libraryViewport.Capture();
-            _libraryTime=0;_libraryFrame.Maximum=_libraryLease.Animation.FrameCount;_libraryFrame.Value=1;
-            _libraryLease.Model.ResetToBindState();
-            _libraryViewport.AddReference(_libraryLease.Model.RootNode);
-            _libraryViewport.AddTarget(_libraryLease.Model);
-            _libraryLease.Model.ApplyCHR(_libraryLease.Animation,1);
-            _libraryViewport.PrepareModelTextures(_libraryLease.Model);
-            FrameLibraryOriginal();RenderLibraryFrame();
-            _libraryViewport.Update();
+            CancelLibraryAutoPreview();PauseSourceOperation();
+            string model=SelectedLibraryCostume?.ModelId??item.Model?.Id;
+            if(_libraryLease!=null&&_library.TrySelectPreview(_libraryLease,item.Clip.Id,model)){PrepareLibraryPreviewView(true);return;}
+            var source=LibraryWork.Run(this,"Loading original source",(cancel,progress)=>_library.OpenPreview(item.Clip.Id,model,cancel));
+            if(source==null)return;ReleaseLibraryPreview();_libraryLease=source;PrepareLibraryPreviewView(true);
         }
         private void FrameLibraryOriginal()
         {
@@ -308,9 +298,9 @@ namespace BrawlCrate.UI
         private void RenderLibraryFrame()
         {
             if(_libraryLease==null)return;
-            _libraryLease.Model.ApplyCHR(_libraryLease.Animation,(float)_libraryTime+1);
+            LibraryNativePreview.Apply(_libraryLease.Model,_libraryLease.PreviewBundle,(float)_libraryTime+1);
             _libraryScrubbing=true;try{_libraryFrame.Value=Math.Max(1,Math.Min(_libraryFrame.Maximum,(int)_libraryTime+1));}finally{_libraryScrubbing=false;}
-            _libraryOriginalLabel.Text="Original: "+_libraryLease.Model.Name+" · "+_libraryLease.Animation.Name+" · frame "+(_libraryTime+1).ToString("0.0")+" (read-only)";
+            _libraryOriginalLabel.Text="Original: "+_libraryLease.Model.Name+" · "+_libraryLease.PreviewAnimation.Name+" · "+_libraryLease.PreviewAnimation.GetType().Name.Replace("Node","")+" · frame "+(_libraryTime+1).ToString("0.0")+" (read-only)";
             _libraryViewport.Invalidate();
         }
         private void ReleaseLibraryPreview()
@@ -333,6 +323,7 @@ namespace BrawlCrate.UI
             _animationLibraryDisposed=true;
             ResetBatchReview(); ResetLoopInspection();
             CloseLinkedComparison();
+            CancelLibraryAutoPreview();_libraryAutoTimer?.Dispose();
             _librarySearchGeneration++;CancelLibraryTreeWork();
             ReleaseLibraryPreview();_libraryTimer?.Dispose();_librarySearchTimer?.Dispose();_libraryPopulateTimer?.Dispose();_libraryPendingGroups.Clear();
         }

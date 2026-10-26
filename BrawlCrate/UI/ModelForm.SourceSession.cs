@@ -67,7 +67,7 @@ namespace BrawlCrate.UI
             _sessionSourceCatalogues.Add(temporary);
             _sessionSourceLibrary=temporary;_sessionSourceRegistration=registration;
             ActivateSourceCatalogue(temporary,selected);
-            _fighterStatus.Text="Temporary source files loaded for this session. Choose a clip, Load as source, then Use on This Model. Add to library is optional.";
+            _fighterStatus.Text="Temporary source files loaded for this session. Choose a clip to preview its original, then Use on This Model. Add to library is optional.";
             return selected;
         }
 

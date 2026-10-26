@@ -1,5 +1,37 @@
 # Fighterport master plan
 
+26 October 2026 bounded preview.39-library-flow is accepted:
+**3,039 checks / 20 admitted runs / 149 inspected native PNGs**. Character,
+animation and costume choices automatically prepare the original source; compatible
+clip switches reuse the same native data. All seven native animation channels
+preview with explicit binding limitations; skeletal transfer remains verified CHR0.
+Open as target keeps the same native window/editor/viewport/worker and catalogue,
+including correct cold-source commit and Save/Discard/Cancel handling. Full native
+Model Previewer, original Next, Undo and root/boundary policies remain intact.
+See [acceptance record](LIBRARY_FLOW_ACCEPTANCE_2026-10-26.md) for the mixed-generation regression matrix,
+source-frozen final product hash, reviewed captures and retained limitations.
+ONE G1/M2 remains incomplete; no broader increment is promoted. Physical input/DPI,
+human usability, broad contacts and game acceptance remain unverified.
+
+
+26 October 2026 authorized preview.39-library-flow: keep Open as target in the
+existing native ModelForm/editor/viewport, with prepared owned data and the
+existing Save/Discard/Cancel decision. Character selection previews the default
+verified source model; clip/costume selection automatically follows in the small
+source pane. Reuse verified prepared model/motion packages for compatible clip
+switches. Debounce/cancel slow loads and reject stale completion without loading
+during ordinary playback/status ticks. Preview all seven native Brawl animation
+types through existing native evaluators, retaining CHR0-only skeletal retarget
+approval. Non-skeletal preview on the explicitly chosen/default character model
+is not a new retarget association; report unmatched native channels. Preserve
+exact source/instance/costume identities, direct disc/install loading, full native
+editor/Undo, original Next and current root/boundary policies. No project/catalogue
+schema or solver migration. Qualify same-window target replacement, auto character
+and clip preview, all native channels, reuse/no-playback-I/O, cancellation/stale
+requests, save/reopen and affected background regressions; inspect fresh captures.
+ONE G1/M2 remains incomplete; physical input/DPI, broad contacts and game gates
+remain unverified. Publish only verified source as DoctorFlux to public main.
+
 26 October 2026 bounded preview.38-direct-game-sources is accepted:
 **2,980 checks / 20 runs / 143 reviewed native PNGs**. Disc assets stay in the
 original ISO/WBFS; indexing stages one native package at a time and retains no

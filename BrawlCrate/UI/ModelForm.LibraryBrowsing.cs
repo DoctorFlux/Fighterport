@@ -63,6 +63,7 @@ namespace BrawlCrate.UI
 
         private async void RefreshLibrary(string selectId=null)
         {
+            CancelLibraryAutoPreview();_libraryCharacterSelection=null;
             int generation=++_librarySearchGeneration;
             // A retained clip may have new/removed costume metadata after an
             // atomic catalogue update. Re-enumerate once when this refresh
@@ -99,7 +100,7 @@ namespace BrawlCrate.UI
                     });
                 _libraryTreeCompleted=()=>{
                     _libraryPage.Text=result.Item3==0?"No clips":result.Item2+" matches · "+result.Item3+" total";
-                    _libraryUndo.Enabled=result.Item4;UpdateLibrarySelection();
+                    _libraryUndo.Enabled=result.Item4;UpdateLibrarySelection();if(selectId!=null)QueueLibraryAutoPreview();
                 };
                 _libraryPopulateTimer.Start();
             }
@@ -208,11 +209,12 @@ namespace BrawlCrate.UI
             do
             {
                 var item=group.Items[group.Loaded];
+                string state=item.State==LibrarySourceState.UnsupportedChannelVersion&&LibraryNativePreview.Supported(item.Clip)?"Native preview only":LibraryStateText(item.State);
                 string label=group.DirectAnimations?item.Clip.Name+
                     (item.Clip.Channel=="CHR0 skeletal"?"":" · "+item.Clip.Channel.Replace("Node",""))+
                     (group.DuplicateNames.Contains(item.Clip.Name+"|"+item.Clip.Channel)?" · "+(item.Model?.Name??Path.GetFileNameWithoutExtension(item.Motion.VirtualPath??item.Motion.LocalPath))+" ["+item.Clip.ResourceKey+"]":"")+
-                    (item.State==LibrarySourceState.Available?"":" · "+LibraryStateText(item.State)):
-                    item.Clip.Name+" · "+(item.Model?.Name??"Unassociated")+" · "+LibraryStateText(item.State);
+                    (item.State==LibrarySourceState.Available?"":" · "+state):
+                    item.Clip.Name+" · "+(item.Model?.Name??"Unassociated")+" · "+state;
                 var row=new TreeNode(label)
                     {Name=item.Clip.Id,Tag=item,ToolTipText=item.Motion.GameVersion+" · "+item.Clip.ResourcePath+" ["+item.Clip.ResourceKey+"] · container SHA256 "+item.Motion.ContainerSha256+" · clip SHA256 "+item.Clip.ResourceSha256};
                 node.Nodes.Add(row);group.Loaded++;
@@ -224,7 +226,7 @@ namespace BrawlCrate.UI
                 if(node.Nodes.Count>0&&node.Nodes[0].Name=="libraryLoading")node.Nodes.RemoveAt(0);
                 if(group.Loaded<group.Items.Count)node.Nodes.Add(new TreeNode("Show more animations ("+group.Loaded+" / "+group.Items.Count+")"){Name="libraryMore"});
             }
-            if(selected)UpdateLibrarySelection();
+            if(selected){UpdateLibrarySelection();QueueLibraryAutoPreview();}
             MeasureLibraryUi(4,start);
         }
     }

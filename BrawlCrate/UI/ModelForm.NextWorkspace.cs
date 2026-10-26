@@ -100,7 +100,7 @@ namespace BrawlCrate.UI
                 if (item.Name == "nextAddSourceToLibrary")
                 { item.Enabled = !busy && _sessionSourceLibrary != null && ReferenceEquals(_library, _sessionSourceLibrary); continue; }
                 if (item.Name == "nextPreviewLibraryOriginal" || item.Name == "nextOpenLibraryTarget")
-                { item.Enabled = !busy && SimpleWorkspaceSourceReady; continue; }
+                { item.Enabled = !busy && LibraryPreviewReady; continue; }
                 if (item.Name == "nextLoadSourceFiles" || item.Name == "nextSharedLibrary" || item.Name == "nextAddBrawlDisc" || item.Name == "nextLibrarySources" || item.Name == "nextSavedGameSources")
                 { item.Enabled = !busy; continue; }
                 item.Enabled = !busy && target && (item.Name == "nextReviewResults" || item.Name == "nextExportReviewedSet" ||
@@ -108,7 +108,7 @@ namespace BrawlCrate.UI
                     item.Name != "nextBatchFit" && clip);
             }
             _nextViewMenu.Enabled = !busy;
-            if (_libraryOpenTarget != null) _libraryOpenTarget.Enabled = !busy && SimpleWorkspaceSourceReady;
+            if (_libraryOpenTarget != null) _libraryOpenTarget.Enabled = !busy && LibraryPreviewReady;
             if (_libraryCostume != null) _libraryCostume.Enabled = !busy && _libraryCostume.Items.Count > 0;
             if (_sourceFitButton != null) _sourceFitButton.Enabled = !busy && target && clip;
             foreach (string name in new[] { "fighterOpenModel", "fighterAddAnimations", "fighterLibrary", "fighterTransitionFit", "fighterSave", "nextLoadSourceButton" })
