@@ -19,7 +19,7 @@ internal static partial class Program
     private static void Check(bool ok,string name,object evidence=null)
     {if(!ok)throw new InvalidDataException(name+" "+new JavaScriptSerializer().Serialize(evidence));Checks.Add(new{name,evidence});Console.WriteLine("PASS "+name);}
     private static void Refuses(Action action,string name)
-    {bool refused=false;try{action();}catch(Exception e) when(e is InvalidDataException||e is InvalidOperationException||e is IOException||e is OperationCanceledException){refused=true;}Check(refused,name);}
+    {bool refused=false;try{action();}catch(Exception e) when(e is InvalidDataException||e is InvalidOperationException||e is IOException||e is OperationCanceledException||e is NotSupportedException){refused=true;}Check(refused,name);}
     private static string Arg(string[] args,string key)=>args.SkipWhile(a=>a!=key).Skip(1).FirstOrDefault();
     private static string Hash(string path)=>FighterProject.HashFile(path);
     private static Dictionary<string,string> Hashes(params string[] roots)=>roots.SelectMany(r=>Directory.GetFiles(r,"*",SearchOption.AllDirectories)).ToDictionary(p=>p,Hash,StringComparer.OrdinalIgnoreCase);
@@ -38,6 +38,14 @@ internal static partial class Program
         try
         {
             if(args.Length==2&&args[0]=="--reopen")return Reopen(args[1]);
+            if(args.Contains("--disc-reader-cases"))return DiscReaderCases(Arg(args,"--output"));
+            if(args.Contains("--disc-probe")) {
+                using(var image=new BrawlDiscImage(Arg(args,"--disc-probe"))) {
+                    Console.WriteLine(image.GameId+" revision "+image.Revision+" "+image.Region+" "+image.Files.Length+" files; "+image.VerifiedClusters+" verified clusters; "+image.Inventory.Sum(e=>e.Length)+" bytes");
+                    string folder=Arg(args,"--extract-to");if(folder!=null)foreach(string character in (Arg(args,"--characters")??"mario,snake").Split(','))image.Extract(character,folder);
+                }
+                return 0;
+            }
             if(args.Contains("--disc-image"))return DiscCases(args);
             string mario=Arg(args,"--mario-root"),snake=Arg(args,"--snake-root"),output=Path.GetFullPath(Arg(args,"--output")??throw new ArgumentException("Supply a new --output directory."));
             if(Directory.Exists(output)&&Directory.EnumerateFileSystemEntries(output).Any())throw new IOException("Output must be empty.");

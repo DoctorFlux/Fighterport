@@ -393,13 +393,12 @@ internal static partial class Program
 
     static async Task WorkspaceGameLibrary(string[] args, string output)
     {
-        if (!PrivateDesktop || !args.Contains("--disc-image") || !args.Contains("--dolphin-tool"))
-            throw new InvalidOperationException("Game-library acceptance requires a private desktop and an actual disc image/reader.");
-        string image = args[Array.IndexOf(args, "--disc-image") + 1], tool = args[Array.IndexOf(args, "--dolphin-tool") + 1];
-        string legacy = args.Contains("--legacy-dolphin-tool") ? args[Array.IndexOf(args, "--legacy-dolphin-tool") + 1] : null;
+        if (!PrivateDesktop || !args.Contains("--disc-image"))
+            throw new InvalidOperationException("Game-library acceptance requires a private desktop and an actual disc image.");
+        string image = args[Array.IndexOf(args, "--disc-image") + 1];
         string previous = Environment.GetEnvironmentVariable("FIGHTERPORT_LIBRARY_ROOT");
         Environment.SetEnvironmentVariable("FIGHTERPORT_LIBRARY_ROOT", Path.Combine(output, "L"));
-        string discHash = FighterProject.HashFile(image), toolHash = FighterProject.HashFile(tool);
+        string discHash = FighterProject.HashFile(image);
         var originals = new[] { args[0], args[1] }.Distinct().ToDictionary(p => p, FighterProject.HashFile);
         ModelForm form = null;
         try
@@ -414,56 +413,62 @@ internal static partial class Program
                 string indexBefore = NextLibraryFiles(shared);
                 using (FlowModal("discFilePath", dialog => {
                     SimpleControl<TextBox>(dialog, "discFilePath").Text = Path.Combine(output, "missing.wbfs");
-                    SimpleControl<TextBox>(dialog, "discToolPath").Text = tool;
                     SimpleControl<Button>(dialog, "discContinue").PerformClick();
                     Check(dialog.Visible && !string.IsNullOrWhiteSpace(SimpleControl<Label>(dialog, "discValidation").Text),
                         "Direct Add Brawl disc explains an invalid path inline without registering or replacing a target");
                     CaptureDialog(dialog, output, "disc-invalid.png");
-                    if (legacy != null)
-                    {
-                        SimpleControl<TextBox>(dialog, "discFilePath").Text = image; SimpleControl<TextBox>(dialog, "discToolPath").Text = legacy;
-                        SimpleControl<Button>(dialog, "discContinue").PerformClick();
-                        Check(dialog.Visible && (SimpleControl<Label>(dialog, "discValidation").Text.Contains("extract") || SimpleControl<Label>(dialog, "discValidation").Text.Contains("older")),
-                            "An actual older convert-only DolphinTool is rejected before character indexing with an actionable extraction-support message");
-                        CaptureDialog(dialog, output, "disc-old-reader.png");
-                    }
+                    Check(dialog.Controls.Find("discToolPath",true).Length==0 && dialog.Controls.Find("discBrowseTool",true).Length==0,
+                        "Add Brawl has no external reader, key-file or emulator setup control");
+                    string bad=Path.Combine(output,"damaged.iso");File.WriteAllBytes(bad,new byte[4096]);
+                    SimpleControl<TextBox>(dialog,"discFilePath").Text=bad;
+                    SimpleControl<Button>(dialog,"discContinue").PerformClick();
+                    Check(dialog.Visible&&!string.IsNullOrWhiteSpace(SimpleControl<Label>(dialog,"discValidation").Text),
+                        "The built-in reader reports a damaged image inline without invoking another application");
+                    CaptureDialog(dialog,output,"disc-damaged.png");
                     SimpleControl<Button>(dialog, "discCancel").PerformClick();
                 })) NextItem(form, "nextAddBrawlDisc").PerformClick();
                 before.CheckPreserved("cancelled/invalid disc and reader choice");
                 Check(NextLibraryFiles(shared) == indexBefore && BrawlRetargeter.DiagnosticBakes == bakes,
                     "Cancelled disc selection changes neither catalogue bytes nor native retarget results");
+                Call(form,"SetWorkspaceTextSize",175);
+                try
+                {
+                    using(FlowModal("discFilePath",dialog=>{
+                        Check(dialog.Controls.Find("discToolPath",true).Length==0&&InClient(SimpleControl<Button>(dialog,"discContinue"),dialog)&&InClient(SimpleControl<Button>(dialog,"discCancel"),dialog),
+                            "The large-text source chooser retains contained actions without external-tool setup");
+                        CaptureDialog(dialog,output,"disc-chooser-175.png");SimpleControl<Button>(dialog,"discCancel").PerformClick();
+                    }))NextItem(form,"nextAddBrawlDisc").PerformClick();
+                    before.CheckPreserved("cancelled large-text native source chooser");
+                }
+                finally {Call(form,"SetWorkspaceTextSize",100);}
                 Action<Form> chooseDisc = dialog => {
                     SimpleControl<TextBox>(dialog, "discFilePath").Text = image;
-                    SimpleControl<TextBox>(dialog, "discToolPath").Text = tool;
                     SimpleControl<TextBox>(dialog, "discBuild").Text = "Supplied Brawl disc; build identity verified from native header";
                     CaptureDialog(dialog, output, "disc-selection.png");
                     SimpleControl<Button>(dialog, "discContinue").PerformClick();
                     if (dialog.DialogResult != DialogResult.OK)
                         throw new InvalidOperationException("Valid Brawl source preflight failed: " + SimpleControl<Label>(dialog, "discValidation").Text);
                 };
-                using (FlowModal("discFilePath", chooseDisc))
-                using (FlowModal("libraryGameCharacters", dialog => {
-                    var characters = SimpleControl<CheckedListBox>(dialog, "libraryGameCharacters");
-                    Check(characters.Items.Cast<string>().Contains("mario") && characters.Items.Cast<string>().Contains("snake"),
-                        "The real disc filesystem supplies its native Mario and Snake roster entries");
-                    ((Button)dialog.CancelButton).PerformClick();
-                })) NextItem(form, "nextAddBrawlDisc").PerformClick();
-                before.CheckPreserved("cancelled native character chooser");
-                Check(NextLibraryFiles(shared) == indexBefore, "Cancelling character selection publishes no game path or partial library generation");
-                using (FlowModal("discFilePath", chooseDisc))
-                using (FlowModal("libraryGameCharacters", dialog => {
-                    var characters = SimpleControl<CheckedListBox>(dialog, "libraryGameCharacters");
-                    for (int i = 0; i < characters.Items.Count; i++) characters.SetItemChecked(i, new[] { "mario", "snake" }.Contains((string)characters.Items[i]));
-                    SimpleControl<CheckBox>(dialog, "libraryGameApprove").Checked = true;
-                    CaptureDialog(dialog, output, "disc-roster-selection.png");
-                    SimpleControl<Button>(dialog, "libraryGameImport").PerformClick();
-                })) NextItem(form, "nextAddBrawlDisc").PerformClick();
+                bool sawPicker=false;
+                using(FlowModal("libraryGameCharacters",dialog=>{sawPicker=true;throw new InvalidOperationException("Adding a disc must not ask for characters.");}))
+                using(FlowModal("discFilePath",chooseDisc))NextItem(form,"nextAddBrawlDisc").PerformClick();
+                Check(!sawPicker,"Add Brawl indexes the full disc without any character-selection dialog");
                 var library = (AnimationLibrary)Field(form, "_library"); await LibraryQuerySettled(form);
                 var data = library.Read(); var location = data.GameLocations.Single(l => l.Indexed);
-                Check(location.Provider == "dolphin-brawl-disc-v1" && location.ContainerSha256 == discHash && location.ToolSha256 == toolHash &&
-                    data.Clips.Count > 600 && data.Mounts.All(m => new[] { "mario", "snake" }.Contains(m.VirtualPath.Split('/')[1])),
-                    "Approved native character selection indexes only its complete model/motion packages with exact image and reader hashes");
+                Check(location.Provider == BrawlDiscImage.Provider && location.ContainerSha256 == discHash && location.ToolSha256 == null && location.ToolPath == null &&
+                    data.Clips.Count > 15000 && data.Mounts.Count>900 && new[]{"mario","snake","captain","kirby","wario","zelda"}.All(character=>data.Mounts.Any(m=>m.VirtualPath.StartsWith("fighter/"+character+"/",StringComparison.Ordinal))) && data.Mounts.Any(m=>m.VirtualPath=="fighter/Fighter.pac"),
+                    "One Add indexes the complete fighter roster, costumes and shared fighter package with exact native image provenance");
                 before.CheckPreserved("successful read-only disc indexing");
+                using(FlowModal("librarySourceTabs",dialog=>{
+                    var tabs=SimpleControl<TabControl>(dialog,"librarySourceTabs");tabs.SelectedIndex=1;
+                    SimpleControl<TextBox>(dialog,"libraryLocationPath").Text=image;
+                    using(FlowModal("libraryWorkCancel",work=>{SimpleControl<Button>(work,"libraryWorkCancel").PerformClick();}))
+                        SimpleControl<Button>(dialog,"libraryBrowseGame").PerformClick();
+                    Check(dialog.Controls.Find("libraryGameCharacters",true).Length==0,"Source management uses the complete library without character selection");
+                    CaptureDialog(dialog,output,"disc-source-management.png");SimpleControl<Button>(dialog,"librarySourcesClose").PerformClick();
+                }))NextItem(form,"nextLibrarySources").PerformClick();
+                await LibraryQuerySettled(form);before.CheckPreserved("cancelled direct disc browse through source management");
+
                 Check(BrawlRetargeter.DiagnosticBakes == bakes, "Disc browsing and indexing perform no animation retarget bake");
                 var item = library.Browse("snake Wait1").Single(i => i.Model != null && i.Clip.Name == "Wait1" && i.Clip.Channel == "CHR0 skeletal" && i.Model.Character == "snake");
                 await GameLibrarySelect(form, item.Clip.Id);
@@ -486,6 +491,11 @@ internal static partial class Program
                 form.FighterEditor.FrameFighterModel(); Call(form, "FrameLibraryOriginal");
                 await CaptureSimpleWorkspace(form, Path.Combine(output, "disc-source-and-current-target.png"));
                 await GameLibraryCostumeLayouts(form, output);
+                int readerOpens=BrawlDiscImage.DiagnosticOpens,sourceHashes=FighterProject.DiagnosticFileHashes,sourceOpens=AnimationLibrary.DiagnosticOpens,sourceBakes=BrawlRetargeter.DiagnosticBakes;
+                for(int sample=0;sample<24;sample++){typeof(ModelForm).GetField("_libraryTime",Private).SetValue(form,sample*(original.Animation.FrameCount-1)/23.0);Call(form,"RenderLibraryFrame");}
+                Check(BrawlDiscImage.DiagnosticOpens==readerOpens&&FighterProject.DiagnosticFileHashes==sourceHashes&&AnimationLibrary.DiagnosticOpens==sourceOpens&&BrawlRetargeter.DiagnosticBakes==sourceBakes,
+                    "Prepared source animation preview performs no disc opening, file hashing, native source loading or retarget baking");
+
                 await GameLibraryRepairCostume(form, library, item.Clip.Id, selected.ModelId, output);
                 var target = (MDL0Node)form.FighterEditor.TargetModel;
                 string expectedPath = Path.Combine(output, "expected-selected-costume.chr0");
@@ -506,14 +516,14 @@ internal static partial class Program
                 await GameLibrarySelect(form, item.Clip.Id); Call(form, "SelectLibraryCostume", selected.ModelId);
                 SimpleControl<Button>(form, "libraryPreviewOriginal").PerformClick();
                 form = await GameLibraryOpenTarget(form, library, item.Clip.Id, selected.ModelId, output, false);
-                Check(FighterProject.HashFile(image) == discHash && FighterProject.HashFile(tool) == toolHash && originals.All(p => FighterProject.HashFile(p.Key) == p.Value),
-                    "Disc indexing, costume preview, retargeting, editable-target opening and save/export leave the original image, reader and supplied model/motion bytes unchanged");
+                Check(FighterProject.HashFile(image) == discHash && originals.All(p => FighterProject.HashFile(p.Key) == p.Value),
+                    "Disc indexing, costume preview, retargeting, editable-target opening and save/export leave the original image and supplied model/motion bytes unchanged");
             }
         }
         finally
         {
             File.WriteAllText(Path.Combine(output, "game-library.json"), new JavaScriptSerializer().Serialize(new {
-                DiscSha256 = discHash, ReaderSha256 = toolHash, PrivateDesktop, OSInputInjected = false, ScreenCopied = false,
+                DiscSha256 = discHash, ReaderProvider = BrawlDiscImage.Provider, ExternalReaderRequired = false, PrivateDesktop, OSInputInjected = false, ScreenCopied = false,
                 PhysicalInputVerified = false, MonitorDpiVerified = false, GameRuntimeVerified = false
             }));
             if (form != null && !form.IsDisposed) SimpleDisposeForm(form);

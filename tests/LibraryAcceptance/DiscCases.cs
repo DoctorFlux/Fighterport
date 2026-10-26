@@ -144,7 +144,7 @@ internal static partial class Program
             "Disc and extracted-folder routes independently recover the same native models, skeletons and animation resource hashes");
         foreach(string character in characters)
         {
-            var clip=library.Search(character+" Wait1",0,out _,200).First(i=>i.State==LibrarySourceState.Available&&i.Clip.Name=="Wait1").Clip;
+            var clip=library.Search(character+" Wait1",0,out _,200).First(i=>i.State==LibrarySourceState.Available&&i.Clip.SourceCharacter==character&&i.Clip.Name=="Wait1").Clip;
             int hashes=FighterProject.DiagnosticFileHashes,opens=AnimationLibrary.DiagnosticOpens,bakes=BrawlRetargeter.DiagnosticBakes;
             var choices=library.GetCostumes(clip.Id);var canonical=choices.Single(c=>c.IsCanonical);
             var alternate=choices.FirstOrDefault(c=>!c.IsCanonical&&c.Available&&
@@ -193,39 +193,53 @@ internal static partial class Program
 
     private static int DiscCases(string[] args)
     {
-        string image=Path.GetFullPath(Arg(args,"--disc-image")),tool=Path.GetFullPath(Arg(args,"--dolphin-tool"));
+        string image=Path.GetFullPath(Arg(args,"--disc-image"));
         string output=Path.GetFullPath(Arg(args,"--output"));
         if(Directory.Exists(output)&&Directory.EnumerateFileSystemEntries(output).Any())throw new IOException("Choose empty output.");
         Directory.CreateDirectory(output);string before=Hash(image);var clock=Stopwatch.StartNew();
-        var request=new LibraryGameRequest{Game="Brawl",GameVersion="User supplied Brawl disc; build not inferred",Path=image,DolphinToolPath=tool,ApproveBuild=true};
+        var request=new LibraryGameRequest{Game="Brawl",GameVersion="User supplied Brawl disc; build not inferred",Path=image,DolphinToolPath=Path.Combine(output,"not-installed","DolphinTool.exe"),ApproveBuild=true};
         var characters=BrawlGameSource.BrowseCharacters(request);
         Check(characters.Length>2&&characters.Contains("mario")&&characters.Contains("snake"),"Disc roster is discovered from the actual native filesystem",new{Characters=characters});
-        request.Characters=(Arg(args,"--characters")??"mario,snake").Split(',');
+        request.Characters=args.Contains("--all-characters")?null:(Arg(args,"--characters")??"mario,snake").Split(',');
+        string[] inspectedCharacters=request.Characters??characters;
+        if(Arg(args,"--legacy-index")!=null)
+        {
+            string directory=Path.Combine(output,"LegacyLibrary");Directory.CreateDirectory(directory);
+            var previous=new AnimationLibrary(Arg(args,"--legacy-index"));var legacyXml=XDocument.Load(previous.IndexPath);
+            foreach(var location in legacyXml.Root.Element("GameLocations").Elements().Where(l=>l.Element("Provider")?.Value=="dolphin-brawl-disc-v1"))
+                location.Element("ToolPath").Value=Path.Combine(output,"not-installed","DolphinTool.exe");
+            legacyXml.Save(Path.Combine(directory,"catalogue.xml"));var legacy=new AnimationLibrary(directory);
+            var old=legacy.Browse("mario Wait1").First(i=>i.State==LibrarySourceState.Available&&i.Clip.Channel=="CHR0 skeletal");
+            using(var source=legacy.Open(old.Clip.Id))Check(source.Reference.SourceProvider=="dolphin-brawl-disc-v1"&&source.Animation.FrameCount>0,
+                "Previously indexed disc sources reopen without the historical reader executable, preserving exact old provenance");
+        }
         var library=new AnimationLibrary(Path.Combine(output,"SharedLibrary"));
         var plan=BrawlGameSource.Prepare(request,Path.Combine(library.DirectoryPath,"NativeCache"),default,(p,message)=>Console.WriteLine(message));
         int added=library.RegisterGame(plan);
+        Check(plan.Source.Provider==BrawlDiscImage.Provider&&plan.Source.ToolPath==null&&plan.Source.ToolSha256==null,"Disc indexing uses the built-in reader even with a nonexistent legacy executable request path");
         Check(added==plan.Clips.Count&&added>600,"Every animation resource in the selected character packages is registered atomically",new{Clips=added,Models=plan.Models.Count,Files=plan.Source.NativeFiles,Issues=plan.Issues});
-        Check(plan.Mounts.All(m=>request.Characters.Contains(m.VirtualPath.Split('/')[1]))&&plan.Mounts.All(m=>m.OriginSha256==before),"Only selected characters are cached and every resource retains the image hash and virtual path");
+        Check(plan.Mounts.All(m=>request.Characters==null||request.Characters.Contains(m.VirtualPath.Split('/')[1]))&&plan.Mounts.All(m=>m.OriginSha256==before),"Only selected characters are cached and every resource retains the image hash and virtual path");
         string registeredHash=Hash(library.IndexPath);var registered=library.Read();
         Check(library.RegisterGame(plan)==0&&Hash(library.IndexPath)==registeredHash&&
             library.Read().Models.Select(m=>m.Id).SequenceEqual(registered.Models.Select(m=>m.Id))&&
             library.Read().Clips.Select(c=>c.Id).SequenceEqual(registered.Clips.Select(c=>c.Id)),
             "Repeated publication of the verified complete native inventory preserves every known model/clip ID and exact catalogue bytes");
-        ExtractedFolderCostumes(library,plan,request.Characters,output);
+        if(request.Characters!=null)ExtractedFolderCostumes(library,plan,request.Characters,output);
         SplitDiscGuard(output);
         if(Arg(args,"--compare-index")!=null)
         {
             var previous=new AnimationLibrary(Arg(args,"--compare-index")).Read();
-            Check(plan.Mounts.All(m=>previous.Mounts.Any(p=>p.VirtualPath==m.VirtualPath&&p.ContainerSha256==m.ContainerSha256)),"Different disc containers extract identical native source files");
+            Check(previous.Mounts.All(p=>plan.Mounts.Any(m=>p.VirtualPath==m.VirtualPath&&p.ContainerSha256==m.ContainerSha256)),"Every independently known native source file is extracted byte-identically from this disc container");
         }
-        foreach(string character in request.Characters)
+        foreach(string character in inspectedCharacters)
         {
-            var result=library.Search(character+" Wait1",0,out int total,200).Where(i=>i.State==LibrarySourceState.Available&&i.Clip.Name=="Wait1").ToArray();
+            var result=library.Search(character+" Wait1",0,out int total,200).Where(i=>i.State==LibrarySourceState.Available&&i.Clip.SourceCharacter==character&&i.Clip.Name=="Wait1").ToArray();
+            if(result.Length==0){Check(args.Contains("--all-characters"),character+": no canonical Wait1; resources remain explicitly indexed without a substitute model");continue;}
             Check(result.Length>=1,character+": verified original body motion is available",new{Matches=total});
             using(var source=library.Open(result[0].Clip.Id))
                 Check(source.Reference.GameSourceSha256==before&&source.Reference.ModelVirtualPath.StartsWith("fighter/"+character+"/")&&source.Reference.MotionVirtualPath.StartsWith("fighter/"+character+"/")&&
-                    source.Reference.SourceProvider=="dolphin-brawl-disc-v1"&&source.Reference.ExtractorSha256==Hash(tool)&&source.Reference.ModelPartition=="DATA"&&source.Reference.MotionPartition=="DATA",character+": native clip resolves its exact original model, extractor, partition and disc origin");
-            DiscCostumes(library,result[0].Clip.Id,character,output);
+                    source.Reference.SourceProvider==BrawlDiscImage.Provider&&source.Reference.ExtractorSha256==null&&source.Reference.ModelPartition=="DATA"&&source.Reference.MotionPartition=="DATA",character+": native clip resolves its exact original model, built-in reader, partition and disc origin");
+            if(new[]{"mario","snake","captain","wario","kirby"}.Contains(character))DiscCostumes(library,result[0].Clip.Id,character,output);
             if(character=="captain"&&Arg(args,"--snake-root")!=null)BakeProject(library,result[0].Clip.Id,Arg(args,"--snake-root"),"Snake",Path.Combine(output,"Captain-to-Snake.fpstudio"),true);
         }
         string index=library.IndexPath;var xml=XDocument.Load(index);string sourceId=plan.Source.Id;
@@ -237,7 +251,10 @@ internal static partial class Program
         using(var cancel=new CancellationTokenSource())
         {cancel.Cancel();Refuses(()=>BrawlGameSource.Prepare(request,Path.Combine(output,"CancelledCache"),cancel.Token),"Cancelled disc indexing publishes no source set");}
         Check(Hash(image)==before,"Original disc image remains byte-for-byte unchanged");
-        File.WriteAllText(Path.Combine(output,"disc-results.json"),new JavaScriptSerializer{MaxJsonLength=16000000}.Serialize(new{Passed=true,Checks,Characters=characters,Selected=request.Characters,ImageSha256=before,ToolSha256=Hash(tool),Milliseconds=clock.ElapsedMilliseconds}));
+        File.WriteAllText(Path.Combine(output,"disc-results.json"),new JavaScriptSerializer{MaxJsonLength=16000000}.Serialize(new{Passed=true,Checks,Characters=characters,Selected=request.Characters,ImageSha256=before,ReaderProvider=BrawlDiscImage.Provider,ExternalReaderRequired=false,Milliseconds=clock.ElapsedMilliseconds}));
+        var summary=library.Read();
+        File.WriteAllText(Path.Combine(output,"association-summary.json"),new JavaScriptSerializer{MaxJsonLength=64000000}.Serialize(new{Models=summary.Models.Count,Clips=summary.Clips.Count,Mounts=summary.Mounts.Count,
+            Groups=summary.Clips.GroupBy(c=>c.SourceCharacter).Select(g=>new{Character=g.Key,All=g.Count(),Skeletal=g.Count(c=>c.Channel=="CHR0 skeletal"),Linked=g.Count(c=>c.ModelId!=null),Unlinked=g.Where(c=>c.Channel=="CHR0 skeletal"&&c.ModelId==null).Select(c=>new{c.Name,c.ResourcePath,c.AssociationIssue})})}));
         Console.WriteLine("PASS: "+Checks.Count+" disc-source checks.");return 0;
     }
 }

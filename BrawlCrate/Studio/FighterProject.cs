@@ -366,6 +366,8 @@ namespace BrawlCrate.Studio
                             throw new InvalidDataException("The target revision's game-source identity is invalid.");
                         // Optional on older preview revisions; new image bakes
                         // also preserve the exact extractor and partition.
+                        if(link.SourceProvider==BrawlDiscImage.Provider&&(link.ExtractorSha256!=null||link.ModelPartition!="DATA"||link.MotionPartition!="DATA"))
+                            throw new InvalidDataException("Invalid built-in disc source provenance.");
                         if(link.SourceProvider=="dolphin-brawl-disc-v1"&&(!ValidHash(link.ExtractorSha256)||link.ModelPartition!="DATA"||link.MotionPartition!="DATA"))
                             throw new InvalidDataException("The target revision's disc provenance is invalid.");
                     }

@@ -26,7 +26,7 @@ namespace BrawlCrate.UI
             remove.Click+=(s,e)=>Run(()=>{if(sources.SelectedIndex<0)return;library.RemoveSource(data.Models[sources.SelectedIndex].Id);Reload();});
             undo.Name="librarySourcesUndo";undo.Text="Undo Last Change";undo.Bounds=new Rectangle(204,341,145,30);undo.Click+=(s,e)=>Run(()=>{library.UndoLastUpdate();Reload();});
             sourceTab.Controls.AddRange(new Control[]{remove,undo});
-            pathTab.Controls.Add(new Label{Text="Save paths per game/build. Browse Brawl-family folders or ISO/WBFS/RVZ with your installed DolphinTool. Other games' native adapters remain pending.",Bounds=new Rectangle(12,12,625,36)});
+            pathTab.Controls.Add(new Label{Text="Save paths per game/build. Browse Brawl-family folders or ISO/WBFS directly with the built-in reader. Other games' native adapters remain pending.",Bounds=new Rectangle(12,12,625,36)});
             locations.Name="libraryGameLocations";locations.Bounds=new Rectangle(12,52,625,150);pathTab.Controls.Add(locations);
             locations.SelectedIndexChanged+=(s,e)=>{if(locations.SelectedIndex<0)return;var l=data.GameLocations[locations.SelectedIndex];game.Text=l.Game;version.Text=l.GameVersion;path.Text=l.Path;};
             game.Name="libraryLocationGame";game.AccessibleName="Game name (choose or type a new game)";game.DropDownStyle=ComboBoxStyle.DropDown;game.MaxLength=128;game.Bounds=new Rectangle(12,216,165,26);game.Items.AddRange(AnimationLibrary.PlannedGames);game.SelectedIndex=0;
@@ -40,14 +40,11 @@ namespace BrawlCrate.UI
             save.Click+=(s,e)=>Run(()=>{library.SetGameLocation(game.Text.Trim(),version.Text.Trim(),path.Text.Trim());Reload();});
             var removePath=new Button{Name="libraryLocationRemove",Text="Remove Selected Path",Bounds=new Rectangle(169,341,175,30)};
             removePath.Click+=(s,e)=>Run(()=>{if(locations.SelectedIndex<0)return;library.RemoveGameLocation(data.GameLocations[locations.SelectedIndex].Id);Reload();});
-            var index=new Button{Name="libraryBrowseGame",Text="Browse Native Files...",Bounds=new Rectangle(356,341,180,30)};
+            var index=new Button{Name="libraryBrowseGame",Text="Add to Library",Bounds=new Rectangle(356,341,180,30)};
             game.TextChanged+=(s,e)=>index.Enabled=new[]{"Brawl","Project M","Project+"}.Contains(game.Text.Trim());
             index.Click+=(s,e)=>Run(()=>{
-                string sourcePath=path.Text.Trim();string tool=data.GameLocations.FirstOrDefault(l=>l.Path==sourcePath&&l.Indexed)?.ToolPath;
-                if(File.Exists(sourcePath)&&string.IsNullOrEmpty(tool))
-                    using(var choose=new OpenFileDialog{Title="Select Installed DolphinTool",Filter="DolphinTool|DolphinTool.exe"})
-                    {if(choose.ShowDialog(this)!=DialogResult.OK)return;tool=choose.FileName;}
-                browse(this,new LibraryGameRequest{Game=game.Text.Trim(),GameVersion=version.Text.Trim(),Path=sourcePath,DolphinToolPath=tool});Reload();
+                string sourcePath=path.Text.Trim();
+                browse(this,new LibraryGameRequest{Game=game.Text.Trim(),GameVersion=version.Text.Trim(),Path=sourcePath});Reload();
             });
             pathTab.Controls.AddRange(new Control[]{game,version,path,folder,file,save,removePath,index});
             var close=new Button{Name="librarySourcesClose",Text="Close",Dock=DockStyle.Bottom,Height=29,DialogResult=DialogResult.OK};

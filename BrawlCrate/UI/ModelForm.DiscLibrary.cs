@@ -20,8 +20,7 @@ namespace BrawlCrate.UI
                 var shared = _sharedSourceLibrary ?? new AnimationLibrary();
                 var prior = shared.Read().GameLocations.LastOrDefault(source => source.Game == "Brawl" && source.Indexed);
                 string image = prior != null && (File.Exists(prior.Path) || Directory.Exists(prior.Path)) ? prior.Path : null;
-                string tool = prior != null && File.Exists(prior.ToolPath) ? prior.ToolPath : null;
-                using (var dialog = new BrawlDiscDialog(image, tool))
+                using (var dialog = new BrawlDiscDialog(image))
                 {
                     if (dialog.ShowDialog(this) != DialogResult.OK) return;
                     IndexLibraryGameSource(this, dialog.Request);

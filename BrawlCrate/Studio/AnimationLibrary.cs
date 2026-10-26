@@ -149,8 +149,9 @@ namespace BrawlCrate.Studio
             foreach(var location in data.GameLocations)OrdinaryPath(location.Path);
             foreach(var location in data.GameLocations.Where(l=>l.Indexed))
                 if(!Hash(location.ContainerSha256)||!Hash(location.InventorySha256)||location.NativeFiles<1||
-                    (location.Provider!="brawl-folder-v1"&&location.Provider!="dolphin-brawl-disc-v1")||
-                    (location.Provider=="dolphin-brawl-disc-v1"&&(!Hash(location.ToolSha256)||!Text(location.ToolPath,32767)||location.Bytes<=0||location.Bytes>64L*1024*1024*1024)))
+                    (location.Provider!="brawl-folder-v1"&&!BrawlGameSource.IsDiscProvider(location.Provider))||
+                    (location.Provider=="dolphin-brawl-disc-v1"&&(!Hash(location.ToolSha256)||!Text(location.ToolPath,32767)||location.Bytes<=0||location.Bytes>64L*1024*1024*1024))||
+                    (location.Provider==BrawlDiscImage.Provider&&(location.ToolPath!=null||location.ToolSha256!=null||location.Bytes<=0||location.Bytes>64L*1024*1024*1024)))
                     throw new InvalidDataException("Invalid indexed game/build provenance.");
             foreach(var mount in data.Mounts.Where(m=>m.GameSourceId!=null))
             {
@@ -162,7 +163,7 @@ namespace BrawlCrate.Studio
                     if(!Hash(mount.OriginSha256)||mount.OriginBytes<=0||mount.OriginBytes>64L*1024*1024*1024||mount.OriginWriteTicks<=0)
                         throw new InvalidDataException("Invalid original disc identity.");
                     var origin=data.GameLocations.Single(l=>l.Id==mount.GameSourceId);
-                    if(origin.ContainerSha256!=mount.OriginSha256||origin.Bytes!=mount.OriginBytes||origin.Provider!="dolphin-brawl-disc-v1")throw new InvalidDataException("Disc resource origin differs from its source mount.");
+                    if(origin.ContainerSha256!=mount.OriginSha256||origin.Bytes!=mount.OriginBytes||!BrawlGameSource.IsDiscProvider(origin.Provider))throw new InvalidDataException("Disc resource origin differs from its source mount.");
                 }
             }
             if(data.Clips.Any(c=>c==null || !Id(c.Id)||c.Revision<1||!mounts.ContainsKey(c.MountId??"")||!Text(c.Name,512)||!Text(c.ResourceKey,512)||!Text(c.ResourcePath)||
@@ -301,7 +302,7 @@ namespace BrawlCrate.Studio
                 string hash=BrawlGameSource.HashDisc(path,cancellation);
                 Update(data=>{
                     var source=data.GameLocations.Single(l=>l.Id==sourceId);
-                    if(!source.Indexed||source.Provider!="dolphin-brawl-disc-v1"||source.ContainerSha256!=hash||source.Bytes!=held.Length)throw new InvalidDataException("Select the exact indexed disc image. Its hash/size must match.");
+                    if(!source.Indexed||!BrawlGameSource.IsDiscProvider(source.Provider)||source.ContainerSha256!=hash||source.Bytes!=held.Length)throw new InvalidDataException("Select the exact indexed disc image. Its hash/size must match.");
                     source.Path=path;foreach(var mount in data.Mounts.Where(m=>m.GameSourceId==sourceId)){mount.OriginPath=path;mount.OriginWriteTicks=File.GetLastWriteTimeUtc(path).Ticks;}
                     data.LastOperation="Repair Disc Source";return Tuple.Create(true,true);
                 },cancellation);
@@ -527,8 +528,8 @@ namespace BrawlCrate.Studio
                     GameSourceId=a.GameSourceId,GameSourceSha256=a.OriginSha256??(a.GameSourceId==null?null:data.GameLocations.Single(l=>l.Id==a.GameSourceId).ContainerSha256),
                     ModelVirtualPath=a.VirtualPath,MotionVirtualPath=b.VirtualPath,UnboundSourceTracks=clip.UnboundSourceTracks,
                     SourceProvider=originSource?.Provider,ExtractorSha256=originSource?.ToolSha256,
-                    ModelPartition=a.OriginPartition??(originSource?.Provider=="dolphin-brawl-disc-v1"?"DATA":null),
-                    MotionPartition=b.OriginPartition??(originSource?.Provider=="dolphin-brawl-disc-v1"?"DATA":null)};
+                    ModelPartition=a.OriginPartition??(BrawlGameSource.IsDiscProvider(originSource?.Provider)?"DATA":null),
+                    MotionPartition=b.OriginPartition??(BrawlGameSource.IsDiscProvider(originSource?.Provider)?"DATA":null)};
                 return lease;
             }
             catch{lease.Dispose();throw;}

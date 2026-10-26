@@ -2,7 +2,7 @@
 
 This is the public unified source repository at https://github.com/DoctorFlux/Fighterport.
 It imports the BrawlCrate-based Next preview.14 source and integrated owned engine;
-the current implementation is **preview.35-brawl-disc-library**.
+the current implementation is **preview.36-integrated-disc**.
 The two predecessor repositories are private preserved histories.
 Upstream copyrights, licenses and notices remain intact.
 
@@ -25,13 +25,14 @@ idle/fall references when fitting needs them. **Load source...** chooses an orig
 model and motion set for this session; loading, previewing and retargeting never
 add those files to the shared library. **Add to library** is a separate explicit,
 verified operation. **Library → Add Brawl...** accepts a Brawl ISO/WBFS or extracted game folder.
-Disc files need a compatible **DolphinTool.exe** with header and extraction support;
-older convert-only builds are rejected before indexing. Choose characters, confirm
-the source association, and add their native files to the shared library. Extracted
-Brawl folders need no Dolphin tool. **Animation → Manage library sources...** retains
-source management. Other games need their own adapters; paths alone are not support.
-See the [Dolphin dependency record](docs/DOLPHIN_SOURCE_REUSE_2026-10-26.md).
-[Background acceptance](docs/BRAWL_DISC_LIBRARY_ACCEPTANCE_2026-10-26.md) records actual image, folder and costume evidence and its limits.
+Fighterport reads ISO/WBFS directly: no separate reader, emulator or key-file setup
+is needed. Add the disc once to index its complete fighter roster, animations and costumes
+in the shared library; there is no character picker. Extracted Brawl folders also work directly.
+**Animation → Manage library sources...** retains source management. Existing
+indexed disc sources and saved provenance stay readable without their historical
+reader executable. Other games need their own adapters; paths alone are not support.
+See the [integrated reader record](docs/INTEGRATED_DISC_READER.md) and
+[background acceptance](docs/INTEGRATED_DISC_ACCEPTANCE_2026-10-26.md).
 
 Choose a source clip and its **Costume**, then **Preview Original** to see the
 original model and animation. **Open model + animation** opens an independent editable

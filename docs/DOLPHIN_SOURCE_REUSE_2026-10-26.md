@@ -1,5 +1,9 @@
 # Dolphin disc-source dependency — 26 October 2026
 
+Historical preview.35 record. Superseded by preview.36's
+[integrated reader](INTEGRATED_DISC_READER.md): the current application does not
+require or launch this external component. Preserve this record for older receipts.
+
 This record identifies the external reader used by the Brawl library workflow.
 It records component provenance and the integration boundary; the increment's
 acceptance record separately identifies which images and workflows were tested.

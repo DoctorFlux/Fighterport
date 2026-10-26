@@ -2,14 +2,12 @@ using BrawlCrate.Studio.Retargeting;
 using BrawlLib.SSBB.ResourceNodes;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
-using System.Web.Script.Serialization;
 
 namespace BrawlCrate.Studio
 {
@@ -18,6 +16,7 @@ namespace BrawlCrate.Studio
         public string Game {get;set;}="Brawl";
         public string GameVersion {get;set;}="Build not supplied";
         public string Path {get;set;}
+        // Legacy request compatibility only. The built-in reader never executes it.
         public string DolphinToolPath {get;set;}
         public bool ApproveBuild {get;set;}
         public string[] Characters {get;set;}
@@ -30,8 +29,7 @@ namespace BrawlCrate.Studio
         public List<LibraryAnimation> Clips {get;}=new List<LibraryAnimation>();
         public List<string> Issues {get;}=new List<string>();
     }
-    // Native Brawl catalogue, not an importer for other titles. Dolphin remains
-    // an external, explicitly selected, hash-pinned read-only CLI dependency.
+    // Native Brawl catalogue with an application-owned read-only ISO/WBFS reader.
     public static class BrawlGameSource
     {
         private sealed class ModelFacts
@@ -44,8 +42,12 @@ namespace BrawlCrate.Studio
         {
             internal LibraryAnimation Clip;
             internal string[] Bones;
-            internal string Character;
+            internal string Character, Path;
         }
+        private static string ResourceScope(string key)
+        {int last=key.LastIndexOf('/');return last<0?key:key.Substring(0,last).Substring(0,Math.Max(0,key.Substring(0,last).LastIndexOf('/')));}
+        private static ModelFacts UniqueModel(ModelFacts[] candidates) =>
+            candidates.Length>0&&candidates.Select(c=>c.Model.ResourceSha256).Distinct(StringComparer.Ordinal).Count()==1?candidates[0]:null;
         private static string Digest(string text)
         {using(var sha=SHA256.Create())return BrawlLibrarySource.Hex(sha.ComputeHash(Encoding.UTF8.GetBytes(text)));}
         internal static string HashDisc(string path,CancellationToken cancellation)
@@ -73,33 +75,12 @@ namespace BrawlCrate.Studio
             }
         }
 
+        internal static bool IsDiscProvider(string provider) => provider == BrawlDiscImage.Provider || provider == "dolphin-brawl-disc-v1";
         internal static void ValidateDiscSource(LibraryGameRequest request,CancellationToken cancellation=default)
         {
             if(request==null)throw new ArgumentNullException(nameof(request));
-            string image=AnimationLibrary.OrdinaryPath(request.Path),tool=AnimationLibrary.OrdinaryPath(request.DolphinToolPath);
-            AnimationLibrary.NoLinks(image);AnimationLibrary.NoLinks(tool);EnsureSingleDiscSource(image);
-            if(!File.Exists(image)||!new[]{".iso",".wbfs",".rvz"}.Contains(System.IO.Path.GetExtension(image).ToLowerInvariant()))
-                throw new InvalidDataException("Choose an existing Brawl ISO or WBFS file. The current reader also accepts RVZ.");
-            if(!File.Exists(tool)||!string.Equals(System.IO.Path.GetFileName(tool),"DolphinTool.exe",StringComparison.OrdinalIgnoreCase))
-                throw new InvalidDataException("Choose an installed DolphinTool.exe with header and extract commands.");
-            request.Path=image;request.DolphinToolPath=tool;
-            cancellation.ThrowIfCancellationRequested();
-            string help=ProbeReader(tool,"--help",cancellation,false);
-            if(!Regex.IsMatch(help,@"\bextract\b",RegexOptions.IgnoreCase)||!Regex.IsMatch(help,@"\bheader\b",RegexOptions.IgnoreCase))
-                throw new InvalidDataException("This DolphinTool is too old for disc browsing. Select a build with header and extract commands; convert/verify-only builds cannot read the library.");
-            string extract=ProbeReader(tool,"extract -h",cancellation,false),header=ProbeReader(tool,"header -h",cancellation,false);
-            if(!extract.Contains("--list")||!extract.Contains("--single")||!header.Contains("--json"))
-                throw new InvalidDataException("This reader lacks the required extract --list/--single and header --json options. Choose a compatible modern DolphinTool.");
-            using(var held=new FileStream(image,FileMode.Open,FileAccess.Read,FileShare.Read))
-            {
-                if(held.Length<=0||held.Length>64L*1024*1024*1024)throw new InvalidDataException("Choose a nonempty Brawl image within the reader's 64 GB limit.");
-                string json=ProbeReader(tool,"header -i "+Quote(image)+" -j",cancellation,true);
-                var info=new JavaScriptSerializer{MaxJsonLength=1024*1024}.Deserialize<Dictionary<string,object>>(json);
-                if(info==null||!info.TryGetValue("game_id",out var game)||!Regex.IsMatch(game?.ToString()??"",@"^RSB[A-Z0-9]{3}$")||
-                    !info.TryGetValue("revision",out var revision)||!(revision is int nativeRevision)||nativeRevision<0||nativeRevision>255)
-                    throw new InvalidDataException("This disc is not identified as Brawl. Other games require their own source readers.");
-            }
-            cancellation.ThrowIfCancellationRequested();
+            request.Path=AnimationLibrary.OrdinaryPath(request.Path);
+            using(var image=new BrawlDiscImage(request.Path,cancellation)) { }
         }
 
         internal static void ValidateGameSource(LibraryGameRequest request,CancellationToken cancellation=default)
@@ -118,62 +99,8 @@ namespace BrawlCrate.Studio
             cancellation.ThrowIfCancellationRequested();
         }
 
-        private static string ProbeReader(string executable,string arguments,CancellationToken cancellation,bool json)
-        {
-            var output=new StringBuilder();var error=new StringBuilder();var sync=new object();bool overflow=false;
-            using(var process=new Process{StartInfo=new ProcessStartInfo(executable,arguments){UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true,WorkingDirectory=System.IO.Path.GetDirectoryName(executable)}})
-            {
-                DataReceivedEventHandler read=(s,e)=>{if(e.Data==null)return;lock(sync){if(output.Length+e.Data.Length>1024*1024)overflow=true;else output.AppendLine(e.Data);}};
-                process.OutputDataReceived+=read;process.ErrorDataReceived+=(s,e)=>{if(e.Data==null)return;lock(sync){if(error.Length+e.Data.Length>128*1024)overflow=true;else error.AppendLine(e.Data);}};
-                process.Start();process.BeginOutputReadLine();process.BeginErrorReadLine();var clock=Stopwatch.StartNew();
-                try
-                {
-                    while(!process.WaitForExit(50))
-                    {
-                        cancellation.ThrowIfCancellationRequested();
-                        if(overflow||clock.Elapsed>TimeSpan.FromSeconds(20))throw new InvalidDataException("The reader check did not finish within its bounds. Choose a compatible DolphinTool.");
-                    }
-                    process.WaitForExit();cancellation.ThrowIfCancellationRequested();
-                    if(overflow||json&&process.ExitCode!=0)throw new InvalidDataException("DolphinTool could not read this disc header. Choose a compatible reader and Brawl image.");
-                    // Top-level Dolphin usage can exit nonzero even for help.
-                    return json?output.ToString():output.ToString()+Environment.NewLine+error.ToString();
-                }
-                catch{if(!process.HasExited)process.Kill();throw;}
-            }
-        }
-        public static string RunDolphin(string tool,string arguments,CancellationToken cancellation)
-        {
-            tool=AnimationLibrary.OrdinaryPath(tool);AnimationLibrary.NoLinks(tool);
-            if(!File.Exists(tool)||!string.Equals(System.IO.Path.GetFileName(tool),"DolphinTool.exe",StringComparison.OrdinalIgnoreCase))throw new InvalidDataException("Select an installed DolphinTool.exe with extract/list support.");
-            var output=new StringBuilder();var error=new StringBuilder();bool overflow=false;var sync=new object();
-            using(var process=new Process{StartInfo=new ProcessStartInfo(tool,arguments){UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true,WorkingDirectory=System.IO.Path.GetDirectoryName(tool)}})
-            {
-                DataReceivedEventHandler read=(s,e)=>{if(e.Data==null)return;lock(sync){var buffer=ReferenceEquals(s,process)?output:error;if(buffer.Length+e.Data.Length>8*1024*1024){overflow=true;return;}buffer.AppendLine(e.Data);}};
-                process.OutputDataReceived+=read;process.ErrorDataReceived+=(s,e)=>{if(e.Data==null)return;lock(sync){if(error.Length+e.Data.Length>1024*1024){overflow=true;return;}error.AppendLine(e.Data);}};
-                process.Start();process.BeginOutputReadLine();process.BeginErrorReadLine();var clock=Stopwatch.StartNew();
-                try
-                {
-                    while(!process.WaitForExit(100))
-                    {cancellation.ThrowIfCancellationRequested();if(overflow||clock.Elapsed.TotalMinutes>15)throw new InvalidDataException("The bounded disc-source operation did not finish.");}
-                    process.WaitForExit();cancellation.ThrowIfCancellationRequested();
-                    if(process.ExitCode!=0||overflow)throw new InvalidDataException("Dolphin could not read this source. Select a modern DolphinTool supporting header --json and extract --list/--single. "+error.ToString().Substring(0,Math.Min(1800,error.Length)));
-                    return output.ToString();
-                }
-                catch{if(!process.HasExited)process.Kill();throw;}
-            }
-        }
-        // Ordinary Windows paths cannot contain quotes. Reject them rather than
-        // interpolating arbitrary command text or invoking a shell.
-        private static string Quote(string value)
-        {if(value==null||value.Contains('"')||value.Contains('\r')||value.Contains('\n'))throw new InvalidDataException("Invalid native tool argument.");return "\""+value.TrimEnd('\\')+"\"";}
         private static string[] DiscFiles(LibraryGameRequest request,CancellationToken cancellation)
-        {
-            string inventory=RunDolphin(request.DolphinToolPath,"extract -i "+Quote(request.Path)+" -p DATA -s fighter -l",cancellation);
-            var paths=inventory.Split(new[]{'\r','\n'},StringSplitOptions.RemoveEmptyEntries).Where(p=>p.StartsWith("fighter/",StringComparison.Ordinal)&&!p.EndsWith("/",StringComparison.Ordinal)).ToArray();
-            if(paths.Length<1||paths.Length>10000||paths.Any(p=>p.Contains("..")||p.Contains('\\')||p.Contains(':')||p.Split('/').Length<2||p.Split('/').Any(part=>string.IsNullOrWhiteSpace(part))))
-                throw new InvalidDataException("The image has no bounded canonical Brawl fighter filesystem.");
-            return paths;
-        }
+        { using(var image=new BrawlDiscImage(request.Path,cancellation))return image.Files; }
         private static string FighterFolder(string source)
         {
             var candidates=new[]{source,System.IO.Path.Combine(source,"fighter"),System.IO.Path.Combine(source,"files","fighter"),System.IO.Path.Combine(source,"DATA","files","fighter"),
@@ -188,7 +115,7 @@ namespace BrawlCrate.Studio
             string path=AnimationLibrary.OrdinaryPath(request.Path);AnimationLibrary.NoLinks(path);
             if(File.Exists(path))
             {
-                if(!new[]{".iso",".wbfs",".rvz"}.Contains(System.IO.Path.GetExtension(path).ToLowerInvariant()))throw new NotSupportedException("Choose ISO, WBFS or RVZ.");
+                if(!new[]{".iso",".wbfs"}.Contains(System.IO.Path.GetExtension(path).ToLowerInvariant()))throw new NotSupportedException("Choose a Brawl ISO or single-file WBFS.");
                 ValidateDiscSource(request,cancellation);
                 using(var held=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.Read))
                     return DiscFiles(request,cancellation).Where(p=>p.Split('/').Length>=3).Select(p=>p.Split('/')[1]).Distinct(StringComparer.Ordinal).OrderBy(p=>p,StringComparer.Ordinal).ToArray();
@@ -208,105 +135,144 @@ namespace BrawlCrate.Studio
                     {if(++files>10000)throw new InvalidDataException("Too many native source files.");AnimationLibrary.NoLinks(path);yield return path;}
             }
         }
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private static void ReadNativePackage(string path,LibraryMount mount,string relative,string character,LibraryGamePlan plan,
+            List<ModelFacts> models,List<ClipFacts> clips,CancellationToken cancellation)
+        {
+            using(var held=AnimationLibrary.LockSource(path))
+            using(var root=NodeFactory.FromFile(null,path))
+            {
+                if(root==null){plan.Issues.Add(relative+": unsupported native package");return;}
+                foreach(var resource in BrawlLibrarySource.Resources(root,cancellation))
+                {
+                    if(resource.Item1 is MDL0Node model)
+                    {
+                        var metadata=BrawlLibrarySource.DescribeModel(model,resource.Item2);metadata.MountId=mount.Id;metadata.Character=character;metadata.Variant=System.IO.Path.GetFileName(path);
+                        var bones=model.AllBones.ToArray();var semantic=BrawlRetargeter.Characterize(model);
+                        models.Add(new ModelFacts{Model=metadata,Path=relative,Bones=new HashSet<string>(bones.Select(b=>b.Name)),
+                            Body=new HashSet<string>(semantic.Roles.Where(p=>p.Key=="pelvis"||p.Key=="spine"||p.Key=="chest"||p.Key=="neck"||p.Key.EndsWith(".upperLeg")||p.Key.EndsWith(".upperArm")).Select(p=>bones[p.Value].Name))});
+                        plan.Models.Add(metadata);
+                    }
+                    else if(resource.Item1 is NW4RAnimationNode motion)
+                    {
+                        var metadata=new LibraryAnimation{Id=Guid.NewGuid().ToString("N"),MountId=mount.Id,Name=motion.Name,SourceCharacter=character,ResourceKey=resource.Item2,ResourcePath=motion.TreePath,
+                            ResourceSha256=BrawlLibrarySource.ResourceHash(motion),Channel=motion is CHR0Node?"CHR0 skeletal":motion.GetType().Name,NativeVersion=motion.Version,FrameCount=motion.FrameCount,Loop=motion.Loop,
+                            Tags=character+" "+mount.Game,AssociationIssue="Original source model requires verified association"};
+                        clips.Add(new ClipFacts{Clip=metadata,Character=character,Path=relative,Bones=motion is CHR0Node?motion.Children.Select(n=>n.Name).ToArray():new string[0]});plan.Clips.Add(metadata);
+                    }
+                }
+            }
+        }
         public static LibraryGamePlan Prepare(LibraryGameRequest request,string cacheRoot,CancellationToken cancellation=default,Action<int,string> progress=null)
         {
             cancellation.ThrowIfCancellationRequested();
             if(request==null||!new[]{"Brawl","Project M","Project+"}.Contains(request.Game))throw new NotSupportedException("Whole-build native indexing currently supports Brawl-family sources. Other game paths can be saved; their native adapters are pending.");
             if(!request.ApproveBuild||string.IsNullOrWhiteSpace(request.GameVersion))throw new InvalidDataException("Confirm the selected original game/build before indexing its complete roster.");
-            if(request.Characters==null||request.Characters.Length==0||request.Characters.Length>256||request.Characters.Any(c=>!Regex.IsMatch(c??"",@"^[A-Za-z0-9_-]+$")))throw new InvalidDataException("Select one or more characters from the native source browser.");
+            bool all=request.Characters==null||request.Characters.Length==0;
+            string[] characters=all?null:request.Characters.Distinct(StringComparer.Ordinal).ToArray();
+            if(!all&&(characters.Length>256||characters.Any(c=>!Regex.IsMatch(c??"",@"^[A-Za-z0-9_-]+$"))))throw new InvalidDataException("Invalid native character scope.");
             string sourcePath=AnimationLibrary.OrdinaryPath(request.Path);AnimationLibrary.NoLinks(sourcePath);
             var plan=new LibraryGamePlan{Source=new LibraryGameLocation{Id=Guid.NewGuid().ToString("N"),Game=request.Game,GameVersion=request.GameVersion,Path=sourcePath,Indexed=true,IsDirectory=Directory.Exists(sourcePath)}};
             string fighterRoot;string originHash=null;long originBytes=0,originTicks=0;
-            FileStream sourceLock=null;
+            FileStream sourceLock=null;BrawlDiscImage discReader=null;
             try
             {
                 if(File.Exists(sourcePath))
                 {
-                    if(!new[]{".iso",".wbfs",".rvz"}.Contains(System.IO.Path.GetExtension(sourcePath).ToLowerInvariant()))throw new NotSupportedException("Select a Brawl ISO/WBFS/RVZ image or an extracted Brawl-family folder.");
-                    ValidateDiscSource(request,cancellation);
+                    discReader=new BrawlDiscImage(sourcePath,cancellation);
                     sourceLock=new FileStream(sourcePath,FileMode.Open,FileAccess.Read,FileShare.Read);
-                    if(sourceLock.Length<=0||sourceLock.Length>64L*1024*1024*1024)throw new InvalidDataException("Disc source exceeds the 64 GB bound.");
                     progress?.Invoke(1,"Hashing original disc image (read-only)...");originHash=HashDisc(sourcePath,cancellation);originBytes=sourceLock.Length;originTicks=File.GetLastWriteTimeUtc(sourcePath).Ticks;
-                    string tool=AnimationLibrary.OrdinaryPath(request.DolphinToolPath);plan.Source.ToolPath=tool;plan.Source.ToolSha256=FighterProject.HashFile(tool);
-                    var header=new JavaScriptSerializer().Deserialize<Dictionary<string,object>>(RunDolphin(tool,"header -i "+Quote(sourcePath)+" -j",cancellation));
-                    if(header==null||!header.TryGetValue("game_id",out var gameId)||!header.TryGetValue("revision",out var revision)||!Regex.IsMatch(gameId.ToString(),@"^RSB[A-Z0-9]{3}$"))
-                        throw new InvalidDataException("This is not an identified Brawl-family disc. Select the correct game source adapter.");
-                    plan.Source.NativeGameId=gameId.ToString();plan.Source.NativeRevision=Convert.ToInt32(revision);plan.Source.NativeRegion=header.TryGetValue("region",out var region)?region.ToString():"Unknown";
+                    plan.Source.NativeGameId=discReader.GameId;plan.Source.NativeRevision=discReader.Revision;plan.Source.NativeRegion=discReader.Region;
                     plan.Source.GameVersion=request.GameVersion+" · "+plan.Source.NativeGameId+" revision "+plan.Source.NativeRevision;
-                    progress?.Invoke(3,"Listing every fighter in the disc DATA partition...");
-                    var paths=DiscFiles(request,cancellation);
-                    if(request.Characters.Any(c=>!paths.Any(p=>p.Split('/')[1]==c)))throw new InvalidDataException("A selected character is not present in this image.");
-                    paths=paths.Where(p=>request.Characters.Contains(p.Split('/')[1])).ToArray();
-                    plan.Source.InventorySha256=Digest(string.Join("\n",paths));plan.Source.Provider="dolphin-brawl-disc-v1";
-                    // A fresh snapshot never overwrites another live library lease.
+                    progress?.Invoke(3,"Listing fighters with the built-in Brawl disc reader...");
+                    var allPaths=discReader.Files;
+                    if(all)characters=allPaths.Where(p=>p.Split('/').Length>=3).Select(p=>p.Split('/')[1]).Distinct(StringComparer.Ordinal).OrderBy(c=>c,StringComparer.Ordinal).ToArray();
+                    if(characters.Any(c=>!allPaths.Any(p=>p.Split('/').Length>=3&&p.Split('/')[1]==c)))throw new InvalidDataException("A selected character is not present in this image.");
+                    var selected=new HashSet<string>(characters,StringComparer.Ordinal);
+                    var paths=all?allPaths:allPaths.Where(p=>p.Split('/').Length>=3&&selected.Contains(p.Split('/')[1])).ToArray();
+                    if(discReader.Inventory.Where(e=>all||e.Path.Split('/').Length>=3&&selected.Contains(e.Path.Split('/')[1])).Sum(e=>e.Length)>4L*1024*1024*1024)
+                        throw new InvalidDataException("The selected fighter subtree exceeds its 4 GB cache bound.");
+                    plan.Source.InventorySha256=Digest(string.Join("\n",paths));plan.Source.Provider=BrawlDiscImage.Provider;
                     string cache=System.IO.Path.Combine(AnimationLibrary.OrdinaryPath(cacheRoot),Guid.NewGuid().ToString("N"));AnimationLibrary.NoLinks(cache);
-                    if(paths.Any(p=>System.IO.Path.Combine(cache,"DATA","files",p.Replace('/','\\')).Length>=250))throw new InvalidDataException("Choose a shorter shared-library directory; a selected native cache path exceeds the external tool's safe Windows path length.");
                     fighterRoot=System.IO.Path.Combine(cache,"DATA","files","fighter");
-                    foreach(string character in request.Characters.Distinct())
+                    if(all)
                     {
-                        progress?.Invoke(5,"Reading selected character: "+character+" (original image is read-only)...");
-                        Directory.CreateDirectory(cache);RunDolphin(tool,"extract -i "+Quote(sourcePath)+" -p DATA -s "+Quote("fighter/"+character)+" -o "+Quote(cache)+" -q",cancellation);
+                        progress?.Invoke(5,"Reading the complete Brawl fighter library (original disc is read-only)...");
+                        discReader.ExtractAll(System.IO.Path.Combine(cache,"DATA","files"));
                     }
-                    if(!paths.All(p=>File.Exists(System.IO.Path.Combine(cache,"DATA","files",p.Replace('/',System.IO.Path.DirectorySeparatorChar)))))throw new InvalidDataException("Selective disc extraction did not produce every listed fighter file.");
+                    else foreach(string character in characters)
+                    {
+                        progress?.Invoke(5,"Reading selected character: "+character+" (built-in reader; original image is read-only)...");
+                        discReader.Extract(character,System.IO.Path.Combine(cache,"DATA","files"));
+                    }
+                    if(!paths.All(p=>File.Exists(System.IO.Path.Combine(cache,"DATA","files",p.Replace('/',System.IO.Path.DirectorySeparatorChar)))))throw new InvalidDataException("Selective disc reading did not produce every listed fighter file.");
                     plan.Source.ContainerSha256=originHash;plan.Source.Bytes=originBytes;plan.Source.Label=System.IO.Path.GetFileNameWithoutExtension(sourcePath);
                 }
                 else
                 {
                     if(!Directory.Exists(sourcePath))throw new DirectoryNotFoundException("Choose an existing extracted game/build folder.");
                     fighterRoot=FighterFolder(sourcePath);
+                    if(all)characters=Directory.EnumerateDirectories(fighterRoot).Select(System.IO.Path.GetFileName).ToArray();
                     plan.Source.Provider="brawl-folder-v1";plan.Source.Label=new DirectoryInfo(sourcePath).Name;
                 }
-                var files=request.Characters.Distinct().SelectMany(c=>NativeFiles(System.IO.Path.Combine(fighterRoot,c),cancellation)).OrderBy(p=>p,StringComparer.OrdinalIgnoreCase).Take(10001).ToArray();
+                var files=(all?NativeFiles(fighterRoot,cancellation):characters.SelectMany(c=>NativeFiles(System.IO.Path.Combine(fighterRoot,c),cancellation))).OrderBy(p=>p,StringComparer.OrdinalIgnoreCase).Take(10001).ToArray();
                 if(files.Length==0||files.Length>10000)throw new InvalidDataException("Native source file inventory exceeds its bounded limit or is empty.");
                 long totalBytes=0;var models=new List<ModelFacts>();var clips=new List<ClipFacts>();
                 foreach(string path in files)
                 {
                     cancellation.ThrowIfCancellationRequested();AnimationLibrary.NoLinks(path);var info=new FileInfo(path);totalBytes+=info.Length;
                     if(totalBytes>4L*1024*1024*1024)throw new InvalidDataException("The selected native fighter subtree exceeds the 4 GB cache/indexing bound.");
-                    string relative="fighter/"+path.Substring(fighterRoot.Length+1).Replace('\\','/');string character=relative.Split('/')[1];
+                    string relative="fighter/"+path.Substring(fighterRoot.Length+1).Replace('\\','/');string character=relative.Split('/').Length>=3?relative.Split('/')[1]:"Shared fighter resources";
                     var mount=new LibraryMount{Id=Guid.NewGuid().ToString("N"),Game=request.Game,GameVersion=plan.Source.GameVersion,LocalPath=path,ContainerSha256=FighterProject.HashFile(path),Bytes=info.Length,
                         BuildEvidence="User-confirmed game/build; "+plan.Source.Provider+"; native resource indices, source hashes and body-track binding checked",GameSourceId=plan.Source.Id,VirtualPath=relative,
                         OriginPath=originHash==null?null:sourcePath,OriginSha256=originHash,OriginBytes=originBytes,OriginWriteTicks=originTicks,OriginPartition=originHash==null?null:"DATA"};plan.Mounts.Add(mount);
                     progress?.Invoke(10+plan.Mounts.Count*75/files.Length,"Indexing "+plan.Mounts.Count+" / "+files.Length+" native fighter packages: "+relative);
-                    using(var held=AnimationLibrary.LockSource(path))
-                    using(var root=NodeFactory.FromFile(null,path))
+                    ReadNativePackage(path,mount,relative,character,plan,models,clips,cancellation);
+                    // Native key/geometry graphs can fragment the 32-bit heap.
+                    // Collect only between disposed packages during explicit
+                    // preparation, never from preview or playback paths.
+                    if(plan.Mounts.Count%8==0)
                     {
-                        if(root==null){plan.Issues.Add(relative+": unsupported native package");continue;}
-                        foreach(var resource in BrawlLibrarySource.Resources(root,cancellation))
-                        {
-                            if(resource.Item1 is MDL0Node model)
-                            {
-                                var metadata=BrawlLibrarySource.DescribeModel(model,resource.Item2);metadata.MountId=mount.Id;metadata.Character=character;metadata.Variant=System.IO.Path.GetFileName(path);
-                                var bones=model.AllBones.ToArray();var semantic=BrawlRetargeter.Characterize(model);
-                                models.Add(new ModelFacts{Model=metadata,Path=relative,Bones=new HashSet<string>(bones.Select(b=>b.Name)),
-                                    Body=new HashSet<string>(semantic.Roles.Where(p=>p.Key=="pelvis"||p.Key=="spine"||p.Key=="chest"||p.Key=="neck"||p.Key.EndsWith(".upperLeg")||p.Key.EndsWith(".upperArm")).Select(p=>bones[p.Value].Name))});
-                                plan.Models.Add(metadata);
-                            }
-                            else if(resource.Item1 is NW4RAnimationNode motion)
-                            {
-                                var metadata=new LibraryAnimation{Id=Guid.NewGuid().ToString("N"),MountId=mount.Id,Name=motion.Name,SourceCharacter=character,ResourceKey=resource.Item2,ResourcePath=motion.TreePath,
-                                    ResourceSha256=BrawlLibrarySource.ResourceHash(motion),Channel=motion is CHR0Node?"CHR0 skeletal":motion.GetType().Name,NativeVersion=motion.Version,FrameCount=motion.FrameCount,Loop=motion.Loop,
-                                    Tags=character+" "+request.Game,AssociationIssue="Original source model requires verified association"};
-                                clips.Add(new ClipFacts{Clip=metadata,Character=character,Bones=motion is CHR0Node?motion.Children.Select(n=>n.Name).ToArray():new string[0]});plan.Clips.Add(metadata);
-                            }
-                        }
+                        System.Runtime.GCSettings.LargeObjectHeapCompactionMode=System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
+                        GC.Collect(2,GCCollectionMode.Forced,true,true);
+                        GC.WaitForPendingFinalizers();
                     }
                 }
-                // Native costume-00 conventions provide candidates, not approval
-                // by name. Build review + native ownership + exact body binding
-                // select a canonical original. Article ambiguity stays unresolved.
+                // Native resource ownership selects candidates; exact authored
+                // track binding remains required. No retarget-role inference is
+                // used for local article/effect animation associations.
                 foreach(var clip in clips)
                 {
                     cancellation.ThrowIfCancellationRequested();
                     if(clip.Clip.Channel!="CHR0 skeletal"||(clip.Clip.NativeVersion!=4&&clip.Clip.NativeVersion!=5)||clip.Clip.FrameCount>4096){clip.Clip.AssociationIssue="Unsupported channel/version";continue;}
-                    var candidates=models.Where(m=>m.Model.Character==clip.Character&&m.Model.HasGeometry&&!m.Model.Shadow&&Regex.IsMatch(System.IO.Path.GetFileName(m.Path),@"^Fit.+00\.(pac|pcs)$",RegexOptions.IgnoreCase)&&
-                        clip.Bones.Length>0&&clip.Bones.Count(b=>!m.Bones.Contains(b))<=clip.Bones.Length/10&&clip.Bones.Count(m.Body.Contains)>=2).ToArray();
-                    if(candidates.Length==0)continue;
-                    if(candidates.Select(c=>c.Model.ResourceSha256).Distinct().Count()!=1)continue;
-                    var chosen=candidates[0];
+                    string scope=ResourceScope(clip.Clip.ResourceKey);
+                    var local=models.Where(m=>m.Model.MountId==clip.Clip.MountId&&ResourceScope(m.Model.ResourceKey)==scope&&
+                        m.Model.HasGeometry&&!m.Model.Shadow&&clip.Bones.Length>0&&clip.Bones.All(m.Bones.Contains)).ToArray();
+                    ModelFacts chosen=UniqueModel(local);
+                    string evidence="same native resource package and resource scope; every authored track binds to a unique original model";
+                    if(chosen==null)
+                    {
+                        // Brawl's native MotionEtc family identifies its costume
+                        // container. This excludes Spy/copy families merely sharing
+                        // a folder, and disambiguates multi-model body containers.
+                        var family=Regex.Match(System.IO.Path.GetFileName(clip.Path),@"^(Fit.+?)MotionEtc(?:_[A-Za-z]{2})?\.(pac|pcs)$",RegexOptions.IgnoreCase|RegexOptions.CultureInvariant);
+                        var candidates=models.Where(m=>m.Model.Character==clip.Character&&m.Model.HasGeometry&&!m.Model.Shadow&&
+                            (family.Success?string.Equals(System.IO.Path.GetFileNameWithoutExtension(m.Path),family.Groups[1].Value+"00",StringComparison.OrdinalIgnoreCase):
+                                Regex.IsMatch(System.IO.Path.GetFileName(m.Path),@"^Fit.+00\.(pac|pcs)$",RegexOptions.IgnoreCase))&&
+                            clip.Bones.Length>0&&clip.Bones.Count(b=>!m.Bones.Contains(b))<=clip.Bones.Length/10&&
+                            (family.Success||clip.Bones.Count(m.Body.Contains)>=2)).ToArray();
+                        if(family.Success)
+                        {
+                            var identified=candidates.Where(m=>string.Equals(m.Model.Name,family.Groups[1].Value+"00",StringComparison.OrdinalIgnoreCase)).ToArray();
+                            if(identified.Length>0)candidates=identified;
+                        }
+                        chosen=UniqueModel(candidates);
+                        evidence="native fighter-folder and MotionEtc/costume family ownership; unique original model identity; at least 90% of authored tracks bind; auxiliary losses explicitly reported";
+                    }
+                    if(chosen==null){clip.Clip.AssociationIssue="No unique native model binding; resources remain indexed and require association review";continue;}
                     clip.Clip.ModelId=chosen.Model.Id;clip.Clip.AssociationIssue=null;
                     var unbound=clip.Bones.Where(b=>!chosen.Bones.Contains(b)).ToArray();clip.Clip.UnboundSourceTracks=unbound.Length==0?null:string.Join(", ",unbound);
-                    clip.Clip.AssociationEvidence="User-confirmed original game/build; native fighter-folder ownership and unique costume-00 body; exact container/resource and skeleton hashes; major body roles and at least 90% of native tracks bind; unbound auxiliary tracks explicitly reported";
+                    clip.Clip.AssociationEvidence="User-confirmed original game/build; exact container/resource and skeleton hashes; "+evidence;
                     if(!chosen.Model.MotionMountIds.Contains(clip.Clip.MountId))chosen.Model.MotionMountIds.Add(clip.Clip.MountId);
                 }
                 if(plan.Source.InventorySha256==null)plan.Source.InventorySha256=Digest(string.Join("\n",plan.Mounts.Select(m=>m.VirtualPath+":"+m.ContainerSha256)));
@@ -314,7 +280,7 @@ namespace BrawlCrate.Studio
                 if(plan.Models.Count==0||plan.Clips.Count==0||plan.Clips.Count>AnimationLibrary.MaximumClips)throw new InvalidDataException("No supported model/motion inventory was found, or the source exceeds catalogue limits.");
                 progress?.Invoke(100,"Complete roster indexed: "+plan.Models.Count+" models, "+plan.Clips.Count+" animation resources.");return plan;
             }
-            finally{sourceLock?.Dispose();}
+            finally{discReader?.Dispose();sourceLock?.Dispose();}
         }
     }
 }

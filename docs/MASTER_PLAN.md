@@ -1,5 +1,39 @@
 # Fighterport master plan
 
+26 October 2026 bounded preview.36-integrated-disc acceptance is complete:
+**4,550 checks / 26 runs / 157 reviewed native PNGs** (labelled overview review,
+plus three full-size new-UI views). Add Brawl indexes the complete fighter library
+without character selection or an external executable: 986 native packages,
+46 character folders, 2,688 models and 25,934 animation resources in the supplied
+RSBE01 revision-1 disc. 13,251 skeletal resources have verified model links;
+ambiguous/unsupported resources remain explicit. Native family/resource ownership
+and track binding disambiguate body models; costume rig/bind checks stay intact.
+Per-package native buffer cleanup bounds whole-roster preparation. Full native
+Model Previewer, original Next, native Undo and reviewed root/boundary policies
+remain unchanged. See [acceptance record](INTEGRATED_DISC_ACCEPTANCE_2026-10-26.md). ONE G1/M2 remains incomplete.
+The user-requested Sonic/Mario attacks and Wait1 trials are separate qualification:
+raw Next and source-local roots remain testable; initial assisted-fit probes expose
+Sonic's optional-worker influence limit and a tilt pre-join fractional-sample
+failure. These are not accepted contact/transition quality or game behavior.
+Physical input/DPI, human usability, broad contact quality and game gates stay open.
+
+26 October 2026 explicit user override: preview.36-integrated-disc removes the
+DolphinTool executable requirement. Inspect inherited BrawlLib/Next disc code and
+implement bounded in-process read-only Brawl ISO/WBFS filesystem discovery and
+automatic complete fighter-library extraction and indexing. Adding a disc needs
+no character picker: include all native fighter resources and verified model,
+animation and costume associations. Ambiguous links remain explicit. No external
+reader process, key-file setup or
+automatic tool download. Remove reader selection from both library routes; retain
+legacy indexed source read/repair compatibility and exact provenance through an
+additive internal reader identity. Keep source/costume preview, editable targets,
+Next, native Undo, root/boundary policies and ONE incomplete G1/M2. Qualify actual
+ISO/WBFS native bytes independently against prior extracted fixture hashes, plus
+procedural malformed/encrypted/sparse/boundary cases and background workflow/UI
+regressions. No RVZ/new-game claim, project migration or disc writing. Publish only
+verified source under DoctorFlux attribution; physical input/DPI, broad contacts
+and game acceptance remain unverified.
+
 26 October 2026 bounded preview.35-brawl-disc-library acceptance is complete:
 **4,207 checks / 25 runs / 156 inspected native PNGs**. Add Brawl accepts a
 verified ISO/WBFS or extracted folder, indexes selected native characters and exposes

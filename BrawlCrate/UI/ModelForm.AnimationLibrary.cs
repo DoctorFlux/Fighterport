@@ -234,17 +234,17 @@ namespace BrawlCrate.UI
         {
             if(_libraryPane==null||!ReferenceEquals(_library,_sharedSourceLibrary))UseSharedSourceLibrary();
             modelEditControl1.StopAnim();ReleaseLibraryPreview();_librarySearchTimer.Stop();
-            var entries=LibraryWork.Run(owner,"Browsing Game Source",(cancel,progress)=>BrawlGameSource.BrowseCharacters(request,cancel));
-            if(entries==null)return;
-            using(var choose=new LibraryGameBrowserDialog(request,entries))if(choose.ShowDialog(owner)!=DialogResult.OK)return;
+            // Adding the source authorizes its complete native inventory. No
+            // character picker or second document state is introduced.
+            request.ApproveBuild=true;request.Characters=null;
             int added=0;
-            var indexed=LibraryWork.Run(owner,"Indexing Selected Characters",(cancel,progress)=>{
+            var indexed=LibraryWork.Run(owner,"Adding Brawl Library",(cancel,progress)=>{
                 var plan=BrawlGameSource.Prepare(request,Path.Combine(_library.DirectoryPath,"NativeCache"),cancel,(percent,message)=>progress.Report(message));
                 cancel.ThrowIfCancellationRequested();progress.Report("Publishing the complete source catalogue...");added=_library.RegisterGame(plan,cancel);return plan;
             });
             if(indexed==null)return;
             _librarySearch.Text="";_librarySearchTimer.Stop();RefreshLibrary();
-            _fighterStatus.Text="Indexed "+request.Characters.Length+" characters · "+added+" native animation resources · "+indexed.Issues.Count+" source issues. Original game remains read-only.";
+            _fighterStatus.Text="Added "+indexed.Mounts.Select(m=>m.VirtualPath.Split('/')).Where(p=>p.Length>=3).Select(p=>p[1]).Distinct().Count()+" characters · "+added+" native animation resources · "+indexed.Issues.Count+" source issues. Original game remains read-only.";
             if(indexed.Issues.Count>0)MessageBox.Show(owner,string.Join(Environment.NewLine,indexed.Issues.Take(12)),"Source inventory issues",MessageBoxButtons.OK,MessageBoxIcon.Information);
         }
         private LibraryImportPlan InventoryLibrarySource(LibraryRegistration request)

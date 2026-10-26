@@ -56,7 +56,7 @@ namespace BrawlCrate.Studio
             }
             var location = data.GameLocations.SingleOrDefault(l => l.Id == canonicalMount.GameSourceId);
             if (location == null || !location.Indexed ||
-                (location.Provider != "brawl-folder-v1" && location.Provider != "dolphin-brawl-disc-v1") ||
+                (location.Provider != "brawl-folder-v1" && !BrawlGameSource.IsDiscProvider(location.Provider)) ||
                 candidateMount.GameSourceId != location.Id || motionMount.GameSourceId != location.Id) return false;
             string folder = CharacterFolder(canonicalMount.VirtualPath);
             return folder != null && CharacterFolder(candidateMount.VirtualPath) == folder && CharacterFolder(motionMount.VirtualPath) == folder;
