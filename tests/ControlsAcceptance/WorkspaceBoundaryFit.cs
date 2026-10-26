@@ -69,6 +69,28 @@ internal static partial class Program
         }
         Check(new JavaScriptSerializer().Serialize(window.ReadOptions())==originalOptions,"Range layout probes restore every fitting setting before preparation");
     }
+    static void RecoveryModeSetupChecks(TransitionFitDialog window,MDL0Node model,CHR0Node source,string[] contacts,string[] roots)
+    {
+        if(contacts.Length==0)return;
+        var json=new JavaScriptSerializer();var original=window.ReadOptions();var mode=SimpleControl<CheckBox>(window,"transition_boundaryContactRecovery");
+        mode.Checked=false;SimpleControl<CheckBox>(window,"transition_exitContactRecovery").Checked=false;
+        foreach(string key in new[]{"contacts","translation","scale","entryFrozen","exitFrozen"})SimpleControl<CheckBox>(window,"transition_"+key).Checked=false;
+        SimpleControl<NumericUpDown>(window,"transition_entryFrame").Value=2;SimpleControl<NumericUpDown>(window,"transition_exitFrame").Value=2;
+        string manual=json.Serialize(window.ReadOptions());mode.Checked=true;var configured=window.ReadOptions();
+        Check(configured.PreserveContacts&&configured.Components==7&&configured.EntryFrame==0&&configured.ExitFrame==0&&configured.EntryFrozen&&configured.ExitFrozen,"Enabling reviewed contact recovery configures preserved contacts, all transforms and frozen first target poses together");
+        Check(new[]{"contacts","translation","rotation","scale","entryFrozen","exitFrozen","entryFrame","exitFrame"}.All(key=>!SimpleControl<Control>(window,"transition_"+key).Enabled),"Recovery's required dependent options cannot be contradicted by hidden advanced controls");
+        foreach(var mutation in new[]{"contacts","components","reference","overlap"})
+        {
+            var invalid=json.Deserialize<TransitionFitOptions>(json.Serialize(configured));string expected;
+            switch(mutation){case "contacts":invalid.PreserveContacts=false;expected="contact preservation";break;case "components":invalid.Components=3;expected="all scale";break;case "reference":invalid.EntryFrame=1;expected="frozen first frame";break;default:invalid.EntrySamples=source.FrameCount-1;expected="overlap";break;}
+            string message=null;try{NativeTransitionContacts.ReviewExitRecovery(invalid,source.FrameCount,source.Loop,contacts,new System.Collections.Generic.HashSet<string>(roots),true);}catch(InvalidOperationException error){message=error.Message;}
+            Check(message!=null&&message.Contains(expected),"Independent recovery validation retains its gate and identifies the actual invalid "+mutation+" setting");
+        }
+        mode.Checked=false;Check(json.Serialize(window.ReadOptions())==manual,"Turning recovery off restores the user's prior advanced FK reference/component/contact settings");
+        mode.Checked=true;var explicitPreset=json.Deserialize<TransitionFitOptions>(manual);explicitPreset.Components=1;explicitPreset.EntryFrame=2;explicitPreset.ExitFrame=2;
+        window.RestoreOptions(explicitPreset);var restored=window.ReadOptions();Check(restored.Components==1&&restored.EntryFrame==2&&restored.ExitFrame==2&&!restored.EntryFrozen&&!restored.ExitFrozen&&!restored.PreserveContacts&&!restored.BoundaryContactRecovery&&!restored.ExitContactRecovery&&restored.Entry==explicitPreset.Entry&&restored.Exit==explicitPreset.Exit&&restored.Bones.OrderBy(n=>n,StringComparer.Ordinal).SequenceEqual(explicitPreset.Bones.OrderBy(n=>n,StringComparer.Ordinal)),"Explicitly restored FK settings replace recovery defaults and preserve the exact reference/mask identities: "+json.Serialize(restored));
+        window.RestoreOptions(original);Check(window.ReadOptions().Components==7&&window.ReadOptions().EntryFrame==0&&window.ReadOptions().ExitFrame==0,"Restored recovery settings retain canonical first-pose/all-component policy");
+    }
     static async Task WorkspaceBoundaryFit(string[] args,string output)
     {
         if(!PrivateDesktop)throw new InvalidOperationException("Start/end fitting uses a private desktop only.");
@@ -144,6 +166,7 @@ internal static partial class Program
                         Check(window.ReadOptions().EntrySamples==5&&window.ReadOptions().ExitSamples==exitSamples,"Simple displayed join frames map exactly to existing inclusive native sample settings");
                         var summary=SimpleControl<Label>(window,"transitionRanges");
                         Check(summary.Text.Contains("1–5")&&summary.Text.Contains((exitJoin+1)+"–"+source.FrameCount)&&summary.Text.Contains("join frames shared"),"Live summary exposes both transition ranges, unchanged middle and shared joins");
+                        RecoveryModeSetupChecks(window,model,source,contacts,roots);
                         BoundaryRangeSelectionLayout(form,window);
                         SimpleControl<CheckBox>(window,"transition_boundaryContactRecovery").Checked=contacts.Length>0;
                         SimpleControl<CheckBox>(window,"transition_binding").Checked=true;

@@ -87,7 +87,7 @@ namespace BrawlCrate.UI
                 void VerifyReferences(){if(referenceHashes==null)throw new InvalidOperationException("Prepare the transition first.");foreach(var proof in referenceHashes){var native=choices.Single(c=>c.Key==proof.Key);native.Validate?.Invoke();if(!native.External&&!project.RegisteredAssets().Contains(native.Asset)||NativeControlHash(native.Clip,".chr0")!=proof.Value)throw new InvalidOperationException("A transition reference changed. Prepare the fit again.");}}
                 AddViewerFittingReferences(choices);
                 var fittingProof=FittingBindingEvidence(choices,model);
-                using(var window=new TransitionFitDialog(a,beforeModel,b,afterModel,source,choices.ToArray(),modelEditControl1.ModelPanel.CurrentViewport,references,pinReview,NativeTransitionContacts.HasBakedSupport(selected.Asset)||currentPins.Any(pin=>pin.Soft),CurrentRecoveryBinding()?_protectedMotionBones.ToArray():null,CurrentRecoveryBinding()?_referenceFitControls:null))
+                using(var window=new TransitionFitDialog(a,beforeModel,b,afterModel,source,choices.ToArray(),modelEditControl1.ModelPanel.CurrentViewport,references,pinReview,NativeTransitionContacts.HasBakedSupport(selected.Asset)||currentPins.Any(pin=>pin.Soft),CurrentRecoveryBinding()?_protectedMotionBones.ToArray():null,CurrentRecoveryBinding()?_referenceFitControls:null,NativeTransitionContacts.HasBakedSupport(selected.Asset)))
                 {
                     window.BindingVerified=options=>FittingBindingKnown(selected,options,choices,model,fittingProof);
                     window.ChooseLibraryReference=side=>PickFittingLibraryReference(window,model,choices,referenceLeases);

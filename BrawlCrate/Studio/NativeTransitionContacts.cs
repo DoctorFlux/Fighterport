@@ -43,7 +43,15 @@ namespace BrawlCrate.Studio
             if(options.ExitContactRecovery&&options.BoundaryContactRecovery)throw new InvalidOperationException("Use either legacy exit recovery or start/end recovery.");
             if(loop)throw new NotSupportedException("Exit contact recovery requires a non-looping attack. Stored-loop wrap adaptation remains separate work.");
             if(!currentBinding||protectedMotion==null)throw new InvalidOperationException("Set up the current animation controls and review this exact native rig before enabling exit contact recovery.");
-            if(options.BoundaryContactRecovery&&(!options.PreserveContacts||options.Components!=7||options.Entry==null&&options.Exit==null||options.Entry!=null&&(!options.EntryFrozen||options.EntryFrame!=0||options.EntrySamples<2||options.EntrySamples>=frames)||options.Exit!=null&&(!options.ExitFrozen||options.ExitFrame!=0||options.ExitSamples<2||options.ExitSamples>=frames)||(options.Entry==null?0:options.EntrySamples-1)>=(options.Exit==null?frames-1:frames-options.ExitSamples)))throw new InvalidOperationException("Start/end recovery requires non-overlapping ranges, all components and the frozen first frame of each target pose.");
+            if(options.BoundaryContactRecovery)
+            {
+                if(!options.PreserveContacts)throw new InvalidOperationException("Hip/leg recovery requires existing contact preservation. Turn recovery off and on to configure its required settings.");
+                if(options.Components!=7)throw new InvalidOperationException("Hip/leg recovery fits all scale, rotation and translation components. Turn recovery off for partial-component FK fitting.");
+                if(options.Entry==null&&options.Exit==null)throw new InvalidOperationException("Choose a start or end reference pose for hip/leg recovery.");
+                if(options.Entry!=null&&(!options.EntryFrozen||options.EntryFrame!=0)||options.Exit!=null&&(!options.ExitFrozen||options.ExitFrame!=0))throw new InvalidOperationException("Hip/leg recovery uses only the frozen first frame of each enabled target pose. Turn recovery off to choose another frame or a moving reference.");
+                if(options.Entry!=null&&(options.EntrySamples<2||options.EntrySamples>=frames)||options.Exit!=null&&(options.ExitSamples<2||options.ExitSamples>=frames))throw new InvalidOperationException("Each recovery range needs at least two frames and must leave part of the original attack unchanged.");
+                if((options.Entry==null?0:options.EntrySamples-1)>=(options.Exit==null?frames-1:frames-options.ExitSamples))throw new InvalidOperationException("Start and end recovery ranges overlap. Shorten a range to leave an unchanged middle between the joins.");
+            }
             if(options.ExitContactRecovery&&(!options.PreserveContacts||options.Entry!=null||options.Exit==null||!options.ExitFrozen||options.ExitFrame!=0||options.Components!=7||options.ExitSamples<2||options.ExitSamples>=frames))
                 throw new InvalidOperationException("Exit contact recovery requires preserved contacts, no entry fit, all scale/rotation/translation components and the frozen first frame of an exact exit reference.");
             var released=contactBones.Where(name=>!protectedMotion.Contains(name)).ToArray();

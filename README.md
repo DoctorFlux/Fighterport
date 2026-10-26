@@ -2,8 +2,9 @@
 
 This is the public unified source repository at https://github.com/DoctorFlux/Fighterport.
 It imports the BrawlCrate-based Next preview.14 source and integrated owned engine;
-the current implementation is **preview.41-fitting-references**.
-See the [fitting reference acceptance](docs/FITTING_REFERENCES_ACCEPTANCE_2026-10-26.md),
+the current implementation is **preview.42-recovery-setup**.
+See the [recovery setup acceptance](docs/RECOVERY_SETUP_ACCEPTANCE_2026-10-26.md),
+[fitting reference acceptance](docs/FITTING_REFERENCES_ACCEPTANCE_2026-10-26.md),
 [automatic-preview and same-window acceptance](docs/LIBRARY_FLOW_ACCEPTANCE_2026-10-26.md)
 and the [source/fit and saved-source acceptance](docs/SOURCE_FIT_WORKFLOW_ACCEPTANCE_2026-10-26.md).
 The two predecessor repositories are private preserved histories.
@@ -88,6 +89,13 @@ the same retargeted clip with native Undo. **Save** keeps those changes in the
 project; **Animation → Export verified animation...** writes the fitted CHR0.
 **Save as a new animation** is optional for an independent revision. Multi-clip
 native containers use that copy route to keep fitting recipes unambiguous.
+Body fitting includes hips and legs. For an aerial without baked support contacts,
+choose the target Fall pose and **Preview fit**; no contact-recovery switch is
+needed. Where recorded support paths exist, **Adapt hips and legs in transitions**
+sets the required all-component, frozen-first-frame/contact-protection policy.
+Switching it off restores previous advanced FK settings. Visible ranges must leave
+an unchanged middle; attack motion-position curves retain their original travel.
+
 
 The **Animation** menu also provides review results, recorded-source comparison,
 loop inspection, controls, source timing/batches and verified set export. Native

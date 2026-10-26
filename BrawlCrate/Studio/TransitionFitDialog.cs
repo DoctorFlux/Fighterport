@@ -20,7 +20,9 @@ namespace BrawlCrate.Studio
         internal Action CancelWork;
         internal Func<string,TransitionClipChoice> ChooseLibraryReference;
         internal Func<TransitionFitOptions,bool> BindingVerified;
-        bool bindingAutomatic,updatingBinding;
+        bool bindingAutomatic,updatingBinding,updatingRecovery;
+        readonly Dictionary<string,object> beforeRecovery=new Dictionary<string,object>();
+        readonly bool hasBakedSupport;
         internal string PreparedReport;
         internal bool Busy {get;private set;}
         internal bool SaveAsNew => ((CheckBox)inputs["saveAsNew"]).Checked;
@@ -39,9 +41,9 @@ namespace BrawlCrate.Studio
         readonly CheckedListBox bones=new CheckedListBox{Name="transitionBones",Width=306,Height=155,CheckOnClick=true};
         string preparedOptions;Action layoutFields;TableLayoutPanel transportLayout,contentLayout;FlowLayoutPanel footer;
         readonly Stopwatch previewTime=new Stopwatch();int previewStart;
-        internal TransitionFitDialog(ResourceNode sourceRoot,MDL0Node sourceModel,ResourceNode targetRoot,MDL0Node targetModel,CHR0Node motion,TransitionClipChoice[] choices,ModelPanelViewport viewer,IEnumerable<ResourceNode> references,string pinReview=null,bool preserveContactsByDefault=false,IEnumerable<string> protectedMotionControls=null,IEnumerable<string> referenceFitControls=null)
+        internal TransitionFitDialog(ResourceNode sourceRoot,MDL0Node sourceModel,ResourceNode targetRoot,MDL0Node targetModel,CHR0Node motion,TransitionClipChoice[] choices,ModelPanelViewport viewer,IEnumerable<ResourceNode> references,string pinReview=null,bool preserveContactsByDefault=false,IEnumerable<string> protectedMotionControls=null,IEnumerable<string> referenceFitControls=null,bool hasBakedSupport=true)
         {
-            loading=true;source=motion;clips=choices.ToList();protectedMotion=protectedMotionControls?.Distinct(StringComparer.Ordinal).ToArray();referenceControls=referenceFitControls?.Distinct(StringComparer.Ordinal).ToArray()??new string[0];Text="Fit start and end";AutoScaleMode=AutoScaleMode.None;Font=WorkspaceAppearance.Font;ClientSize=new Size(1240,820);MinimumSize=new Size(920,640);StartPosition=FormStartPosition.CenterParent;ShowInTaskbar=false;
+            loading=true;this.hasBakedSupport=hasBakedSupport;source=motion;clips=choices.ToList();protectedMotion=protectedMotionControls?.Distinct(StringComparer.Ordinal).ToArray();referenceControls=referenceFitControls?.Distinct(StringComparer.Ordinal).ToArray()??new string[0];Text="Fit start and end";AutoScaleMode=AutoScaleMode.None;Font=WorkspaceAppearance.Font;ClientSize=new Size(1240,820);MinimumSize=new Size(920,640);StartPosition=FormStartPosition.CenterParent;ShowInTaskbar=false;
             SourceView=new FittingModelView(sourceModel,sourceRoot,"Original attack · read-only",true,viewer,references){Dock=DockStyle.Fill};
             TargetView=new FittingModelView(targetModel,targetRoot,"Fitted result",false,viewer,references){Dock=DockStyle.Fill};
             var views=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=2};views.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,50));views.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,50));views.Controls.Add(SourceView,0,0);views.Controls.Add(TargetView,1,0);
@@ -81,7 +83,11 @@ namespace BrawlCrate.Studio
             var both=new Button{Name="transitionBoth",Text="Use for both ends",AutoSize=true};
             both.Click+=(s,e)=>{if(Busy)return;((ComboBox)inputs["exit"]).SelectedIndex=((ComboBox)inputs["entry"]).SelectedIndex;((CheckBox)inputs["exitEnabled"]).Checked=B("entryEnabled");((NumericUpDown)inputs["exitFrame"]).Value=((NumericUpDown)inputs["entryFrame"]).Value;((CheckBox)inputs["exitFrozen"]).Checked=((CheckBox)inputs["entryFrozen"]).Checked;};inputs["both"]=both;fields.Controls.Add(both);
             fields.Controls.Add(ranges);
-            Check("boundaryContactRecovery","Adapt hips and legs in transitions").Checked=preserveContactsByDefault;
+            var recovery=Check("boundaryContactRecovery",hasBakedSupport?"Adapt hips and legs in transitions":"No locked hip / leg paths to recover");
+            recovery.Enabled=hasBakedSupport;recovery.Checked=hasBakedSupport&&preserveContactsByDefault;
+            recovery.AccessibleDescription=hasBakedSupport?"Adapts reviewed locked support paths within enabled transitions. Uses all transform components, preserved contact protections and frozen reference frame 1. Attack motion-position curves remain unchanged.":"This animation has no baked support paths to release. Ordinary start/end body fitting already includes the hips and legs.";
+            hints.SetToolTip(recovery,recovery.AccessibleDescription);
+            var recoveryHint=Label(hasBakedSupport?"Recovery uses frozen reference frame 1 and all transform components.":"Body fitting already includes hips and legs.");recoveryHint.Name="transitionRecoveryHint";
             Label("Components / existing native bones",true);Check("rotation","Match rotation channels").Checked=true;Check("translation","Match translation channels").Checked=true;Check("scale","Match scale channels").Checked=true;Check("root","Preserve translation on skeleton roots").Checked=true;var equivalents=Check("nearest","Nearest equivalent XYZ angles (180/360)");equivalents.Checked=true;equivalents.AccessibleDescription="Choose a complete orientation-equivalent XYZ triplet near the original join for start and end fitting. Coupled 180-degree changes preserve the pose; individual 360-degree turns are also considered. Reviewed motion-position curves stay unchanged; other controls follow the selected boundary policy.";
             var matchControls=Check("matchReferenceControls","Fit reference controls; retain attack travel");
             matchControls.Enabled=referenceControls.Length>0;matchControls.Checked=matchControls.Enabled;
@@ -117,12 +123,12 @@ namespace BrawlCrate.Studio
             Check("binding","These animations use this model’s native skeleton and units");Label("Loop flag is retained. Inspect its seam. This authors FK curves; contacts, clearance, joint limits and game-state behavior are not validated.");
             // Keep the everyday flow short. Preserve all native options and names
             // under an explicit disclosure, rather than introducing a second mode.
-            var basic=new HashSet<string>{"transition_saveAsNew","transition_entryEnabled","transition_entry","library_entry","transition_entrySamplesLabel","transition_entrySamples","preview_entry","transition_exitEnabled","transition_exit","library_exit","transition_exitStartLabel","transition_exitStart","preview_exit","transitionBoth","transitionRanges","transition_boundaryContactRecovery","transition_binding"};
+            var basic=new HashSet<string>{"transition_saveAsNew","transition_entryEnabled","transition_entry","library_entry","transition_entrySamplesLabel","transition_entrySamples","preview_entry","transition_exitEnabled","transition_exit","library_exit","transition_exitStartLabel","transition_exitStart","preview_exit","transitionBoth","transitionRanges","transition_boundaryContactRecovery","transition_binding","transitionRecoveryHint"};
             var allFields=fields.Controls.Cast<Control>().ToArray();
             // Title and introduction remain visible; everything else is classified
             // explicitly by control identity so translated captions do not matter.
             foreach(var control in allFields.Skip(2).Where(c=>!basic.Contains(c.Name)))advanced.Controls.Add(control);
-            var ordered=new[]{"transition_saveAsNew","transition_entryEnabled","transition_entry","library_entry","transition_entrySamplesLabel","transition_entrySamples","preview_entry","transitionBoth","transition_exitEnabled","transition_exit","library_exit","transition_exitStartLabel","transition_exitStart","preview_exit","transitionRanges","transition_boundaryContactRecovery","transition_binding"};
+            var ordered=new[]{"transition_saveAsNew","transition_entryEnabled","transition_entry","library_entry","transition_entrySamplesLabel","transition_entrySamples","preview_entry","transitionBoth","transition_exitEnabled","transition_exit","library_exit","transition_exitStartLabel","transition_exitStart","preview_exit","transitionRanges","transition_boundaryContactRecovery","transitionRecoveryHint","transition_binding"};
             ordered=new[]{"transition_binding"}.Concat(ordered.Where(n=>n!="transition_binding")).ToArray();
             for(int i=0;i<ordered.Length;i++){var c=fields.Controls.Cast<Control>().Single(v=>v.Name==ordered[i]);fields.Controls.SetChildIndex(c,i+2);}
             // FlowLayout caches fixed-height native editor requests across font
@@ -175,7 +181,7 @@ namespace BrawlCrate.Studio
             review.CheckedChanged+=(s,e)=>{apply.Enabled=!Busy&&Candidate!=null&&review.Checked;if(review.Checked&&Candidate!=null){referenceSide=null;ShowFrame();}};
             frame.ValueChanged+=(s,e)=>ShowFrame();play.Click+=(s,e)=>{if(Busy)return;if(clock.Enabled)Stop();else{previewStart=frame.Value;previewTime.Restart();clock.Start();play.Text="Pause Preview";}};clock.Tick+=(s,e)=>frame.Value=1+(previewStart-1+(int)(previewTime.Elapsed.TotalSeconds*60))%frame.Maximum;close.Click+=(s,e)=>Close();CancelButton=close;
             FormClosing+=(s,e)=>{generation++;CancelWork?.Invoke();Stop();};FormClosed+=(s,e)=>{clock.Dispose();hints.Dispose();Discard();};
-            loading=false;UpdateReference("entry");UpdateReference("exit");UpdateRanges();ShowFrame();report.Text="Choose exact native references, review bindings, and prepare a separate result. No retargeter or contact solver runs during preview playback.";DarkTheme.Apply(this);ApplyTextSize();Shown+=(s,e)=>{SourceView.ShownFrame();TargetView.ShownFrame();};
+            loading=false;UpdateReference("entry");UpdateReference("exit");UpdateRecoveryMode();UpdateRanges();ShowFrame();report.Text="Choose exact native references, review bindings, and prepare a separate result. No retargeter or contact solver runs during preview playback.";DarkTheme.Apply(this);ApplyTextSize();Shown+=(s,e)=>{SourceView.ShownFrame();TargetView.ShownFrame();};
         }
         internal void ApplyTextSize()
         {
@@ -233,17 +239,17 @@ namespace BrawlCrate.Studio
             }
             ranges.AccessibleDescription=ranges.Text+". Inclusive native display frames; unchanged join poses belong to both adjacent sections.";
         }
-        void Changed(){if(loading||updatingBinding)return;UpdateBinding();generation++;if(Busy){CancelWork?.Invoke();SetBusy(false);}Discard();report.Text="Settings changed; prepare a new result.";}
+        void Changed(){if(loading||updatingBinding||updatingRecovery)return;UpdateRecoveryMode();UpdateBinding();generation++;if(Busy){CancelWork?.Invoke();SetBusy(false);}Discard();report.Text="Settings changed; prepare a new result.";}
         internal void RestoreOptions(TransitionFitOptions value)
         {
-            loading=true;
+            beforeRecovery.Clear();loading=true;
             void Set(string key,double v){var n=(NumericUpDown)inputs[key];n.Value=Math.Max(n.Minimum,Math.Min(n.Maximum,(decimal)v));}
             foreach(string side in new[]{"entry","exit"}){var choice=(ComboBox)inputs[side];string key=side=="entry"?value.Entry:value.Exit;choice.SelectedIndex=Math.Max(0,clips.FindIndex(c=>c.Key==key)+1);((CheckBox)inputs[side+"Enabled"]).Checked=key!=null&&Choice(side)!=null;UpdateReference(side);Set(side+"Frame",(side=="entry"?value.EntryFrame:value.ExitFrame)+1);Set(side+"Samples",side=="entry"?value.EntrySamples:value.ExitSamples);Set(side+"Rate",side=="entry"?value.EntryRate:value.ExitRate);((CheckBox)inputs[side+"Frozen"]).Checked=side=="entry"?value.EntryFrozen:value.ExitFrozen;}
             ((CheckBox)inputs["matchReferenceControls"]).Checked=value.MatchReferenceControls&&referenceControls.Length>0;
             ((CheckBox)inputs["rotation"]).Checked=(value.Components&2)!=0;((CheckBox)inputs["scale"]).Checked=(value.Components&1)!=0;((CheckBox)inputs["translation"]).Checked=(value.Components&4)!=0;((CheckBox)inputs["root"]).Checked=value.PreserveRootTranslation;((CheckBox)inputs["nearest"]).Checked=value.NearestEquivalentAngles;((CheckBox)inputs["contacts"]).Checked=value.PreserveContacts;((CheckBox)inputs["boundaryContactRecovery"]).Checked=value.BoundaryContactRecovery;((CheckBox)inputs["exitContactRecovery"]).Checked=value.ExitContactRecovery;((CheckBox)inputs["binding"]).Checked=false;
             ((CheckBox)inputs["preventFootDipping"]).Checked=value.PreventFootDipping;Set("floorHeight",value.FloorHeight);((CheckBox)inputs["floorReviewed"]).Checked=false;
             for(int i=0;i<bones.Items.Count;i++)bones.SetItemChecked(i,value.Bones.Contains(Convert.ToString(bones.Items[i])));((TextBox)inputs["protected"]).Text=string.Join("; ",value.Protected.Select(p=>(p.Start+1).ToString(CultureInfo.CurrentCulture)+"-"+(p.End+1).ToString(CultureInfo.CurrentCulture)));
-            loading=false;UpdateRanges();UpdateBinding();Discard();report.Text="Saved fitting settings restored. This prepares from the CURRENT animation, including later pin edits. Review live reference bindings again; missing live references are disabled. Frozen originals remain available in Transition Fit Details.";
+            loading=false;UpdateRecoveryMode();UpdateRanges();UpdateBinding();Discard();report.Text="Saved fitting settings restored. This prepares from the CURRENT animation, including later pin edits. Review live reference bindings again; missing live references are disabled. Frozen originals remain available in Transition Fit Details.";
         }
         internal void AddReference(TransitionClipChoice picked,string side)
         {
@@ -263,6 +269,39 @@ namespace BrawlCrate.Studio
                 box.AccessibleDescription=known?"Exact recorded rig/source evidence matches this target. Preview still requires result review; floor and pin protections remain enforced.":"Confirm imported native clips belong to the current target model. Library references are restricted to verified matching rigs.";
             }
             finally{updatingBinding=false;}
+        }
+        void UpdateRecoveryMode()
+        {
+            if(loading||updatingRecovery)return;
+            updatingRecovery=true;
+            try
+            {
+                // Recovery is an explicit mode, not a partial set of hidden flags.
+                // Keep the prior advanced FK settings for switching it off again.
+                if(!hasBakedSupport){((CheckBox)inputs["boundaryContactRecovery"]).Checked=false;((CheckBox)inputs["exitContactRecovery"]).Checked=false;}
+                bool active=B("boundaryContactRecovery")||B("exitContactRecovery");
+                string[] checks={"contacts","rotation","translation","scale","entryFrozen","exitFrozen"};
+                string[] frames={"entryFrame","exitFrame"};
+                if(active)
+                {
+                    if(beforeRecovery.Count==0)
+                    {
+                        foreach(string key in checks)beforeRecovery[key]=B(key);
+                        foreach(string key in frames)beforeRecovery[key]=((NumericUpDown)inputs[key]).Value;
+                    }
+                    foreach(string key in checks)((CheckBox)inputs[key]).Checked=true;
+                    foreach(string key in frames)((NumericUpDown)inputs[key]).Value=1;
+                }
+                else if(beforeRecovery.Count>0)
+                {
+                    foreach(string key in checks)((CheckBox)inputs[key]).Checked=(bool)beforeRecovery[key];
+                    foreach(string key in frames){var number=(NumericUpDown)inputs[key];number.Value=Math.Min(number.Maximum,Math.Max(number.Minimum,(decimal)beforeRecovery[key]));}
+                    beforeRecovery.Clear();
+                }
+                foreach(string key in checks.Concat(frames))inputs[key].Enabled=!active;
+                inputs["boundaryContactRecovery"].Enabled=inputs["exitContactRecovery"].Enabled=hasBakedSupport;
+            }
+            finally{updatingRecovery=false;}
         }
         void UpdateReference(string side){var choice=Choice(side);var value=(NumericUpDown)inputs[side+"Frame"];value.Maximum=Math.Max(1,choice?.Clip.FrameCount??1);if(value.Value>value.Maximum)value.Value=value.Maximum;}
         void PreviewReference(string side)

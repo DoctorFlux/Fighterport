@@ -1,5 +1,28 @@
 # Current milestone M2 — simpler native workspace
 
+26 October 2026 preview.42-recovery-setup is accepted: **829 checks /
+6 admitted background runs / 37 inspected native PNGs**. The exact original Next
+Sonic AttackAirLw to Mario Fall case prepares at 1-3 / 35-44, and end-only fitting
+also passes. Ordinary body fitting includes hips/legs when no baked contact paths
+exist; contact recovery is unavailable there. Eligible recovery configures its
+required preserved-contact, all-component, frozen-first-pose settings together,
+restores prior FK options when switched off, and respects explicit saved presets.
+Specific diagnostics retain every validation gate. Middle curves, attack travel,
+full previewer, Next and native Undo/Save/export remain intact. See [acceptance](../RECOVERY_SETUP_ACCEPTANCE_2026-10-26.md).
+ONE G1/M2 stays incomplete; physical input/DPI, universal contacts and games stay open.
+
+
+26 October 2026 authorized preview.42-recovery-setup: reproduce the reported
+Sonic AttackAirLw to Mario Fall fitting failure at display ranges 1-3 / 35-44.
+Correct simple recovery setup and explain actual eligibility/invalid settings
+without weakening contact, pin, root, timing or numeric gates. Keep ordinary body
+fitting available for animations without baked support paths, full native previewer,
+original Next, existing Undo/Save/export and immutable sources. Qualify authentic
+source transfer, start/end Fall first-pose fitting, exact middle/travel preservation
+and failure/restore paths on private desktops; inspect captures before publication.
+ONE G1/M2 stays incomplete; no new solver/rig/schema or universal game/contact claim.
+
+
 26 October 2026 preview.41-fitting-references is accepted: **947 checks /
 7 admitted background runs / 45 inspected native PNGs**. Unprepared or blocked
 fitting retains the labelled original animation instead of a misleading bind-pose
