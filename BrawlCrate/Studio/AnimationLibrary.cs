@@ -54,6 +54,8 @@ namespace BrawlCrate.Studio
         private Dictionary<string,LibraryModel> indexedModels;
         private Dictionary<string,LibraryMount> indexedMounts;
         private readonly object cacheSync=new object();
+        private LibraryCatalogue costumeCatalogue;
+        private readonly Dictionary<string,LibraryCostumeOption[]> costumeChoices=new Dictionary<string,LibraryCostumeOption[]>(StringComparer.Ordinal);
         private string snapshotPath;
         private long snapshotTicks, snapshotBytes;
         // Browsing never reparses the complete catalogue on each keystroke.
@@ -378,6 +380,7 @@ namespace BrawlCrate.Studio
                 };
                 if(mount.OriginPath!=null)
                 {
+                    BrawlGameSource.EnsureSingleDiscSource(mount.OriginPath);
                     var origin=file(mount.OriginPath);if(!origin.Exists)return LibrarySourceState.Missing;
                     if(force)NoLinks(mount.OriginPath);
                     if((origin.Attributes&FileAttributes.ReparsePoint)!=0)return LibrarySourceState.Missing;
@@ -456,13 +459,47 @@ namespace BrawlCrate.Studio
             return found.Skip(offset).Take(pageSize).Select(c=>new LibrarySearchItem{Clip=c.Clip,Model=c.Model,Motion=c.Motion,State=State(data,c.Clip,false,states,indexedModels,indexedMounts,files)}).ToList();
             }
         }
-        public LibrarySourceLease Open(string clipId)
+        // Costume enumeration uses the immutable metadata generation only. In
+        // particular it never hashes a source or decodes a model while browsing.
+        public LibraryCostumeOption[] GetCostumes(string clipId)
+        {
+            if(!Id(clipId))throw new InvalidDataException("Choose an exact registered library clip identity before listing costumes.");
+            lock(cacheSync)
+            {
+                var data=SearchSnapshot();
+                if(!ReferenceEquals(costumeCatalogue,data)){costumeCatalogue=data;costumeChoices.Clear();}
+                if(!costumeChoices.TryGetValue(clipId,out var choices))
+                {
+                    var clip=data.Clips.SingleOrDefault(c=>c.Id==clipId)??throw new InvalidDataException("This immutable library clip is no longer registered.");
+                    choices=BrawlLibraryCostumes.Choices(data,clip);
+                    if(costumeChoices.Count>=64)costumeChoices.Clear();
+                    costumeChoices.Add(clipId,choices);
+                }
+                return (LibraryCostumeOption[])choices.Clone();
+            }
+        }
+
+        public LibrarySourceLease Open(string clipId)=>Open(clipId,null);
+
+        public LibrarySourceLease Open(string clipId,string modelId)
         {
             Interlocked.Increment(ref DiagnosticOpens);
             var data=Read();var clip=data.Clips.SingleOrDefault(c=>c.Id==clipId)??throw new InvalidDataException("This immutable library clip is no longer registered.");
             var state=State(data,clip,true);
             if(state!=LibrarySourceState.Available)throw new InvalidOperationException("Library source: "+state+". Repair the exact source or review its model association first.");
-            var model=data.Models.Single(m=>m.Id==clip.ModelId);var a=data.Mounts.Single(m=>m.Id==model.MountId);var b=data.Mounts.Single(m=>m.Id==clip.MountId);
+            var model=data.Models.Single(m=>m.Id==clip.ModelId);
+            if(modelId!=null&&modelId!=model.Id)
+            {
+                var choice=BrawlLibraryCostumes.Choices(data,clip).SingleOrDefault(c=>c.ModelId==modelId);
+                if(choice==null||!choice.Available)throw new InvalidDataException(choice?.UnavailableReason??"This exact model is not a verified Brawl costume for the selected source animation/build.");
+                model=data.Models.Single(m=>m.Id==modelId);
+            }
+            var a=data.Mounts.Single(m=>m.Id==model.MountId);var b=data.Mounts.Single(m=>m.Id==clip.MountId);
+            if(model.Id!=clip.ModelId)
+            {
+                var modelState=MountState(a,true);
+                if(modelState!=LibrarySourceState.Available)throw new InvalidOperationException("Library costume source: "+modelState+". Repair the exact source before previewing or transferring it.");
+            }
             var originSource=a.GameSourceId==null?null:data.GameLocations.Single(l=>l.Id==a.GameSourceId);
             var lease=new LibrarySourceLease{ModelPath=a.LocalPath};
             try
@@ -485,7 +522,7 @@ namespace BrawlCrate.Studio
                 lease.Reference=new LibraryClipReference{ClipId=clip.Id,Revision=clip.Revision,ModelId=model.Id,Game=a.Game,GameVersion=a.GameVersion,Platform=a.Platform,
                     BuildEvidence=a.BuildEvidence,Adapter=a.Provider,ModelMountId=a.Id,MotionMountId=b.Id,ModelKey=model.ResourceKey,MotionKey=clip.ResourceKey,
                     ModelContainerSha256=a.ContainerSha256,MotionContainerSha256=b.ContainerSha256,ModelResourceSha256=model.ResourceSha256,MotionResourceSha256=clip.ResourceSha256,
-                    SourceRig=model.SkeletonSha256,RestInterpretation=model.RestInterpretation,AssociationEvidence=clip.AssociationEvidence,
+                    SourceRig=model.SkeletonSha256,RestInterpretation=model.RestInterpretation,AssociationEvidence=model.Id==clip.ModelId?clip.AssociationEvidence:BrawlLibraryCostumes.AssociationEvidence(clip,model),
                     NativeVersion=clip.NativeVersion,FrameCount=clip.FrameCount,Loop=clip.Loop,TicksPerSecond=clip.TicksPerSecond,TimebaseEvidence=clip.TimebaseEvidence,Channel=clip.Channel,
                     GameSourceId=a.GameSourceId,GameSourceSha256=a.OriginSha256??(a.GameSourceId==null?null:data.GameLocations.Single(l=>l.Id==a.GameSourceId).ContainerSha256),
                     ModelVirtualPath=a.VirtualPath,MotionVirtualPath=b.VirtualPath,UnboundSourceTracks=clip.UnboundSourceTracks,

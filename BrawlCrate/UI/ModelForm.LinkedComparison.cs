@@ -107,7 +107,7 @@ namespace BrawlCrate.UI
                 string rig = BrawlRetargeter.SkeletonFingerprint(target), sourceKey = ComparisonSourceKey(reference);
                 _library = _library ?? new AnimationLibrary();
                 _workspaceBusy = true;
-                try { UpdateSimpleWorkspace(); loaded = LoadLibrarySource(reference.ClipId); }
+                try { UpdateSimpleWorkspace(); loaded = LoadLibrarySource(reference); }
                 finally { _workspaceBusy = false; }
                 if (loaded == null) { _comparisonStatus.Text = "Comparison loading cancelled. Target editing remains available."; return; }
                 if (!ReferenceEquals(project, _fighterProject) || !ReferenceEquals(target, modelEditControl1.TargetModel) ||

@@ -39,6 +39,19 @@ namespace BrawlCrate.UI
         {
             return StartFighterProject(FighterProject.Create("New Fighter"));
         }
+
+        // Preparation owns its independent staged copies before the current
+        // viewer is asked to save/discard/cancel. The ordinary project lifecycle
+        // still owns replacement and takes ownership only after opening.
+        internal bool OpenLibraryFighterProject(FighterProject project, out ModelForm opened)
+        {
+            opened = null;
+            if (project == null) throw new ArgumentNullException(nameof(project));
+            ModelForm.ValidateFighterProjectAssets(project);
+            if (!StartFighterProject(project)) return false;
+            opened = _fighterForm;
+            return true;
+        }
         internal bool OpenWorkspaceScene(FighterProject project,string scene)
         {
             if(!StartFighterProject(project))return false;_fighterForm.BindWorkspaceScene(scene);return true;

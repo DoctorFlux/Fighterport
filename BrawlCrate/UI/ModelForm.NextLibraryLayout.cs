@@ -17,17 +17,19 @@ namespace BrawlCrate.UI
         private void BuildNextLibraryPreviewHost(TableLayoutPanel catalogue,TableLayoutPanel transport)
         {
             _sourceCatalogueScroll=new Panel{Name="libraryCatalogueScroll",Dock=DockStyle.Fill,AutoScroll=true};
-            _sourcePreviewHost=new TableLayoutPanel{Name="librarySourcePreviewHost",Dock=DockStyle.Bottom,ColumnCount=1,RowCount=4,Margin=Padding.Empty};
+            _sourcePreviewHost=new TableLayoutPanel{Name="librarySourcePreviewHost",Dock=DockStyle.Bottom,ColumnCount=1,RowCount=5,Margin=Padding.Empty};
             _sourcePreviewHost.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
+            _sourcePreviewHost.RowStyles.Add(new RowStyle(SizeType.Absolute,0));
             _sourcePreviewHost.RowStyles.Add(new RowStyle(SizeType.Absolute,24));
             _sourcePreviewHost.RowStyles.Add(new RowStyle(SizeType.Absolute,190));
             _sourcePreviewHost.RowStyles.Add(new RowStyle(SizeType.Absolute,38));
             _sourcePreviewHost.RowStyles.Add(new RowStyle(SizeType.Absolute,38));
             _sourcePreviewTransport=transport;
             foreach(Control control in new Control[]{_libraryOriginalLabel,_libraryViewport,transport})catalogue.Controls.Remove(control);
-            _sourcePreviewHost.Controls.Add(_libraryOriginalLabel,0,0);
-            _sourcePreviewHost.Controls.Add(_libraryViewport,0,1);
-            _sourcePreviewHost.Controls.Add(transport,0,2);
+            _sourcePreviewHost.Controls.Add(BuildLibraryCostumeRow(),0,0);
+            _sourcePreviewHost.Controls.Add(_libraryOriginalLabel,0,1);
+            _sourcePreviewHost.Controls.Add(_libraryViewport,0,2);
+            _sourcePreviewHost.Controls.Add(transport,0,3);
             // Keep the two everyday operations visible beside the target even
             // when large text makes the catalogue above need scrolling.
             var actions=new TableLayoutPanel{Name="sourcePrimaryActions",Dock=DockStyle.Fill,ColumnCount=2,RowCount=1,Margin=Padding.Empty};
@@ -38,7 +40,13 @@ namespace BrawlCrate.UI
             _sourceFitButton.AutoSize=false;_sourceFitButton.Dock=DockStyle.Fill;
             _sourceFitButton.AccessibleDescription="Fit the selected target animation to chosen start or end poses. Each transition can be switched on or off.";
             actions.Controls.Add(_libraryUse,0,0);actions.Controls.Add(_sourceFitButton,1,0);
-            _sourcePreviewHost.Controls.Add(actions,0,3);
+            _sourcePreviewHost.Controls.Add(actions,0,4);
+            // A default auto-sized TrackBar makes an implicit table row taller
+            // than this fixed transport slot. Keep both controls inside their
+            // allocated row at every supported text size.
+            transport.RowCount=1;transport.RowStyles.Clear();
+            transport.RowStyles.Add(new RowStyle(SizeType.Percent,100));
+            _libraryFrame.AutoSize=false;
             _libraryPlay.AutoSize=false;_libraryPlay.Dock=DockStyle.Fill;
             for(int row=6;row<9;row++)catalogue.RowStyles[row].Height=0;
             _sourceCatalogueScroll.Controls.Add(catalogue);
@@ -63,13 +71,14 @@ namespace BrawlCrate.UI
             ApplyWorkspaceLibraryTextSize(layout);
             _libraryPane.AutoScroll=false;
             layout.RowStyles[4].Height = Math.Max(line * 3 + 8, WorkspaceAppearance.Pixels(48));
-            _sourcePreviewHost.RowStyles[0].Height = Math.Max(line + 8, WorkspaceAppearance.Pixels(24));
+            _sourcePreviewHost.RowStyles[0].Height = _libraryCostumeRow.Visible ? Math.Max(line+12,WorkspaceAppearance.Pixels(32)) : 0;
+            _sourcePreviewHost.RowStyles[1].Height = Math.Max(line + 8, WorkspaceAppearance.Pixels(24));
             // The preview is a small native viewport, independent of text size.
             // Retain its place before explicit source loading rather than
             // shifting the catalogue and transport after every Preview action.
-            _sourcePreviewHost.RowStyles[1].Height = 190;
-            _sourcePreviewHost.RowStyles[2].Height = Math.Max(line + 14, WorkspaceAppearance.Pixels(38));
-            _sourcePreviewHost.RowStyles[3].Height = Math.Max(line + 16, WorkspaceAppearance.Pixels(38));
+            _sourcePreviewHost.RowStyles[2].Height = 190;
+            _sourcePreviewHost.RowStyles[3].Height = Math.Max(line + 14, WorkspaceAppearance.Pixels(38));
+            _sourcePreviewHost.RowStyles[4].Height = Math.Max(line + 16, WorkspaceAppearance.Pixels(38));
             _sourcePreviewHost.Height=(int)_sourcePreviewHost.RowStyles.Cast<RowStyle>().Sum(row=>row.Height);
             if (_sourceTransportText != WorkspaceAppearance.TextPercent)
             {

@@ -1,11 +1,12 @@
 [CmdletBinding()]
-param([Parameter(Mandatory)][string]$Model,[Parameter(Mandatory)][string]$Motion,[Parameter(Mandatory)][string]$OutputDirectory,[switch]$SuppliedModel,[string]$RetargetSource,[string]$TargetMotion,[string]$Clip='Wait1',[switch]$ModelPose,[string]$NativeDirectory,[switch]$ControlGizmos,[switch]$ControlReview,[switch]$LibraryBatch,[switch]$SceneFitting,[switch]$TransitionFit,[switch]$ContactAuthoring,[switch]$CombinedStress,[string]$ContactTransitionsProject,[switch]$CharacterWorkspace,[switch]$SimpleWorkspace,[switch]$WorkspaceFlow,[switch]$WorkspaceWalkthrough,[switch]$WorkspaceRecent,[switch]$WorkspaceExport,[switch]$WorkspaceComparison,[switch]$WorkspaceLibrary,[switch]$WorkspaceBatchReview,[switch]$WorkspaceSetExport,[switch]$WorkspaceLoopInspection,[switch]$WorkspaceExitRecovery,[switch]$WorkspaceFootRecovery,[switch]$WorkspaceBoundaryFit,[switch]$ExpectFloorRejection,[switch]$MovingRootFixture,[switch]$ReferenceControls,[string]$ReferenceClip='Wait1',[int]$ExitSamples=8,[switch]$ProjectLifecycle,[switch]$WorkspaceKeyboard,[switch]$WorkspaceScaling,[switch]$WorkspaceDialogs,[switch]$WorkspacePerformance,[switch]$WorkspaceNextLayout,[string]$CompatibilityProject,[string]$LegacyProject)
+param([Parameter(Mandatory)][string]$Model,[Parameter(Mandatory)][string]$Motion,[Parameter(Mandatory)][string]$OutputDirectory,[switch]$SuppliedModel,[string]$RetargetSource,[string]$TargetMotion,[string]$Clip='Wait1',[switch]$ModelPose,[string]$NativeDirectory,[switch]$ControlGizmos,[switch]$ControlReview,[switch]$LibraryBatch,[switch]$SceneFitting,[switch]$TransitionFit,[switch]$ContactAuthoring,[switch]$CombinedStress,[string]$ContactTransitionsProject,[switch]$CharacterWorkspace,[switch]$SimpleWorkspace,[switch]$WorkspaceFlow,[switch]$WorkspaceWalkthrough,[switch]$WorkspaceRecent,[switch]$WorkspaceExport,[switch]$WorkspaceComparison,[switch]$WorkspaceLibrary,[switch]$WorkspaceBatchReview,[switch]$WorkspaceSetExport,[switch]$WorkspaceLoopInspection,[switch]$WorkspaceExitRecovery,[switch]$WorkspaceFootRecovery,[switch]$WorkspaceBoundaryFit,[switch]$ExpectFloorRejection,[switch]$MovingRootFixture,[switch]$ReferenceControls,[string]$ReferenceClip='Wait1',[int]$ExitSamples=8,[switch]$ProjectLifecycle,[switch]$WorkspaceKeyboard,[switch]$WorkspaceScaling,[switch]$WorkspaceDialogs,[switch]$WorkspacePerformance,[switch]$WorkspaceNextLayout,[switch]$WorkspaceLibraryTarget,[switch]$WorkspaceGameLibrary,[string]$DiscImage,[string]$DolphinTool,[string]$LegacyDolphinTool,[string]$CompatibilityProject,[string]$LegacyProject)
 $ErrorActionPreference='Stop'
 $root=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $modelPath=(Resolve-Path -LiteralPath $Model).Path
 $motionPath=(Resolve-Path -LiteralPath $Motion).Path
 if(($SimpleWorkspace -or $WorkspaceFlow -or $WorkspaceWalkthrough -or $WorkspaceBoundaryFit -or $WorkspacePerformance -or $WorkspaceNextLayout) -and !$RetargetSource){throw 'Workspace acceptance requires RetargetSource pointing to the authentic donor model.'}
 if(($WorkspaceWalkthrough -or $WorkspaceExitRecovery -or $WorkspaceFootRecovery -or $WorkspaceBoundaryFit) -and !$TargetMotion){throw 'Workflow/recovery replay requires TargetMotion for the authentic target reference clips.'}
+if($WorkspaceGameLibrary -and (!$DiscImage -or !$DolphinTool)){throw 'Game-library acceptance requires DiscImage and DolphinTool.'}
 $output=[IO.Path]::GetFullPath($OutputDirectory)
 if(Test-Path -LiteralPath $output){throw 'Choose a new output directory; prior evidence is preserved.'}
 $harness=Join-Path $root 'tests/ControlsAcceptance/bin/x86/Release/net472/ControlsAcceptance.exe'
@@ -51,6 +52,9 @@ try {
     if($WorkspaceDialogs){$captureArgs+='--workspace-dialogs'}
     if($WorkspacePerformance){$captureArgs+='--workspace-performance'}
     if($WorkspaceNextLayout){$captureArgs+='--workspace-next-layout'}
+    if($WorkspaceLibraryTarget){$captureArgs+='--workspace-library-target'}
+    if($WorkspaceGameLibrary){$captureArgs+=@('--workspace-game-library','--disc-image',(Resolve-Path -LiteralPath $DiscImage).Path,'--dolphin-tool',(Resolve-Path -LiteralPath $DolphinTool).Path)}
+    if($LegacyDolphinTool){$captureArgs+=@('--legacy-dolphin-tool',(Resolve-Path -LiteralPath $LegacyDolphinTool).Path)}
     if($CompatibilityProject){if(!$LegacyProject){throw 'Supply the earlier standalone LegacyProject as well.'};$captureArgs+=@('--saved-project',(Resolve-Path -LiteralPath $CompatibilityProject).Path,'--legacy-project',(Resolve-Path -LiteralPath $LegacyProject).Path)}
     if($RetargetSource){$captureArgs+=@('--retarget-source',(Resolve-Path -LiteralPath $RetargetSource).Path,'--clip',$Clip)}
     & $harness @captureArgs

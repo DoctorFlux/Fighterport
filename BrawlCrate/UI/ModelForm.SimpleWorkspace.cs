@@ -38,6 +38,7 @@ namespace BrawlCrate.UI
             LibrarySelection?.State == LibrarySourceState.Available &&
             LibrarySelection.Clip.Channel == "CHR0 skeletal" &&
             !SimpleWorkspaceSourceNeedsRepair(LibrarySelection) &&
+            LibraryCostumeReady &&
             !_libraryReplacingTree && _librarySearchTimer?.Enabled != true;
 
         private bool SimpleWorkspaceSourceNeedsRepair(LibrarySearchItem source) =>
@@ -312,7 +313,7 @@ namespace BrawlCrate.UI
             {
                 // Explicit preparation only. Reuse the existing offline identity
                 // verification; no source decoding or hashing is added to ticks.
-                using (var original = LoadLibrarySource(item.Clip.Id))
+                using (var original = LoadSelectedLibrarySource())
                 {
                     if (original == null) return;
                     if (LibrarySelection?.Clip.Id != item.Clip.Id ||
@@ -490,6 +491,7 @@ namespace BrawlCrate.UI
                 _simpleWorkspaceMoreTools.Enabled = _simpleWorkspaceLibrary.Enabled = !busy;
             UpdateNextWorkspaceCommands(hasTarget, clip != null && OwnsFighterRoot(clip) && asset?.Retarget?.ReviewDraft != true, busy);
             LayoutSimpleWorkspace();
+            CompleteLibraryTargetPreview();
         }
 
         private void LayoutSimpleWorkspace()

@@ -34,7 +34,11 @@ namespace BrawlCrate.UI
             _simpleWorkspaceToolbar.Items.Insert(4, load);
             NextCommand(_nextAnimationMenu, "nextLoadSourceFiles", "Load source files...", LoadSessionSource);
             NextCommand(_nextAnimationMenu, "nextSharedLibrary", "Choose from library...", UseSharedSourceLibrary);
+            NextCommand(_nextAnimationMenu, "nextAddBrawlDisc", "Add Brawl disc / folder...", ShowBrawlDiscLibrary);
+            NextCommand(_nextAnimationMenu, "nextLibrarySources", "Manage library sources...", ShowLibrarySourceSettings);
             NextCommand(_nextAnimationMenu, "nextAddSourceToLibrary", "Add loaded source to library", AddSessionSourceToLibrary);
+            NextCommand(_nextAnimationMenu, "nextPreviewLibraryOriginal", "Preview library original", PreviewLibraryOriginal);
+            NextCommand(_nextAnimationMenu, "nextOpenLibraryTarget", "Open library model + animation", OpenLibraryAsTarget);
             _nextAnimationMenu.DropDownItems.Add(new ToolStripSeparator());
             NextCommand(_nextAnimationMenu, "nextReviewResults", "Review results...", OpenBatchReview);
             NextCommand(_nextAnimationMenu, "nextCompareSource", "Compare recorded source", OpenLinkedComparison);
@@ -94,13 +98,17 @@ namespace BrawlCrate.UI
                 if (item is ToolStripSeparator) continue;
                 if (item.Name == "nextAddSourceToLibrary")
                 { item.Enabled = !busy && _sessionSourceLibrary != null && ReferenceEquals(_library, _sessionSourceLibrary); continue; }
-                if (item.Name == "nextLoadSourceFiles" || item.Name == "nextSharedLibrary")
+                if (item.Name == "nextPreviewLibraryOriginal" || item.Name == "nextOpenLibraryTarget")
+                { item.Enabled = !busy && SimpleWorkspaceSourceReady; continue; }
+                if (item.Name == "nextLoadSourceFiles" || item.Name == "nextSharedLibrary" || item.Name == "nextAddBrawlDisc" || item.Name == "nextLibrarySources")
                 { item.Enabled = !busy; continue; }
                 item.Enabled = !busy && target && (item.Name == "nextReviewResults" || item.Name == "nextExportReviewedSet" ||
                     item.Name == "nextAnimationControls" || item.Name == "nextBatchFit" && SimpleWorkspaceSourceReady ||
                     item.Name != "nextBatchFit" && clip);
             }
             _nextViewMenu.Enabled = !busy;
+            if (_libraryOpenTarget != null) _libraryOpenTarget.Enabled = !busy && SimpleWorkspaceSourceReady;
+            if (_libraryCostume != null) _libraryCostume.Enabled = !busy && _libraryCostume.Items.Count > 0;
             if (_sourceFitButton != null) _sourceFitButton.Enabled = !busy && target && clip;
             foreach (string name in new[] { "fighterOpenModel", "fighterAddAnimations", "fighterLibrary", "fighterTransitionFit", "fighterSave", "nextLoadSourceButton" })
             {

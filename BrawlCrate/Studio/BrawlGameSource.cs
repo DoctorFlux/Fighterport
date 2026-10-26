@@ -50,11 +50,95 @@ namespace BrawlCrate.Studio
         {using(var sha=SHA256.Create())return BrawlLibrarySource.Hex(sha.ComputeHash(Encoding.UTF8.GetBytes(text)));}
         internal static string HashDisc(string path,CancellationToken cancellation)
         {
+            EnsureSingleDiscSource(path);
             using(var input=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.Read))using(var sha=SHA256.Create())
             {
                 var buffer=new byte[1024*1024];int count;
                 while((count=input.Read(buffer,0,buffer.Length))>0){cancellation.ThrowIfCancellationRequested();sha.TransformBlock(buffer,0,count,buffer,0);}
                 sha.TransformFinalBlock(buffer,0,0);return BrawlLibrarySource.Hex(sha.Hash);
+            }
+        }
+        // A complete source identity covers the selected file. Split WBFS
+        // companions require their own complete manifest/hash support first.
+        internal static void EnsureSingleDiscSource(string path)
+        {
+            if(!string.Equals(System.IO.Path.GetExtension(path),".wbfs",StringComparison.OrdinalIgnoreCase))return;
+            string directory=System.IO.Path.GetDirectoryName(path),stem=System.IO.Path.GetFileNameWithoutExtension(path);
+            if(string.IsNullOrEmpty(directory)||!Directory.Exists(directory))return;
+            string pattern="^"+Regex.Escape(stem)+@"\.wbf[0-9]+$";int seen=0;
+            foreach(string companion in Directory.EnumerateFiles(directory,stem+".wbf*",SearchOption.TopDirectoryOnly))
+            {
+                if(++seen>256||Regex.IsMatch(System.IO.Path.GetFileName(companion),pattern,RegexOptions.IgnoreCase))
+                    throw new InvalidDataException("Split WBFS files need a reader that verifies every part. Choose a single-file WBFS or ISO for this workflow.");
+            }
+        }
+
+        internal static void ValidateDiscSource(LibraryGameRequest request,CancellationToken cancellation=default)
+        {
+            if(request==null)throw new ArgumentNullException(nameof(request));
+            string image=AnimationLibrary.OrdinaryPath(request.Path),tool=AnimationLibrary.OrdinaryPath(request.DolphinToolPath);
+            AnimationLibrary.NoLinks(image);AnimationLibrary.NoLinks(tool);EnsureSingleDiscSource(image);
+            if(!File.Exists(image)||!new[]{".iso",".wbfs",".rvz"}.Contains(System.IO.Path.GetExtension(image).ToLowerInvariant()))
+                throw new InvalidDataException("Choose an existing Brawl ISO or WBFS file. The current reader also accepts RVZ.");
+            if(!File.Exists(tool)||!string.Equals(System.IO.Path.GetFileName(tool),"DolphinTool.exe",StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("Choose an installed DolphinTool.exe with header and extract commands.");
+            request.Path=image;request.DolphinToolPath=tool;
+            cancellation.ThrowIfCancellationRequested();
+            string help=ProbeReader(tool,"--help",cancellation,false);
+            if(!Regex.IsMatch(help,@"\bextract\b",RegexOptions.IgnoreCase)||!Regex.IsMatch(help,@"\bheader\b",RegexOptions.IgnoreCase))
+                throw new InvalidDataException("This DolphinTool is too old for disc browsing. Select a build with header and extract commands; convert/verify-only builds cannot read the library.");
+            string extract=ProbeReader(tool,"extract -h",cancellation,false),header=ProbeReader(tool,"header -h",cancellation,false);
+            if(!extract.Contains("--list")||!extract.Contains("--single")||!header.Contains("--json"))
+                throw new InvalidDataException("This reader lacks the required extract --list/--single and header --json options. Choose a compatible modern DolphinTool.");
+            using(var held=new FileStream(image,FileMode.Open,FileAccess.Read,FileShare.Read))
+            {
+                if(held.Length<=0||held.Length>64L*1024*1024*1024)throw new InvalidDataException("Choose a nonempty Brawl image within the reader's 64 GB limit.");
+                string json=ProbeReader(tool,"header -i "+Quote(image)+" -j",cancellation,true);
+                var info=new JavaScriptSerializer{MaxJsonLength=1024*1024}.Deserialize<Dictionary<string,object>>(json);
+                if(info==null||!info.TryGetValue("game_id",out var game)||!Regex.IsMatch(game?.ToString()??"",@"^RSB[A-Z0-9]{3}$")||
+                    !info.TryGetValue("revision",out var revision)||!(revision is int nativeRevision)||nativeRevision<0||nativeRevision>255)
+                    throw new InvalidDataException("This disc is not identified as Brawl. Other games require their own source readers.");
+            }
+            cancellation.ThrowIfCancellationRequested();
+        }
+
+        internal static void ValidateGameSource(LibraryGameRequest request,CancellationToken cancellation=default)
+        {
+            if(request==null||!new[]{"Brawl","Project M","Project+"}.Contains(request.Game))
+                throw new NotSupportedException("Choose a Brawl-family source. Other games require their own readers.");
+            string path=AnimationLibrary.OrdinaryPath(request.Path);AnimationLibrary.NoLinks(path);
+            if(!Directory.Exists(path)){ValidateDiscSource(request,cancellation);return;}
+            request.Path=path;string root=FighterFolder(path);int characters=0;
+            foreach(string folder in Directory.EnumerateDirectories(root))
+            {
+                cancellation.ThrowIfCancellationRequested();AnimationLibrary.NoLinks(folder);
+                if(++characters>10000)throw new InvalidDataException("The Brawl character-folder inventory exceeds its bound.");
+            }
+            if(characters==0)throw new InvalidDataException("Choose an extracted Brawl build containing fighter/character folders.");
+            cancellation.ThrowIfCancellationRequested();
+        }
+
+        private static string ProbeReader(string executable,string arguments,CancellationToken cancellation,bool json)
+        {
+            var output=new StringBuilder();var error=new StringBuilder();var sync=new object();bool overflow=false;
+            using(var process=new Process{StartInfo=new ProcessStartInfo(executable,arguments){UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true,WorkingDirectory=System.IO.Path.GetDirectoryName(executable)}})
+            {
+                DataReceivedEventHandler read=(s,e)=>{if(e.Data==null)return;lock(sync){if(output.Length+e.Data.Length>1024*1024)overflow=true;else output.AppendLine(e.Data);}};
+                process.OutputDataReceived+=read;process.ErrorDataReceived+=(s,e)=>{if(e.Data==null)return;lock(sync){if(error.Length+e.Data.Length>128*1024)overflow=true;else error.AppendLine(e.Data);}};
+                process.Start();process.BeginOutputReadLine();process.BeginErrorReadLine();var clock=Stopwatch.StartNew();
+                try
+                {
+                    while(!process.WaitForExit(50))
+                    {
+                        cancellation.ThrowIfCancellationRequested();
+                        if(overflow||clock.Elapsed>TimeSpan.FromSeconds(20))throw new InvalidDataException("The reader check did not finish within its bounds. Choose a compatible DolphinTool.");
+                    }
+                    process.WaitForExit();cancellation.ThrowIfCancellationRequested();
+                    if(overflow||json&&process.ExitCode!=0)throw new InvalidDataException("DolphinTool could not read this disc header. Choose a compatible reader and Brawl image.");
+                    // Top-level Dolphin usage can exit nonzero even for help.
+                    return json?output.ToString():output.ToString()+Environment.NewLine+error.ToString();
+                }
+                catch{if(!process.HasExited)process.Kill();throw;}
             }
         }
         public static string RunDolphin(string tool,string arguments,CancellationToken cancellation)
@@ -105,6 +189,7 @@ namespace BrawlCrate.Studio
             if(File.Exists(path))
             {
                 if(!new[]{".iso",".wbfs",".rvz"}.Contains(System.IO.Path.GetExtension(path).ToLowerInvariant()))throw new NotSupportedException("Choose ISO, WBFS or RVZ.");
+                ValidateDiscSource(request,cancellation);
                 using(var held=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.Read))
                     return DiscFiles(request,cancellation).Where(p=>p.Split('/').Length>=3).Select(p=>p.Split('/')[1]).Distinct(StringComparer.Ordinal).OrderBy(p=>p,StringComparer.Ordinal).ToArray();
             }
@@ -138,6 +223,7 @@ namespace BrawlCrate.Studio
                 if(File.Exists(sourcePath))
                 {
                     if(!new[]{".iso",".wbfs",".rvz"}.Contains(System.IO.Path.GetExtension(sourcePath).ToLowerInvariant()))throw new NotSupportedException("Select a Brawl ISO/WBFS/RVZ image or an extracted Brawl-family folder.");
+                    ValidateDiscSource(request,cancellation);
                     sourceLock=new FileStream(sourcePath,FileMode.Open,FileAccess.Read,FileShare.Read);
                     if(sourceLock.Length<=0||sourceLock.Length>64L*1024*1024*1024)throw new InvalidDataException("Disc source exceeds the 64 GB bound.");
                     progress?.Invoke(1,"Hashing original disc image (read-only)...");originHash=HashDisc(sourcePath,cancellation);originBytes=sourceLock.Length;originTicks=File.GetLastWriteTimeUtc(sourcePath).Ticks;

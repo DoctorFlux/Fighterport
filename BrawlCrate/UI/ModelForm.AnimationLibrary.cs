@@ -118,10 +118,7 @@ namespace BrawlCrate.UI
             _sourceAddButton=LibraryButton("libraryAddSource","Add source...",()=>{
                 if(ReferenceEquals(_library,_sessionSourceLibrary))AddSessionSourceToLibrary();else AddLibrarySource();
             });
-            header.Controls.Add(LibraryButton("librarySources","Sources...",()=>{
-                UseSharedSourceLibrary();
-                ReleaseLibraryPreview();using(var dialog=new LibrarySourcesDialog(_library,IndexLibraryGameSource))dialog.ShowDialog(this);RefreshLibrary();
-            }));
+            header.Controls.Add(LibraryButton("libraryAddBrawlDisc","Add Brawl...",ShowBrawlDiscLibrary));
             _libraryUndo=LibraryButton("libraryUndo","Undo Source",()=>{ReleaseLibraryPreview();_library.UndoLastUpdate();RefreshLibrary();});
             header.Controls.Add(LibraryButton("libraryClose","Close",ToggleAnimationLibrary));layout.Controls.Add(header,0,0);
             _librarySearch=new TextBox{Name="librarySearch",AccessibleName="Search Animation Library",Dock=DockStyle.Fill,MaxLength=512};
@@ -144,9 +141,10 @@ namespace BrawlCrate.UI
             _libraryDetails=new TextBox{Name="libraryDetails",Multiline=true,ReadOnly=true,ScrollBars=ScrollBars.Vertical,Dock=DockStyle.Fill};layout.Controls.Add(_libraryDetails,0,4);
             var actions=new FlowLayoutPanel{Dock=DockStyle.Fill,WrapContents=true};
             _libraryPreview=LibraryButton("libraryPreviewOriginal","Preview Original",PreviewLibraryOriginal);
+            _libraryOpenTarget=LibraryButton("libraryOpenTarget","Open model + animation",OpenLibraryAsTarget);
             _libraryUse=LibraryButton("libraryUseOnTarget","Use on This Model",UseLibraryOnTarget);
             _libraryRepair=LibraryButton("libraryRepairSource","Repair...",RepairLibrarySource);
-            actions.Controls.AddRange(new Control[]{_libraryPreview,_libraryUse,_libraryRepair,LibraryButton("libraryBatch","Batch / Fit...",ShowLibraryBatch),LibraryButton("libraryAdvancedFitting","Advanced Fitting...",OpenAdvancedSceneFitting),_sourceAddButton,_libraryUndo});layout.Controls.Add(actions,0,5);
+            actions.Controls.AddRange(new Control[]{_libraryPreview,_libraryOpenTarget,_libraryUse,_libraryRepair,LibraryButton("libraryBatch","Batch / Fit...",ShowLibraryBatch),LibraryButton("libraryAdvancedFitting","Advanced Fitting...",OpenAdvancedSceneFitting),_sourceAddButton,_libraryUndo});layout.Controls.Add(actions,0,5);
             _libraryOriginalLabel=new Label{Name="libraryOriginalLabel",Text="Original source preview (read-only)",Dock=DockStyle.Fill,AutoEllipsis=true};layout.Controls.Add(_libraryOriginalLabel,0,6);
             _libraryViewport=new ModelPanel{Name="libraryOriginalViewport",Dock=DockStyle.Fill,Margin=Padding.Empty,
                 AccessibleName="Original source preview",AccessibleDescription="Read-only original source model. Choose Preview Original to load the selected source; browsing never loads or retargets a model."};
@@ -191,8 +189,11 @@ namespace BrawlCrate.UI
             long selectionStart=Stopwatch.GetTimestamp();
             _libraryLastTarget=modelEditControl1.TargetModel;
             var item=LibrarySelection;bool available=!_libraryReplacingTree&&!_librarySearchTimer.Enabled&&item?.State==LibrarySourceState.Available;
+            UpdateLibraryCostumes(item);
+            available=available&&LibraryCostumeReady;
             available=available&&!SimpleWorkspaceSourceNeedsRepair(item);
             _libraryPreview.Enabled=available;_libraryUse.Enabled=available&&modelEditControl1.TargetModel is MDL0Node;
+            _libraryOpenTarget.Enabled=available&&!SimpleWorkspaceBusy;
             _libraryRepair.Enabled=SimpleWorkspaceSourceNeedsRepair(item)&&!_libraryReplacingTree&&!_librarySearchTimer.Enabled;
             _libraryDetails.Text=item==null?"One shared library across all fighters. Add an original model and its complete motion set.":
                 item.Motion.Game+" · "+item.Motion.GameVersion+" · "+item.Clip.Channel+" v"+item.Clip.NativeVersion+Environment.NewLine+
@@ -231,7 +232,7 @@ namespace BrawlCrate.UI
         }
         private void IndexLibraryGameSource(IWin32Window owner,LibraryGameRequest request)
         {
-            if(!ReferenceEquals(_library,_sharedSourceLibrary))UseSharedSourceLibrary();
+            if(_libraryPane==null||!ReferenceEquals(_library,_sharedSourceLibrary))UseSharedSourceLibrary();
             modelEditControl1.StopAnim();ReleaseLibraryPreview();_librarySearchTimer.Stop();
             var entries=LibraryWork.Run(owner,"Browsing Game Source",(cancel,progress)=>BrawlGameSource.BrowseCharacters(request,cancel));
             if(entries==null)return;
@@ -269,7 +270,7 @@ namespace BrawlCrate.UI
             var item=LibrarySelection;if(item==null)return;
             modelEditControl1.StopAnim();
             ReleaseLibraryPreview();
-            _libraryLease=LoadLibrarySource(item.Clip.Id);if(_libraryLease==null)return;
+            _libraryLease=LoadSelectedLibrarySource();if(_libraryLease==null)return;
             LayoutSimpleWorkspaceLibraryPreview();
             _libraryTime=0;_libraryFrame.Maximum=_libraryLease.Animation.FrameCount;_libraryFrame.Value=1;
             _libraryLease.Model.ResetToBindState();
@@ -318,7 +319,7 @@ namespace BrawlCrate.UI
             // A second 60 Hz OpenGL preview must not compete with the target.
             _libraryTimer.Stop();_libraryPlay.Text="Play";
             modelEditControl1.StopAnim();
-            var loaded=LoadLibrarySource(item.Clip.Id);if(loaded==null)return;
+            var loaded=LoadSelectedLibrarySource();if(loaded==null)return;
             using(var source=loaded)
             using(var result=BakeWithProgress(source.Model,target,source.Animation))
             {
@@ -349,7 +350,9 @@ namespace BrawlCrate.UI
             var item=LibrarySelection;if(item==null)return;
             if(!SimpleWorkspaceSourceNeedsRepair(item))return;
             modelEditControl1.StopAnim();ReleaseLibraryPreview();
-            var data=_library.Read();var ids=new[]{item.Clip.MountId,item.Model?.MountId}.Where(id=>id!=null).Distinct().ToArray();
+            var data=_library.Read();
+            var selectedModel=data.Models.SingleOrDefault(model=>model.Id==SelectedLibraryCostume?.ModelId);
+            var ids=new[]{item.Clip.MountId,item.Model?.MountId,selectedModel?.MountId}.Where(id=>id!=null).Distinct().ToArray();
             var choices=ids.Select(id=>Tuple.Create(false,id,Path.GetFileName(data.Mounts.Single(m=>m.Id==id).LocalPath))).ToList();
             foreach(var sourceId in ids.Select(id=>data.Mounts.Single(m=>m.Id==id)).Where(m=>m.OriginPath!=null).Select(m=>m.GameSourceId).Distinct())
                 choices.Add(Tuple.Create(true,sourceId,"Disc image · "+data.GameLocations.Single(l=>l.Id==sourceId).GameVersion));

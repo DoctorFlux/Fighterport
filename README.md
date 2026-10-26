@@ -2,7 +2,7 @@
 
 This is the public unified source repository at https://github.com/DoctorFlux/Fighterport.
 It imports the BrawlCrate-based Next preview.14 source and integrated owned engine;
-the current implementation is **preview.34-next-layout**.
+the current implementation is **preview.35-brawl-disc-library**.
 The two predecessor repositories are private preserved histories.
 Upstream copyrights, licenses and notices remain intact.
 
@@ -24,11 +24,22 @@ Open the target with **Open Model...**. Use **Add Animations...** for its native
 idle/fall references when fitting needs them. **Load source...** chooses an original
 model and motion set for this session; loading, previewing and retargeting never
 add those files to the shared library. **Add to library** is a separate explicit,
-verified operation. **Library** and **Sources...** retain the existing game-source
-and extracted-file/disc-image routes where readers are supported. They do not add
-new game adapters or imply universal format/game acceptance.
+verified operation. **Library → Add Brawl...** accepts a Brawl ISO/WBFS or extracted game folder.
+Disc files need a compatible **DolphinTool.exe** with header and extraction support;
+older convert-only builds are rejected before indexing. Choose characters, confirm
+the source association, and add their native files to the shared library. Extracted
+Brawl folders need no Dolphin tool. **Animation → Manage library sources...** retains
+source management. Other games need their own adapters; paths alone are not support.
+See the [Dolphin dependency record](docs/DOLPHIN_SOURCE_REUSE_2026-10-26.md).
+[Background acceptance](docs/BRAWL_DISC_LIBRARY_ACCEPTANCE_2026-10-26.md) records actual image, folder and costume evidence and its limits.
 
-Choose an available source clip, use **Preview Original**, then **Use on This Model**.
+Choose a source clip and its **Costume**, then **Preview Original** to see the
+original model and animation. **Open model + animation** opens an independent editable
+target using the existing unsaved-change decision; the original remains read-only.
+**Use on This Model** instead retargets to the current target. Costume options come
+from the detected native Brawl source/build and exact compatible hierarchy/binds.
+Different binds require review; no model or skeleton is silently substituted.
+A recorded comparison keeps its original costume even when library browsing changes.
 The pinned source preview, transport, transfer and **Fit start / end...** actions
 stay visible while the catalogue scrolls. The target result is an independent
 editable native animation. In fitting, enable **Fit start**, **Fit end**, or both;
@@ -45,7 +56,9 @@ Search, Favorites only and Clear filters remain available. Existing performance
 invalidation guards and the original Next retargeter remain intact.
 
 Temporary source catalogues belong to the current window and are discarded with
-it. Their target animations save normally. In-session comparison retains exact
+it. Opening a source as an editable target carries its bounded source metadata to
+the replacement window without registering it in the shared library. Target
+animations save normally. In-session comparison retains exact
 source identity across library switches; after reopening a project, unavailable
 temporary source provenance is explained without blocking native target editing.
 Register sources manually when they should become part of the shared library.

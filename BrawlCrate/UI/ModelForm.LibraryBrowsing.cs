@@ -49,6 +49,10 @@ namespace BrawlCrate.UI
         private async void RefreshLibrary(string selectId=null)
         {
             int generation=++_librarySearchGeneration;
+            // A retained clip may have new/removed costume metadata after an
+            // atomic catalogue update. Re-enumerate once when this refresh
+            // settles, without adding filesystem work to ordinary UI ticks.
+            _libraryCostumeCatalogue=null;_libraryCostumeClip=null;
             CancelLibraryTreeWork();_libraryReplacingTree=true;
             try
             {

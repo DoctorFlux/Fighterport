@@ -30,7 +30,7 @@
     </Copyright>
     <AssemblyVersion>2.0.0.0</AssemblyVersion>
     <FileVersion>2.0.0.16</FileVersion>
-    <InformationalVersion>2.0.0-preview.34-next-layout</InformationalVersion>
+    <InformationalVersion>2.0.0-preview.35-brawl-disc-library</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Platforms>AnyCPU;x64;x86</Platforms>

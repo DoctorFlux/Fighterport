@@ -1,5 +1,34 @@
 # Fighterport master plan
 
+26 October 2026 bounded preview.35-brawl-disc-library acceptance is complete:
+**4,207 checks / 25 runs / 156 inspected native PNGs**. Add Brawl accepts a
+verified ISO/WBFS or extracted folder, indexes selected native characters and exposes
+exact compatible costume choices. Preview Original stays read-only; Open model +
+animation creates an independent editable target with existing unsaved handling;
+Use on This Model retains original Next. Recorded comparison keeps its costume,
+selected-costume repair and catalogue refresh preserve exact associations. Full
+native editor/Undo, current root/boundary policies and 100/125/150/175 text remain.
+See [acceptance evidence](BRAWL_DISC_LIBRARY_ACCEPTANCE_2026-10-26.md). Other games, RVZ/split-image qualification, physical input/DPI, human
+usability, broad contacts and actual game acceptance remain open. ONE G1/M2 is
+incomplete and no broader increment is promoted.
+
+26 October 2026 authorized preview.35-brawl-disc-library: expose Add Brawl disc
+for real ISO/WBFS sources through Dolphin's open-source DATA filesystem reader,
+with early capability/game detection, selected-character caching and atomic
+registration. Keep later game-disc/install adapters explicitly pending. Library
+entries offer original read-only preview, open the exact model+animation as a
+new editable native target with existing unsaved-change handling, or retarget to
+the current target. Add Brawl costume choice using exact eligible native model
+identities and reviewed bind compatibility; no name-only role inference, bind
+normalization, replacement skeleton or shader/renderer/solver rewrite. Recorded
+source comparison resolves the recorded costume, never later browser choice.
+Preserve Next, native Undo, source-local root and reviewed boundary policies,
+temporary-vs-shared sources, 100/125/150/175 text and background-only verification.
+Inspect fresh images, retain ONE incomplete G1/M2, publish verified source only to
+public Fighterport/main using DoctorFlux attribution. Source images/tools/assets,
+settings/caches and binaries stay excluded. Physical input/DPI, universal contact
+quality, additional games and actual game acceptance remain unverified.
+
 26 October 2026 bounded preview.34-next-layout acceptance is complete:
 **4,011 checks / 21 runs / 134 inspected native PNGs**. The default is the
 familiar native Next target editor with a right source pane and pinned original
