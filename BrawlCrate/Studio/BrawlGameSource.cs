@@ -173,7 +173,7 @@ namespace BrawlCrate.Studio
             if(!all&&(characters.Length>256||characters.Any(c=>!Regex.IsMatch(c??"",@"^[A-Za-z0-9_-]+$"))))throw new InvalidDataException("Invalid native character scope.");
             string sourcePath=AnimationLibrary.OrdinaryPath(request.Path);AnimationLibrary.NoLinks(sourcePath);
             var plan=new LibraryGamePlan{Source=new LibraryGameLocation{Id=Guid.NewGuid().ToString("N"),Game=request.Game,GameVersion=request.GameVersion,Path=sourcePath,Indexed=true,IsDirectory=Directory.Exists(sourcePath)}};
-            string fighterRoot;string originHash=null;long originBytes=0,originTicks=0;
+            string fighterRoot=null;string[] discPaths=null;NativeSourceScratch scratch=null;string originHash=null;long originBytes=0,originTicks=0;
             FileStream sourceLock=null;BrawlDiscImage discReader=null;
             try
             {
@@ -191,21 +191,12 @@ namespace BrawlCrate.Studio
                     var selected=new HashSet<string>(characters,StringComparer.Ordinal);
                     var paths=all?allPaths:allPaths.Where(p=>p.Split('/').Length>=3&&selected.Contains(p.Split('/')[1])).ToArray();
                     if(discReader.Inventory.Where(e=>all||e.Path.Split('/').Length>=3&&selected.Contains(e.Path.Split('/')[1])).Sum(e=>e.Length)>4L*1024*1024*1024)
-                        throw new InvalidDataException("The selected fighter subtree exceeds its 4 GB cache bound.");
+                        throw new InvalidDataException("The selected fighter subtree exceeds its 4 GB inventory bound.");
                     plan.Source.InventorySha256=Digest(string.Join("\n",paths));plan.Source.Provider=BrawlDiscImage.Provider;
-                    string cache=System.IO.Path.Combine(AnimationLibrary.OrdinaryPath(cacheRoot),Guid.NewGuid().ToString("N"));AnimationLibrary.NoLinks(cache);
-                    fighterRoot=System.IO.Path.Combine(cache,"DATA","files","fighter");
-                    if(all)
-                    {
-                        progress?.Invoke(5,"Reading the complete Brawl fighter library (original disc is read-only)...");
-                        discReader.ExtractAll(System.IO.Path.Combine(cache,"DATA","files"));
-                    }
-                    else foreach(string character in characters)
-                    {
-                        progress?.Invoke(5,"Reading selected character: "+character+" (built-in reader; original image is read-only)...");
-                        discReader.Extract(character,System.IO.Path.Combine(cache,"DATA","files"));
-                    }
-                    if(!paths.All(p=>File.Exists(System.IO.Path.Combine(cache,"DATA","files",p.Replace('/',System.IO.Path.DirectorySeparatorChar)))))throw new InvalidDataException("Selective disc reading did not produce every listed fighter file.");
+                    // Inventory through one disposable native package at a time.
+                    // The saved source remains the image, never a copied fighter tree.
+                    discPaths=paths.Where(p=>new[]{".pac",".pcs",".brres",".mdl0",".chr0"}.Contains(System.IO.Path.GetExtension(p).ToLowerInvariant())).ToArray();
+                    scratch=new NativeSourceScratch();
                     plan.Source.ContainerSha256=originHash;plan.Source.Bytes=originBytes;plan.Source.Label=System.IO.Path.GetFileNameWithoutExtension(sourcePath);
                 }
                 else
@@ -215,19 +206,20 @@ namespace BrawlCrate.Studio
                     if(all)characters=Directory.EnumerateDirectories(fighterRoot).Select(System.IO.Path.GetFileName).ToArray();
                     plan.Source.Provider="brawl-folder-v1";plan.Source.Label=new DirectoryInfo(sourcePath).Name;
                 }
-                var files=(all?NativeFiles(fighterRoot,cancellation):characters.SelectMany(c=>NativeFiles(System.IO.Path.Combine(fighterRoot,c),cancellation))).OrderBy(p=>p,StringComparer.OrdinalIgnoreCase).Take(10001).ToArray();
+                var files=(discPaths??(all?NativeFiles(fighterRoot,cancellation):characters.SelectMany(c=>NativeFiles(System.IO.Path.Combine(fighterRoot,c),cancellation)))).OrderBy(p=>p,StringComparer.OrdinalIgnoreCase).Take(10001).ToArray();
                 if(files.Length==0||files.Length>10000)throw new InvalidDataException("Native source file inventory exceeds its bounded limit or is empty.");
                 long totalBytes=0;var models=new List<ModelFacts>();var clips=new List<ClipFacts>();
-                foreach(string path in files)
+                foreach(string inputPath in files)
                 {
-                    cancellation.ThrowIfCancellationRequested();AnimationLibrary.NoLinks(path);var info=new FileInfo(path);totalBytes+=info.Length;
-                    if(totalBytes>4L*1024*1024*1024)throw new InvalidDataException("The selected native fighter subtree exceeds the 4 GB cache/indexing bound.");
-                    string relative="fighter/"+path.Substring(fighterRoot.Length+1).Replace('\\','/');string character=relative.Split('/').Length>=3?relative.Split('/')[1]:"Shared fighter resources";
-                    var mount=new LibraryMount{Id=Guid.NewGuid().ToString("N"),Game=request.Game,GameVersion=plan.Source.GameVersion,LocalPath=path,ContainerSha256=FighterProject.HashFile(path),Bytes=info.Length,
+                    cancellation.ThrowIfCancellationRequested();string path=discReader==null?inputPath:scratch.Read(discReader,inputPath,"inventory");AnimationLibrary.NoLinks(path);var info=new FileInfo(path);totalBytes+=info.Length;
+                    if(totalBytes>4L*1024*1024*1024)throw new InvalidDataException("The selected native fighter subtree exceeds the 4 GB indexing-work bound.");
+                    string relative=discReader!=null?inputPath:"fighter/"+path.Substring(fighterRoot.Length+1).Replace('\\','/');string character=relative.Split('/').Length>=3?relative.Split('/')[1]:"Shared fighter resources";
+                    var mount=new LibraryMount{Id=Guid.NewGuid().ToString("N"),Game=request.Game,GameVersion=plan.Source.GameVersion,LocalPath=discReader==null?path:sourcePath,ContainerSha256=FighterProject.HashFile(path),Bytes=info.Length,NativeWriteTicks=discReader==null?info.LastWriteTimeUtc.Ticks:originTicks,
                         BuildEvidence="User-confirmed game/build; "+plan.Source.Provider+"; native resource indices, source hashes and body-track binding checked",GameSourceId=plan.Source.Id,VirtualPath=relative,
                         OriginPath=originHash==null?null:sourcePath,OriginSha256=originHash,OriginBytes=originBytes,OriginWriteTicks=originTicks,OriginPartition=originHash==null?null:"DATA"};plan.Mounts.Add(mount);
                     progress?.Invoke(10+plan.Mounts.Count*75/files.Length,"Indexing "+plan.Mounts.Count+" / "+files.Length+" native fighter packages: "+relative);
                     ReadNativePackage(path,mount,relative,character,plan,models,clips,cancellation);
+                    if(discReader!=null)File.Delete(path);
                     // Native key/geometry graphs can fragment the 32-bit heap.
                     // Collect only between disposed packages during explicit
                     // preparation, never from preview or playback paths.
@@ -280,7 +272,7 @@ namespace BrawlCrate.Studio
                 if(plan.Models.Count==0||plan.Clips.Count==0||plan.Clips.Count>AnimationLibrary.MaximumClips)throw new InvalidDataException("No supported model/motion inventory was found, or the source exceeds catalogue limits.");
                 progress?.Invoke(100,"Complete roster indexed: "+plan.Models.Count+" models, "+plan.Clips.Count+" animation resources.");return plan;
             }
-            finally{discReader?.Dispose();sourceLock?.Dispose();}
+            finally{discReader?.Dispose();sourceLock?.Dispose();scratch?.Dispose();}
         }
     }
 }

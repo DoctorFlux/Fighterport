@@ -3,6 +3,7 @@ using BrawlLib.SSBB.ResourceNodes;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Threading;
@@ -23,9 +24,9 @@ namespace BrawlCrate.Studio
     public sealed class AnimationLibrary
     {
         public static int DiagnosticOpens;
-        public const int MaximumClips=50000;
+        // Legacy search API uses an int; capacity is governed by resource headroom.
+        public const int MaximumClips=int.MaxValue;
         public static readonly string[] PlannedGames={"Brawl","Project M","Project+","Melee","Ultimate","Rivals II","FighterZ","Sparking! ZERO","Xenoverse 1","Xenoverse 2"};
-        private const long MaximumIndexBytes=64L*1024*1024;
         public string DirectoryPath { get; }
         // Publish a new immutable generation with a same-directory rename. This
         // also works on encrypted Windows profiles where ReplaceFile is denied.
@@ -34,12 +35,13 @@ namespace BrawlCrate.Studio
         private string[] Generations()
         {
             if(!Directory.Exists(DirectoryPath))return new string[0];
-            var files=Directory.EnumerateFiles(DirectoryPath,"catalogue-*.xml").Take(129).ToArray();
+            var files=Directory.EnumerateFiles(DirectoryPath,"catalogue-*").Where(p=>p.EndsWith(".xml",StringComparison.Ordinal)||p.EndsWith(".xml.gz",StringComparison.Ordinal)).Take(129).ToArray();
             if(files.Length>128)throw new InvalidDataException("Too many library generations. Preserve the catalogue directory and restore its last verified generation.");
-            if(files.Any(p=>{string name=Path.GetFileNameWithoutExtension(p);return name.Length!=30||!name.Substring(10).All(char.IsDigit);}))
+            if(files.Any(p=>{string name=IndexStem(p);return name.Length!=30||!name.Substring(10).All(char.IsDigit);}))
                 throw new InvalidDataException("Invalid library generation filename; metadata has been preserved.");
             return files.OrderByDescending(p=>p,StringComparer.Ordinal).ToArray();
         }
+        private static string IndexStem(string path)=>Path.GetFileNameWithoutExtension(path.EndsWith(".gz",StringComparison.Ordinal)?path.Substring(0,path.Length-3):path);
         private string PriorIndex()
         {
             var files=Generations();if(files.Length>1)return files[1];
@@ -114,15 +116,30 @@ namespace BrawlCrate.Studio
         private static LibraryCatalogue ReadFile(string path)
         {
             NoLinks(path);
-            if(new FileInfo(path).Length>MaximumIndexBytes)throw new InvalidDataException("The shared library index exceeds its bounded size limit.");
             try
             {
-                using(var reader=XmlReader.Create(path,new XmlReaderSettings{DtdProcessing=DtdProcessing.Prohibit,XmlResolver=null,MaxCharactersInDocument=MaximumIndexBytes}))
+                using(var input=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.Read))
                 {
-                    var data=(LibraryCatalogue)new XmlSerializer(typeof(LibraryCatalogue)).Deserialize(reader);Validate(data);
-                    if(Path.GetFileName(path).StartsWith("catalogue-",StringComparison.Ordinal)&&Path.GetFileNameWithoutExtension(path)!=
-                        "catalogue-"+data.Generation.ToString("D20",System.Globalization.CultureInfo.InvariantCulture))throw new InvalidDataException("Catalogue generation identity differs from its publication name.");
-                    return data;
+                    int first=input.ReadByte(),second=input.ReadByte();input.Position=0;bool compact=first==0x1f&&second==0x8b;
+                    long expanded=input.Length;
+                    if(compact)
+                    {
+                        if(input.Length<18)throw new InvalidDataException("The compact library index is truncated.");
+                        input.Position=input.Length-4;var bytes=new byte[4];if(input.Read(bytes,0,4)!=4)throw new EndOfStreamException();
+                        expanded=(long)bytes[0]|((long)bytes[1]<<8)|((long)bytes[2]<<16)|((long)bytes[3]<<24);input.Position=0;
+                    }
+                    long budget=LibraryCapacity.CheckRead(expanded);
+                    using(var decoded=compact?(Stream)new GZipStream(input,CompressionMode.Decompress,true):input)
+                    using(var reader=XmlReader.Create(decoded,new XmlReaderSettings{DtdProcessing=DtdProcessing.Prohibit,XmlResolver=null,MaxCharactersInDocument=budget}))
+                    {
+                        var data=(LibraryCatalogue)new XmlSerializer(typeof(LibraryCatalogue)).Deserialize(reader);
+                        // Consume the footer/CRC and reject additional document data.
+                        while(reader.Read()){}
+                        LibraryMetadataMemory.Compact(data);Validate(data);
+                        if(Path.GetFileName(path).StartsWith("catalogue-",StringComparison.Ordinal)&&IndexStem(path)!=
+                            "catalogue-"+data.Generation.ToString("D20",System.Globalization.CultureInfo.InvariantCulture))throw new InvalidDataException("Catalogue generation identity differs from its publication name.");
+                        return data;
+                    }
                 }
             }
             catch(Exception e) when(e is XmlException || e is InvalidOperationException)
@@ -134,7 +151,7 @@ namespace BrawlCrate.Studio
         private static void Validate(LibraryCatalogue data)
         {
             if(data==null || data.Schema!=1 || data.Generation<0 || data.Mounts==null || data.Models==null || data.Clips==null ||
-                data.Mounts.Count>8192 || data.Models.Count>8192 || data.Clips.Count>MaximumClips)throw new InvalidDataException("Unsupported or oversized library index.");
+                data.Clips.Count>MaximumClips)throw new InvalidDataException("Unsupported or oversized library index.");
             if(data.Mounts.Any(m=>m==null || !Id(m.Id)||!Hash(m.ContainerSha256)||!Text(m.LocalPath,32767)||!Text(m.Game,128)||!Text(m.GameVersion,256)||
                 !Text(m.Platform,128)||!Text(m.Provider,128)||!Text(m.BuildEvidence)||m.Bytes<=0||m.Bytes>FighterProject.MaximumAssetBytes) ||
                 data.Mounts.Select(m=>m.Id).Distinct().Count()!=data.Mounts.Count)throw new InvalidDataException("Invalid source mount identity.");
@@ -145,7 +162,7 @@ namespace BrawlCrate.Studio
                 data.Models.Select(m=>m.Id).Distinct().Count()!=data.Models.Count)throw new InvalidDataException("Invalid source model/skeleton identity.");
             var models=data.Models.ToDictionary(m=>m.Id);
             if(data.Models.Any(m=>m.MotionMountIds==null||m.MotionMountIds.Count>8192||m.MotionMountIds.Any(id=>!mounts.ContainsKey(id))))throw new InvalidDataException("Invalid source-set motion ownership.");
-            if(data.GameLocations==null||data.GameLocations.Count>256||data.GameLocations.Any(l=>l==null||!Id(l.Id)||!Text(l.Game,128)||!Text(l.GameVersion,256)||!Text(l.Path,32767)||!Text(l.Label,512))||
+            if(data.GameLocations==null||data.GameLocations.Any(l=>l==null||!Id(l.Id)||!Text(l.Game,128)||!Text(l.GameVersion,256)||!Text(l.Path,32767)||!Text(l.Label,512))||
                 data.GameLocations.Select(l=>l.Id).Distinct().Count()!=data.GameLocations.Count)throw new InvalidDataException("Invalid game/build path configuration.");
             foreach(var location in data.GameLocations)OrdinaryPath(location.Path);
             foreach(var location in data.GameLocations.Where(l=>l.Indexed))
@@ -190,22 +207,34 @@ namespace BrawlCrate.Studio
                 {
                     try{held=mutex.WaitOne(5000);}catch(AbandonedMutexException){held=true;}
                     if(!held)throw new IOException("The shared library is busy in another editor. Try again.");
-                    cancellation.ThrowIfCancellationRequested();var current=Read();var changed=change(current);
+                    cancellation.ThrowIfCancellationRequested();
+                    // A writer cannot keep obsolete search graphs alive while
+                    // independently validating current/recovery metadata.
+                    lock(cacheSync)
+                    {
+                        health.Clear();searchSnapshot=null;indexedCatalogue=null;indexedClips=null;
+                        indexedModels=null;indexedMounts=null;costumeCatalogue=null;costumeChoices.Clear();
+                    }
+                    var current=Read();var changed=change(current);
                     if(!changed.Item2)return changed.Item1;
                     current.Generation++;Validate(current);
                     string temporary=Path.Combine(DirectoryPath,".library-"+Guid.NewGuid().ToString("N")+".tmp");
                     try
                     {
                         NoLinks(IndexPath);
+                        bool compact=current.Clips.Count>4096;
+                        long memoryBudget=LibraryCapacity.CurrentXmlAllowance(),diskBudget=LibraryCapacity.DiskAllowance(DirectoryPath);
                         using(var stream=new FileStream(temporary,FileMode.CreateNew,FileAccess.Write,FileShare.None))
                         {
-                            using(var writer=XmlWriter.Create(stream,new XmlWriterSettings{Indent=true,Encoding=new System.Text.UTF8Encoding(false),CloseOutput=false}))
+                            using(var disk=new LibraryQuotaWriter(stream,diskBudget))
+                            using(var encoded=compact?(Stream)new GZipStream(disk,CompressionLevel.Fastest,true):disk)
+                            using(var memory=new LibraryQuotaWriter(encoded,memoryBudget))
+                            using(var writer=XmlWriter.Create(memory,new XmlWriterSettings{Indent=true,Encoding=new System.Text.UTF8Encoding(false),CloseOutput=false}))
                                 new XmlSerializer(typeof(LibraryCatalogue)).Serialize(writer,current);
-                            if(stream.Length>MaximumIndexBytes)throw new InvalidDataException("The shared library index exceeds 64 MB.");
                             stream.Flush(true);
                         }
                         cancellation.ThrowIfCancellationRequested();
-                        string published=Path.Combine(DirectoryPath,"catalogue-"+current.Generation.ToString("D20",System.Globalization.CultureInfo.InvariantCulture)+".xml");
+                        string published=Path.Combine(DirectoryPath,"catalogue-"+current.Generation.ToString("D20",System.Globalization.CultureInfo.InvariantCulture)+(compact?".xml.gz":".xml"));
                         NoLinks(published);File.Move(temporary,published);
                         // Retain current + two recovery generations. Cleanup is
                         // optional: a failure never invalidates a committed file.
@@ -254,10 +283,21 @@ namespace BrawlCrate.Studio
         public int RegisterGame(LibraryGamePlan plan,CancellationToken cancellation=default)
         {
             if(plan==null)throw new ArgumentNullException(nameof(plan));
+            var discs=new Dictionary<string,BrawlDiscImage>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
             foreach(var mount in plan.Mounts)
             {
                 cancellation.ThrowIfCancellationRequested();
-                using(var held=LockSource(mount.LocalPath))
+                if(mount.OriginPath!=null)
+                {
+                    if(!discs.TryGetValue(mount.OriginPath,out var image))
+                    {image=new BrawlDiscImage(mount.OriginPath,cancellation);discs.Add(mount.OriginPath,image);}
+                    var origin=new FileInfo(mount.OriginPath);
+                    if(origin.Length!=mount.OriginBytes||origin.LastWriteTimeUtc.Ticks!=mount.OriginWriteTicks)throw new InvalidDataException("The original disc changed during indexing. Nothing was registered.");
+                    NativeSourceScratch.Verify(image,mount,cancellation);mount.NativeWriteTicks=mount.OriginWriteTicks;
+                }
+                else using(var held=LockSource(mount.LocalPath))
                 {
                     if(held.Length!=mount.Bytes||FighterProject.HashFile(mount.LocalPath)!=mount.ContainerSha256)throw new InvalidDataException("A native source changed during indexing. Nothing was registered.");
                     mount.NativeWriteTicks=File.GetLastWriteTimeUtc(mount.LocalPath).Ticks;
@@ -274,7 +314,8 @@ namespace BrawlCrate.Studio
                     string originalId=input.Id;
                     var old=data.Mounts.FirstOrDefault(m=>m.GameSourceId==location.Id&&m.VirtualPath==input.VirtualPath&&m.ContainerSha256==input.ContainerSha256);
                     if(old==null){input.GameSourceId=location.Id;data.Mounts.Add(input);old=input;changed=true;}
-                    else if(!File.Exists(old.LocalPath)||FighterProject.HashFile(old.LocalPath)!=old.ContainerSha256){old.LocalPath=input.LocalPath;old.NativeWriteTicks=input.NativeWriteTicks;changed=true;}
+                    else if(input.OriginPath!=null&&old.LocalPath!=input.LocalPath){old.LocalPath=input.LocalPath;old.NativeWriteTicks=input.NativeWriteTicks;changed=true;}
+                    else if(input.OriginPath==null&&(!File.Exists(old.LocalPath)||FighterProject.HashFile(old.LocalPath)!=old.ContainerSha256)){old.LocalPath=input.LocalPath;old.NativeWriteTicks=input.NativeWriteTicks;changed=true;}
                     mounts.Add(originalId,old.Id);
                 }
                 var models=new Dictionary<string,string>();
@@ -294,6 +335,8 @@ namespace BrawlCrate.Studio
                 }
                 if(changed)data.LastOperation="Index Game Source";return Tuple.Create(added,changed);
             },cancellation);
+            }
+            finally{foreach(var image in discs.Values)image.Dispose();}
         }
         public void RepairGameSource(string sourceId,string replacement,CancellationToken cancellation=default)
             =>RepairGameSource(sourceId,replacement,cancellation,null);
@@ -308,7 +351,7 @@ namespace BrawlCrate.Studio
                     var source=data.GameLocations.Single(l=>l.Id==sourceId);
                     if(!source.Indexed||!BrawlGameSource.IsDiscProvider(source.Provider)||source.ContainerSha256!=hash||source.Bytes!=held.Length)throw new InvalidDataException("Select the exact indexed disc image. Its hash/size must match.");
                     if(name!=null){ValidateSourceName(data,source,name);source.Label=name;}
-                    source.Path=path;foreach(var mount in data.Mounts.Where(m=>m.GameSourceId==sourceId)){mount.OriginPath=path;mount.OriginWriteTicks=File.GetLastWriteTimeUtc(path).Ticks;}
+                    source.Path=path;foreach(var mount in data.Mounts.Where(m=>m.GameSourceId==sourceId)){mount.OriginPath=path;mount.LocalPath=path;mount.OriginWriteTicks=File.GetLastWriteTimeUtc(path).Ticks;mount.NativeWriteTicks=mount.OriginWriteTicks;}
                     data.LastOperation="Repair Disc Source";return Tuple.Create(true,true);
                 },cancellation);
             }
@@ -500,6 +543,7 @@ namespace BrawlCrate.Studio
                     // A changed image is reverified by the cancellable Repair
                     // operation; browsing never hashes gigabytes on the UI thread.
                     if(origin.LastWriteTimeUtc.Ticks!=mount.OriginWriteTicks)return LibrarySourceState.SourceChanged;
+                    return LibrarySourceState.Available;
                 }
                 var info=file(mount.LocalPath);if(!info.Exists)return LibrarySourceState.Missing;
                 if(force)NoLinks(mount.LocalPath);
@@ -591,10 +635,12 @@ namespace BrawlCrate.Studio
             }
         }
 
-        public LibrarySourceLease Open(string clipId)=>Open(clipId,null);
+        public LibrarySourceLease Open(string clipId)=>Open(clipId,null,default);
 
-        public LibrarySourceLease Open(string clipId,string modelId)
+        public LibrarySourceLease Open(string clipId,string modelId)=>Open(clipId,modelId,default);
+        public LibrarySourceLease Open(string clipId,string modelId,CancellationToken cancellation)
         {
+            cancellation.ThrowIfCancellationRequested();
             Interlocked.Increment(ref DiagnosticOpens);
             var data=Read();var clip=data.Clips.SingleOrDefault(c=>c.Id==clipId)??throw new InvalidDataException("This immutable library clip is no longer registered.");
             var state=State(data,clip,true);
@@ -613,17 +659,29 @@ namespace BrawlCrate.Studio
                 if(modelState!=LibrarySourceState.Available)throw new InvalidOperationException("Library costume source: "+modelState+". Repair the exact source before previewing or transferring it.");
             }
             var originSource=a.GameSourceId==null?null:data.GameLocations.Single(l=>l.Id==a.GameSourceId);
-            var lease=new LibrarySourceLease{ModelPath=a.LocalPath};
+            var lease=new LibrarySourceLease{ModelPath=a.LocalPath,ProvenanceModelPath=a.OriginPath??a.LocalPath};
             try
             {
                 foreach(var origin in new[]{a,b}.Where(m=>m.OriginPath!=null).GroupBy(m=>m.OriginPath,StringComparer.OrdinalIgnoreCase).Select(g=>g.First()))
                 {
                     NoLinks(origin.OriginPath);var held=new FileStream(origin.OriginPath,FileMode.Open,FileAccess.Read,FileShare.Read);lease.OriginLocks.Add(held);
-                    if(held.Length!=origin.OriginBytes)throw new InvalidDataException("The original disc changed before native decoding.");
+                    if(held.Length!=origin.OriginBytes||File.GetLastWriteTimeUtc(origin.OriginPath).Ticks!=origin.OriginWriteTicks)throw new InvalidDataException("The original disc changed before native decoding.");
                 }
-                lease.ModelLock=LockSource(a.LocalPath);lease.MotionLock=LockSource(b.LocalPath);
-                if(FighterProject.HashFile(a.LocalPath)!=a.ContainerSha256 || FighterProject.HashFile(b.LocalPath)!=b.ContainerSha256)throw new InvalidDataException("Source changed before decoding.");
-                lease.ModelRoot=NodeFactory.FromFile(null,a.LocalPath);lease.MotionRoot=NodeFactory.FromFile(null,b.LocalPath);
+                var paths=new Dictionary<string,string>();
+                foreach(var mount in new[]{a,b}.GroupBy(m=>m.Id).Select(g=>g.First()))
+                {
+                    string path=mount.LocalPath;
+                    if(mount.OriginPath!=null)
+                    {
+                        lease.Scratch=lease.Scratch??new NativeSourceScratch();
+                        using(var image=new BrawlDiscImage(mount.OriginPath,cancellation))path=lease.Scratch.Read(image,mount.VirtualPath,mount.Id);
+                    }
+                    paths[mount.Id]=path;
+                }
+                string modelPath=paths[a.Id],motionPath=paths[b.Id];lease.ModelPath=modelPath;
+                lease.ModelLock=LockSource(modelPath);lease.MotionLock=LockSource(motionPath);
+                if(FighterProject.HashFile(modelPath)!=a.ContainerSha256 || FighterProject.HashFile(motionPath)!=b.ContainerSha256)throw new InvalidDataException("Source changed before decoding.");
+                lease.ModelRoot=NodeFactory.FromFile(null,modelPath);lease.MotionRoot=NodeFactory.FromFile(null,motionPath);
                 if(lease.ModelRoot==null||lease.MotionRoot==null)throw new InvalidDataException("The indexed native source cannot be decoded.");
                 lease.Model=BrawlLibrarySource.Resolve(lease.ModelRoot,model.ResourceKey) as MDL0Node;
                 lease.Animation=BrawlLibrarySource.Resolve(lease.MotionRoot,clip.ResourceKey) as CHR0Node;
@@ -631,6 +689,7 @@ namespace BrawlCrate.Studio
                     BrawlRetargeter.SkeletonFingerprint(lease.Model)!=model.SkeletonSha256||lease.Model.Name!=model.Name||lease.Animation.Name!=clip.Name||
                     lease.Model.Version!=model.NativeVersion||lease.Animation.Version!=clip.NativeVersion||lease.Animation.FrameCount!=clip.FrameCount||lease.Animation.Loop!=clip.Loop)
                     throw new InvalidDataException("Native source model, skeleton, resource or timing identity differs from the approved association.");
+                cancellation.ThrowIfCancellationRequested();
                 lease.Reference=new LibraryClipReference{ClipId=clip.Id,Revision=clip.Revision,ModelId=model.Id,Game=a.Game,GameVersion=a.GameVersion,Platform=a.Platform,
                     BuildEvidence=a.BuildEvidence,Adapter=a.Provider,ModelMountId=a.Id,MotionMountId=b.Id,ModelKey=model.ResourceKey,MotionKey=clip.ResourceKey,
                     ModelContainerSha256=a.ContainerSha256,MotionContainerSha256=b.ContainerSha256,ModelResourceSha256=model.ResourceSha256,MotionResourceSha256=clip.ResourceSha256,

@@ -61,6 +61,7 @@ namespace BrawlCrate.UI
         }
         private void RefreshSavedGameSourceUi(AnimationLibrary shared)
         {
+            _simpleWorkspaceSourceIssue=_simpleWorkspaceIssueClip=null;
             _sharedSourceLibrary=shared;
             if(_libraryGameSourceFilter!=null)
             {

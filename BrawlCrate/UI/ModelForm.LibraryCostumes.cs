@@ -112,7 +112,7 @@ namespace BrawlCrate.UI
             return LibraryWork.Run(this, "Loading Verified Original Costume", (cancel, progress) =>
             {
                 cancel.ThrowIfCancellationRequested();
-                var source = ResolveSourceCatalogue(clipId).Open(clipId, modelId);
+                var source = ResolveSourceCatalogue(clipId).Open(clipId, modelId,cancel);
                 if (cancel.IsCancellationRequested) { source.Dispose(); cancel.ThrowIfCancellationRequested(); }
                 return source;
             });

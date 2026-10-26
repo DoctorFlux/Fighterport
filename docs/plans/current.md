@@ -1,5 +1,39 @@
 # Current milestone M2 — simpler native workspace
 
+26 October 2026 bounded preview.38-direct-game-sources is accepted:
+**2,980 checks / 20 runs / 143 reviewed native PNGs**. Disc assets stay in the
+original ISO/WBFS; indexing stages one native package at a time and retains no
+extracted fighter tree. Original preview, costume/target opening, Next transfer,
+comparison and Save/export use disposable selected-package leases, including
+legacy catalogue entries whose extracted-cache paths are absent. Dynamic memory
+and disk quotas replace arbitrary global catalogue counts; schema-1 metadata can
+be compressed. Four-roster fixtures qualify 103,736 clips and 10,752 models; a
+separate audit matches all 29,608 native records against the prior verified
+inventory. Full Model Previewer, Next, native Undo and root/boundary policies stay
+intact. See [acceptance record](../DIRECT_GAME_SOURCES_ACCEPTANCE_2026-10-26.md). ONE G1/M2 remains incomplete; physical
+input/DPI, human usability, actual mod/game acceptance and broad contacts stay open.
+No broader increment is promoted.
+
+26 October 2026 authorized continuation — preview.38-direct-game-sources:
+Treat the selected ROM/disc or install/SD folder as the asset source. Keep a
+compact metadata index for listing; do not keep a second extracted fighter tree.
+Inventory a disc with one transient native package at a time, and load only the
+selected model/costume/motion packages into disposable native leases. Legacy
+indexed sources must open from their original disc even when extracted caches
+are unavailable. Preserve exact native/container/resource hashes, source IDs,
+source-local root/boundary policies, original Next and full native Model Previewer.
+No disc loading, hashing, extraction or solving during playback. Existing saved
+Brawl registration was restored with exact identities at the user's explicit
+request. Preserve original game bytes, saved projects, settings and old caches.
+Replace fixed global clip/catalogue ceilings with resource-aware metadata budgets
+and compact metadata storage; no promise of infinite RAM or new game adapters.
+Keep native per-operation limits, async/paged/lazy UI work, cancellation and stale
+publication guards. Qualify four-roster metadata, direct legacy/current disc
+loads, transient cleanup, damaged/missing sources, costume/target/retarget/fit
+workflows and unchanged document/Undo in background private desktops. Record
+fresh captures and acceptance before source-only publication. ONE G1/M2 stays
+incomplete; physical input/DPI, contact quality and actual mod/game gates remain open.
+
 26 October 2026 bounded preview.37-source-fit-workflow is accepted:
 **3,410 checks / 21 runs / 157 reviewed native PNGs**. Current-clip fitting uses
 native Undo and ordinary Save/export; source preview initializes and frames actual

@@ -2,7 +2,7 @@
 
 This is the public unified source repository at https://github.com/DoctorFlux/Fighterport.
 It imports the BrawlCrate-based Next preview.14 source and integrated owned engine;
-the current implementation is **preview.37-source-fit-workflow**.
+the current implementation is **preview.38-direct-game-sources**.
 See the [source/fit and saved-source acceptance](docs/SOURCE_FIT_WORKFLOW_ACCEPTANCE_2026-10-26.md).
 The two predecessor repositories are private preserved histories.
 Upstream copyrights, licenses and notices remain intact.
@@ -30,7 +30,12 @@ game/install/SD folders. Brawl ISO/WBFS and Brawl-family extracted/SD builds can
 indexed now; other games/formats can have their locations saved for future readers.
 Fighterport reads ISO/WBFS directly: no separate reader, emulator or key-file setup
 is needed. Add the disc once to index its complete fighter roster, animations and costumes
-in the shared library; there is no character picker. Extracted Brawl folders also work directly.
+in the shared library; there is no character picker. Game assets stay in the original
+image. Indexing reads one temporary package at a time, and preview/retargeting reads
+only the selected native model/costume and motion packages. Temporary native leases
+are released when closed. Install/SD folders are read directly. The library keeps
+compact listing metadata and preferences, with available-memory/disk guards instead
+of a fixed total-animation ceiling. It retains no second extracted fighter tree.
 For Project M or Project+, choose that game/mod and its SD root or build folder.
 Brawl and each mod installation have separate categories, even with identical
 character names. **Saved games / paths...** lists every saved source in a compact
@@ -42,7 +47,8 @@ Choose **Open saved library** to reuse an indexed source without extracting it a
 **Animation → Manage library sources...** retains source management. Existing
 indexed disc sources and saved provenance stay readable without their historical
 reader executable. Other games need their own adapters; paths alone are not support.
-See the [integrated reader record](docs/INTEGRATED_DISC_READER.md) and
+See the [direct-source acceptance](docs/DIRECT_GAME_SOURCES_ACCEPTANCE_2026-10-26.md),
+[integrated reader record](docs/INTEGRATED_DISC_READER.md) and
 [background acceptance](docs/INTEGRATED_DISC_ACCEPTANCE_2026-10-26.md).
 
 Choose a character and animation directly in the Brawl library, then its **Costume**.

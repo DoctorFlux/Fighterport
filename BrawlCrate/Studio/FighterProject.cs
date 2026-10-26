@@ -259,7 +259,7 @@ namespace BrawlCrate.Studio
         public FighterAsset CreateLibraryRevision(LibrarySourceLease source, Retargeting.RetargetResult result,NativeTimingFit timing)
         {
             if(source==null)throw new ArgumentNullException(nameof(source));
-            return CreateLibraryRevision(source.Reference,source.Animation.Name,source.ModelPath,result,timing);
+            return CreateLibraryRevision(source.Reference,source.Animation.Name,source.ProvenanceModelPath??source.ModelPath,result,timing);
         }
         internal FighterAsset CreateLibraryRevision(LibraryClipReference source,string sourceName,string sourceModelPath,Retargeting.RetargetResult result,NativeTimingFit timing)
         {

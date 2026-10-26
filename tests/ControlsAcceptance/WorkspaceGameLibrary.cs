@@ -182,57 +182,34 @@ internal static partial class Program
     }
     static async Task GameLibraryRepairCostume(ModelForm form, AnimationLibrary library, string clipId, string modelId, string output)
     {
-        var data = library.Read(); var model = data.Models.Single(m => m.Id == modelId);
-        var mount = data.Mounts.Single(m => m.Id == model.MountId);
-        string canonical = data.Clips.Single(c => c.Id == clipId).ModelId;
-        string original = Path.GetFullPath(mount.LocalPath);
-        string outputRoot = Path.GetFullPath(output).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
-        Check(original.StartsWith(outputRoot, StringComparison.OrdinalIgnoreCase) && mount.OriginPath != null &&
-            !string.Equals(original, Path.GetFullPath(mount.OriginPath), StringComparison.OrdinalIgnoreCase),
-            "Costume repair fixture relocates only its output-owned extracted copy, never the physical disc or supplied original assets");
-        string relocated = Path.Combine(Path.GetDirectoryName(original), "relocated-" + Path.GetFileName(original));
-        var state = new GameLibraryDocument(form);
-        Call(form, "PauseSourceOperation"); Call(form, "ReleaseLibraryPreview");
-        bool repaired = false;
-        File.Move(original, relocated);
+        var data=library.Read();var model=data.Models.Single(m=>m.Id==modelId);var mount=data.Mounts.Single(m=>m.Id==model.MountId);
+        var state=new GameLibraryDocument(form);Call(form,"PauseSourceOperation");Call(form,"ReleaseLibraryPreview");
+        Check(mount.OriginPath!=null&&mount.LocalPath==mount.OriginPath,
+            "New disc metadata points to the original image rather than an extracted costume copy");
+        string origin=mount.OriginPath;
         try
         {
-            bool rejected = false;
-            try { using ((LibrarySourceLease)Call(form, "LoadSelectedLibrarySource")) { } }
-            catch (TargetInvocationException error) when (error.InnerException is InvalidOperationException || error.InnerException is IOException)
-            { rejected = true; }
-            Check(rejected && SimpleControl<Button>(form, "libraryRepairSource").Enabled &&
-                !SimpleControl<Button>(form, "libraryPreviewOriginal").Enabled && !SimpleControl<Button>(form, "libraryUseOnTarget").Enabled,
-                "A missing selected costume records a recoverable source issue and enables Repair while disabling unsafe preview/transfer");
-            state.CheckPreserved("failed selected-costume source verification");
-            await CaptureSimpleWorkspace(form, Path.Combine(output, "disc-costume-repair-needed.png"));
-            bool prompted = false;
-            using (FlowModal("libraryRepairMount", dialog => {
-                prompted = true;
-                var choices = SimpleControl<ComboBox>(dialog, "libraryRepairMount");
-                choices.SelectedItem = choices.Items.Cast<string>().Single(label => label == Path.GetFileName(original));
-                SimpleControl<TextBox>(dialog, "libraryRepairPath").Text = relocated;
-                CaptureDialog(dialog, output, "disc-costume-repair.png");
-                SimpleControl<Button>(dialog, "libraryRepairApply").PerformClick();
-            })) SimpleControl<Button>(form, "libraryRepairSource").PerformClick();
-            await LibraryQuerySettled(form);
-            repaired = library.Read().Mounts.Single(m => m.Id == mount.Id).LocalPath == relocated;
-            Check(prompted && repaired && !File.Exists(original) && File.Exists(relocated) &&
-                library.Read().Clips.Single(c => c.Id == clipId).ModelId == canonical,
-                "Actual Repair includes the exact alternate-costume mount and publishes its verified relocated bytes without changing the canonical association");
-            await GameLibrarySelect(form, clipId); Call(form, "SelectLibraryCostume", modelId);
-            SimpleControl<Button>(form, "libraryPreviewOriginal").PerformClick();
-            var source = (LibrarySourceLease)Field(form, "_libraryLease");
-            Check(source.Reference.ModelId == modelId && source.Reference.ClipId == clipId &&
-                source.Reference.ModelContainerSha256 == mount.ContainerSha256 && source.Reference.ModelResourceSha256 == model.ResourceSha256 &&
-                source.Reference.SourceRig == model.SkeletonSha256 && source.ModelPath == relocated,
-                "The repaired original preview retains the same exact selected costume, native content and authentic bind identity");
-            state.CheckPreserved("repaired selected-costume source preview");
+            // An isolated metadata fixture makes one costume's original image
+            // unavailable. Never move or alter the user's actual disc image.
+            mount.OriginPath=Path.Combine(output,"missing-original-disc.wbfs");GameLibraryPublishMetadata(library,data);
+            bool rejected=false;
+            try{using((LibrarySourceLease)Call(form,"LoadSelectedLibrarySource")){} }
+            catch(TargetInvocationException error)when(error.InnerException is InvalidOperationException||error.InnerException is IOException){rejected=true;}
+            Check(rejected&&SimpleControl<Button>(form,"libraryRepairSource").Enabled&&!SimpleControl<Button>(form,"libraryUseOnTarget").Enabled,
+                "An unavailable original disc disables unsafe costume preview/transfer and exposes source repair");
+            state.CheckPreserved("missing original disc");
+            await CaptureSimpleWorkspace(form,Path.Combine(output,"disc-original-source-missing.png"));
         }
-        finally
-        {
-            if (!repaired && File.Exists(relocated) && !File.Exists(original)) File.Move(relocated, original);
-        }
+        finally{mount.OriginPath=origin;GameLibraryPublishMetadata(library,data);}
+        Call(form,"RefreshSavedGameSourceUi",library);
+        await GameLibrarySelect(form,clipId);Call(form,"SelectLibraryCostume",modelId);
+        SimpleControl<Button>(form,"libraryPreviewOriginal").PerformClick();
+        var source=(LibrarySourceLease)Field(form,"_libraryLease");
+        Check(source.Reference.ModelId==modelId&&source.Reference.ClipId==clipId&&source.Reference.ModelResourceSha256==model.ResourceSha256&&source.Reference.SourceRig==model.SkeletonSha256,
+            "Restoring the original-source link recovers the exact costume without changing its canonical association");
+        Check(!Directory.Exists(Path.Combine(library.DirectoryPath,"NativeCache"))||!Directory.EnumerateFiles(Path.Combine(library.DirectoryPath,"NativeCache"),"*",SearchOption.AllDirectories).Any(),
+            "Complete disc indexing retains no extracted fighter tree in the library");
+        state.CheckPreserved("recovered direct original source");
     }
     static async Task<ModelForm> GameLibraryOpenTarget(ModelForm form, AnimationLibrary library,
         string clipId, string modelId, string output, bool exerciseFailedSave)
@@ -398,7 +375,14 @@ internal static partial class Program
         string image = args[Array.IndexOf(args, "--disc-image") + 1];
         string previous = Environment.GetEnvironmentVariable("FIGHTERPORT_LIBRARY_ROOT");
         Environment.SetEnvironmentVariable("FIGHTERPORT_LIBRARY_ROOT", Path.Combine(output, "L"));
-        string discHash = FighterProject.HashFile(image);
+        string discHash;
+        if(args.Contains("--verified-library-index"))
+        {
+            string verified=args[Array.IndexOf(args,"--verified-library-index")+1];LibraryCatalogue prior;
+            using(var stream=File.OpenRead(verified))prior=(LibraryCatalogue)new XmlSerializer(typeof(LibraryCatalogue)).Deserialize(stream);
+            discHash=prior.GameLocations.Single(l=>l.Indexed).ContainerSha256;
+        }
+        else discHash=FighterProject.HashFile(image);
         var originals = new[] { args[0], args[1] }.Distinct().ToDictionary(p => p, FighterProject.HashFile);
         ModelForm form = null;
         try

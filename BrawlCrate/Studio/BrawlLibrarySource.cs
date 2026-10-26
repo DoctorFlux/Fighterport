@@ -22,16 +22,19 @@ namespace BrawlCrate.Studio
         internal ResourceNode ModelRoot, MotionRoot;
         internal FileStream ModelLock, MotionLock;
         internal readonly List<FileStream> OriginLocks=new List<FileStream>();
+        internal NativeSourceScratch Scratch;
         public MDL0Node Model { get; internal set; }
         public CHR0Node Animation { get; internal set; }
         public LibraryClipReference Reference { get; internal set; }
         public string ModelPath { get; internal set; }
+        internal string ProvenanceModelPath;
         public void Dispose()
         {
             MotionRoot?.Dispose(); ModelRoot?.Dispose();
             MotionLock?.Dispose(); ModelLock?.Dispose();
             foreach(var origin in OriginLocks)origin.Dispose();OriginLocks.Clear();
             MotionRoot=ModelRoot=null; MotionLock=ModelLock=null;
+            Scratch?.Dispose();Scratch=null;
         }
     }
 

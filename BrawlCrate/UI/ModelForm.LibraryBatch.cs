@@ -74,7 +74,7 @@ namespace BrawlCrate.UI
                                 if(preparedKeys+keys>2000000)throw new InvalidOperationException("This review exceeds two million native keys. Use a smaller batch.");preparedKeys+=keys;
                                 current();row.Cells["Result"].Value="Review: limb "+result.MaximumLimbResidual.ToString("G4")+", contact "+result.MaximumContactResidual.ToString("G4")+"; omitted: "+(result.IgnoredSourceBones.Length==0?"none":string.Join(", ",result.IgnoredSourceBones));
                                 row.Cells["Result"].ToolTipText=Convert.ToString(row.Cells["Result"].Value);
-                                drafts.Add(new LibraryBatchDraft{Source=source.Reference.Copy(),SourceName=source.Animation.Name,SourceModelPath=source.ModelPath,Result=result,Timing=timing});result=null;
+                                drafts.Add(new LibraryBatchDraft{Source=source.Reference.Copy(),SourceName=source.Animation.Name,SourceModelPath=source.ProvenanceModelPath??source.ModelPath,Result=result,Timing=timing});result=null;
                             }
                             catch(Exception error){row.Cells["Result"].Value="Failed: "+error.Message;}
                             finally{source?.Dispose();result?.Dispose();}

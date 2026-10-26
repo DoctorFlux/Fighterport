@@ -321,8 +321,16 @@ namespace BrawlCrate.UI
             _libraryOriginalLabel.Text="Original source preview (read-only)";
             LayoutSimpleWorkspaceLibraryPreview();
         }
+        private bool _animationLibraryDisposed;
+        protected override void Dispose(bool disposing)
+        {
+            if(disposing)DisposeAnimationLibrary();
+            base.Dispose(disposing);
+        }
         private void DisposeAnimationLibrary()
         {
+            if(_animationLibraryDisposed)return;
+            _animationLibraryDisposed=true;
             ResetBatchReview(); ResetLoopInspection();
             CloseLinkedComparison();
             _librarySearchGeneration++;CancelLibraryTreeWork();
@@ -356,7 +364,7 @@ namespace BrawlCrate.UI
         private LibrarySourceLease LoadLibrarySource(string clipId)
         {
             return LibraryWork.Run(this,"Loading Verified Original Source",(cancel,progress)=>{
-                cancel.ThrowIfCancellationRequested();var source=ResolveSourceCatalogue(clipId).Open(clipId);
+                cancel.ThrowIfCancellationRequested();var source=ResolveSourceCatalogue(clipId).Open(clipId,null,cancel);
                 if(cancel.IsCancellationRequested){source.Dispose();cancel.ThrowIfCancellationRequested();}
                 return source;
             });
@@ -369,7 +377,7 @@ namespace BrawlCrate.UI
             var data=_library.Read();
             var selectedModel=data.Models.SingleOrDefault(model=>model.Id==SelectedLibraryCostume?.ModelId);
             var ids=new[]{item.Clip.MountId,item.Model?.MountId,selectedModel?.MountId}.Where(id=>id!=null).Distinct().ToArray();
-            var choices=ids.Select(id=>Tuple.Create(false,id,Path.GetFileName(data.Mounts.Single(m=>m.Id==id).LocalPath))).ToList();
+            var choices=ids.Where(id=>data.Mounts.Single(m=>m.Id==id).OriginPath==null).Select(id=>Tuple.Create(false,id,Path.GetFileName(data.Mounts.Single(m=>m.Id==id).LocalPath))).ToList();
             foreach(var sourceId in ids.Select(id=>data.Mounts.Single(m=>m.Id==id)).Where(m=>m.OriginPath!=null).Select(m=>m.GameSourceId).Distinct())
                 choices.Add(Tuple.Create(true,sourceId,"Disc image · "+data.GameLocations.Single(l=>l.Id==sourceId).GameVersion));
             using(var chooser=new Form{Name="LibraryRepairDialog",Text="Repair Original Source",ClientSize=new Size(650,252),StartPosition=FormStartPosition.CenterParent,FormBorderStyle=FormBorderStyle.FixedDialog,MaximizeBox=false,MinimizeBox=false,ShowInTaskbar=false})

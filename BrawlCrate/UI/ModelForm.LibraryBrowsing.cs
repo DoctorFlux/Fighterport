@@ -38,10 +38,10 @@ namespace BrawlCrate.UI
                             Group=new LibraryGroup{Character=true,DirectAnimations=true,Items=clips.OrderBy(i=>i.Clip.Name,StringComparer.OrdinalIgnoreCase).ThenBy(i=>i.Clip.Channel,StringComparer.Ordinal).ThenBy(i=>i.Clip.ResourceKey,StringComparer.Ordinal).ToList(),
                                 DuplicateNames=new HashSet<string>(clips.GroupBy(i=>i.Clip.Name+"|"+i.Clip.Channel,StringComparer.Ordinal).Where(g=>g.Count()>1).Select(g=>g.Key),StringComparer.Ordinal)}};
                         var models=clips.GroupBy(i=>i.Model?.Id??"unassociated-"+i.Motion.Id)
-                            .OrderBy(g=>g.First().Model?.Name??Path.GetFileNameWithoutExtension(g.First().Motion.LocalPath),StringComparer.OrdinalIgnoreCase)
+                            .OrderBy(g=>g.First().Model?.Name??Path.GetFileNameWithoutExtension(g.First().Motion.VirtualPath??g.First().Motion.LocalPath),StringComparer.OrdinalIgnoreCase)
                             .Select(model=>{
                                 var first=model.First();var motions=model.ToList();
-                                string label=first.Model?.Name??"Unassociated · "+Path.GetFileNameWithoutExtension(first.Motion.LocalPath);
+                                string label=first.Model?.Name??"Unassociated · "+Path.GetFileNameWithoutExtension(first.Motion.VirtualPath??first.Motion.LocalPath);
                                 string variant=first.Model?.Variant;
                                 if(first.Model!=null&&!string.IsNullOrWhiteSpace(variant)&&variant!=first.Model.Name)label+=" · "+variant;
                                 return new LibraryBranch{Name=model.Key,Text=label,Group=new LibraryGroup{Items=motions},
@@ -210,7 +210,7 @@ namespace BrawlCrate.UI
                 var item=group.Items[group.Loaded];
                 string label=group.DirectAnimations?item.Clip.Name+
                     (item.Clip.Channel=="CHR0 skeletal"?"":" · "+item.Clip.Channel.Replace("Node",""))+
-                    (group.DuplicateNames.Contains(item.Clip.Name+"|"+item.Clip.Channel)?" · "+(item.Model?.Name??Path.GetFileNameWithoutExtension(item.Motion.LocalPath))+" ["+item.Clip.ResourceKey+"]":"")+
+                    (group.DuplicateNames.Contains(item.Clip.Name+"|"+item.Clip.Channel)?" · "+(item.Model?.Name??Path.GetFileNameWithoutExtension(item.Motion.VirtualPath??item.Motion.LocalPath))+" ["+item.Clip.ResourceKey+"]":"")+
                     (item.State==LibrarySourceState.Available?"":" · "+LibraryStateText(item.State)):
                     item.Clip.Name+" · "+(item.Model?.Name??"Unassociated")+" · "+LibraryStateText(item.State);
                 var row=new TreeNode(label)

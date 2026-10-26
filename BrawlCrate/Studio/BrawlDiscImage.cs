@@ -15,6 +15,7 @@ namespace BrawlCrate.Studio
     internal sealed class BrawlDiscImage : IDisposable
     {
         internal static int DiagnosticOpens;
+        internal static int DiagnosticNativeReads;
         internal const string Provider = "fighterport-brawl-disc-v1";
         private const long MaximumDisc = 143432L * 2 * 0x8000;
         private const int Cluster = 0x8000, Payload = 0x7c00;
@@ -243,6 +244,19 @@ namespace BrawlCrate.Studio
         }
         internal string[] Files => entries.Select(entry => entry.Path).ToArray();
         internal Entry[] Inventory => entries.ToArray();
+        internal long CopyNativeFile(string virtualPath,Stream output)
+        {
+            var entry=entries.SingleOrDefault(e=>e.Path==virtualPath)??throw new InvalidDataException("The exact indexed fighter package is missing from this disc.");
+            if(entry.Length<1||entry.Length>FighterProject.MaximumAssetBytes)throw new InvalidDataException("The selected native package exceeds its bounded load size.");
+            Interlocked.Increment(ref DiagnosticNativeReads);
+            long done=0;
+            while(done<entry.Length)
+            {
+                cancellation.ThrowIfCancellationRequested();int take=(int)Math.Min(256*1024,entry.Length-done);
+                byte[] bytes=ReadPartition(entry.Offset+done,take);output.Write(bytes,0,bytes.Length);done+=take;
+            }
+            return done;
+        }
         internal void Extract(string character, string root)
         {
             if (!Regex.IsMatch(character ?? "", @"^[A-Za-z0-9_-]+$")) throw new InvalidDataException("Choose an exact indexed character folder.");
