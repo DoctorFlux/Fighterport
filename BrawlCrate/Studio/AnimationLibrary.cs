@@ -594,7 +594,10 @@ namespace BrawlCrate.Studio
             if(!ReferenceEquals(indexedCatalogue,data))
             {
                 indexedModels=data.Models.ToDictionary(m=>m.Id);indexedMounts=data.Mounts.ToDictionary(m=>m.Id);
-                indexedClips=data.Clips.OrderBy(c=>c.Name,StringComparer.OrdinalIgnoreCase).ThenBy(c=>c.ResourceKey,StringComparer.Ordinal).Select(c=>{
+                // Keep package registration order and the native PAC child traversal.
+                // Filtering/paging must consume this order, never clip names.
+                var mountOrder=data.Mounts.Select((m,i)=>new{m.Id,Index=i}).ToDictionary(m=>m.Id,m=>m.Index);
+                indexedClips=data.Clips.OrderBy(c=>mountOrder[c.MountId]).ThenBy(c=>LibraryNativeOrder.Key(c.ResourceKey),StringComparer.Ordinal).Select(c=>{
                     indexedModels.TryGetValue(c.ModelId??"",out var model);var motion=indexedMounts[c.MountId];
                     return new IndexedClip{Clip=c,Model=model,Motion=motion,GameText=motion.Game+" "+motion.GameVersion,ModelText=model?.Character+" "+model?.Name+" "+c.SourceCharacter,Text=c.Name+" "+model?.Name+" "+model?.Character+" "+c.SourceCharacter+" "+motion.Game+" "+motion.GameVersion+" "+c.Channel+" "+c.Tags};
                 }).ToArray();indexedCatalogue=data;

@@ -35,7 +35,7 @@ namespace BrawlCrate.UI
                         bool direct=clips.Any(i=>!string.IsNullOrEmpty(i.Motion.GameSourceId));
                         if(direct)return new LibraryBranch{Name="character:"+scope+"|"+character.Key,Text=character.Key,
                             ToolTip=clips.Count+" indexed animations · choose a costume below",HasSelection=clips.Any(i=>i.Clip.Id==selected),
-                            Group=new LibraryGroup{Character=true,DirectAnimations=true,Items=clips.OrderBy(i=>i.Clip.Name,StringComparer.OrdinalIgnoreCase).ThenBy(i=>i.Clip.Channel,StringComparer.Ordinal).ThenBy(i=>i.Clip.ResourceKey,StringComparer.Ordinal).ToList(),
+                            Group=new LibraryGroup{Character=true,DirectAnimations=true,Items=clips,
                                 DuplicateNames=new HashSet<string>(clips.GroupBy(i=>i.Clip.Name+"|"+i.Clip.Channel,StringComparer.Ordinal).Where(g=>g.Count()>1).Select(g=>g.Key),StringComparer.Ordinal)}};
                         var models=clips.GroupBy(i=>i.Model?.Id??"unassociated-"+i.Motion.Id)
                             .OrderBy(g=>g.First().Model?.Name??Path.GetFileNameWithoutExtension(g.First().Motion.VirtualPath??g.First().Motion.LocalPath),StringComparer.OrdinalIgnoreCase)

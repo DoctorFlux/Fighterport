@@ -2,7 +2,7 @@
 
 This is the public unified source repository at https://github.com/DoctorFlux/Fighterport.
 It imports the BrawlCrate-based Next preview.14 source and integrated owned engine;
-the current implementation is **preview.39-library-flow**.
+the current implementation is **preview.40-native-library-order**.
 See the [automatic-preview and same-window acceptance](docs/LIBRARY_FLOW_ACCEPTANCE_2026-10-26.md)
 and the [source/fit and saved-source acceptance](docs/SOURCE_FIT_WORKFLOW_ACCEPTANCE_2026-10-26.md).
 The two predecessor repositories are private preserved histories.
@@ -51,6 +51,10 @@ reader executable. Other games need their own adapters; paths alone are not supp
 See the [direct-source acceptance](docs/DIRECT_GAME_SOURCES_ACCEPTANCE_2026-10-26.md),
 [integrated reader record](docs/INTEGRATED_DISC_READER.md) and
 [background acceptance](docs/INTEGRATED_DISC_ACCEPTANCE_2026-10-26.md).
+
+Source and library animations follow their PAC's native BrawlCrate entry order,
+including filtered/search results. Existing saved discs need no reindex. See the
+[native-order acceptance](docs/NATIVE_LIBRARY_ORDER_ACCEPTANCE_2026-10-26.md).
 
 Select a character in the Brawl library to preview its default original model.
 Choose an animation or **Costume** and the small read-only source preview follows

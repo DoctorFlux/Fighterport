@@ -1,5 +1,28 @@
 # Fighterport
 
+26 October 2026 preview.40-native-library-order is accepted: **335 checks /
+4 admitted background runs / 38 inspected native PNGs**. Source/library entries
+follow numeric native PAC child order within recorded packages, including search,
+favorites, paging and lazy trees. Actual BrawlCrate list parity passes for Mario,
+Sonic and temporary motion files. Existing catalogues stay byte-identical; no
+reindex, schema/solver/rig change. Full previewer, Next, native Undo and root policy
+remain. See [acceptance](docs/NATIVE_LIBRARY_ORDER_ACCEPTANCE_2026-10-26.md). ONE G1/M2 remains incomplete;
+physical input/DPI, human usability, broad contacts and game acceptance stay open.
+
+
+26 October 2026 authorized preview.40-native-library-order: source and library
+animation lists must follow the retained native BrawlCrate PAC/motion traversal,
+not alphabetical clip labels. Derive numeric child-index order from existing
+resource identities, retain package registration order and apply ordering before
+filters/counts/paging and lazy tree population. Keep temporary sources, direct
+disc/install catalogues, exact identities, selection, native Undo, full previewer,
+Next and root/boundary policies intact. No schema change or disc reindex. Qualify
+against the actual native animation list for authentic PACs and a numeric-index,
+duplicate-name/order-permutation fixture; test filtered/paged/tree order and
+preserved document/preview in background private desktops. ONE G1/M2 stays
+incomplete; source-only publication uses DoctorFlux on public main.
+
+
 26 October 2026 bounded preview.39-library-flow is accepted:
 **3,039 checks / 20 admitted runs / 149 inspected native PNGs**. Character,
 animation and costume choices automatically prepare the original source; compatible
