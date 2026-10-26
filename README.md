@@ -2,8 +2,9 @@
 
 This is the public unified source repository at https://github.com/DoctorFlux/Fighterport.
 It imports the BrawlCrate-based Next preview.14 source and integrated owned engine;
-the current implementation is **preview.40-native-library-order**.
-See the [automatic-preview and same-window acceptance](docs/LIBRARY_FLOW_ACCEPTANCE_2026-10-26.md)
+the current implementation is **preview.41-fitting-references**.
+See the [fitting reference acceptance](docs/FITTING_REFERENCES_ACCEPTANCE_2026-10-26.md),
+[automatic-preview and same-window acceptance](docs/LIBRARY_FLOW_ACCEPTANCE_2026-10-26.md)
 and the [source/fit and saved-source acceptance](docs/SOURCE_FIT_WORKFLOW_ACCEPTANCE_2026-10-26.md).
 The two predecessor repositories are private preserved histories.
 Upstream copyrights, licenses and notices remain intact.
@@ -74,7 +75,13 @@ A recorded comparison keeps its original costume even when library browsing chan
 The pinned source preview, transport, transfer and **Fit start / end...** actions
 stay visible while the catalogue scrolls. The target result is an independent
 editable native animation. In fitting, enable **Fit start**, **Fit end**, or both;
-select exact target poses and join frames. Switching a side off retains its pose
+select exact target poses and join frames. Use the dropdown for project/viewer
+animations, or **Choose from library / source...** for verified references matching
+the target rig. Library references remain read-only and temporary. Exact recorded
+rig/source evidence verifies matching clips automatically; other native imports
+need the visible native-skeleton/units confirmation above the choices. An
+unprepared, invalidated or blocked result shows the labelled original animation.
+Switching a side off retains its pose
 and settings. With both sides off, keep the retargeted animation directly. Preview
 and review an enabled fit, then **Apply to current animation** to keep the fit on
 the same retargeted clip with native Undo. **Save** keeps those changes in the

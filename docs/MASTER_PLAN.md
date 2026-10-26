@@ -1,5 +1,31 @@
 # Fighterport master plan
 
+26 October 2026 preview.41-fitting-references is accepted: **947 checks /
+7 admitted background runs / 45 inspected native PNGs**. Unprepared or blocked
+fitting retains the labelled original animation instead of a misleading bind-pose
+result. Start/end choices include project/native-viewer clips and exact same-rig
+library/session references through read-only leases and frozen native snapshots.
+Verified source/rig evidence clears the binding gate automatically; other native
+imports require a visible confirmation. Apply, native Undo, Save/export/reopen,
+full previewer, original Next and root/boundary policies remain intact. Numeric
+and floor gates are unchanged. See [acceptance](FITTING_REFERENCES_ACCEPTANCE_2026-10-26.md). ONE G1/M2 remains incomplete;
+physical input/DPI, human usability, universal contacts and game acceptance stay open.
+
+
+26 October 2026 authorized continuation preview.41-fitting-references: fix the
+misleading bind-pose result when fitting is unprepared/blocked; retain the original
+animation until an independently prepared candidate exists. Resolve start/end
+references from project/native-viewer animations and the existing source/library,
+with exact verified same-rig library references, operation-owned read-only leases,
+precise frozen snapshots and stale-reference checks. Make same-model eligibility
+and any required confirmation clear before preparation; retain root, pin, numeric
+and explicit floor gates. Keep native Undo/Apply/Save/export, full previewer and
+original Next; no solver, skeleton or project-format rewrite. Qualify same-character
+native and library reference fitting, failed preparation without false result,
+actual preview poses and saved curves using background-only private desktops.
+ONE G1/M2 remains incomplete; only verified source may publish as DoctorFlux.
+
+
 26 October 2026 preview.40-native-library-order is accepted: **335 checks /
 4 admitted background runs / 38 inspected native PNGs**. Source/library entries
 follow numeric native PAC child order within recorded packages, including search,

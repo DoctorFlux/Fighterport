@@ -11,7 +11,8 @@ namespace BrawlCrate.Studio
     internal sealed class TransitionClipChoice
     {
         internal FighterAsset Asset;internal CHR0Node Clip;internal string Key;
-        public override string ToString()=>Clip.Name+" · "+Path.GetFileName(Asset.SourcePath);
+        internal bool External;internal string Label;internal Action Validate;
+        public override string ToString()=>Clip.Name+" · "+(Label??Path.GetFileName(Asset.SourcePath));
     }
     internal sealed class TransitionFitOptions
     {

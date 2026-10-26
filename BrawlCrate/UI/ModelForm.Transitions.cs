@@ -15,13 +15,29 @@ namespace BrawlCrate.UI
         internal Action<TransitionFitDialog> TransitionFitReady;
         internal int TransitionRootSnapshotExports { get; private set; }
         internal int TransitionRootSnapshotOpens { get; private set; }
+        private bool _transitionOpenQueued;
+        private async void QueueTransitionOpening(MDL0Node model,CHR0Node clip)
+        {
+            if(_transitionOpenQueued)return;_transitionOpenQueued=true;
+            try
+            {
+                _fighterStatus.Text="Preparing animation controls for fitting...";var until=DateTime.UtcNow.AddSeconds(30);
+                while((_controlBusy||_controlSetupQueued)&&!IsDisposed&&DateTime.UtcNow<until)await Task.Delay(30);
+                if(IsDisposed)return;
+                if(modelEditControl1.TargetModel!=model||modelEditControl1.SelectedCHR0!=clip){_fighterStatus.Text="Animation selection changed. Open fitting for the current animation.";return;}
+                if(_controlBusy||_controlSetupQueued){_fighterStatus.Text="Animation controls are still preparing. Try fitting again when ready.";return;}
+                RunFighterAction(ShowTransitionFit);
+            }
+            finally{_transitionOpenQueued=false;}
+        }
         private void ShowTransitionFit()
         {
             if(!(modelEditControl1.TargetModel is MDL0Node model)||modelEditControl1.SelectedCHR0==null)throw new InvalidOperationException("Open a native model and select the target animation to fit.");
-            if(_controlBusy||_controlSetupQueued||_retargetBusy||_workspaceBusy||_pinGesture!=null||_curvePending||modelEditControl1.AwaitingRedoSave)throw new InvalidOperationException("Finish the current animation/control edit before fitting.");
+            if(_controlBusy||_controlSetupQueued){QueueTransitionOpening(model,modelEditControl1.SelectedCHR0);return;}
+            if(_retargetBusy||_workspaceBusy||_pinGesture!=null||_curvePending||modelEditControl1.AwaitingRedoSave)throw new InvalidOperationException("Finish the current animation/control edit before fitting.");
             var source=modelEditControl1.SelectedCHR0;if(source.FrameCount<3)throw new InvalidOperationException("Boundary fitting needs at least three existing native samples.");
-            modelEditControl1.StopAnim();_libraryTimer?.Stop();if(_libraryPlay!=null)_libraryPlay.Text="Play";
-            var project=_fighterProject;var choices=RegisteredFighterAssets().SelectMany(a=>DiscoverFighterAnimations(FighterRoot(a)).OfType<CHR0Node>().Select(c=>new TransitionClipChoice{Asset=a,Clip=c,Key=FighterAnimationKey(a,c)})).ToArray();
+            CancelLibraryAutoPreview();modelEditControl1.StopAnim();_libraryTimer?.Stop();if(_libraryPlay!=null)_libraryPlay.Text="Play";
+            var project=_fighterProject;var choices=RegisteredFighterAssets().SelectMany(a=>DiscoverFighterAnimations(FighterRoot(a)).OfType<CHR0Node>().Select(c=>new TransitionClipChoice{Asset=a,Clip=c,Key=FighterAnimationKey(a,c)})).ToList();
             var selected=choices.SingleOrDefault(c=>c.Clip==source)??throw new InvalidOperationException("Register this native animation with the fighter project before fitting.");
             string modelHash=NativeControlHash(model,".mdl0"),sourceHash=NativeControlHash(source,".chr0"),controlKey=ControlKey(),state=ControlState(controlKey);
             bool CurrentRecoveryBinding()=>_bodyBindingReady&&ReferenceEquals(_loadedControlModel,model)&&ReferenceEquals(_loadedControlClip,source)&&_loadedControlKey==controlKey;
@@ -37,7 +53,7 @@ namespace BrawlCrate.UI
             string sourceProvenance=Provenance();
             Action current=()=>{if(IsDisposed||_fighterProject!=project||modelEditControl1.TargetModel!=model||modelEditControl1.SelectedCHR0!=source||NativeControlHash(model,".mdl0")!=modelHash||NativeControlHash(source,".chr0")!=sourceHash||ControlState(controlKey)!=state||Provenance()!=sourceProvenance)throw new InvalidOperationException("The native model, source animation, contact/recovery provenance or pin setup changed. Reopen fitting; stale output was discarded.");};
             string stage=Path.Combine(_controlStage,"transition-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(stage);
-            AnimationControlClient client=null;var roots=new List<ResourceNode>();
+            AnimationControlClient client=null;var roots=new List<ResourceNode>();var referenceLeases=new List<LibrarySourceLease>();
             var rootSnapshots=new Dictionary<ResourceNode,string>();
             try
             {
@@ -45,6 +61,8 @@ namespace BrawlCrate.UI
                 {
                     // Snapshot an independent precise clone. Recompressing a live
                     // edited imported node here could change retained source keys.
+                    if(choice.External)
+                    {choice.Validate?.Invoke();using(var copy=CopyFittingReference(choice.Clip))copy.ExportChecked(path);return;}
                     using(var frozen=FreezeOwnedWorkspaceExport(choice.Asset,choice.Clip,false))
                     {frozen.Validate();frozen.Candidate.ExportChecked(path);frozen.Validate();}
                 }
@@ -66,13 +84,18 @@ namespace BrawlCrate.UI
                 ResourceNode a=CopyRoot(model.RootNode,"before-model"),b=CopyRoot(model.RootNode,"after-model");var beforeModel=Walk(a).OfType<MDL0Node>().Single(m=>NativeControlHash(m,".mdl0")==modelHash);var afterModel=Walk(b).OfType<MDL0Node>().Single(m=>NativeControlHash(m,".mdl0")==modelHash);
                 var references=modelEditControl1.ModelPanel._resourceList.Select(r=>r.RootNode).Distinct().Where(r=>r!=model.RootNode).Select((r,i)=>CopyRoot(r,"reference-"+i)).ToArray();
                 CHR0Node prepared=null;string preparedKey=null,copiedState=null;NativeTransitionFit metadata=null;Dictionary<string,string> referenceHashes=null;
-                void VerifyReferences(){if(referenceHashes==null)throw new InvalidOperationException("Prepare the transition first.");foreach(var proof in referenceHashes){var native=choices.Single(c=>c.Key==proof.Key);if(!project.RegisteredAssets().Contains(native.Asset)||NativeControlHash(native.Clip,".chr0")!=proof.Value)throw new InvalidOperationException("A transition reference changed. Prepare the fit again.");}}
-                using(var window=new TransitionFitDialog(a,beforeModel,b,afterModel,source,choices,modelEditControl1.ModelPanel.CurrentViewport,references,pinReview,NativeTransitionContacts.HasBakedSupport(selected.Asset)||currentPins.Any(pin=>pin.Soft),CurrentRecoveryBinding()?_protectedMotionBones.ToArray():null,CurrentRecoveryBinding()?_referenceFitControls:null))
+                void VerifyReferences(){if(referenceHashes==null)throw new InvalidOperationException("Prepare the transition first.");foreach(var proof in referenceHashes){var native=choices.Single(c=>c.Key==proof.Key);native.Validate?.Invoke();if(!native.External&&!project.RegisteredAssets().Contains(native.Asset)||NativeControlHash(native.Clip,".chr0")!=proof.Value)throw new InvalidOperationException("A transition reference changed. Prepare the fit again.");}}
+                AddViewerFittingReferences(choices);
+                var fittingProof=FittingBindingEvidence(choices,model);
+                using(var window=new TransitionFitDialog(a,beforeModel,b,afterModel,source,choices.ToArray(),modelEditControl1.ModelPanel.CurrentViewport,references,pinReview,NativeTransitionContacts.HasBakedSupport(selected.Asset)||currentPins.Any(pin=>pin.Soft),CurrentRecoveryBinding()?_protectedMotionBones.ToArray():null,CurrentRecoveryBinding()?_referenceFitControls:null))
                 {
+                    window.BindingVerified=options=>FittingBindingKnown(selected,options,choices,model,fittingProof);
+                    window.ChooseLibraryReference=side=>PickFittingLibraryReference(window,model,choices,referenceLeases);
+                    window.UpdateBinding();
                     window.CancelWork=()=>{client?.Dispose();client=null;};
                     window.Prepare=async options=>
                     {
-                        current();var contactBones=NativeTransitionContacts.Resolve(model,selected.Asset,options.PreserveContacts);if(!options.BindingReviewed)throw new InvalidOperationException("Review that source/reference clips are already authored for this model's native bones, bind space and units, and review their listed pin protections. Retarget donor clips first.");
+                        current();var contactBones=NativeTransitionContacts.Resolve(model,selected.Asset,options.PreserveContacts);if(!options.BindingReviewed)throw new InvalidOperationException("Confirm “These animations use this model’s native skeleton and units” above the start/end choices. Verified same-rig library animations are accepted automatically.");
                         var recoveredContactBones=NativeTransitionContacts.ReviewExitRecovery(options,source.FrameCount,source.Loop,contactBones,RetainedControls(options),CurrentRecoveryBinding());
                         if(string.IsNullOrWhiteSpace(options.Name)||options.Name.Length>128||options.Name.IndexOfAny(Path.GetInvalidFileNameChars())>=0)throw new InvalidOperationException("Choose a plain animation name of at most 128 characters.");
                         var inputs=new List<TransitionNativeInput>();var hashes=new Dictionary<string,string>();
@@ -155,7 +178,7 @@ namespace BrawlCrate.UI
             }
             finally
             {
-                client?.Dispose();foreach(var root in roots)root.Dispose();string path=Path.GetFullPath(stage),parent=Path.GetFullPath(_controlStage);if(Path.GetDirectoryName(path)==parent&&Path.GetFileName(path).StartsWith("transition-",StringComparison.Ordinal))try{Directory.Delete(path,true);}catch(IOException){}
+                client?.Dispose();foreach(var lease in referenceLeases)lease.Dispose();foreach(var root in roots)root.Dispose();string path=Path.GetFullPath(stage),parent=Path.GetFullPath(_controlStage);if(Path.GetDirectoryName(path)==parent&&Path.GetFileName(path).StartsWith("transition-",StringComparison.Ordinal))try{Directory.Delete(path,true);}catch(IOException){}
             }
         }
         private void ApplyBoundaryTracks(CHR0Node clip,ControlTrack[] tracks,TransitionFitOptions options,MDL0Node model)
