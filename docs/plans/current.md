@@ -1,5 +1,13 @@
 # Current milestone M2 — simpler native workspace
 
+26 October 2026 Sonic/Mario follow-up: six original Next Wait1/tilt/aerial
+transfers passed fresh native export/reopen checks; both authentic-rig root
+suites passed 628 checks each. Side-view originals/results and separately labelled
+sphere-hidden Sonic diagnostics are retained locally. One aerial exit fit passed;
+tilt fractional preservation and optional-worker skin-influence limits remain
+open. See [trial evidence](../SONIC_MARIO_TRIALS_2026-10-26.md). No broader acceptance
+or new milestone is promoted.
+
 26 October 2026 bounded preview.36-integrated-disc acceptance is complete:
 **4,550 checks / 26 runs / 157 reviewed native PNGs** (labelled overview review,
 plus three full-size new-UI views). Add Brawl indexes the complete fighter library

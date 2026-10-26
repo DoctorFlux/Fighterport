@@ -7,6 +7,11 @@ transaction. The complete BrawlCrate Model Previewer, original Next, native Undo
 and current reviewed source-local root/boundary policies remain intact. No project
 schema, bind data, solver, native playback or process DPI configuration changes.
 
+The separate [Mario/Sonic trials](SONIC_MARIO_TRIALS_2026-10-26.md) record six
+disc-library transfers including Wait1 in both directions, plus additional root
+checks and the remaining visibility/fitting limitations. Those trials do not
+enlarge the accepted disc cohort or establish universal retarget/contact quality.
+
 ## Workflow and association
 
 Choose **Library → Add Brawl...**, select the disc or extracted Brawl folder, and
