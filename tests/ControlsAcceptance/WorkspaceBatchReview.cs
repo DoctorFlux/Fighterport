@@ -168,7 +168,7 @@ internal static partial class Program
         Call(form,"OpenLinkedComparison");Check(Field(form,"_comparisonLease")!=null&&!((Panel)Field(form,"_batchReviewPane")).Visible,"Compare source hides the review drawer and resolves the selected result's recorded source");
         Call(form,"OpenBatchReview");Check(ReviewRows(form).Length==2&&Field(form,"_comparisonLease")!=null,"Recovering Review results retains rows and the prepared comparison lease");
         string contentA=LifecycleContent(clips[0]),contentB=LifecycleContent(clips[1]);int undo=editor._undoSaves.Count;
-        foreach(int text in new[]{100,200})foreach(int width in new[]{1050,1700})
+        foreach(int text in new[]{100,175})foreach(int width in new[]{1050,1700})
         {
             form.ClientSize=new Size(width,950);Call(form,"SetWorkspaceTextSize",text);Call(form,"OpenBatchReview");
             var list=SimpleControl<ListBox>(form,"reviewResults");
@@ -179,8 +179,8 @@ internal static partial class Program
             await CaptureSimpleWorkspace(form,Path.Combine(output,"batch-review-"+width+"-"+text+".png"));
         }
         Call(form,"RestoreWorkspaceFocus",SimpleControl<Button>(form,"reviewMark"));
-        Check(SimpleControl<Button>(form,"reviewMark").Focused&&InClient(SimpleControl<Button>(form,"reviewMark"),(Panel)Field(form,"_batchReviewPane")),"Mark reviewed remains focusable and scrolls fully into view at 200% text");
-        await CaptureSimpleWorkspace(form,Path.Combine(output,"batch-review-focused-200.png"));
+        Check(SimpleControl<Button>(form,"reviewMark").Focused&&InClient(SimpleControl<Button>(form,"reviewMark"),(Panel)Field(form,"_batchReviewPane")),"Mark reviewed remains focusable and scrolls fully into view at 175% text");
+        await CaptureSimpleWorkspace(form,Path.Combine(output,"batch-review-focused-175.png"));
         Check(LifecycleContent(clips[0])==contentA&&LifecycleContent(clips[1])==contentB&&editor._undoSaves.Count==undo,"All review layout/focus cycles preserve exact authored clips and native Undo");
         Call(form,"OpenBatchReview");Check(WorkspaceKey(form,Keys.Escape)&&!((Panel)Field(form,"_batchReviewPane")).Visible,"Escape inside review closes only the drawer");
         Call(form,"OpenBatchReview");Call(form,"ToggleSimpleWorkspaceFocus");Check(!((Panel)Field(form,"_batchReviewPane")).Visible&&editor.ModelPanel.Focused,"Focus editor closes comparison/review and restores the original viewport");
@@ -234,7 +234,7 @@ internal static partial class Program
                         SimpleControl<CheckBox>(window,"reviewBatch").Checked=true;SimpleControl<Button>(window,"applyBatch").PerformClick();
                         Check(form.FighterProject.Animations.Count==before+(mode=="mixed"?1:0),mode=="mixed"?"Explicit loss review imports only the successful batch row":"Changed original source bytes reject batch Apply without partial project changes");
                         if(mode=="mixed")await Wait(()=>ReviewRows(form).Length==3);
-                        if(mode=="stale-source")await CaptureWindow(window,Path.Combine(output,"batch-failure-review-200.png"));
+                        if(mode=="stale-source")await CaptureWindow(window,Path.Combine(output,"batch-failure-review-175.png"));
                     }
                 }
                 catch(Exception error){failure=error;}

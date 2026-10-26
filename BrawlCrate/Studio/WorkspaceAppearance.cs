@@ -10,7 +10,7 @@ namespace BrawlCrate.Studio
     // Presentation preferences never enter a fighter document or a native pose.
     internal static class WorkspaceAppearance
     {
-        internal static readonly int[] TextSizes = { 100, 125, 150, 175, 200 };
+        internal static readonly int[] TextSizes = { 100, 125, 150, 175 };
         private static int _percent = ReadPercent();
         private static readonly Dictionary<string,Font> Fonts = new Dictionary<string,Font>();
         internal static int TextPercent => _percent;
@@ -32,14 +32,15 @@ namespace BrawlCrate.Studio
         {
             if (Environment.GetEnvironmentVariable("FIGHTERPORT_CAPTURE_CONTROL") != null) return 100;
             int value = Properties.Settings.Default.WorkspaceTextPercent;
-            return Array.IndexOf(TextSizes, value) >= 0 ? value : 100;
+            return NormalizeTextPercent(value);
         }
+        internal static int NormalizeTextPercent(int value) => Array.IndexOf(TextSizes, value) >= 0 ? value : 100;
         internal static string SetTextPercent(int percent)
         {
             if (Array.IndexOf(TextSizes, percent) < 0) throw new ArgumentOutOfRangeException(nameof(percent));
             if (_percent == percent) return null;
             _percent = percent;
-            // Cache fonts for the five presentation sizes for this process.
+            // Cache fonts for the supported presentation sizes for this process.
             if (Environment.GetEnvironmentVariable("FIGHTERPORT_CAPTURE_CONTROL") == null)
             {
                 Properties.Settings.Default.WorkspaceTextPercent = percent;

@@ -97,7 +97,7 @@ internal static partial class Program
                 string content=LifecycleContent(editor.SelectedCHR0);int undo=editor._undoSaves.Count;
                 Check(content!=originalContent&&undo>0,"Library navigation starts with a real native body edit and nonempty Undo");
                 Call(form,"OpenLinkedComparison");var comparison=Field(form,"_comparisonLease");Call(form,"ToggleAnimationLibrary");
-                foreach(int text in new[]{100,200})foreach(int width in new[]{1050,1700})
+                foreach(int text in new[]{100,175})foreach(int width in new[]{1050,1700})
                 {
                     form.ClientSize=new Size(width,950);Call(form,"SetWorkspaceTextSize",text);Call(form,"ClearLibraryFilters");await LibraryQuerySettled(form);
                     var filters=SimpleControl<Control>(form,"libraryFilters");
@@ -127,8 +127,8 @@ internal static partial class Program
                     Check(ReferenceEquals(comparison,Field(form,"_comparisonLease"))&&LifecycleContent(editor.SelectedCHR0)==content&&editor.CurrentFrame==3&&editor._undoSaves.Count==undo,"Filtering preserves exact target/frame/Undo and retained comparison at "+width+"/"+text);
                 }
                 typeof(ModelForm).GetMethod("FocusWorkspaceTarget",System.Reflection.BindingFlags.Static|System.Reflection.BindingFlags.NonPublic).Invoke(null,new object[]{favorite});
-                Check(favorite.Focused&&favorite.Checked&&favorite.Text=="Favorited","Favorite state is explicit and keyboard-focusable at 200% text");
-                await CaptureSimpleWorkspace(form,Path.Combine(output,"library-favorite-200.png"));
+                Check(favorite.Focused&&favorite.Checked&&favorite.Text=="Favorited","Favorite state is explicit and keyboard-focusable at 175% text");
+                await CaptureSimpleWorkspace(form,Path.Combine(output,"library-favorite-175.png"));
                 Call(form,"ClearLibraryFilters");await LibraryQuerySettled(form);await FlowSelectSource(form,library,"Wait1");
                 SimpleControl<CheckBox>(form,"libraryFavoritesOnly").Checked=true;await LibraryQuerySettled(form);
                 SimpleControl<CheckBox>(form,"libraryFavorite").Checked=false;await LibraryQuerySettled(form);
@@ -146,7 +146,7 @@ internal static partial class Program
                 Check(LifecycleContent(editor.SelectedCHR0)==content&&editor._undoSaves.Count==undo,"All library organization actions preserve native authored content and Undo");
                 Call(form,"ToggleAnimationLibrary");
                 var procedural=new AnimationLibrary(Path.Combine(output,"procedural-catalogue"));
-                typeof(ModelForm).GetField("_library",Private).SetValue(form,procedural);
+                Call(form,"ActivateSourceCatalogue",procedural,null);
                 Call(form,"ClearLibraryFilters");await LibraryQuerySettled(form);
                 SimpleControl<TextBox>(form,"librarySearch").Text="Duplicate";await LibraryQuerySettled(form);
                 var largeTree=SimpleControl<TreeView>(form,"libraryClips");
@@ -160,7 +160,7 @@ internal static partial class Program
                 Check(leaves>0&&leaves<=1000&&AllNodes(largeTree.Nodes).Any(n=>n.Name=="libraryMore")&&SimpleControl<Label>(form,"libraryPage").Text.StartsWith("10000 matches"),"Large procedural catalogue keeps incremental first-page leaf population and correct full result counts");
                 Check(ReferenceEquals(comparison,Field(form,"_comparisonLease"))&&LifecycleContent(editor.SelectedCHR0)==content,"Large-catalogue browsing retains the original source comparison and target");
                 await CaptureSimpleWorkspace(form,Path.Combine(output,"library-large-catalogue.png"));
-                typeof(ModelForm).GetField("_library",Private).SetValue(form,library);
+                Call(form,"ActivateSourceCatalogue",library,null);await LibraryQuerySettled(form);
                 editor.Undo();await SimpleControlsReady(form);Check(LifecycleContent(editor.SelectedCHR0)==originalContent,"Exact native body Undo survives favorites and all filters");
                 editor.Redo();await SimpleControlsReady(form);Check(LifecycleContent(editor.SelectedCHR0)==content,"Exact native body Redo survives favorites and all filters");
             }

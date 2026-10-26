@@ -133,7 +133,7 @@ internal static partial class Program
         Call(form,"SetSimpleWorkspaceStage",3);
         Check(SimpleControl<Button>(form,"workspaceExportSetAction").Visible&&SimpleControl<Button>(form,"workspaceExportSetAction").Enabled,"Export stage exposes Export reviewed set through the existing workspace action routing");
         await CaptureSimpleWorkspace(form,Path.Combine(output,"set-export-stage.png"));
-        foreach(int text in new[]{100,200})foreach(int width in new[]{1050,1700})
+        foreach(int text in new[]{100,175})foreach(int width in new[]{1050,1700})
         {
             form.ClientSize=new Size(width,950);Call(form,"SetWorkspaceTextSize",text);await ApproveSet(form);
             using(FlowModal("setExportPath",dialog=>
@@ -184,7 +184,7 @@ internal static partial class Program
                         Check(dialog.Visible&&!(bool)SimpleControl<TextBox>(dialog,"setExportPath").Enabled,"Cancellation keeps frozen candidates owned until the worker actually stops");
                         release.Set();await Wait(()=>SimpleControl<TextBox>(dialog,"setExportPath").Enabled);
                         Check(!Directory.Exists(path)&&SimpleControl<Label>(dialog,"setExportStatus").Text.Contains("cancelled"),"Dialog cancellation publishes no folder and reports completion");
-                        CaptureDialog(dialog,output,"set-export-cancelled-200.png");SimpleControl<Button>(dialog,"setExportCancel").PerformClick();
+                        CaptureDialog(dialog,output,"set-export-cancelled-175.png");SimpleControl<Button>(dialog,"setExportCancel").PerformClick();
                     }
                     catch(Exception e){failure=e;release.Set();dialog.Close();}finally{finished=true;}
                 }))Call(form,"ChooseWorkspaceSetExport");

@@ -19,6 +19,18 @@ internal static partial class Program
         var root=SimpleControl<Control>(form,name);
         return root.ContainsFocus;
     }
+    static void KeyboardNoGuideBand(ModelForm form,string context)
+    {
+        var body=SimpleControl<Control>(form,"workspaceBody");
+        var toolbar=SimpleControl<ToolStrip>(form,"fighterToolbar");
+        var actions=SimpleControl<ToolStrip>(form,"workspaceActions");
+        var stages=SimpleControl<ToolStrip>(form,"workspaceNavigation");
+        // Compare actual sibling control geometry, not a cached layout key or
+        // visibility alone: hidden guide bars formerly retained a 93-pixel gap.
+        Check(!actions.Visible&&!stages.Visible&&ReferenceEquals(body.Parent,toolbar.Parent)&&body.Top==toolbar.Bottom,
+            "Hidden guide leaves no blank band between the direct toolbar and actual workspace body: "+context+
+            " (toolbar bottom "+toolbar.Bottom+", body top "+body.Top+")");
+    }
     static void FocusWorkspaceItem(ModelForm form,string name) => Call(form,"RestoreWorkspaceFocus",SimpleToolbarItem(form,name));
     static void ButtonSpace(Button button)
     {
@@ -49,8 +61,11 @@ internal static partial class Program
                 string content=LifecycleContent(clip),modelHash=(string)Call(form,"NativeControlHash",model,".mdl0");
                 bool undo=editor.CanUndo;
                 Check(Field(form,"_library")==null && editor.TargetModel!=null,"Native model and clip editing needs no registered donor");
+                // The following region sequence belongs to the optional guide.
+                // Default Next toolbar/menu routing is qualified independently.
+                Call(form,"SetSimpleWorkspaceStage",0);
 
-                foreach(int percent in new[]{100,200})
+                foreach(int percent in new[]{100,175})
                 foreach(var size in new[]{new Size(1050,650),new Size(1600,950)})
                 {
                     Call(form,"SetWorkspaceTextSize",percent);form.ClientSize=size;
@@ -71,7 +86,7 @@ internal static partial class Program
                     Check(WorkspaceKey(form,Keys.F6)&&KeyboardRegion(form,"workspaceNavigation"),"F6 leaves a selected toolbar item: "+state);
                     Check(WorkspaceKey(form,Keys.Shift|Keys.F6)&&ReferenceEquals(KeyboardFocus(form),SimpleToolbarItem(form,"workspaceTextSize")),"Returning to a region remembers its selected command: "+state);
                     FocusWorkspaceItem(form,"fighterName");
-                    Check(WorkspaceKey(form,Keys.Tab)&&ReferenceEquals(KeyboardFocus(form),SimpleToolbarItem(form,"fighterSave")),"Tab leaves the hosted project-name field for Save: "+state);
+                    Check(WorkspaceKey(form,Keys.Tab)&&ReferenceEquals(KeyboardFocus(form),SimpleToolbarItem(form,"nextAnimationMenu")),"Tab leaves the hosted project-name field for the direct Animation menu: "+state);
                     Check(WorkspaceKey(form,Keys.Shift|Keys.Tab)&&SimpleToolbarItem(form,"fighterName") is ToolStripControlHost host&&host.Control.ContainsFocus,"Shift+Tab restores the hosted name field: "+state);
 
                     SimpleToolbarItem(form,"workspaceStagePreview").PerformClick();
@@ -98,15 +113,18 @@ internal static partial class Program
                     Check(InClient(details,SimpleControl<Control>(form,"workspaceTaskScroll")),"Keyboard focus scrolls task actions into view: "+state);
                     await CaptureSimpleWorkspace(form,Path.Combine(output,"keyboard-task-"+percent+"-"+size.Width+".png"));
                     Check(WorkspaceKey(form,Keys.Escape)&&!SimpleControl<Control>(form,"workspaceTaskPane").Visible,"Escape closes focused tasks: "+state);
-                    Check(ReferenceEquals(KeyboardFocus(form),SimpleToolbarItem(form,"workspaceStagePreview")),"Closing tasks returns to the stage invoker: "+state);
-                    Check(WorkspaceKey(form,Keys.F6)&&editor.ContainsFocus,"Region traversal skips hidden tasks: "+state);
+                    Check(editor.ModelPanel.ContainsFocus,"Closing the guide recovers the native viewport when its stage invoker becomes hidden: "+state);
+                    KeyboardNoGuideBand(form,"focused guide Escape "+state);
+                    Check(WorkspaceKey(form,Keys.F6)&&KeyboardRegion(form,"fighterToolbar")&&WorkspaceKey(form,Keys.F6)&&editor.ContainsFocus,
+                        "Region traversal skips all hidden guide regions and returns through the direct toolbar: "+state);
                     Check(!WorkspaceKey(form,Keys.Escape)&&editor.ContainsFocus,"Workspace Escape leaves native editor cancellation untouched: "+state);
-                    SimpleToolbarItem(form,"workspaceWorkflow").PerformClick();
+                    Call(form,"SetSimpleWorkspaceStage",2);
                     Check(SimpleControl<Control>(form,"workspaceTaskPane").ContainsFocus,"Workflow explicitly recovers and focuses tasks: "+state);
                     SimpleToolbarItem(form,"workspaceFocusEditor").PerformClick();
                     Check(editor.ModelPanel.ContainsFocus,"Focus editor focuses the original viewport: "+state);
-                    SimpleToolbarItem(form,"workspaceFocusEditor").PerformClick();
-                    Check(SimpleControl<Control>(form,"workspaceTaskPane").ContainsFocus,"Show workflow focuses the recovered task: "+state);
+                    KeyboardNoGuideBand(form,"Focus editor recovery "+state);
+                    Call(form,"SetSimpleWorkspaceStage",2);
+                    Check(SimpleControl<Control>(form,"workspaceTaskPane").ContainsFocus,"Explicit workflow guide focuses the recovered task: "+state);
 
                     Check(ReferenceEquals(editor.TargetModel,model)&&ReferenceEquals(editor.SelectedCHR0,clip)&&editor.CurrentFrame==3&&editor.CanUndo==undo&&LifecycleContent(clip)==content,
                         "Keyboard navigation preserves exact native document/clip/frame/Undo/keys: "+state);
@@ -133,7 +151,8 @@ internal static partial class Program
                 if(!SimpleControl<Control>(form,"animationLibraryPane").Visible)SimpleToolbarItem(form,"workspaceSourceLibrary").PerformClick();
                 var search=SimpleControl<TextBox>(form,"librarySearch");
                 Check(search.Focused,"Opening the library focuses search");
-                Check(!SimpleControl<Control>(form,"workspaceTaskPane").Visible && editor.Width>=888,"At 200% the library yields task space to the intact native editor");
+                KeyboardNoGuideBand(form,"source library open at 175% text");
+                Check(!SimpleControl<Control>(form,"workspaceTaskPane").Visible && editor.Width>=888,"At 175% the library yields task space to the intact native editor");
                 Check(WorkspaceKey(form,Keys.Tab)&&SimpleControl<Button>(form,"libraryClearSearch").Focused,"Library Tab proceeds from search to Clear");
                 var filterToggle=SimpleControl<Button>(form,"libraryToggleFilters");
                 Check(!SimpleControl<Control>(form,"libraryFilters").Visible&&SimpleControl<CheckBox>(form,"libraryFavoritesOnly").Visible&&SimpleControl<Button>(form,"libraryClearFilters").Visible,
@@ -158,7 +177,7 @@ internal static partial class Program
                 search.Text="Wait";await FlowLibrarySettled(form);
                 ButtonSpace(SimpleControl<Button>(form,"libraryClearSearch"));
                 Check(search.Text=="","Ordinary focused Button Space handlers activate Clear search");await FlowLibrarySettled(form);
-                search.Focus();await CaptureSimpleWorkspace(form,Path.Combine(output,"keyboard-library-200.png"));
+                search.Focus();await CaptureSimpleWorkspace(form,Path.Combine(output,"keyboard-library-175.png"));
                 Check(WorkspaceKey(form,Keys.Escape)&&!SimpleControl<Control>(form,"animationLibraryPane").Visible,"Escape closes the focused source library");
                 Check(ReferenceEquals(KeyboardFocus(form),SimpleToolbarItem(form,"workspaceSourceLibrary")),"Library close restores its toolbar invoker");
                 SimpleToolbarItem(form,"workspaceSourceLibrary").PerformClick();await FlowLibrarySettled(form);
@@ -173,7 +192,7 @@ internal static partial class Program
                     Check(!WorkspaceKey(form,Keys.F6)&&path.Focused,"A modal dialog prevents owner-region keyboard routing");
                     Check((bool)Call(dialog,"ProcessDialogKey",Keys.Tab)&&SimpleControl<Button>(dialog,"workspaceFileBrowse").Focused,"File dialog Tab reaches Browse");
                     Check((bool)Call(dialog,"ProcessDialogKey",Keys.Tab)&&SimpleControl<Button>(dialog,"workspaceFileCancel").Focused,"Invalid-file Tab skips disabled Open and reaches Cancel");
-                    CaptureDialog(dialog,output,"keyboard-path-dialog-200.png");
+                    CaptureDialog(dialog,output,"keyboard-path-dialog-175.png");
                     Check((bool)Call(dialog,"ProcessDialogKey",Keys.Escape),"File dialog retains its normal Escape cancellation");
                 }))SimpleToolbarItem(form,"workspaceOpenProject").PerformClick();
                 Check(shown&&ReferenceEquals(KeyboardFocus(form),SimpleToolbarItem(form,"workspaceOpenProject")),"Cancelled project dialog restores its invoking toolbar command");
@@ -184,7 +203,7 @@ internal static partial class Program
                     Check(cancel.Focused,"Unsaved decisions initially focus Keep editing");
                     Check((bool)Call(dialog,"ProcessDialogKey",Keys.Tab)&&SimpleControl<Button>(dialog,"unsavedProjectSave").Focused,"Unsaved Tab wraps to Save in declared order");
                     Check((bool)Call(dialog,"ProcessDialogKey",Keys.Tab)&&SimpleControl<Button>(dialog,"unsavedProjectDiscard").Focused,"Unsaved Tab proceeds to Discard");
-                    CaptureDialog(dialog,output,"keyboard-unsaved-dialog-200.png");
+                    CaptureDialog(dialog,output,"keyboard-unsaved-dialog-175.png");
                     Check((bool)Call(dialog,"ProcessDialogKey",Keys.Escape),"Unsaved Escape keeps editing");
                 }))SimpleToolbarItem(form,"workspaceNewProject").PerformClick();
                 Check(!form.IsDisposed&&ReferenceEquals(KeyboardFocus(form),SimpleToolbarItem(form,"workspaceNewProject")),"Keep editing restores New project command focus without replacing the document");
@@ -211,6 +230,7 @@ internal static partial class Program
                     Call(form,"WithWorkspaceInvoker",stale,new Action(()=>Call(form,"SetSimpleWorkspaceStage",2)));
                     stale.Dispose();
                     Check(WorkspaceKey(form,Keys.Escape)&&editor.ModelPanel.ContainsFocus,"A disposed drawer invoker falls back to the original native viewport");
+                    KeyboardNoGuideBand(form,"disposed invoker focus recovery");
                 }
                 Check(ReferenceEquals(editor.TargetModel,model)&&ReferenceEquals(editor.SelectedCHR0,clip)&&editor.CurrentFrame==3&&LifecycleContent(clip)==content&&editor.CanUndo==undo,
                     "All registration, reuse and dialog keyboard cases preserve the existing native work");

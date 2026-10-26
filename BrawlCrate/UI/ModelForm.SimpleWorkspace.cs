@@ -141,6 +141,7 @@ namespace BrawlCrate.UI
             _simpleWorkspaceBody.Disposed += (sender, args) => Application.Idle -= busyChanged;
             DarkTheme.Apply(_simpleWorkspaceBody);
             DarkTheme.Apply(_simpleWorkspaceNavigation);
+            InitializeNextWorkspace();
             ApplyWorkspaceTextSize();
             InitializeWorkspaceKeyboard();
             UpdateSimpleWorkspace();
@@ -487,10 +488,17 @@ namespace BrawlCrate.UI
             _simpleWorkspaceFocus.Checked = _simpleWorkspaceFocused;
             _simpleWorkspaceNewProject.Enabled = _simpleWorkspaceOpenProject.Enabled =
                 _simpleWorkspaceMoreTools.Enabled = _simpleWorkspaceLibrary.Enabled = !busy;
+            UpdateNextWorkspaceCommands(hasTarget, clip != null && OwnsFighterRoot(clip) && asset?.Retarget?.ReviewDraft != true, busy);
             LayoutSimpleWorkspace();
         }
 
         private void LayoutSimpleWorkspace()
+        {
+            if (_simpleWorkspaceBody == null || _simpleWorkspaceLayingOut) return;
+            LayoutNextWorkspace();
+        }
+
+        private void LayoutGuidedWorkspace()
         {
             if (_simpleWorkspaceBody == null || _simpleWorkspaceLayingOut) return;
             // Status/Undo notifications often carry the same presentation state.
@@ -584,22 +592,8 @@ namespace BrawlCrate.UI
         private void LayoutSimpleWorkspaceLibraryPreview()
         {
             if (_libraryPane == null) return;
-            var layout = _libraryPane.Controls.OfType<TableLayoutPanel>().FirstOrDefault();
-            if (layout == null) return;
-            ApplyWorkspaceLibraryTextSize(layout);
-            bool preview = _libraryLease != null;
-            layout.RowStyles[4].Height = WorkspaceAppearance.Pixels(_libraryPane.Height < 650 ? 48 : 70);
-            layout.RowStyles[6].Height = preview ? WorkspaceAppearance.Pixels(24) : 0;
-            layout.RowStyles[7].Height = preview ? (_libraryPane.Height < 650 ? 120 : 160) : 0;
-            layout.RowStyles[8].Height = preview ? WorkspaceAppearance.Pixels(38) : 0;
-            int required=(int)layout.RowStyles.Cast<RowStyle>().Where(r=>r.SizeType==SizeType.Absolute).Sum(r=>r.Height)+160;
-            layout.Height=Math.Max(_libraryPane.ClientSize.Height-_libraryPane.Padding.Vertical,required);
-
-            for (int row = 6; row < 9; row++)
-            {
-                var control = layout.GetControlFromPosition(0, row);
-                if (control != null) control.Visible = preview;
-            }
+            LayoutNextLibraryPreview();
         }
+
     }
 }

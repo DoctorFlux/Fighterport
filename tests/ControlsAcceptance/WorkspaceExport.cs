@@ -61,7 +61,7 @@ internal static partial class Program
                 bool invalid = false; try { Call(form, "ExportWorkspaceSnapshot", corrupt, path); } catch (System.Reflection.TargetInvocationException e) { invalid = e.InnerException is InvalidDataException; }
                 ((IDisposable)corrupt).Dispose();
                 Check(invalid && FighterProject.HashFile(path) == hash, "Independent validation rejects a damaged candidate and preserves the existing destination");
-                foreach (int text in new[] { 100, 200 }) foreach (int width in new[] { 1050, 1700 })
+                foreach (int text in new[] { 100, 175 }) foreach (int width in new[] { 1050, 1700 })
                 {
                     form.ClientSize = new Size(width, 950); Call(form, "SetWorkspaceTextSize", text);
                     using (FlowModal("workspaceFilePath", dialog =>

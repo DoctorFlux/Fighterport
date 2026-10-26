@@ -193,7 +193,7 @@ internal static partial class Program
                     Check(witness.Values.All(v => v), "Measured routes preserve exact native document, bone/frame, Undo, dirty state and review approval at " + phase);
                 };
 
-                foreach (int text in new[] { 100, 200 }) foreach (int width in new[] { 1050, 1700 })
+                foreach (int text in new[] { 100, 175 }) foreach (int width in new[] { 1050, 1700 })
                 {
                     form.ClientSize = new Size(width, 950); Call(form, "SetWorkspaceTextSize", text);
                     Call(form, "SetSimpleWorkspaceStage", 2); await Task.Delay(50); await SimpleControlsReady(form);

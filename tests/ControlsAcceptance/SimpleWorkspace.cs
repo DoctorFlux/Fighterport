@@ -31,6 +31,9 @@ internal static partial class Program
             project.Name = "Simple workspace acceptance";
             form.WindowState = FormWindowState.Normal;
             form.ClientSize = new Size(1600, 950);
+            // This case qualifies the optional guide. The default Next layout
+            // has its own acceptance case and does not open these stage bars.
+            Call(form, "SetSimpleWorkspaceStage", 0);
             var editor = form.FighterEditor;
             var viewport = editor.ModelPanel;
             var left = editor.leftPanel;
@@ -38,7 +41,7 @@ internal static partial class Program
             var transforms = editor.CHR0Editor;
             var playback = editor.pnlPlayback;
             Check(form.Visible && !MainForm.Instance.Visible && editor.TargetModel == null,
-                "Actual startup opens the simpler workspace with the native editor and no dummy donor");
+                "Explicit workflow guide opens with the full native editor and no dummy donor");
             Check(SimpleControl<Button>(form, "workspacePrimaryAction").Visible &&
                 new[] { "Source", "Target", "Preview", "Export" }.All(s => SimpleToolbarItem(form, "workspaceStage" + s).Available),
                 "All four workspace stages and the focused task action are present in actual native controls");
@@ -200,7 +203,7 @@ internal static partial class Program
             Check(!SimpleControl<Control>(form, "workspaceTaskPane").Visible && editor.Visible && ReferenceEquals(editor.SelectedCHR0, clip),
                 "Focus Editor collapses workflow tasks while retaining native authoring and exact result ownership");
             await CaptureSimpleWorkspace(form, Path.Combine(output, "workspace-focus-editor.png"));
-            focus.PerformClick();
+            Call(form, "SetSimpleWorkspaceStage", 2);
             editor.SetFrame(1);
             editor.FrameFighterModel();
             await CaptureSimpleWorkspace(form, Path.Combine(output, "workspace-transfer-result.png"));
@@ -300,6 +303,7 @@ internal static partial class Program
                 reopened.ClientSize = new Size(1600, 950);
                 reopened.Show();
                 await SimpleControlsReady(reopened);
+                Call(reopened, "SetSimpleWorkspaceStage", 2);
                 await Wait(() => reopened.FighterEditor.AnimationPins.Any(p => p.Id == pin.Id));
                 var freshClip = reopened.FighterEditor.SelectedCHR0;
                 Check(freshClip != null && NativeDifference(clip, freshClip) == null,
@@ -310,7 +314,7 @@ internal static partial class Program
                 Check(restoredSource.Contains(clipName) && restoredSource.Contains("Saved source link"),
                     "Reopened workspace shows the saved authentic source link without claiming a verified catalogue selection");
                 Check(((ToolStripButton)SimpleToolbarItem(reopened, "workspaceStagePreview")).Checked,
-                    "Reopened native motion resumes at Preview and fix for the returning workspace user");
+                    "Explicitly reopening the guide selects Preview and fix without changing restored native motion");
                 reopened.FighterEditor.FrameFighterModel();
                 await CaptureSimpleWorkspace(reopened, Path.Combine(output, "workspace-reopened.png"));
                 SimpleDisposeForm(reopened);

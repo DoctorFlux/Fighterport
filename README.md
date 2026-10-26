@@ -2,7 +2,7 @@
 
 This is the public unified source repository at https://github.com/DoctorFlux/Fighterport.
 It imports the BrawlCrate-based Next preview.14 source and integrated owned engine;
-the current implementation is **preview.33-workspace-performance**.
+the current implementation is **preview.34-next-layout**.
 The two predecessor repositories are private preserved histories.
 Upstream copyrights, licenses and notices remain intact.
 
@@ -14,50 +14,62 @@ native app and executable name are retained; broader game adapters and universal
 contact quality remain unfinished.
 
 
-Fighterport now opens with **Source -> Target -> Preview and fix -> Export**
-around the complete dark BrawlCrate Model Previewer and existing animation engine.
-Choose a source-bound library clip, open the target model, preview the transfer,
-edit with the native tools, then export the selected CHR0 or save the project.
-Contextual **Continue** actions and visible readiness explain the next step.
-**New project**, **Open project** and **More tools** are visible commands;
-target/project opening accepts a pasted path or the standard **Browse** dialog.
-Invalid paths are explained inline before loading. Source registration resets
-pairing approval when its inputs change and selects the committed clip. Source
-**Repair** checks the exact indexed identity, supports cancellation and updates
-the library atomically after validation. Untouched empty projects start clean.
-The source library collapses, **Focus editor** restores editing room, and
-**More tools** retains the expert commands. Original resources/animation lists,
-the Bones panel, camera/materials, transform tools, autokeys, interpolation,
-timeline and Undo remain together in the original native control.
+Fighterport opens in the familiar **Studio Next** layout: the complete dark
+BrawlCrate Model Previewer edits the target, and the source pane sits on the right
+with a small read-only original model preview. The original resources, animation
+lists, Bones panel, camera/material tools, transforms, interpolation, timeline and
+native Undo stay together. The stage/task guide is optional under **View**.
 
-**Preview and fix** keeps Review results, Compare source and Fit start and end
-visible; **More actions** opens the remaining inspection, control and timing tools.
-Library **Filters** shows advanced criteria and their active count; hiding them
-keeps their values. Search, Favorites only and Clear filters stay available.
-Unchanged status refreshes skip repeated layout, hidden comparison stops source
-skinning, and exact review approval avoids copying large frozen snapshots. See the
-[performance and UI acceptance record](docs/WORKSPACE_PERFORMANCE_ACCEPTANCE_2026-10-25.md).
+Open the target with **Open Model...**. Use **Add Animations...** for its native
+idle/fall references when fitting needs them. **Load source...** chooses an original
+model and motion set for this session; loading, previewing and retargeting never
+add those files to the shared library. **Add to library** is a separate explicit,
+verified operation. **Library** and **Sources...** retain the existing game-source
+and extracted-file/disc-image routes where readers are supported. They do not add
+new game adapters or imply universal format/game acceptance.
 
-**Open project** includes the ten most recent saved/opened project paths. Choose a
+Choose an available source clip, use **Preview Original**, then **Use on This Model**.
+The pinned source preview, transport, transfer and **Fit start / end...** actions
+stay visible while the catalogue scrolls. The target result is an independent
+editable native animation. In fitting, enable **Fit start**, **Fit end**, or both;
+select exact target poses and join frames. Switching a side off retains its pose
+and settings. With both sides off, keep the retargeted animation directly. Preview
+and review an enabled fit before adding its independent result; then edit, save
+or use **Animation → Export verified animation...**.
+
+The **Animation** menu also provides review results, recorded-source comparison,
+loop inspection, controls, source timing/batches and verified set export. Native
+expert tools remain in the toolbar overflow and Fighter menu. Library **Filters**
+shows advanced criteria and their active count; hiding them retains their values.
+Search, Favorites only and Clear filters remain available. Existing performance
+invalidation guards and the original Next retargeter remain intact.
+
+Temporary source catalogues belong to the current window and are discarded with
+it. Their target animations save normally. In-session comparison retains exact
+source identity across library switches; after reopening a project, unavailable
+temporary source provenance is explained without blocking native target editing.
+Register sources manually when they should become part of the shared library.
+
+**Fighter → Open Fighter...** includes the ten most recent saved/opened project paths. Choose a
 path, then Open; **Forget selected** and **Clear history** only remove history.
 Missing projects can be located with a pasted path or Browse. History stays local
 and separate from project files. Project Save now preserves exact edited native
 curve values/tangents and keeps the original curve/keyframe panels connected.
 
-Use **Text** for 100/125/150/175/200% workspace text. **Workflow** recovers
-the task panel in compact windows; **Focus editor** gives the native previewer
-more room. Task details scroll while the primary action stays visible. Project
-and unsaved-change dialogs scale too. Native editor fonts remain original;
-physical/per-monitor DPI support is not qualified by this app text setting.
+**View → Text size** offers 100/125/150/175% workspace text. The 200% option is
+removed; a saved 200% preference reopens at 100%. Native editor fonts and process
+DPI remain unchanged. **View → Focus target editor** closes competing panes and
+recovers the complete original viewport. **View → Workflow guide** opens the
+optional stage/task controls. Project and unsaved-change dialogs also scale.
+Physical/per-monitor DPI support is not qualified by application text sizing.
 
-Use **F6 / Shift+F6** to move between workspace regions and **Tab / Shift+Tab**
-within outer panels. Opening the library focuses search; stage/Workflow opens
-tasks at their primary action. Escape closes a focused pane; cancelled dialogs
-return focus to their invoking control. Native editing shortcuts retain their
-existing routes. Compact drawers may overlay the editor; close them or use Focus
-editor for all native tools.
+Use **F6 / Shift+F6** between visible regions and **Tab / Shift+Tab** within outer
+panels. Opening source browsing focuses search; Escape closes a pane when focus
+is inside it. Cancelled dialogs return focus to their invoking control, with
+viewport fallback. Native editing shortcuts retain their existing routes. Compact
+panes may overlay native side tools; Focus target editor recovers all tools.
 
-**Review results** in Preview and fix or Export keeps a session list of exact
+**Animation → Review results...** keeps a session list of exact
 target clips. Batch / Fit opens it after adding reviewed results. Add an existing
 native CHR0 with **Add selected**, inspect it in the full editor, use Previous/Next
 or linked comparison, then **Mark reviewed**. Edits and changed dependencies require
@@ -65,7 +77,7 @@ review again. Removing a row keeps the project animation. Native cross-clip
 Undo/Redo retains its original history. Save keeps unchanged exact approval;
 reopen starts a fresh review session. See the
 [batch review acceptance record](docs/BATCH_REVIEW_ACCEPTANCE_2026-10-24.md).
-In Export, **Export reviewed set** freezes the approved clips and shows their
+**Animation → Export reviewed set...** freezes the approved clips and shows their
 exact identities, frames, filenames and target content hash. Choose a **new folder**;
 every precise CHR0 is independently decoded and compared before the complete folder
 is published in one rename. A receipt records identities and verified hashes.
@@ -76,7 +88,7 @@ its existing overwrite confirmation. See the
 [verified set acceptance record](docs/VERIFIED_SET_EXPORT_ACCEPTANCE_2026-10-24.md).
 Preview.26 qualification passed **2,229 scoped assertions / 97 inspected PNGs**.
 
-**More actions → Inspect loop / seam** in Preview and fix reads the selected project-owned CHR0
+**Animation → Inspect loop / seam** reads the selected project-owned CHR0
 against the current native target, including donor-free animations. Compare local
 First → Last and stored-loop Closing → First differences, then read exact samples,
 raw Euler turns and authored boundary values/tangents. Root travel and full turns
@@ -104,8 +116,8 @@ It preserves the reference orientation while avoiding manufactured Euler spins.
 Disabling the option retains authored reference turn counts. The original action
 outside the windows, reference clips, native Undo and original Next remain intact.
 
-The simple fitting panel has **Start pose**, **Attack reached at frame**, **End
-pose** and **Recovery starts at frame**. **Use for both ends** reuses the exact
+The simple fitting panel has **Fit start**, a start pose, **Attack reached at
+frame**, **Fit end**, an end pose and **Recovery starts at frame**. **Use for both ends** reuses the exact
 start reference. The live ranges show the unchanged attack and shared joins.
 For 40 frames, choose attack frame 5 and recovery frame 26: start 1–5, original
 attack 5–26, end 26–40 (15 inclusive samples). Duration stays 40 frames. References
@@ -138,7 +150,7 @@ Filtering preserves the editable target and recorded comparison source. Preview.
 passes **1,793 scoped assertions / 63 reviewed PNGs**; see the
 [library organization acceptance record](docs/LIBRARY_ORGANIZATION_ACCEPTANCE_2026-10-24.md).
 
-**Compare source** in Preview and fix links a verified read-only original source
+**Animation → Compare recorded source** links a verified read-only original source
 beside the complete editable target. Scrub/play the native target timeline to see
 both, including recorded trims/timing fits and bind poses. Browser selection never
 redirects comparison. **Focus editor** closes it. Missing provenance/source/timing
@@ -146,7 +158,7 @@ explains unavailability while the target remains editable. Fresh preview.23 pass
 **1,701 scoped assertions / 49 reviewed PNGs**; see its
 [comparison acceptance record](docs/LINKED_COMPARISON_ACCEPTANCE_2026-10-24.md).
 
-Workspace **Export** now reviews the exact CHR0 selection and destination, stages
+**Animation → Export verified animation...** reviews the exact CHR0 selection and destination, stages
 an exact snapshot, independently decodes all curves/metadata, then publishes
 atomically. Existing destinations require confirmation; originals and working
 files remain protected. Export works before project Save and keeps native Undo.

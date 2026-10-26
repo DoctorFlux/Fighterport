@@ -23,22 +23,43 @@ internal static partial class Program
     static void BoundaryRangeSelectionLayout(ModelForm form,TransitionFitDialog window)
     {
         var entry=SimpleControl<ComboBox>(window,"transition_entry");var exit=SimpleControl<ComboBox>(window,"transition_exit");
+        var entryEnabled=SimpleControl<CheckBox>(window,"transition_entryEnabled");var exitEnabled=SimpleControl<CheckBox>(window,"transition_exitEnabled");
         int entryIndex=entry.SelectedIndex,exitIndex=exit.SelectedIndex,text=WorkspaceAppearance.TextPercent;var originalSize=window.ClientSize;
-        string originalOptions=new JavaScriptSerializer().Serialize(window.ReadOptions());
+        var serializer=new JavaScriptSerializer();string originalOptions=serializer.Serialize(window.ReadOptions());
         try
         {
-            foreach(int percent in new[]{100,200})
+            foreach(int percent in new[]{100,175})
             {
                 Call(form,"SetWorkspaceTextSize",percent);window.ApplyTextSize();window.ClientSize=new Size(980,720);window.PerformLayout();
                 var fixedSize=window.ClientSize;
                 void Selection(int start,int end,string name)
                 {
                     entry.SelectedIndex=start;exit.SelectedIndex=end;
+                    Check(entryEnabled.Checked==(start>0)&&exitEnabled.Checked==(end>0),"Direct reference/Keep original choices synchronize both fitting toggles: "+percent+"% "+name);
                     BoundaryRangeTextFits(window,percent+"% "+name+" without dialog resize");
                     Check(window.ClientSize==fixedSize,"Range selection relayout preserves dialog size: "+percent+"% "+name);
                 }
                 Selection(0,0,"original boundaries");Selection(entryIndex,0,"start only");Selection(entryIndex,exitIndex,"both boundaries");
                 Selection(0,exitIndex,"end only");Selection(0,0,"cleared boundaries");Selection(entryIndex,exitIndex,"restored boundaries");
+                foreach(string side in new[]{"entry","exit"})
+                {
+                    var choice=side=="entry"?entry:exit;var enabled=side=="entry"?entryEnabled:exitEnabled;
+                    object selected=choice.SelectedItem;string full=serializer.Serialize(window.ReadOptions());
+                    var expected=serializer.Deserialize<TransitionFitOptions>(full);
+                    if(side=="entry")expected.Entry=null;else expected.Exit=null;
+                    enabled.Checked=false;
+                    Check(serializer.Serialize(window.ReadOptions())==serializer.Serialize(expected)&&ReferenceEquals(choice.SelectedItem,selected),
+                        "Switching Fit "+side+" off removes only that effective reference and retains its exact choice and every other option: "+percent+"%");
+                    Check(!SimpleControl<NumericUpDown>(window,side=="entry"?"transition_entrySamples":"transition_exitStart").Enabled&&!SimpleControl<Button>(window,"preview_"+side).Enabled,
+                        "Disabled fitting leaves its join and pose-preview actions unavailable: "+side+" "+percent+"%");
+                    BoundaryRangeTextFits(window,percent+"% "+side+" toggled off without dialog resize");
+                    Check(window.ClientSize==fixedSize,"Fitting toggle relayout preserves dialog size: "+side+" off "+percent+"%");
+                    enabled.Checked=true;
+                    Check(serializer.Serialize(window.ReadOptions())==full&&ReferenceEquals(choice.SelectedItem,selected),
+                        "Re-enabling Fit "+side+" restores the exact reference identity and every original fitting option: "+percent+"%");
+                    BoundaryRangeTextFits(window,percent+"% "+side+" toggled on without dialog resize");
+                    Check(window.ClientSize==fixedSize,"Fitting toggle relayout preserves dialog size: "+side+" on "+percent+"%");
+                }
             }
         }
         finally
@@ -89,6 +110,28 @@ internal static partial class Program
                     {
                         Check(!SimpleControl<FlowLayoutPanel>(window,"transitionAdvancedFields").Visible,"Fitting opens with technical native options collapsed");
                         Check(window.ReadOptions().Components==7&&window.ReadOptions().MatchReferenceControls,"Simple defaults fit complete body transforms and reviewed controls while retaining attack travel");
+                        var entryEnabled=SimpleControl<CheckBox>(window,"transition_entryEnabled");var exitEnabled=SimpleControl<CheckBox>(window,"transition_exitEnabled");
+                        Check(!entryEnabled.Checked&&!exitEnabled.Checked&&window.ReadOptions().Entry==null&&window.ReadOptions().Exit==null&&entryEnabled.Text=="Fit start"&&exitEnabled.Text=="Fit end",
+                            "Simple fitting starts with independent Fit start and Fit end switches off and no substituted target references");
+                        var prepareWithoutReference=window.Prepare;int missingReferenceRequests=0;
+                        window.Prepare=options=>{missingReferenceRequests++;return prepareWithoutReference(options);};
+                        try
+                        {
+                            SimpleControl<Button>(window,"prepareTransition").PerformClick();await Wait(()=>!window.Busy);
+                            Check(missingReferenceRequests==0&&window.Candidate==null&&SetNativeContent(source)==before&&
+                                SimpleControl<TextBox>(window,"transitionReport").Text.Contains("fitting are off"),
+                                "Both fitting switches off keeps the retargeted animation unchanged and explains the no-fit path without preparing");
+                            foreach(string side in new[]{"entry","exit"})
+                            {
+                                var enabled=side=="entry"?entryEnabled:exitEnabled;enabled.Checked=true;
+                                SimpleControl<Button>(window,"prepareTransition").PerformClick();await Wait(()=>!window.Busy);
+                                Check(missingReferenceRequests==0&&window.Candidate==null&&SimpleControl<ComboBox>(window,"transition_"+side).SelectedIndex==0&&
+                                    SimpleControl<TextBox>(window,"transitionReport").Text.Contains(side=="entry"?"Fit start":"Fit end"),
+                                    "An enabled "+side+" without a target pose explains the missing choice before any preparation and never chooses an arbitrary reference");
+                                enabled.Checked=false;
+                            }
+                        }
+                        finally{window.Prepare=prepareWithoutReference;}
                         var entry=SimpleControl<ComboBox>(window,"transition_entry");
                         entry.SelectedIndex=entry.Items.Cast<object>().Select((item,i)=>new{Item=item as TransitionClipChoice,Index=i}).Single(i=>ReferenceEquals(i.Item?.Clip,entryReference)).Index;
                         SimpleControl<NumericUpDown>(window,"transition_entrySamples").Value=5;
@@ -143,7 +186,7 @@ internal static partial class Program
                         SimpleControl<NumericUpDown>(window,"transition_entrySamples").Value=5;
                         if(args.Contains("--workspace-foot-recovery")){Check(!window.ReadOptions().FloorReviewed,"Editing either simple transition range clears floor-baseline review");SimpleControl<CheckBox>(window,"transition_floorReviewed").Checked=true;}
                         prepare.PerformClick();await Wait(()=>!window.Busy);Check(window.Candidate!=null,"Returning to the reviewed ranges prepares a fresh result");fitted=window.Candidate;
-                        foreach(int percent in new[]{100,200})foreach(var size in new[]{new Size(980,720),new Size(1600,960)})
+                        foreach(int percent in new[]{100,175})foreach(var size in new[]{new Size(980,720),new Size(1600,960)})
                         {
                             Call(form,"SetWorkspaceTextSize",percent);window.ApplyTextSize();window.ClientSize=size;window.PerformLayout();
                             BoundaryRangeTextFits(window,size.Width+" / "+percent+"% final prepared settings");

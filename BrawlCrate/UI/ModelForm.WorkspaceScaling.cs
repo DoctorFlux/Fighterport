@@ -66,6 +66,7 @@ namespace BrawlCrate.UI
             _workspaceBarsWidth = width; _workspaceBarsText = WorkspaceAppearance.TextPercent;
             _workspaceBarsFocused = _simpleWorkspaceFocused; DiagnosticWorkspaceBarMeasurements++;
             _fighterName.Width=Math.Min(WorkspaceAppearance.Pixels(145),Math.Max(140,width/5));
+            if (!_simpleWorkspaceActions.Visible) return;
             var operation=_simpleWorkspaceToolbar.Items["workspaceOperation"];
             var game=_simpleWorkspaceToolbar.Items["workspaceTargetGame"];
             operation.Available=game.Available=true;

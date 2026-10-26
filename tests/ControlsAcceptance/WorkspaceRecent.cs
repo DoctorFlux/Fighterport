@@ -93,7 +93,7 @@ internal static partial class Program
                 string firstHash=FighterProject.HashFile(first),secondHash=FighterProject.HashFile(second);
                 Call(form,"MarkFighterChanged");
                 int undoCount=editor._undoSaves.Count;
-                foreach(int text in new[]{100,200})
+                foreach(int text in new[]{100,175})
                 {
                     Call(form,"SetWorkspaceTextSize",text);
                     using(FlowModal("workspaceRecentProjects",dialog=>
@@ -147,7 +147,7 @@ internal static partial class Program
                     Check(!SimpleControl<Button>(dialog,"workspaceFileAccept").Enabled&&SimpleControl<Label>(dialog,"workspaceFileValidation").Text.Contains("not found"),"A moved recent project shows the normal unavailable-path status and cannot be opened");
                     paths.Focus();Check((bool)Call(dialog,"ProcessDialogKey",Keys.Tab)&&SimpleControl<Button>(dialog,"workspaceForgetRecent").Focused,"Recent selector Tab reaches Forget selected");
                     Check((bool)Call(dialog,"ProcessDialogKey",Keys.Tab)&&SimpleControl<Button>(dialog,"workspaceClearRecent").Focused,"Recent history Tab reaches Clear history");
-                    CaptureDialog(dialog,output,"recent-missing-200.png");
+                    CaptureDialog(dialog,output,"recent-missing-175.png");
                     SimpleControl<Button>(dialog,"workspaceForgetRecent").PerformClick();
                     Check(!history.Paths.Contains(first)&&File.Exists(first+".moved")&&FighterProject.HashFile(first+".moved")==firstHash,"Forget removes only history and leaves the moved project bytes untouched");
                     SimpleControl<Button>(dialog,"workspaceClearRecent").PerformClick();

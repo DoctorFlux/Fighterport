@@ -83,7 +83,7 @@ internal static partial class Program
                 Check(boundSource.Model._linker.BoneCache.Concat(((MDL0Node)editor.TargetModel)._linker.BoneCache).All(b=>b.FrameState._rotate.Equals(b.BindState._rotate)&&b.FrameState._translate.Equals(b.BindState._translate)&&b.FrameState._scale.Equals(b.BindState._scale)),"Rest comparison applies both authentic native local bind transforms");
                 editor.SetFrame(3);editor.PlayAnim();await Task.Delay(300);editor.StopAnim();editor.SetFrame(3);
                 Check(MDL0TextureNode.DiagnosticLoads==textureLoads&&FighterProject.DiagnosticFileHashes==hashes&&AnimationLibrary.DiagnosticOpens==opens&&BrawlRetargeter.DiagnosticBakes==bakes&&BrawlRetargeter.DiagnosticCaptures==captures,"Linked playback/scrubbing performs no texture loading, asset hashing, opening, capture preparation or bake");
-                foreach(int text in new[]{100,200})foreach(int width in new[]{1050,1700})
+                foreach(int text in new[]{100,175})foreach(int width in new[]{1050,1700})
                 {
                     form.ClientSize=new Size(width,950);Call(form,"SetWorkspaceTextSize",text);Call(form,"UpdateSimpleWorkspace");Call(form,"FrameComparisonSource");
                     await CaptureSimpleWorkspace(form,Path.Combine(output,"comparison-"+width+"-"+text+".png"));

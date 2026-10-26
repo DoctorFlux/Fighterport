@@ -256,7 +256,7 @@ internal static partial class Program
                     bool rejected = false; try { generated.TransitionFit.Validate(); } catch (InvalidDataException) { rejected = true; }
                     generated.TransitionFit.Receipt = receipt;
                     Check(rejected, "Saved recovery validation binds the explicit floor baseline rather than accepting a changed clearance claim");
-                    foreach (int text in new[] { 100, 200 }) foreach (int width in new[] { 1050, 1700 })
+                    foreach (int text in new[] { 100, 175 }) foreach (int width in new[] { 1050, 1700 })
                     {
                         form.ClientSize = new Size(width, 950); Call(form, "SetWorkspaceTextSize", text); await SimpleControlsReady(form);
                         await CaptureSimpleWorkspace(form, Path.Combine(output, "foot-recovery-workspace-" + width + "-" + text + ".png"));

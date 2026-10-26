@@ -106,7 +106,7 @@ internal static partial class Program
         Call(form,"OpenLoopInspection");Call(form,"ToggleAnimationLibrary");Check(!((Panel)Field(form,"_loopInspectionPane")).Visible&&((Panel)Field(form,"_libraryPane")).Visible,"Recovering the library hides inspection without clearing catalogue state");
         Call(form,"OpenLoopInspection");editor.FrameFighterModel();
         var expected=clips.Select(SetNativeContent).ToArray();var approved=ReviewRows(form).Select(ReviewApproved).ToArray();int nativeUndo=editor._undoSaves.Count;editor.SetFrame(3);
-        foreach(int text in new[]{100,200})foreach(int width in new[]{1050,1700})
+        foreach(int text in new[]{100,175})foreach(int width in new[]{1050,1700})
         {
             form.ClientSize=new Size(width,950);Call(form,"SetWorkspaceTextSize",text);Call(form,"OpenLoopInspection");
             var pane=(Panel)Field(form,"_loopInspectionPane");var body=(Panel)Field(form,"_simpleWorkspaceBody");
@@ -115,8 +115,8 @@ internal static partial class Program
             await CaptureSimpleWorkspace(form,Path.Combine(output,"loop-inspection-"+width+"-"+text+".png"));
         }
         Call(form,"RestoreWorkspaceFocus",SimpleControl<Button>(form,"loopInspectionRefresh"));
-        Check(SimpleControl<Button>(form,"loopInspectionRefresh").Focused&&InClient(SimpleControl<Button>(form,"loopInspectionRefresh"),(Panel)Field(form,"_loopInspectionPane")),"Refresh has visible keyboard focus and scrolls into view at 200% text");
-        await CaptureSimpleWorkspace(form,Path.Combine(output,"loop-inspection-focused-200.png"));
+        Check(SimpleControl<Button>(form,"loopInspectionRefresh").Focused&&InClient(SimpleControl<Button>(form,"loopInspectionRefresh"),(Panel)Field(form,"_loopInspectionPane")),"Refresh has visible keyboard focus and scrolls into view at 175% text");
+        await CaptureSimpleWorkspace(form,Path.Combine(output,"loop-inspection-focused-175.png"));
         Check(clips.Select(SetNativeContent).SequenceEqual(expected)&&ReviewRows(form).Select(ReviewApproved).SequenceEqual(approved)&&editor.CurrentFrame==3&&editor._undoSaves.Count==nativeUndo,"All text/layout/focus cycles preserve exact content, review approvals, frame and native Undo");
         Call(form,"RestoreWorkspaceFocus",viewport);bool escape=WorkspaceKey(form,Keys.Escape);
         Check(!escape&&((Panel)Field(form,"_loopInspectionPane")).Visible,"Escape outside inspection remains available to native editing gestures");

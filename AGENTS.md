@@ -1,5 +1,36 @@
 # Fighterport
 
+26 October 2026 bounded preview.34-next-layout acceptance is complete:
+**4,011 checks / 21 runs / 134 inspected native PNGs**. The default is the
+familiar native Next target editor with a right source pane and pinned original
+preview/transfer/fitting actions. Direct files remain temporary until explicit
+Add to library; repaired source paths/evidence retain exact provenance. Fit start
+and Fit end switch independently without forgetting references. The 200% option
+is removed; saved 200% falls back to 100%. Native/Next/Undo/root policies and
+preview.33 invalidation safeguards remain intact. See [acceptance evidence](docs/NEXT_LAYOUT_ACCEPTANCE_2026-10-26.md).
+The optional workflow guide remains available; no broader increment is promoted.
+ONE G1/M2 stays incomplete for human/input/DPI, broad contact quality and games.
+
+26 October 2026 user-authorized preview.34-next-layout restores the familiar
+Studio Next arrangement: full editable native target, right library and small
+read-only original-source preview. Replace the default stacked stage/task shell
+with the original direct toolbar and concise Animation/View menus. Retain all new
+review, comparison, fitting, loop and verified-export tools through existing paths;
+the guided workflow remains optional. Keep exact source identities, originals,
+Next algorithms, native Undo, reviewed boundary/root policies and preview.33
+invalidation/performance safeguards. No new format adapter, skeleton conversion,
+solver change, quality claim or document migration. Validate default workflow,
+source/target visibility, menu/focus recovery and compact/wide supported text sizes with
+private-desktop offscreen tests. Inspect native captures. Publish verified source
+only to public Fighterport/main using DoctorFlux attribution. Keep ONE incomplete
+G1/M2; human input, physical DPI, universal contact and game gates remain open.
+Latest steering: direct model/motion files are temporary until explicit Add to
+library. Preserve shared game/installed-file/disc-image source routes and exact
+source association review. Fit start/Fit end switch independently and retain
+chosen poses when off. Remove 200% text; supported presets are 100/125/150/175%,
+with saved 200% treated as 100%. Pin source preview and transfer/fitting actions
+while only the catalogue scrolls. Keep the source-local and boundary policies.
+
 25 October 2026 bounded preview.33-workspace-performance acceptance is complete:
 **3,829 checks / 19 runs / 124 inspected native PNGs**, plus a separate
 matched preview.32 baseline. Stable status avoids repeated layout/measurements;
