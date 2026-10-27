@@ -53,6 +53,7 @@ namespace BrawlCrate.Studio
     internal sealed class ControlReply
     {
         public SceneFittingReply Fitting {get;set;}
+        public string OptimizationPath {get;set;}
         public bool Ok {get;set;} public string Error {get;set;} public string State {get;set;}
         public bool Committed {get;set;} public float[][] Pose {get;set;}
         public string[] BoneNames {get;set;}

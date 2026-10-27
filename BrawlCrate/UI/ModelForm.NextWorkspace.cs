@@ -21,6 +21,7 @@ namespace BrawlCrate.UI
 
         private void InitializeNextWorkspace()
         {
+            Disposed += (s, e) => ClearOptimizationBaseline();
             _simpleWorkspaceFocused = true;
             _simpleWorkspaceDrawer = false;
             _simpleWorkspaceTask.Visible = _simpleWorkspaceActions.Visible = _simpleWorkspaceNavigation.Visible = false;
@@ -46,6 +47,7 @@ namespace BrawlCrate.UI
             NextCommand(_nextAnimationMenu, "nextLoopInspection", "Inspect loop / seam", OpenLoopInspection);
             _nextAnimationMenu.DropDownItems.Add(new ToolStripSeparator());
             NextCommand(_nextAnimationMenu, "nextFitBoundaries", "Fit start and end...", ShowTransitionFit);
+            NextCommand(_nextAnimationMenu, "nextOptimizeAnimation", "Optimize animation...", ShowAnimationOptimization);
             NextCommand(_nextAnimationMenu, "nextBatchFit", "Source timing / batch...", ShowLibraryBatch);
             NextCommand(_nextAnimationMenu, "nextAnimationControls", "Animation controls...", ShowAnimationControls);
             _nextAnimationMenu.DropDownItems.Add(new ToolStripSeparator());
@@ -97,6 +99,8 @@ namespace BrawlCrate.UI
             foreach (ToolStripItem item in _nextAnimationMenu.DropDownItems)
             {
                 if (item is ToolStripSeparator) continue;
+                if (item.Name == "nextOptimizeAnimation")
+                { item.Enabled = !busy && target && modelEditControl1.TargetAnimation is BrawlLib.SSBB.ResourceNodes.CHR0Node selected && OwnsFighterRoot(selected) && SelectedFighterAsset()?.Retarget?.ReviewDraft != true; continue; }
                 if (item.Name == "nextAddSourceToLibrary")
                 { item.Enabled = !busy && _sessionSourceLibrary != null && ReferenceEquals(_library, _sessionSourceLibrary); continue; }
                 if (item.Name == "nextPreviewLibraryOriginal" || item.Name == "nextOpenLibraryTarget")

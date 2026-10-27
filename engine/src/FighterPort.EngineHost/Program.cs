@@ -22,7 +22,7 @@ while(await Console.In.ReadLineAsync() is {} line)
 
 sealed record BindingReview(string Fingerprint,Dictionary<string,string> Roles,float[] Right,float[] Up,float[] Forward,string Evidence);
 sealed record SetupReview(string? Role,int[]? Bones,float[]? Pole,Dictionary<string,int?> Roles,string Evidence);
-sealed record Request(string Operation,string? Model=null,string? Motion=null,string? State=null,double Frame=0,int Bone=0,string? Pin=null,float[]? Values=null,bool Follow=false,string? SourceModel=null,bool Fit=true,BindingReview? SourceBinding=null,BindingReview? TargetBinding=null,string? Name=null,int SampleCount=60,string? Path=null,string? TargetId=null,string? SceneId=null,string? Game=null,string? Platform=null,string? Build=null,string? Mode=null,string? Package=null,string? Output=null,WorkspaceMotion[]? Motions=null,string? ClipKey=null,SetupReview? Review=null,FittingOptions? Fitting=null,string? SourceAssociation=null,string? SourceRegistration=null,BoundaryRequest? Boundary=null,EditorSlotIntent[]? Slots=null,ContactBakeOptions? ContactEdit=null,string[]? ContactProtection=null,ContactBakeReceipt? ContactProof=null);
+sealed record Request(string Operation,string? Model=null,string? Motion=null,string? State=null,double Frame=0,int Bone=0,string? Pin=null,float[]? Values=null,bool Follow=false,string? SourceModel=null,bool Fit=true,BindingReview? SourceBinding=null,BindingReview? TargetBinding=null,string? Name=null,int SampleCount=60,string? Path=null,string? TargetId=null,string? SceneId=null,string? Game=null,string? Platform=null,string? Build=null,string? Mode=null,string? Package=null,string? Output=null,WorkspaceMotion[]? Motions=null,string? ClipKey=null,SetupReview? Review=null,FittingOptions? Fitting=null,string? SourceAssociation=null,string? SourceRegistration=null,BoundaryRequest? Boundary=null,EditorSlotIntent[]? Slots=null,ContactBakeOptions? ContactEdit=null,string[]? ContactProtection=null,ContactBakeReceipt? ContactProof=null,OptimizationRequest? Optimization=null);
 sealed record ControlState(string Fingerprint,Guid Clip,ControlRigSetup Setup,ContactFrame[] Contacts,ContactPin[] AuthoringContacts,EditorBonePin[]? BonePins,Dictionary<int,Transform> AuthoringPose,string? BindingKey=null);
 sealed record PinView(string Id,int Bone,string BoneName,string Name,bool Soft,float[] Position,float[] Rotation);
 sealed record KeyView(int Frame,float Value,float Tangent);
@@ -38,6 +38,7 @@ sealed partial class ControlSession
         if(r.Operation.StartsWith("workspace-",StringComparison.Ordinal))return await Workspace(r);
         if(r.Operation.StartsWith("fitting-",StringComparison.Ordinal))return await Fitting(r);
         if(r.Operation=="transition-prepare")return await Transition(r);
+        if(r.Operation=="animation-optimize-prepare")return await OptimizeAnimation(r);
         if(r.Operation is "contact-prepare" or "contact-verify")return await AuthorContact(r);
         if(r.Operation=="hello")return new {Ok=true,Protocol=1,Engine="FighterPort.Core",NativeRate=60};
         if(r.Operation=="retarget")

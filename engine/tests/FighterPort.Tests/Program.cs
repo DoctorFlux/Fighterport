@@ -10,6 +10,7 @@ void Near(float actual,float expected,float tolerance,string message)=>Check(Mat
 var dir=Path.GetFullPath(args.FirstOrDefault()??"artifacts/tests");Directory.CreateDirectory(dir);
 try
 {
+    if(args.Contains("--animation-optimization")){AnimationOptimizationChecks.Run(Check);await File.WriteAllTextAsync(Path.Combine(dir,"results.json"),JsonSerializer.Serialize(new{Passed=true,Count=checks.Count,Checks=checks}));return 0;}
     if(args.Contains("--rotation-path")){RotationPathChecks.Run(dir,Check);await File.WriteAllTextAsync(Path.Combine(dir,"results.json"),JsonSerializer.Serialize(new{Passed=true,Count=checks.Count,Checks=checks}));return 0;}
     if(args.Contains("--rotation-native")){int i=Array.IndexOf(args,"--rotation-native");RotationPathChecks.Native(args[i+1],args[i+2],dir,Check);await File.WriteAllTextAsync(Path.Combine(dir,"results.json"),JsonSerializer.Serialize(new{Passed=true,Count=checks.Count,Checks=checks}));return 0;}
     if(args.Contains("--contact-authoring")){await ContactAuthoringChecks.RunAsync(dir,Check);await File.WriteAllTextAsync(Path.Combine(dir,"results.json"),JsonSerializer.Serialize(new{Passed=true,Count=checks.Count,Checks=checks}));return 0;}

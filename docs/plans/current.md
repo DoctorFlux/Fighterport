@@ -1,5 +1,8 @@
 # Current milestone M2 — simpler native workspace
 
+27 October 2026 preview.45-exact-optimization is accepted: **5,961 checks / 15 background runs / 52 inspected native PNGs**. Animation → Optimize animation… prepares Exact cleanup for the exact current target CHR0, lists absent-target tracks, verifies fresh I12 bytes/native evaluation, and applies through one native Undo command. Session baselines and historical receipts remain separate; full previewer, original Next and root policy remain. See [acceptance](../EXACT_OPTIMIZATION_ACCEPTANCE_2026-10-27.md). The sole current continuation is preview.46 High-quality reduction after separate qualification; ONE G1/M2 remains incomplete. Physical input/DPI, human usability, universal contacts, Melee and game acceptance stay unverified.
+
+
 27 October 2026 preview.44-rotation-paths is accepted: **3,222 checks / 14 admitted runs / 68 inspected native PNGs**. Shared native XYZ FK fitting compares actual orientation travel across equivalent endpoint families and a bounded integral midpoint, without character/bone exceptions. The sealed Sonic AttackAirLw to Mario Fall recovery reduces HipN exit travel 124.7654 to 102.5254 degrees with no peak-speed increase; all 63 bones retain or reduce measured travel/speed. Original joins, middle, TransN, full previewer, Next and native Undo/Save/export remain exact under the existing policies. Versioned additive receipts retain legacy reads and schema 1. See [acceptance](../ROTATION_PATH_ACCEPTANCE_2026-10-27.md). ONE G1/M2 stays incomplete; physical input/DPI, human usability, universal contacts and games remain unverified.
 
 27 October 2026 preview.43-apply-current-fit is accepted: **1,271 checks /
