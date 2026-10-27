@@ -8,6 +8,7 @@ public sealed record BoundaryFitSettings(int EntrySamples,int ExitSamples,Transf
 {
     public bool MatchReferenceControls {get;init;}
     public bool OptimizeRotationPaths {get;init;}
+    public bool ExistingTracksOnly {get;init;}
     public bool PreserveContacts {get;init;}
     public string[] ContactBones {get;init;}=[];
     public bool ExitContactRecovery {get;init;}
@@ -46,10 +47,18 @@ public static class BoundaryFitting
     public static BoundaryFitResult Prepare(FighterProject project,AnimationClip source,BoundaryAnchor? entry,BoundaryAnchor? exit,BoundaryFitSettings settings)
     {
         string fingerprint=AnimationControls.Fingerprint(project.Scene);int last=source.SampleCount-1;
+        // A keyed bone remains eligible even when it only owns one component.
+        // This option limits track membership, not the selected S/R/T channels.
+        var existingAnimated=source.Tracks.Where(t=>t.HasKeys&&project.Scene.Bones.Any(b=>b.Name==t.Bone))
+            .Select(t=>t.Bone).ToHashSet(StringComparer.Ordinal);
+        if(settings.ExistingTracksOnly&&settings.Bones.Any(name=>!existingAnimated.Contains(name)))
+            throw new InvalidDataException("Existing animated bones only: the selected mask includes bones without source animation keys: "+string.Join(", ",settings.Bones.Where(name=>!existingAnimated.Contains(name))));
         var controls=project.ControlRigs.FirstOrDefault(r=>r.SkeletonFingerprint==fingerprint);
         var protectedMotion=controls is null?new HashSet<string>(StringComparer.Ordinal):
             AnimationControls.ProtectedMotionBones(project.Scene,controls).Select(i=>project.Scene.Bones[i].Name).ToHashSet(StringComparer.Ordinal);
         var matchedControls=settings.MatchReferenceControls?BoundaryReferenceControls.Resolve(project.Scene,controls):[];
+        if(settings.ExistingTracksOnly&&matchedControls.Any(name=>!existingAnimated.Contains(name)))
+            throw new InvalidDataException("Existing animated bones only cannot fit unkeyed reference controls: "+string.Join(", ",matchedControls.Where(name=>!existingAnimated.Contains(name)))+". Disable reference-control fitting or retain the full fitting scope.");
         protectedMotion.ExceptWith(matchedControls);
         string referencePolicy=settings.MatchReferenceControls?BoundaryReferenceControls.Policy:SourceRootReferencePolicy;
         if(matchedControls.Any(name=>!settings.Bones.Contains(name,StringComparer.Ordinal)))
@@ -88,7 +97,11 @@ public static class BoundaryFitting
         Anchor(entry);Anchor(exit);source.Rate.Validate();
         if(settings.OptimizeRotationPaths&&!settings.NearestEquivalentAngles)throw new InvalidDataException("Smooth rotation fitting requires equivalent-angle handling.");
         var rotationBudget=new BoundaryRotationPath.Budget();
+        if(settings.ExistingTracksOnly&&recovery&&contactBones.Any(name=>!protectedMotion.Contains(name)&&!existingAnimated.Contains(name)))
+            throw new InvalidDataException("Existing animated bones only cannot recover the unkeyed contact dependency tracks: "+string.Join(", ",contactBones.Where(name=>!protectedMotion.Contains(name)&&!existingAnimated.Contains(name))));
         var recovered=ContactBoundaryProtection.ResolveExitRecovery(project,source,settings,controls,protectedMotion,contactBones,end,entry is null?null:start);
+        if(settings.ExistingTracksOnly&&recovered.Any(name=>!existingAnimated.Contains(name)))
+            throw new InvalidDataException("Existing animated bones only cannot create the missing contact recovery tracks: "+string.Join(", ",recovered.Where(name=>!existingAnimated.Contains(name))));
         if(recovery)
             foreach(var bone in project.Scene.Bones.Where(b=>protectedMotion.Contains(b.Name)))
                 if(bone.Rest.Channels().Any(v=>!float.IsFinite(v))||source.Tracks.Where(t=>t.Bone==bone.Name).SelectMany(t=>t.Channels.OfType<Curve>()).SelectMany(c=>c.Keys)
@@ -193,6 +206,12 @@ public static class BoundaryFitting
         if(settings.FloorSettings is not null)limits=[..limits,"Reviewed floor recovery uses every vertex with any positive reviewed foot-path influence, all original weights and authentic inverse binds. It prevents added penetration relative to the recorded per-foot original/reference baseline, not absolute zero penetration.",
             "Body translation correction only, within explicitly selected windows; integer Hermite keys, zero correction and slope at both ends. Maximum lift is 20% of the shorter reviewed leg chain. Fixed pins remain hard failures.",
             "Clearance is checked at the receipt's bounded native-frame witnesses; this is not a continuous-time certificate, coupled contact solver, broad character or game acceptance."];
+        if(settings.ExistingTracksOnly)
+        {
+            if(changed.Any(t=>!existingAnimated.Contains(t.Bone))||tracks.Any(t=>!source.Tracks.Any(original=>original.Bone==t.Bone)))
+                throw new InvalidDataException("Existing animated bones only produced an unowned animation track; no result was published.");
+            limits=[..limits,"Existing animated bones only: no new bone tracks are added. Selected S/R/T channels may be created on those already-keyed bones; reference-only and unkeyed bones remain untouched."];
+        }
         var receipt=new BoundaryFitReceipt(version,RetargetDependencies.Hash(source),entry is null?null:RetargetDependencies.Hash(entry),exit is null?null:RetargetDependencies.Hash(exit),source.SampleCount,source.Loop,settings,changedChannels,limits){MatchedReferenceControls=matchedControls,ProtectedContactBones=retainedContacts,RecoveredContactBones=recovered,RecoveryStart=settings.ExitContactRecovery?end:null,RecoveryEnd=settings.ExitContactRecovery?last:null,RecoveryWindows=windows.ToArray(),ReferenceRootPolicy=recovery||settings.MatchReferenceControls?referencePolicy:"",FloorRecovery=floorReceipt};
         if(settings.OptimizeRotationPaths)receipt=receipt with{RotationInterpolation=BoundaryRotationPath.Version,RotationPathDegrees=rotationBudget.Travel,LegacyRotationPathDegrees=rotationBudget.LegacyTravel,Limits=[..limits,"Orientation-aware native XYZ Hermite paths compare equivalent endpoint families and one integral FK midpoint by measured local angular travel and peak speed. Authored joins, tangents and middle remain exact. Equivalent Euler labels may differ by 180/360 degrees. This is bounded branch selection, not IK, a global path optimum or contact acceptance."]};
         TransitionReference? Ref(BoundaryAnchor? a)=>a is null?null:new(a.Clip.Revision,project.Scene.SkeletonRevision,a.Frame,a.Rate,a.Frozen);

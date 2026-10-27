@@ -23,6 +23,7 @@ namespace BrawlCrate.Studio
         public string[] Bones {get;set;}public TransitionProtected[] Protected {get;set;}public bool PreserveRootTranslation {get;set;}
         public bool NearestEquivalentAngles {get;set;}
         public bool OptimizeRotationPaths {get;set;}
+        public bool ExistingTracksOnly {get;set;}
         public bool MatchReferenceControls {get;set;}
         public bool BindingReviewed {get;set;}
         public bool PreserveContacts {get;set;}
@@ -59,6 +60,8 @@ namespace BrawlCrate.Studio
             var rotationReceipt=SavedReceipt();var rotationSettings=ReceiptValue(rotationReceipt,"Settings") as IDictionary<string,object>;
             bool rotationEnabled=ReceiptValue(rotationSettings,"OptimizeRotationPaths") is bool smooth&&smooth;
             if(settings==null||rotationEnabled!=settings.OptimizeRotationPaths)throw new InvalidDataException("Saved rotation options and receipt disagree.");
+            bool existingTracksOnly=ReceiptValue(rotationSettings,"ExistingTracksOnly") is bool existing&&existing;
+            if(settings.ExistingTracksOnly!=existingTracksOnly)throw new InvalidDataException("Saved existing-track fitting options and receipt disagree.");
             if(rotationEnabled)
             {
                 bool Numeric(object v)=>v is double||v is float||v is decimal||v is int||v is long;

@@ -172,6 +172,8 @@ internal static partial class Program
                         BoundaryRangeSelectionLayout(form,window);
                         SimpleControl<CheckBox>(window,"transition_boundaryContactRecovery").Checked=contacts.Length>0;
                         SimpleControl<CheckBox>(window,"transition_binding").Checked=true;
+                        await ExistingTrackNextFit(form,window,model,source,output);
+                        SimpleControl<CheckBox>(window,"transition_binding").Checked=true;
                         if(args.Contains("--workspace-foot-recovery")){SimpleControl<CheckBox>(window,"transition_preventFootDipping").Checked=true;SimpleControl<CheckBox>(window,"transition_floorReviewed").Checked=true;}
                         var options=new JavaScriptSerializer().Serialize(window.ReadOptions());
                         var advanced=SimpleControl<Button>(window,"transitionAdvanced");advanced.PerformClick();advanced.PerformClick();

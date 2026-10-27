@@ -63,6 +63,7 @@ internal static class BoundaryFittingChecks
         check(reopened.Clips[0].Tracks[1].Channels[3]!.Keys.SequenceEqual(curve.Keys),"Project reopen retains fitted Hermite keys and duplicate/tangent state exactly");
         BoundaryRotationChecks.Run(check);
         BoundaryReferenceControlChecks.Run(check);
+        await BoundaryExistingTrackChecks.RunAsync(dir,check);
         await ExitRecoveryAsync(dir,check);
         await BoundaryFloorRecoveryChecks.RunAsync(dir,check);
         await BoundaryStartEndChecks.RunAsync(dir,check);
