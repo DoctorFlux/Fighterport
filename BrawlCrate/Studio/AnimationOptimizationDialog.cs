@@ -30,6 +30,7 @@ namespace BrawlCrate.Studio
         readonly Panel modeSlot = new Panel { Name = "optimizationModeSlot", TabStop = false };
         readonly Label identity, modeHint, summary;
         readonly ComboBox mode = new ComboBox { Name = "optimizationMode", DropDownStyle = ComboBoxStyle.DropDownList };
+        readonly CheckBox compactStorage = new CheckBox { Name = "optimizationCompactStorage", Text = "Smaller native storage", AutoSize = true };
         readonly Label modeLabel = new Label { Text = "Mode", AutoSize = true, Padding = new Padding(0, 6, 6, 0) };
         readonly Button analyze = new Button { Name = "optimizeAnalyze", Text = "Analyze", AutoSize = true };
         readonly Button apply = new Button { Name = "optimizeApply", Text = "Apply optimization", AutoSize = true, Enabled = false };
@@ -44,7 +45,7 @@ namespace BrawlCrate.Studio
         readonly Stopwatch previewTime = new Stopwatch();
         readonly Dictionary<Control, Control> regionFocus = new Dictionary<Control, Control>();
         int generation, previewStart;
-        bool loading = true, preparedHighQuality, layingOut, analyzingHighQuality, cancellationRequested, closeQueued;
+        bool loading = true, preparedHighQuality, preparedCompact, analyzingCompact, layingOut, analyzingHighQuality, cancellationRequested, closeQueued;
 
         internal AnimationOptimizationDialog(ResourceNode originalRoot, MDL0Node originalModel,
             ResourceNode resultRoot, MDL0Node resultModel, CHR0Node originalSnapshot,
@@ -82,6 +83,8 @@ namespace BrawlCrate.Studio
             mode.Dock = DockStyle.Fill;
             modeSlot.Controls.Add(mode);
             options.Controls.Add(modeSlot);
+            compactStorage.AccessibleDescription = "Try smaller native indexed storage. Exact requires lossless decoded coefficients. High quality keeps the same measured error limits. Analyze explicitly; native Undo restores the original storage.";
+            options.Controls.Add(compactStorage);
 
             SourceView = new FittingModelView(originalModel, originalRoot, "Original current animation · read-only", true, viewer, references) { Dock = DockStyle.Fill };
             TargetView = new FittingModelView(resultModel, resultRoot, "Original animation · no result prepared", false, viewer, references) { Dock = DockStyle.Fill };
@@ -128,6 +131,7 @@ namespace BrawlCrate.Studio
             Controls.Add(layout);
 
             mode.SelectedIndexChanged += (s, e) => Changed();
+            compactStorage.CheckedChanged += (s, e) => Changed();
             analyze.Click += async (s, e) => await Analyze();
             cancel.Click += (s, e) => CancelAnalysis();
             apply.Click += (s, e) => ApplyPrepared();
@@ -164,6 +168,7 @@ namespace BrawlCrate.Studio
         }
 
         internal bool ReadHighQuality() => highQualityQualified && mode.SelectedIndex == 1;
+        internal bool ReadCompactStorage() => compactStorage.Checked;
 
         internal async Task Analyze()
         {
@@ -172,6 +177,7 @@ namespace BrawlCrate.Studio
             int token = ++generation;
             bool quality = ReadHighQuality();
             analyzingHighQuality = quality;
+            analyzingCompact = ReadCompactStorage();
             cancellationRequested = false;
             PreparedReport = PreparedSummary = null;
             PreparedCanApply = false;
@@ -190,6 +196,7 @@ namespace BrawlCrate.Studio
                 { result.Dispose(); throw new InvalidOperationException("Optimization changed the native duration or loop flag. The result was discarded."); }
                 Candidate = result;
                 preparedHighQuality = quality;
+                preparedCompact = analyzingCompact;
                 TargetView.Heading.Text = "Optimization result · review before applying";
                 summary.Text = PreparedSummary ?? "Optimization ready. Compare the original and result, then Apply optimization. Native Undo restores the previous animation.";
                 report.Text = PreparedReport ?? "Analysis prepared. No detailed measurements were supplied.";
@@ -233,7 +240,7 @@ namespace BrawlCrate.Studio
             Stop();
             try
             {
-                if (preparedHighQuality != ReadHighQuality()) throw new InvalidOperationException("The optimization mode changed. Analyze again.");
+                if (preparedHighQuality != ReadHighQuality() || preparedCompact != ReadCompactStorage()) throw new InvalidOperationException("The optimization settings changed. Analyze again.");
                 if (Apply == null) throw new InvalidOperationException("Applying optimization is unavailable.");
                 Apply(preparedHighQuality, Candidate);
                 DialogResult = DialogResult.OK;
@@ -251,7 +258,7 @@ namespace BrawlCrate.Studio
                 // The disabled selector can still receive a programmatic
                 // change. Retain the active operation's mode until it finishes.
                 loading = true;
-                try { mode.SelectedIndex = analyzingHighQuality ? 1 : 0; }
+                try { mode.SelectedIndex = analyzingHighQuality ? 1 : 0; compactStorage.Checked = analyzingCompact; }
                 finally { loading = false; }
                 return;
             }
@@ -284,7 +291,7 @@ namespace BrawlCrate.Studio
             Busy = value;
             cancel.Enabled = value;
             if (value && analyze.ContainsFocus) cancel.Focus();
-            analyze.Enabled = mode.Enabled = play.Enabled = frame.Enabled = !value;
+            analyze.Enabled = mode.Enabled = compactStorage.Enabled = play.Enabled = frame.Enabled = !value;
             apply.Enabled = !value && Candidate != null && PreparedCanApply;
             if (!value && restoreFocus) analyze.Focus();
         }

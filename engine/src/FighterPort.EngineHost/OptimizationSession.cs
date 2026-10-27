@@ -4,10 +4,12 @@ using FighterPort.Core;
 sealed record OptimizationRequest(string InputPath,string OutputPath);
 sealed record OptimizationRawKey(int Frame,int ValueBits,int TangentBits);
 sealed record OptimizationRawTrack(string Bone,OptimizationRawKey[][] Channels,int FrameLimit,bool Loop);
+sealed record OptimizationBindBits(string Bone,int[] Bits);
 sealed record OptimizationInput(string Name,int SampleCount,bool Loop,bool HighQuality,double LengthScale,
     OptimizationRawTrack[] Tracks,string[] ExactBones,string[] ProtectedBones,int[] MandatoryFrames,
     ProtectedInterval[] ProtectedRanges,bool ProtectionKnown,double PrecisionScale=1,
-    long MaximumWork=2_000_000,int MaximumCandidateSpans=100_000);
+    long MaximumWork=2_000_000,int MaximumCandidateSpans=100_000,
+    OptimizationBindBits[]? BindPoses=null,OptimizationRawTrack[]? CandidateTracks=null);
 
 sealed partial class ControlSession
 {
@@ -101,10 +103,11 @@ sealed partial class ControlSession
                 foreach(int bone in AnimationControls.ProtectedMotionBones(scene,state.Setup))exact.Add(scene.Bones[bone].Name);
         }
 
-        var tracks=input.Tracks.Select(track=>new BoneTrack(track.Bone,track.Channels.Select(channel=>channel.Length==0?null:
+        BoneTrack[] DecodeTracks(OptimizationRawTrack[] raw)=>raw.Select(track=>new BoneTrack(track.Bone,track.Channels.Select(channel=>channel.Length==0?null:
             new Curve(channel.Select(key=>new Key(key.Frame,BitConverter.Int32BitsToSingle(key.ValueBits),
                 BitConverter.Int32BitsToSingle(key.TangentBits),BitConverter.Int32BitsToSingle(key.TangentBits))).ToArray(),
                 Interpolation.Hermite,track.Loop?track.FrameLimit:null)).ToArray())).ToArray();
+        var tracks=DecodeTracks(input.Tracks);
         var clip=new AnimationClip(state?.Clip??Guid.NewGuid(),input.Name,input.SampleCount,new(60,1),input.Loop,tracks);
         // Retries tighten only scalar construction tolerances. Authentic bind
         // scale, protections and independent native acceptance limits never move.
@@ -127,8 +130,27 @@ sealed partial class ControlSession
             ExactOnlyBones=exact.Order(StringComparer.Ordinal).ToArray(),
             PreserveStructureBones=protectedBones.Order(StringComparer.Ordinal).ToArray(),
             MandatoryFrames=input.MandatoryFrames.Select(f=>(double)f).ToArray(),
-            ProtectedRanges=input.ProtectedRanges
+            ProtectedRanges=input.ProtectedRanges,
+            BindPoses=(input.BindPoses??[]).Select(b=>new AnimationOptimizationBindPose(b.Bone,b.Bits.Select(BitConverter.Int32BitsToSingle).ToArray())).ToArray()
         };
+        if(settings.BindPoses.Any(b=>!targetSet.Contains(b.Bone)))throw new InvalidDataException("Native bind cleanup contains a bone absent from this exact target.");
+        if(input.CandidateTracks is {} proposed)
+        {
+            var certificate=await Task.Run(()=>AnimationOptimization.CertifyCandidate(clip,DecodeTracks(proposed),settings,targetBoneNames:targetNames));
+            string certificatePending=outputPath+"."+Guid.NewGuid().ToString("N")+".pending";
+            try
+            {
+                using(var file=new FileStream(certificatePending,FileMode.CreateNew,FileAccess.Write,FileShare.None))
+                using(var bounded=new OptimizationBoundedStream(file,OptimizationFileLimit))
+                {
+                    await JsonSerializer.SerializeAsync(bounded,new{Certificate=certificate},new JsonSerializerOptions(ProjectStore.Json){IgnoreReadOnlyProperties=false});
+                    bounded.Flush();file.Flush(true);
+                }
+                File.Move(certificatePending,outputPath);
+                return new{Ok=true,OptimizationPath=outputPath,Algorithm=AnimationOptimization.Version};
+            }
+            finally{if(File.Exists(certificatePending))File.Delete(certificatePending);}
+        }
         var result=await Task.Run(()=>AnimationOptimization.Optimize(clip,targetNames,settings));
         var originals=input.Tracks.ToDictionary(t=>t.Bone,StringComparer.Ordinal);
         var outputOptions=new JsonSerializerOptions(ProjectStore.Json){IgnoreReadOnlyProperties=false};
@@ -165,6 +187,7 @@ sealed partial class ControlSession
                 }
                 writer.WriteEndArray();
                 writer.WritePropertyName("RemovedUnmatchedTracks");JsonSerializer.Serialize(writer,result.RemovedUnmatchedTracks,outputOptions);
+                writer.WritePropertyName("RemovedBindTracks");JsonSerializer.Serialize(writer,result.RemovedBindTracks,outputOptions);
                 writer.WritePropertyName("Report");JsonSerializer.Serialize(writer,result.Report,outputOptions);
                 writer.WritePropertyName("ExactBones");JsonSerializer.Serialize(writer,settings.ExactOnlyBones,outputOptions);
                 writer.WritePropertyName("ProtectedBones");JsonSerializer.Serialize(writer,settings.PreserveStructureBones,outputOptions);
@@ -212,6 +235,14 @@ sealed partial class ControlSession
             input.ProtectedRanges.Length>65536||input.ProtectedRanges.Any(r=>r is null||!double.IsFinite(r.Start)||
                 !double.IsFinite(r.End)||r.Start<0||r.End<r.Start||r.End>input.SampleCount||r.Reason is null||r.Reason.Length>4096))
             throw new InvalidDataException("Invalid bounded optimization frame or bone protections.");
+        if(input.BindPoses is {} binds && (binds.Length>65536||binds.Any(b=>b is null||string.IsNullOrEmpty(b.Bone)||b.Bone.Length>256||b.Bits is null||b.Bits.Length!=9
+                ||b.Bits.Any(v=>!float.IsFinite(BitConverter.Int32BitsToSingle(v))))||binds.Select(b=>b.Bone).Distinct(StringComparer.Ordinal).Count()!=binds.Length))
+            throw new InvalidDataException("Invalid bounded native bind-channel data.");
+        if(input.CandidateTracks is {} candidate)
+        {
+            // Reuse every raw-track validation, without recursive candidate data.
+            ValidateOptimizationInput(input with{Tracks=candidate,CandidateTracks=null});
+        }
     }
 
     sealed class OptimizationBoundedStream(Stream target,long limit):Stream

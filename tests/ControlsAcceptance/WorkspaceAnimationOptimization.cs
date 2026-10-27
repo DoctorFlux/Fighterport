@@ -161,7 +161,7 @@ internal static partial class Program
                         null, new object[] { project, model, a }, null);
                     string stage = Path.Combine(output, "cache-planner"); Directory.CreateDirectory(stage);
                     var commit = Call(form, "PrepareOptimizationCache", cacheKey, marker, (object)null, modelContent, protection,
-                        NativeAnimationOptimization.ContentKey(a), false, "Harness Exact-mode missing-original marker; native curves unchanged.", stage);
+                        NativeAnimationOptimization.ContentKey(a), NativeAnimationOptimization.StorageKey(a), false, false, "Harness Exact-mode missing-original marker; native curves unchanged.", stage);
                     using ((IDisposable)commit) Call(form, "CommitOptimizationCache", commit);
                 }
                 var exactMarker = Field(form, "_optimizationBaseline");
@@ -176,7 +176,12 @@ internal static partial class Program
                         SimpleControl<Label>(window, "optimizationSummary").Text.Contains("evicted") && form.OptimizationPrepares == prepares && SetNativeContent(a) == markerOutput,
                         "HQ requiring an evicted original is explicitly blocked before engine work or native changes");
                 });
-                var authored = a.Children.OfType<CHR0EntryNode>().Single(entry => entry.Name == selectedBone.Name);
+                // Exact bind cleanup may legitimately omit this target track.
+                // A later native edit creates it for the same existing bone.
+                var authored = a.Children.OfType<CHR0EntryNode>().SingleOrDefault(entry => entry.Name == selectedBone.Name) ?? a.CreateEntry(selectedBone.Name);
+                for (int channel = 3; channel < 6; channel++)
+                    if (authored.KeyArrays[channel].KeyCount == 0) authored.SetKeyframe(channel, 0, selectedBone.BindState[channel], true, true)._tangent = 0;
+                authored.UseModelRotate = false; authored.Keyframes.PreserveInterpolation = true;
                 authored.KeyArrays.Skip(3).Take(3).First(array => array.KeyCount > 0).Entries.First()._value += .125f;
                 a.SignalPropertyChange(); editor.UpdateModel(); Call(form, "InvalidateControls"); await SimpleControlsReady(form);
                 string edited = SetNativeContent(a);
@@ -276,7 +281,8 @@ internal static partial class Program
             var siblings = Walk(clip.RootNode).OfType<CHR0Node>().Where(c => !ReferenceEquals(c, clip)).ToDictionary(c => c, SetNativeContent);
             var untouchedBytes = OptimizationUntouchedBytes(form, clip);
             File.WriteAllText(Path.Combine(output, "optimization-untouched-before.json"), new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(untouchedBytes));
-            string before = SetNativeContent(clip), roots = RecoveryKeys(clip, (setup.ProtectedMotionBones ?? new int[0]).Select(i => setup.BoneNames[i]).ToArray());
+            string before = SetNativeContent(clip);
+            using var motionBaseline = NativeAnimationOptimization.Copy(clip);
             int keysBefore = OptimizationKeyCount(clip), undoBefore = editor._undoSaves.Count, assetsBefore = project.Animations.Count, frameBefore = editor.CurrentFrame;
             string identity = OptimizationNativeIdentity(clip);
             Call(form, "AddSelectedBatchReviewClip"); Call(form, "MarkBatchReview");
@@ -304,7 +310,10 @@ internal static partial class Program
             {
                 var mode = SimpleControl<ComboBox>(window, "optimizationMode");
                 Check(mode.Items.Count == 2 && mode.SelectedIndex == 0 && Convert.ToString(mode.SelectedItem) == "Exact" && Convert.ToString(mode.Items[1]) == "High quality" && !window.ReadHighQuality(), "Exact remains the default while the separately qualified High quality option is available");
-                Check(!SimpleDescendants(window).OfType<CheckBox>().Any() && !SimpleControl<Button>(window, "optimizeApply").Enabled, "Optimization has explicit Analyze and Apply without an extra required review checkbox");
+                var optionalStorage=SimpleDescendants(window).OfType<CheckBox>().ToArray();
+                Check(optionalStorage.Length==1&&optionalStorage[0].Name=="optimizationCompactStorage"&&!optionalStorage[0].Checked&&
+                    !SimpleControl<Button>(window, "optimizeApply").Enabled,
+                    "Optimization keeps optional smaller storage off by default and explicit Analyze/Apply without an extra required review checkbox");
                 Check(window.Candidate == null && !ReferenceEquals(window.SourceView.Model, model) && !ReferenceEquals(window.TargetView.Model, model) && !ReferenceEquals(window.SourceView.Model, window.TargetView.Model), "Opening optimization owns independent native preview models and no prepared result");
                 Check(Flow39Pose(window.SourceView.Model).SequenceEqual(Flow39Pose(window.TargetView.Model)), "An unprepared result displays the frozen original animation rather than a bind-pose result");
                 Check(SimpleControl<Label>(window, "optimizationIdentity").Text.Contains(clip.Name), "The dialog identifies the exact frozen current native animation");
@@ -377,11 +386,18 @@ internal static partial class Program
                 SimpleControl<Button>(window, "optimizationDetails").PerformClick();
                 await CaptureOptimization(window, Path.Combine(output, "optimization-ready-details.png"));
                 SimpleControl<Button>(window, "optimizeApply").PerformClick();
+                if (!window.IsDisposed) File.WriteAllText(Path.Combine(output, "optimization-apply-status.txt"), SimpleControl<Label>(window, "optimizationSummary").Text);
             });
+            File.WriteAllText(Path.Combine(output, "optimization-apply-diagnostic.json"), new System.Web.Script.Serialization.JavaScriptSerializer { MaxJsonLength = 16000000 }.Serialize(new {
+                SameClip = ReferenceEquals(editor.SelectedCHR0, clip), SameTarget = ReferenceEquals(editor.TargetModel, model), SameBone = ReferenceEquals(editor.SelectedBone, bodyBone),
+                Frame = editor.CurrentFrame, ExpectedFrame = frameBefore, Assets = project.Animations.Count, ExpectedAssets = assetsBefore,
+                ContentMatches = SetNativeContent(clip) == optimized, Undo = editor._undoSaves.Count, ExpectedUndo = undoBefore + 1,
+                Expected = optimized, Actual = SetNativeContent(clip)
+            }));
             Check(ReferenceEquals(editor.SelectedCHR0, clip) && ReferenceEquals(editor.TargetModel, model) && ReferenceEquals(editor.SelectedBone, bodyBone) && editor.CurrentFrame == frameBefore && project.Animations.Count == assetsBefore && SetNativeContent(clip) == optimized,
                 "Apply optimizes the exact current member while retaining the target, selected clip/bone/frame and asset count");
             Check(editor._undoSaves.Count == undoBefore + 1 && siblings.All(p => SetNativeContent(p.Key) == p.Value), "Optimization records one native Undo command and preserves all sibling animations");
-            Check(RecoveryKeys(clip, (setup.ProtectedMotionBones ?? new int[0]).Select(i => setup.BoneNames[i]).ToArray()) == roots, "Optimization preserves the exact source-owned protected motion-control keys");
+            ReplayRootsMatch(motionBaseline, clip, model, (setup.ProtectedMotionBones ?? new int[0]).Select(i => setup.BoneNames[i]).ToArray());
             Call(form, "SyncBatchReview"); Check(!ReviewApproved(review), "Applying optimization invalidates approval of the changed native member");
             editor.Undo(); await SimpleControlsReady(form); Check(SetNativeContent(clip) == before && siblings.All(p => SetNativeContent(p.Key) == p.Value), "Native Undo restores all pre-optimization keys and the removed foreign track");
             editor.Redo(); await SimpleControlsReady(form); Check(SetNativeContent(clip) == optimized && !clip.Children.Any(t => t.Name == foreign), "Native Redo restores the same optimized current member without analyzing again");

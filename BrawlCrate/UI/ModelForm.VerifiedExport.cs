@@ -28,7 +28,7 @@ namespace BrawlCrate.UI
                 Users = clip.UserEntries.Cast<UserDataClass>().Select(u => new { u.Name, Type = (int)u.DataType, u.Entries }).ToArray(),
                 Order = clip.Children.Select(c => c.Name).ToArray()
             });
-            return metadata + NativeControlSnapshot.Capture(clip, clip.Children.Select(c => c.Name)).ContentKey;
+            return metadata + NativeControlSnapshot.Capture(clip, clip.Children.Select(c => c.Name)).ContentKey + "|storage:" + NativeAnimationOptimization.StorageKey(clip);
         }
 
         private Chr0ExportSnapshot FreezeWorkspaceExport()

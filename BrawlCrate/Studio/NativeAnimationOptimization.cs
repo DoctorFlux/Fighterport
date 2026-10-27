@@ -26,6 +26,10 @@ namespace BrawlCrate.Studio
         public string[] ExactBones { get; set; } = new string[0];
         public int[] MandatoryFrames { get; set; } = new int[0];
         public double[] ProbeFrames { get; set; } = new double[0];
+        public string[] BindPoseCleanupBones { get; set; } = new string[0];
+        // Internal composition only: the complete indexed candidate must still
+        // pass current/original byte caps before it can be returned to the UI.
+        public bool DeferSizeValidation { get; set; }
         public NativeAnimationOptimizationBudget Budget { get; set; }
     }
 
@@ -79,6 +83,7 @@ namespace BrawlCrate.Studio
     {
         public CHR0Node Candidate { get; internal set; }
         public string ContentKey { get; internal set; }
+        public string StorageKey { get; internal set; }
         public string EncodedSha256 { get; internal set; }
         public string Report { get; internal set; }
         public long BeforeBytes { get; internal set; }
@@ -145,8 +150,33 @@ namespace BrawlCrate.Studio
                         foreach (var key in sourceEntry.KeyArrays[channel].Entries)
                             entry.Keyframes.SetFrameValue(channel, key._index, key._value, true)._tangent = key._tangent;
                     entry.Keyframes.PreserveInterpolation = true;
+                    var storage = PreciseCHR0EntryNode.CaptureStorage(sourceEntry);
+                    if (storage != null) PreciseCHR0EntryNode.RestoreStorage(entry, storage);
                 }
                 PreciseCHR0EntryNode.Promote(copy);
+                return copy;
+            }
+            catch { copy.Dispose(); throw; }
+        }
+
+        // Fixed native storage has no time field. A live editor can nevertheless
+        // hold one +zero-slope key at a later time. Canonicalize only that proved
+        // constant on an operation-owned export copy; Undo keeps the live knot.
+        public static CHR0Node CopyForStorageVerification(CHR0Node source)
+        {
+            var copy = Copy(source);
+            try
+            {
+                foreach (CHR0EntryNode entry in copy.Children)
+                for (int channel = 0; channel < 9; channel++)
+                {
+                    var array = entry.KeyArrays[channel]; if (array.KeyCount != 1) continue;
+                    var key = array.Entries.Single();
+                    if (key._index == 0 || Bits(key._tangent) != 0 || Bits(key._value) == int.MinValue) continue;
+                    float value = key._value; array.Remove(key._index);
+                    entry.Keyframes.SetFrameValue(channel, 0, value, true)._tangent = 0;
+                    entry.SignalPropertyChange();
+                }
                 return copy;
             }
             catch { copy.Dispose(); throw; }
@@ -202,6 +232,28 @@ namespace BrawlCrate.Studio
             }
         }
 
+        public static string StorageKey(CHR0Node clip) => string.Join(";", clip.Children.OfType<CHR0EntryNode>().Select(entry =>
+        {
+            var storage = PreciseCHR0EntryNode.CaptureStorage(entry);
+            return entry.Name + ":" + string.Join("|", Enumerable.Range(0, 9).Select(channel =>
+                storage != null && storage.MatchesGroup(entry.Keyframes, channel / 3) ? storage[channel]?.ContentKey ?? "I12" : "I12"));
+        }));
+
+        public static bool CanRemoveBindTrack(CHR0EntryNode entry, MDL0BoneNode bone)
+        {
+            if (entry == null || bone == null || entry.Name != bone.Name || entry.ScaleCompensateApply != bone.SegScaleCompApply ||
+                entry.ScaleCompensateParent != bone.SegScaleCompParent || entry.ClassicScaleOff != !bone.ClassicScale) return false;
+            for (int channel = 0; channel < 9; channel++)
+            {
+                float bind = bone.BindState[channel];
+                if (!Finite(bind) || Bits(bind) == int.MinValue) return false;
+                var keys = entry.KeyArrays[channel].Entries.ToArray();
+                if (keys.Select(k => k._index).Distinct().Count() != keys.Length || keys.Any(k =>
+                    Bits(k._value) != Bits(bind) || Bits(k._value) == int.MinValue || Bits(k._tangent) != 0)) return false;
+            }
+            return true;
+        }
+
         public static NativeAnimationOptimizationResult Prepare(MDL0Node modelSnapshot, CHR0Node beforeSnapshot,
             ControlTrack[] proposedTracks, NativeAnimationOptimizationOptions options, string stageDirectory,
             CancellationToken token = default(CancellationToken))
@@ -228,6 +280,8 @@ namespace BrawlCrate.Studio
             var tracks = proposedTracks ?? new ControlTrack[0];
             if (tracks.Any(t => t == null || t.Bone == null) || tracks.Select(t => t.Bone).Distinct(StringComparer.Ordinal).Count() != tracks.Length)
                 throw new InvalidDataException("Optimized tracks contain missing or duplicate identities.");
+            var proposedNames = Set(tracks.Select(t => t.Bone).ToArray());
+            var bindCleanup = Set(options.BindPoseCleanupBones);
             var mandatory = new HashSet<int>(options.MandatoryFrames ?? new int[0]);
             if (mandatory.Any(frame => frame < 0 || frame > beforeSnapshot.FrameCount)) throw new InvalidDataException("A mandatory optimization frame lies outside native timing.");
             string beforeContent = ContentKey(beforeSnapshot);
@@ -237,12 +291,13 @@ namespace BrawlCrate.Studio
             CHR0Node candidate = null, decoded = null; long beforeResourceBytes = 0;
             try
             {
-                using (var before = Copy(beforeSnapshot))
+                using (var before = CopyForStorageVerification(beforeSnapshot))
                 {
+                    string storedBaselineContent = ContentKey(before);
                     before.ExportChecked(beforePath);
                     using (var reopened = NodeFactory.FromFile(null, beforePath) as CHR0Node)
                     {
-                        if (reopened == null || ContentKey(reopened) != beforeContent)
+                        if (reopened == null || ContentKey(reopened) != storedBaselineContent)
                             throw new InvalidDataException("The precise native baseline did not retain every metadata field, flag, knot and tangent. Optimization was discarded.");
                         beforeResourceBytes = ResourceBlockBytes(beforePath, reopened);
                     }
@@ -250,9 +305,15 @@ namespace BrawlCrate.Studio
                 token.ThrowIfCancellationRequested();
                 candidate = Copy(beforeSnapshot);
                 foreach (CHR0EntryNode entry in candidate.Children.ToArray())
-                    if (!targets.Contains(entry.Name))
+                    if (!targets.Contains(entry.Name) || !proposedNames.Contains(entry.Name))
                     {
-                        if (protectedBones.Contains(entry.Name) || exactBones.Contains(entry.Name)) throw new InvalidDataException("A protected native track is absent from the selected target: " + entry.Name);
+                        if (targets.Contains(entry.Name))
+                        {
+                            if (!bindCleanup.Contains(entry.Name) || protectedBones.Contains(entry.Name) || mandatory.Count != 0 ||
+                                !CanRemoveBindTrack(entry, bones.Single(b => b.Name == entry.Name)))
+                                throw new InvalidDataException("A removed target track is not an eligible exact bind-pose constant: " + entry.Name);
+                        }
+                        else if (protectedBones.Contains(entry.Name) || exactBones.Contains(entry.Name)) throw new InvalidDataException("A protected native track is absent from the selected target: " + entry.Name);
                         entry.Remove(); entry.Dispose();
                     }
                 foreach (var track in tracks)
@@ -289,7 +350,7 @@ namespace BrawlCrate.Studio
                     throw new InvalidDataException("Optimized native encode changed metadata, entry order, flags, knots or tangents (including scale-axis sharing). No candidate can be applied.");
                 var result = new NativeAnimationOptimizationResult { BeforeBytes = new FileInfo(beforePath).Length,
                     AfterBytes = new FileInfo(afterPath).Length, BeforeKeys = beforeKeys, AfterKeys = CountKeys(decoded),
-                    BeforeTracks = beforeSnapshot.Children.Count, AfterTracks = decoded.Children.Count, ContentKey = expected,
+                    BeforeTracks = beforeSnapshot.Children.Count, AfterTracks = decoded.Children.Count, ContentKey = expected, StorageKey = StorageKey(decoded),
                     EncodedSha256 = FighterProject.HashFile(afterPath), HasChanges = beforeContent != expected,
                     BeforeResourceBytes = beforeResourceBytes, CandidateResourceBytes = ResourceBlockBytes(afterPath, decoded), OriginalInputResourceBytes = options.OriginalStoredResourceBytes };
                 if (!result.HasChanges)
@@ -302,7 +363,7 @@ namespace BrawlCrate.Studio
                 }
                 bool resourceGrowth = result.CandidateResourceBytes > result.BeforeResourceBytes ||
                     options.OriginalStoredResourceBytes.HasValue && result.CandidateResourceBytes > options.OriginalStoredResourceBytes.Value;
-                if (result.AfterBytes > result.BeforeBytes || options.OriginalStoredBytes.HasValue && result.AfterBytes > options.OriginalStoredBytes.Value || resourceGrowth)
+                if (!options.DeferSizeValidation && (result.AfterBytes > result.BeforeBytes || options.OriginalStoredBytes.HasValue && result.AfterBytes > options.OriginalStoredBytes.Value || resourceGrowth))
                 {
                     var growth = new InvalidDataException(resourceGrowth ? "Optimized CHR0 resource block would be larger: candidate " + result.CandidateResourceBytes +
                         " bytes, current precise block " + result.BeforeResourceBytes + (options.OriginalStoredResourceBytes.HasValue ? ", clean original input block " + options.OriginalStoredResourceBytes.Value : "") +

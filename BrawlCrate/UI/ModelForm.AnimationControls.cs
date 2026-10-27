@@ -303,7 +303,7 @@ namespace BrawlCrate.UI
 
         private sealed class NativeControlSnapshot
         {
-            private sealed class Entry {internal string Bone;internal ControlKey[][] Keys;internal bool Scale,Rotate,Translate,CompApply,CompParent,Classic;}
+            private sealed class Entry {internal string Bone;internal ControlKey[][] Keys;internal bool Scale,Rotate,Translate,CompApply,CompParent,Classic;internal BrawlLib.Wii.Animations.IndexedCHR0EntryStorage Storage;}
             private readonly List<Entry> _entries=new List<Entry>();
             internal string ContentKey=>string.Join("|",_entries.Select(e=>e.Bone+":"+e.Scale+e.Rotate+e.Translate+e.CompApply+e.CompParent+e.Classic+":"+(e.Keys==null?"absent":string.Join(";",e.Keys.Select(c=>string.Join(",",c.Select(k=>k.Frame+":"+k.Value.ToString("R",System.Globalization.CultureInfo.InvariantCulture)+":"+k.Tangent.ToString("R",System.Globalization.CultureInfo.InvariantCulture))))))));
             internal static NativeControlSnapshot Capture(CHR0Node clip,IEnumerable<string> bones)
@@ -312,6 +312,7 @@ namespace BrawlCrate.UI
                 {
                     var node=clip?.Children.OfType<CHR0EntryNode>().SingleOrDefault(n=>n.Name==name);var e=new Entry{Bone=name};result._entries.Add(e);if(node==null)continue;
                     e.Scale=node.UseModelScale;e.Rotate=node.UseModelRotate;e.Translate=node.UseModelTranslate;e.CompApply=node.ScaleCompensateApply;e.CompParent=node.ScaleCompensateParent;e.Classic=node.ClassicScaleOff;
+                    e.Storage=PreciseCHR0EntryNode.CaptureStorage(node);
                     e.Keys=node.KeyArrays.Select(a=>a.Entries.Select(k=>new ControlKey{Frame=k._index,Value=k._value,Tangent=k._tangent}).ToArray()).ToArray();
                 }return result;
             }
@@ -321,6 +322,9 @@ namespace BrawlCrate.UI
                 {
                     var node=clip.Children.OfType<CHR0EntryNode>().SingleOrDefault(n=>n.Name==e.Bone);if(e.Keys==null){node?.Remove();continue;}if(node==null)node=clip.CreateEntry(e.Bone);
                     Write(node,e.Keys);node.UseModelScale=e.Scale;node.UseModelRotate=e.Rotate;node.UseModelTranslate=e.Translate;node.ScaleCompensateApply=e.CompApply;node.ScaleCompensateParent=e.CompParent;node.ClassicScaleOff=e.Classic;
+                    // The immutable plan is replayed only while its decoded
+                    // coefficients match. Later native edits fall back to I12.
+                    if(e.Storage!=null||node is PreciseCHR0EntryNode)PreciseCHR0EntryNode.RestoreStorage(node,e.Storage);
                 }clip.SignalPropertyChange();
             }
             internal static void Apply(CHR0Node clip,ControlTrack[] tracks)

@@ -147,10 +147,26 @@ internal static partial class Program
         var times = new SortedSet<float>(Enumerable.Range(0, last * 4 + 1).Select(i => i / 4f));
         foreach (var entry in before.Children.OfType<CHR0EntryNode>().Where(t => roots.Contains(t.Name, StringComparer.Ordinal)))
         {
-            var actual = after.Children.OfType<CHR0EntryNode>().Single(t => t.Name == entry.Name);
-            Check(entry.UseModelScale == actual.UseModelScale && entry.UseModelRotate == actual.UseModelRotate && entry.UseModelTranslate == actual.UseModelTranslate &&
-                entry.ScaleCompensateApply == actual.ScaleCompensateApply && entry.ScaleCompensateParent == actual.ScaleCompensateParent && entry.ClassicScaleOff == actual.ClassicScaleOff,
-                "Replay preserves native semantic flags on source-owned control " + entry.Name);
+            var actual = after.Children.OfType<CHR0EntryNode>().SingleOrDefault(t => t.Name == entry.Name);
+            if (actual == null)
+            {
+                // Independently prove the native bind fallback. Do not ask the
+                // optimizer whether its own omission was safe: every original
+                // authored tuple, paired side and model flag is checked here.
+                var nativeBone = model.AllBones.Single(b => b.Name == entry.Name);
+                bool flags = entry.ScaleCompensateApply == nativeBone.SegScaleCompApply && entry.ScaleCompensateParent == nativeBone.SegScaleCompParent && entry.ClassicScaleOff == !nativeBone.ClassicScale;
+                bool constant = flags && Enumerable.Range(0, 9).All(channel =>
+                {
+                    float bind = nativeBone.BindState[channel]; var keys = entry.KeyArrays[channel].Entries.ToArray();
+                    return !float.IsNaN(bind) && !float.IsInfinity(bind) && ReplayFloatBits(bind) != int.MinValue &&
+                        keys.Select(key => key._index).Distinct().Count() == keys.Length && keys.All(key =>
+                            ReplayFloatBits(key._value) == ReplayFloatBits(bind) && ReplayFloatBits(key._tangent) == 0);
+                });
+                Check(constant, "An omitted source control independently proves finite exact bind constants, positive-zero tangents, no paired sides and authentic model flags: " + entry.Name);
+            }
+            else Check(entry.UseModelScale == actual.UseModelScale && entry.UseModelRotate == actual.UseModelRotate && entry.UseModelTranslate == actual.UseModelTranslate &&
+                    entry.ScaleCompensateApply == actual.ScaleCompensateApply && entry.ScaleCompensateParent == actual.ScaleCompensateParent && entry.ClassicScaleOff == actual.ClassicScaleOff,
+                    "Replay preserves native semantic flags on source-owned control " + entry.Name);
             foreach (var array in entry.KeyArrays)
             {
                 var groups = array.Entries.GroupBy(k => k._index).OrderBy(g => g.Key).ToArray();
@@ -158,7 +174,7 @@ internal static partial class Program
                 {
                     times.Add(group.Key);
                     if (group.Count() > 1)
-                        Check(ReplayKnotMatches(before, after, group.Key, new HashSet<string>(roots, StringComparer.Ordinal)), "Replay preserves both paired native control knot sides at " + group.Key);
+                        Check(ReplayKnotMatches(before, after, group.Key, new HashSet<string>(new[] { entry.Name }, StringComparer.Ordinal)), "Replay preserves both paired native control knot sides at " + entry.Name + " / " + group.Key);
                 }
                 for (int i = 1; i < groups.Length; i++)
                 {
@@ -182,7 +198,7 @@ internal static partial class Program
         int projectArg = Array.IndexOf(args, "--optimization-project");
         if (projectArg < 0 || projectArg + 1 >= args.Length) throw new InvalidDataException("Choose an accepted native project for optimization replay.");
         string path = Path.GetFullPath(args[projectArg + 1]);
-        bool rawNext = args.Contains("--optimization-raw-next"), highQuality = args.Contains("--optimization-high-quality");
+        bool rawNext = args.Contains("--optimization-raw-next"), highQuality = args.Contains("--optimization-high-quality"), compactStorage = args.Contains("--optimization-compact-storage");
         var originalPaths = new[] { args[0], args[1], path }.Where(File.Exists)
             .Concat(Directory.Exists(path + ".assets") ? Directory.EnumerateFiles(path + ".assets", "*", SearchOption.AllDirectories) : new string[0])
             .Distinct(StringComparer.OrdinalIgnoreCase).ToDictionary(file => file, FighterProject.HashFile, StringComparer.OrdinalIgnoreCase);
@@ -239,12 +255,12 @@ internal static partial class Program
                 var siblings = Walk(clip.RootNode).OfType<CHR0Node>().Where(c => !ReferenceEquals(c, clip)).ToDictionary(c => c, SetNativeContent);
                 var untouchedBytes = OptimizationUntouchedBytes(form, clip);
                 File.WriteAllText(Path.Combine(output, "replay-untouched-before.json"), json.Serialize(untouchedBytes));
-                string before = SetNativeContent(clip), nativeIdentity = OptimizationNativeIdentity(clip), modelContent = (string)Call(form, "NativeControlHash", model, ".mdl0");
+                string before = SetNativeContent(clip), beforeStorage = NativeAnimationOptimization.StorageKey(clip), nativeIdentity = OptimizationNativeIdentity(clip), modelContent = (string)Call(form, "NativeControlHash", model, ".mdl0");
                 var rootsBefore = editor._openedFiles.Select(r => r.RootNode).Concat(new[] { model.RootNode }).Distinct().ToDictionary(root => root,
                     root => (string)Call(form, "NativeControlHash", root, string.IsNullOrEmpty(Path.GetExtension(root.FilePath)) ? ".bin" : Path.GetExtension(root.FilePath)));
                 int undo = editor._undoSaves.Count, frame = editor.CurrentFrame, count = project.Animations.Count;
                 var selectedBone = editor.SelectedBone; var witness = new GameLibraryDocument(form);
-                string optimized = null; bool applied = false, finished = false; Exception failure = null;
+                string optimized = null, optimizedStorage = null; bool applied = false, finished = false; Exception failure = null;
                 var mandatory = new HashSet<int>();
                 if (fit != null)
                 {
@@ -266,11 +282,27 @@ internal static partial class Program
                                 mode.SelectedIndex = 1;
                             }
                             else Check(!window.ReadHighQuality(), "Accepted project replay opens in Exact mode");
+                            if (compactStorage)
+                            {
+                                var compact = SimpleControl<CheckBox>(window, "optimizationCompactStorage");
+                                Check(!compact.Checked && !window.ReadCompactStorage(), "Accepted replay requests smaller storage explicitly from its unchanged default");
+                                compact.Checked = true;
+                                Check(window.ReadCompactStorage(), "The actual smaller-storage checkbox selects compact native storage for accepted replay");
+                            }
                             await window.Analyze();
                             Check(window.Candidate != null, "Accepted project produces an independently prepared optimization result: " + SimpleControl<Label>(window, "optimizationSummary").Text);
                             Check(window.Candidate.Children.All(entry => targetNames.Contains(entry.Name)), "Accepted replay candidate contains only bones in the actual target skeleton");
                             string candidatePath = Path.Combine(output, "replay-candidate.chr0"); window.Candidate.ExportChecked(candidatePath);
-                            Check(new FileInfo(candidatePath).Length <= beforeBytes, "Independent precise native encodings prove accepted replay does not grow the current CHR0");
+                            Check(new FileInfo(candidatePath).Length <= beforeBytes, compactStorage ? "Independent native encodings prove compact accepted replay does not grow the current CHR0" : "Independent precise native encodings prove accepted replay does not grow the current CHR0");
+                            optimizedStorage = NativeAnimationOptimization.StorageKey(window.Candidate);
+                            if (compactStorage)
+                            {
+                                using (var decoded = NodeFactory.FromFile(null, candidatePath) as CHR0Node)
+                                    Check(decoded != null && SetNativeContent(decoded) == SetNativeContent(window.Candidate) && NativeAnimationOptimization.StorageKey(decoded) == optimizedStorage,
+                                        "Independently reopening the compact replay candidate retains every native coefficient and storage plan");
+                                File.WriteAllText(Path.Combine(output, "replay-native-storage.json"), json.Serialize(new { CompactStorage = true, BeforeBytes = beforeBytes,
+                                    CandidateBytes = new FileInfo(candidatePath).Length, BeforeStorage = beforeStorage, CandidateStorage = optimizedStorage }));
+                            }
                             foreach (int at in mandatory) Check(ReplayKnotMatches(baseline, window.Candidate, at, targetNames), "Accepted fit endpoint/join retains all existing native key and tangent bits at " + at);
                             ReplayRootsMatch(baseline, window.Candidate, model, roots);
                             if (!highQuality)
@@ -286,7 +318,7 @@ internal static partial class Program
                             Check(rootsBefore.All(proof => (string)Call(form, "NativeControlHash", proof.Key, string.IsNullOrEmpty(Path.GetExtension(proof.Key.FilePath)) ? ".bin" : Path.GetExtension(proof.Key.FilePath)) == proof.Value), "Preparing accepted replay preserves every open native source root");
                             optimized = SetNativeContent(window.Candidate);
                             applied = window.PreparedCanApply;
-                            Check(applied ? optimized != before && SimpleControl<Button>(window, "optimizeApply").Enabled : optimized == before && !SimpleControl<Button>(window, "optimizeApply").Enabled,
+                            Check(applied ? (optimized != before || compactStorage && optimizedStorage != beforeStorage) && SimpleControl<Button>(window, "optimizeApply").Enabled : optimized == before && (!compactStorage || optimizedStorage == beforeStorage) && !SimpleControl<Button>(window, "optimizeApply").Enabled,
                                 "Replay reports a useful applicable change or an honest unchanged no-op");
                             SimpleControl<TrackBar>(window, "optimizationFrame").Value = Math.Max(1, baseline.FrameCount / 2);
                             SimpleControl<Button>(window, "optimizationDetails").PerformClick();
@@ -306,6 +338,7 @@ internal static partial class Program
                 }
                 Check(ReferenceEquals(editor.SelectedCHR0, clip) && ReferenceEquals(editor.TargetModel, model) && ReferenceEquals(editor.SelectedBone, selectedBone) && editor.CurrentFrame == frame && project.Animations.Count == count && SetNativeContent(clip) == optimized,
                     "Replay Apply/no-op retains the exact native target, clip, bone, frame and project asset count");
+                if (compactStorage) Check(NativeAnimationOptimization.StorageKey(clip) == optimizedStorage, "Accepted replay Apply/no-op retains the independently verified compact storage");
                 Check(siblings.All(proof => SetNativeContent(proof.Key) == proof.Value) && (string)Call(form, "NativeControlHash", model, ".mdl0") == modelContent,
                     "Accepted replay preserves every sibling animation and the complete native target model");
                 Check(rootsBefore.Where(proof => !ReferenceEquals(proof.Key, clip.RootNode)).All(proof => (string)Call(form, "NativeControlHash", proof.Key, string.IsNullOrEmpty(Path.GetExtension(proof.Key.FilePath)) ? ".bin" : Path.GetExtension(proof.Key.FilePath)) == proof.Value), "Applying accepted replay preserves unrelated native source roots");
@@ -315,20 +348,26 @@ internal static partial class Program
                 {
                     editor.Undo(); await SimpleControlsReady(form);
                     Check(SetNativeContent(clip) == before && siblings.All(proof => SetNativeContent(proof.Key) == proof.Value), "Accepted replay Undo restores the precise pre-optimization animation and preserves siblings");
+                    if (compactStorage) Check(NativeAnimationOptimization.StorageKey(clip) == beforeStorage, "Accepted replay Undo restores the complete original native storage");
                     editor.Redo(); await SimpleControlsReady(form);
                     Check(SetNativeContent(clip) == optimized && json.Serialize(asset.Retarget) == retargetMetadata && json.Serialize(new { asset.TransitionFit, asset.ClipTransitionFits }) == fitMetadata, "Accepted replay Redo restores optimized native curves without changing retarget or fit provenance");
+                    if (compactStorage) Check(NativeAnimationOptimization.StorageKey(clip) == optimizedStorage, "Accepted replay Redo restores the exact reviewed compact native storage");
                     Check(OptimizationRetainedBaseline(form) == before, "Accepted replay Apply and native Undo/Redo retain the original session baseline content");
                 }
                 editor.FrameFighterModel(); await CaptureSimpleWorkspace(form, Path.Combine(output, "replay-native-applied.png"));
                 string export = Path.Combine(output, "replay-optimized.chr0"); form.ExportSimpleWorkspaceResult(export);
                 using (var decoded = NodeFactory.FromFile(null, export) as CHR0Node)
+                {
                     Check(decoded != null && SetNativeContent(decoded) == optimized, "Export before Save independently reopens the accepted replay result exactly");
+                    if (compactStorage) Check(NativeAnimationOptimization.StorageKey(decoded) == optimizedStorage, "Export before Save independently retains accepted replay compact storage");
+                }
                 if (applied)
                 {
                     bool repeatDone = false; Exception repeatFailure = null;
                     form.OptimizationReady = async window => {
                         try {
                             Check(OptimizationRetainedBaseline(form) == before, "Ordinary replay export preserves the original native quality baseline including its complete source keys");
+                            if (compactStorage) SimpleControl<CheckBox>(window, "optimizationCompactStorage").Checked = true;
                             if (highQuality)
                             {
                                 await window.Analyze();
@@ -341,6 +380,8 @@ internal static partial class Program
                             await window.Analyze();
                             Check(window.Candidate != null && !window.PreparedCanApply && form.OptimizationPrepares == prepares && SetNativeContent(window.Candidate) == optimized && OptimizationRetainedBaseline(form) == before,
                                 "Repeating unchanged optimization after ordinary export retains its original session baseline without another approximation or engine pass");
+                            if (compactStorage) Check(window.ReadCompactStorage() && NativeAnimationOptimization.StorageKey(window.Candidate) == optimizedStorage,
+                                "Repeated accepted replay retains the exact compact storage without cumulative requantization");
                         } catch (Exception error) { repeatFailure = error; }
                         finally { window.Close(); repeatDone = true; }
                     };
@@ -360,6 +401,7 @@ internal static partial class Program
                     await SimpleControlsReady(freshForm);
                     var restored = freshForm.FighterEditor.SelectedCHR0; var restoredAsset = (FighterAsset)Call(freshForm, "SelectedFighterAsset");
                     Check(restored != null && OptimizationNativeIdentity(restored) == nativeIdentity && SetNativeContent(restored) == optimized, "Save/fresh reopen retains the accepted replay's exact current native member and curves");
+                    if (compactStorage) Check(NativeAnimationOptimization.StorageKey(restored) == optimizedStorage, "Save/fresh reopen retains accepted replay compact storage");
                     OptimizationCheckUntouchedBytes(freshForm, restored, untouchedBytes, "accepted replay fresh reopen", Path.Combine(output, "replay-untouched-after-reopen.json"));
                     Check((string)Call(freshForm, "NativeControlHash", (MDL0Node)freshForm.FighterEditor.TargetModel, ".mdl0") == modelContent, "Fresh replay project retains the complete native target model and binds");
                     Check(json.Serialize(restoredAsset.Retarget) == exportedRetargetMetadata && json.Serialize(new { restoredAsset.TransitionFit, restoredAsset.ClipTransitionFits }) == fitMetadata, "Fresh replay project preserves original retarget provenance, ordinary export evidence and frozen fit recipes");

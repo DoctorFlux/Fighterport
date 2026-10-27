@@ -1,0 +1,126 @@
+using BrawlCrate.Studio;
+using BrawlLib.SSBB.ResourceNodes;
+using System;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+
+internal static partial class Program
+{
+    static async Task NativeCompactRuntimeChecks(string modelPath, string stage)
+    {
+        Directory.CreateDirectory(stage);
+        using (var owner = NodeFactory.FromFile(null, modelPath))
+        {
+            var model = OptimizationWalk(owner).OfType<MDL0Node>().OrderByDescending(m => m.NumVertices).First();
+            var names = model.AllBones.Select(b => b.Name).ToArray(); double length = NativeAnimationOptimization.GetBindBoundsDiagonal(model);
+            using (var baseline = CompactFixture(20, 3, Enumerable.Range(0, 16).ToArray(), i => i * .125f, i => .125f))
+            {
+                baseline.Children[0].Name = names.Last(); string key = NativeAnimationOptimization.ContentKey(baseline);
+                var options = new NativeAnimationOptimizationOptions { ExactOnly = true, TargetBones = names, LengthScale = length, Budget = new NativeAnimationOptimizationBudget() };
+                using (var precise = NativeAnimationOptimization.Prepare(model, baseline, new[] { OptimizationTrack((CHR0EntryNode)baseline.Children[0]) }, options, stage))
+                {
+                    Check(!precise.HasChanges && precise.Candidate == null, "Compact runtime: unchanged precise preparation is an explicit semantic no-op");
+                    int calls = 0;
+                    using (var packed = await NativeAnimationOptimization.PrepareCompact(model, baseline, baseline, precise, options, stage,
+                        (candidate, token) => { calls++; return Task.FromResult(new NativeCompactCurveCertificate { Accepted = NativeAnimationOptimization.ContentKey(candidate) == key,
+                            Report = "Independent exact coefficient identity.", ProbeFrames = new[] { .333, 4.777, 15.125 } }); }))
+                    {
+                        Check(calls == 0 && packed.HasChanges && packed.ContentKey == key && packed.StorageKey != NativeAnimationOptimization.StorageKey(baseline) && packed.AfterBytes < packed.BeforeBytes,
+                            "Compact runtime: format-only optimization independently decodes unchanged coefficients and carries the qualified precise proof without repeating solver work");
+                        Check(packed.MaximumEulerError == 0 && packed.MaximumWorldBoneError == 0 && packed.MaximumSkinError == 0 && packed.Candidate != null,
+                            "Compact runtime: exact indexed storage retains zero collective native pose/skin error");
+                        options.OriginalStoredBytes = packed.AfterBytes; options.OriginalStoredResourceBytes = packed.CandidateResourceBytes;
+                        using (var repeat = await NativeAnimationOptimization.PrepareCompact(model, baseline, packed.Candidate, precise, options, stage,
+                            (candidate, token) => Task.FromResult(new NativeCompactCurveCertificate { Accepted = NativeAnimationOptimization.ContentKey(candidate) == key, Report = "Independent exact coefficient identity." })))
+                            Check(!repeat.HasChanges && repeat.AfterBytes == packed.AfterBytes && repeat.StorageKey == packed.StorageKey,
+                                "Compact runtime: reoptimizing an already packed current animation does not reapply a format-only result or grow it");
+                        options.OriginalStoredBytes = null; options.OriginalStoredResourceBytes = null;
+                    }
+                    using (var rejected = await NativeAnimationOptimization.PrepareCompact(model, baseline, baseline, precise, options, stage,
+                        (candidate, token) => Task.FromResult(new NativeCompactCurveCertificate { Accepted = false, Report = "Independent deliberate proof rejection." })))
+                        Check(rejected.HasChanges && rejected.ContentKey == key && rejected.Candidate != null,
+                            "Compact runtime: bit-exact storage reuses existing proof and never asks an unnecessary approximation certificate");
+                    var exhausted = new NativeAnimationOptimizationOptions { ExactOnly = true, TargetBones = names, LengthScale = length,
+                        Budget = new NativeAnimationOptimizationBudget { Samples = NativeAnimationOptimizationBudget.MaximumSamples } };
+                    using (var fallback = await NativeAnimationOptimization.PrepareCompact(model, baseline, baseline, precise, exhausted, stage,
+                        (candidate, token) => Task.FromResult(new NativeCompactCurveCertificate { Accepted = true, Report = "Independent exact coefficient identity." })))
+                        Check(fallback.HasChanges && fallback.BudgetSamples == NativeAnimationOptimizationBudget.MaximumSamples && fallback.MaximumEulerError == 0,
+                            "Compact runtime: bit-exact packing remains available after the solver budget is consumed because every decoded tuple retains its existing proof");
+                }
+                Check(NativeAnimationOptimization.ContentKey(baseline) == key, "Compact runtime: successful, failed, repeated and cancelled packing preserve exact original content");
+            }
+
+            using (var baseline = CompactFixture(20, 3, Enumerable.Range(0, 16).ToArray(), i => .0012345f + i * .1371397f, i => .1234567f))
+            {
+                baseline.Children[0].Name = names.Last(); string key = NativeAnimationOptimization.ContentKey(baseline);
+                var options = new NativeAnimationOptimizationOptions { ExactOnly = false, TargetBones = names, LengthScale = length, Budget = new NativeAnimationOptimizationBudget() };
+                using (var precise = NativeAnimationOptimization.Prepare(model, baseline, new[] { OptimizationTrack((CHR0EntryNode)baseline.Children[0]) }, options, stage))
+                using (var packed = await NativeAnimationOptimization.PrepareCompact(model, baseline, baseline, precise, options, stage,
+                    (candidate, token) => Task.FromResult(CompactIndependentBound(baseline, candidate))))
+                {
+                    Check(packed.HasChanges && packed.ContentKey != key && packed.AfterBytes < packed.BeforeBytes && packed.Report.Contains("accepted quantized groups: 1") &&
+                        packed.MaximumEulerError > 0 && packed.MaximumEulerError <= .01 && packed.MaximumOrientationError <= .01 && packed.MaximumWorldBoneError <= .0001 * length && packed.MaximumSkinError <= .0001 * length,
+                        "Compact runtime: independently bounded quantization shrinks actual bytes and passes cumulative native Euler/orientation/hierarchy/skin limits");
+                    Check(packed.Report.Contains("Independent analytical Hermite"), "Compact runtime: continuous scalar and sampled native claims remain separately identified");
+                }
+                using (var precise = NativeAnimationOptimization.Prepare(model, baseline, new[] { OptimizationTrack((CHR0EntryNode)baseline.Children[0]) }, options, stage))
+                using (var rejected = await NativeAnimationOptimization.PrepareCompact(model, baseline, baseline, precise, options, stage,
+                    (candidate, token) => Task.FromResult(new NativeCompactCurveCertificate { Accepted = false, Report = "Independent deliberate whole-batch rejection." })))
+                    Check(!rejected.HasChanges && rejected.Report.Contains("lossless/precise fallback"),
+                        "Compact runtime: rejected quantized batches preserve the verified precise result and explicitly report conservative fallback");
+                using (var precise = NativeAnimationOptimization.Prepare(model, baseline, new[] { OptimizationTrack((CHR0EntryNode)baseline.Children[0]) }, options, stage))
+                using (var cancel = new CancellationTokenSource())
+                {
+                    bool stopped = false;
+                    try
+                    {
+                        using (var ignored = await NativeAnimationOptimization.PrepareCompact(model, baseline, baseline, precise, options, stage,
+                            (candidate, token) => { cancel.Cancel(); token.ThrowIfCancellationRequested(); return Task.FromResult(new NativeCompactCurveCertificate()); }, cancel.Token)) { }
+                    }
+                    catch (OperationCanceledException) { stopped = true; }
+                    Check(stopped && NativeAnimationOptimization.ContentKey(baseline) == key,
+                        "Compact runtime: cancellation during approximation certification publishes no result and preserves the owned baseline");
+                }
+                using (var precise = NativeAnimationOptimization.Prepare(model, baseline, new[] { OptimizationTrack((CHR0EntryNode)baseline.Children[0]) }, options, stage))
+                {
+                    var exhausted = new NativeAnimationOptimizationOptions { ExactOnly = false, TargetBones = names, LengthScale = length,
+                        Budget = new NativeAnimationOptimizationBudget { Samples = NativeAnimationOptimizationBudget.MaximumSamples } };
+                    using (var fallback = await NativeAnimationOptimization.PrepareCompact(model, baseline, baseline, precise, exhausted, stage,
+                        (candidate, token) => Task.FromResult(CompactIndependentBound(baseline, candidate))))
+                        Check(!fallback.HasChanges && fallback.Report.Contains("shared operation budget") && fallback.BudgetSamples == NativeAnimationOptimizationBudget.MaximumSamples,
+                            "Compact runtime: quantization budget exhaustion returns a fully verified unchanged fallback and reports its consumed work");
+                }
+            }
+        }
+        Check(!Directory.GetDirectories(stage, "compact-*").Any(), "Compact runtime: independent candidate staging is cleaned after success, rejection and cancellation");
+    }
+
+    // Independent inequality: on a Hermite span, |h00|+|h01|=1,
+    // |h10|+|h11|<=1/4; derivatives give bounds 3/span and 1.
+    // These procedural fixtures preserve every knot and need no reducer code.
+    static NativeCompactCurveCertificate CompactIndependentBound(CHR0Node baseline, CHR0Node candidate)
+    {
+        bool accepted = baseline.Children.Count == candidate.Children.Count; double maximumValue = 0, maximumDerivative = 0;
+        for (int entry = 0; accepted && entry < baseline.Children.Count; entry++)
+        for (int channel = 0; accepted && channel < 9; channel++)
+        {
+            var left = ((CHR0EntryNode)baseline.Children[entry]).KeyArrays[channel].Entries.ToArray();
+            var right = ((CHR0EntryNode)candidate.Children[entry]).KeyArrays[channel].Entries.ToArray();
+            if (left.Length != right.Length || left.Where((k, i) => k._index != right[i]._index).Any()) { accepted = false; break; }
+            double valueError = left.Select((k, i) => Math.Abs((double)k._value - right[i]._value)).DefaultIfEmpty(0).Max();
+            double tangentError = left.Select((k, i) => Math.Abs((double)k._tangent - right[i]._tangent)).DefaultIfEmpty(0).Max();
+            if (left.Length == 0) continue;
+            var spans = left.Skip(1).Select((k, i) => k._index - left[i]._index).Where(s => s > 0).ToList();
+            if (baseline.Loop && left.Length > 1) spans.Add(((CHR0EntryNode)baseline.Children[entry]).Keyframes.FrameLimit - left.Last()._index + left.First()._index);
+            double value = valueError + spans.DefaultIfEmpty(0).Max() * tangentError * .25;
+            double derivative = (spans.Count == 0 ? 0 : 3d / spans.Min() * valueError) + tangentError;
+            double valueLimit = channel >= 3 && channel < 6 ? .01 : .00001, derivativeLimit = channel >= 3 && channel < 6 ? .05 : .00001;
+            maximumValue = Math.Max(maximumValue, value); maximumDerivative = Math.Max(maximumDerivative, derivative);
+            if (value > valueLimit || derivative > derivativeLimit) accepted = false;
+        }
+        return new NativeCompactCurveCertificate { Accepted = accepted, Report = "Independent analytical Hermite basis value/derivative bounds: " + maximumValue + "/" + maximumDerivative,
+            ProbeFrames = new[] { .333, 4.777, 15.125, 18.625 } };
+    }
+}

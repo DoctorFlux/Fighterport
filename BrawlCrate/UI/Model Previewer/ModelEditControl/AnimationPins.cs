@@ -58,9 +58,9 @@ namespace BrawlCrate.UI.Model_Previewer.ModelEditControl
         {
             foreach (var editor in new[] { _interpolationEditor, _interpolationForm?._interpolationEditor })
                 if (editor?._targetNode is CHR0EntryNode entry && previous.Contains(entry))
-                    editor.SetTarget(clip.Children.OfType<CHR0EntryNode>().Single(n => n.Name == entry.Name));
+                    editor.SetTarget(clip.Children.OfType<CHR0EntryNode>().SingleOrDefault(n => n.Name == entry.Name));
             if (KeyframePanel?.TargetSequence is CHR0EntryNode target && previous.Contains(target))
-                KeyframePanel.TargetSequence = clip.Children.OfType<CHR0EntryNode>().Single(n => n.Name == target.Name);
+                KeyframePanel.TargetSequence = clip.Children.OfType<CHR0EntryNode>().SingleOrDefault(n => n.Name == target.Name);
         }
         internal void ShowControlInterpolation()
         {

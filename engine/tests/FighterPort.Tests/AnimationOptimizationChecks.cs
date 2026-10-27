@@ -11,6 +11,8 @@ internal static class AnimationOptimizationChecks
         HighQualityBounds(check);
         ProtectionAndEligibility(check);
         LimitsAndDeterminism(check);
+        AnimationConstantAndCertificateChecks.Run(check);
+        ScaleOptimizationBoundaryChecks.Run(check);
     }
 
     static AnimationClip Clip(params BoneTrack[] tracks) => new(Guid.NewGuid(), "Independent native polynomial", 9, new(60000, 1001), false, tracks);
@@ -48,9 +50,9 @@ internal static class AnimationOptimizationChecks
             var shifted = new Curve(Enumerable.Range(1, 5).Select(i => new Key(i, 7.25f)).ToArray(), LoopFrameLimit: looped ? 8 : null);
             var shiftedResult = AnimationOptimization.Optimize(Clip(Track("detail", 0, shifted)) with { Loop = looped }, new[] { "detail" });
             var shiftedCurve = Reduced(shiftedResult, 0);
-            check(shiftedCurve.Keys.Length == 2 && ReferenceEquals(shiftedCurve.Keys[0], shifted.Keys[0]) && ReferenceEquals(shiftedCurve.Keys[^1], shifted.Keys[^1])
+            check(shiftedCurve.Keys.Length == 1 && shiftedCurve.Keys[0].Frame == 0 && shiftedCurve.Keys[0].Value == shifted.Keys[0].Value
                 && shiftedCurve.LoopFrameLimit == shifted.LoopFrameLimit && new[] { 0d, .371, 1, 3.137, 5, 7.733 }.All(f => shiftedCurve.Sample(f) == 7.25f),
-                "A shifted constant keeps two authentic native endpoints rather than an invalid timed fixed key / loop=" + looped);
+                "A proved shifted constant becomes one native frame-zero key without changing its held or looping value / loop=" + looped);
         }
 
         var spin = new Curve(Enumerable.Range(0, 9).Select(i => new Key(i, 90 * i, 90, 90)).ToArray());
