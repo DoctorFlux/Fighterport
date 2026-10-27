@@ -34,11 +34,12 @@ internal static class AnimationConstantAndCertificateChecks
         check(AnimationOptimization.Optimize(signed,["any identity"],settings).Tracks.Single().Channels[4]!.Keys.Length == 3,
             "Signed zero is retained as authored data rather than discarded as bind zero");
         foreach (var protectedSettings in new[] {
-            settings with{MandatoryFrames=[4]}, settings with{PreserveStructureBones=["any identity"]},
+            settings with{PreserveStructureBones=["any identity"]},
             settings with{ProtectedRanges=[new(2,7,"authored protection")]},
-            settings with{ChannelRules=[new("any identity",6){MandatoryFrames=[4]}]}})
+            settings with{ChannelRules=[new("any identity",6){PreserveStructure=true}]},
+            settings with{ChannelRules=[new("any identity",6){ProtectedRanges=[new(2,7,"channel protection")]}]}})
             check(AnimationOptimization.Optimize(original,["any identity"],protectedSettings).Tracks.Length == 1,
-                "Fitting joins and authored structural/contact protections prevent bind-track removal");
+                "Authored structural/contact protections prevent bind-track removal");
         var shifted = Clip(Track("any identity",(7,new([new(4,-3)]))));
         check(AnimationOptimization.Optimize(shifted,["any identity"],settings).Tracks.Single().Channels[7]!.Keys.Single().Frame == 0,
             "Even a single shifted constant key is represented by the native fixed first-frame key");
@@ -95,7 +96,58 @@ internal static class AnimationConstantAndCertificateChecks
         using var cancelled = new CancellationTokenSource(); cancelled.Cancel(); bool stopped=false;
         try{AnimationOptimization.CertifyCandidate(baseline,[small],quality,cancelled.Token);}catch(OperationCanceledException){stopped=true;}
         check(stopped,"Cancellation aborts continuous candidate certification before publication");
+        JoinConstants(check);
         SparseProtections(check);
+    }
+
+    static void JoinConstants(Action<bool,string> check)
+    {
+        double[] joins=[0,4,34,43]; float[] bind=[1,1,1,0,0,0,3,-2,0];
+        Curve Constant(float value)=>new(joins.Select(frame=>new Key(frame,value)).ToArray(),LoopFrameLimit:44);
+        BoneTrack Track(Curve curve){var channels=new Curve?[9];channels[3]=curve;return new("arbitrary unweighted helper",channels);}
+        AnimationClip Clip(BoneTrack track)=>new(Guid.NewGuid(),"Independent constant fitting joins",44,new(60,1),true,[track]);
+        var original=Constant(720);var baseline=Clip(Track(original));
+        var settings=new AnimationOptimizationSettings{MandatoryFrames=joins};
+        var result=AnimationOptimization.Optimize(baseline,["arbitrary unweighted helper"],settings);
+        var fixedCurve=result.Tracks.Single().Channels[3]!;
+        check(fixedCurve.Keys.Length==1&&fixedCurve.Keys[0].Frame==0&&fixedCurve.Keys[0].Value==720&&fixedCurve.LoopFrameLimit==44
+            &&joins.Concat([.193,2.5,4.631,27.137,43.733,44]).All(frame=>fixedCurve.Sample(frame)==original.Sample(frame)),
+            "An exact zero-slope constant retains every fitting join, fractional sample, full turn and loop closure with one frame-zero key");
+        var certificate=AnimationOptimization.CertifyCandidate(baseline,result.Tracks,settings);
+        check(certificate.Accepted&&certificate.MaximumValueBound==0&&certificate.MaximumSpeedBound==0,
+            "The decoded cumulative certificate independently proves constant join values and derivatives exactly despite omitted redundant tuples");
+        var perChannel=settings with{MandatoryFrames=[],ChannelRules=[new("arbitrary unweighted helper",3){MandatoryFrames=joins}]};
+        check(AnimationOptimization.Optimize(baseline,["arbitrary unweighted helper"],perChannel).Tracks.Single().Channels[3]!.Keys.Length==1
+            &&AnimationOptimization.CertifyCandidate(baseline,result.Tracks,perChannel).Accepted,
+            "Channel-specific fitting joins use the same exact constant proof without a global-frame exception");
+        var bindTrack=new BoneTrack("arbitrary unweighted helper",bind.Select(value=>(Curve?)Constant(value)).ToArray());
+        foreach(var protectedFrames in new[]{settings,perChannel})
+        {
+            var bindSettings=protectedFrames with{BindPoses=[new("arbitrary unweighted helper",bind)]};
+            var bindBaseline=Clip(bindTrack);var omitted=AnimationOptimization.Optimize(bindBaseline,[bindTrack.Bone],bindSettings);
+            check(omitted.Tracks.Length==0&&AnimationOptimization.CertifyCandidate(bindBaseline,[],bindSettings,targetBoneNames:[bindTrack.Bone]).Accepted,
+                "Raw bind-constant track fallback preserves exact fitting joins and independently certifies without authored redundant keys");
+        }
+        var zero=BitConverter.Int32BitsToSingle(int.MinValue);
+        var unsafeCurves=new[]{
+            original with{Keys=[new(0,720),new(4,720,.001f,.001f),new(34,720),new(43,720)]},
+            original with{Keys=[new(0,720),new(4,720),new(4,720),new(34,720),new(43,720)]},
+            original with{Keys=[new(0,720),new(4,720,zero,zero),new(34,720),new(43,720)]},
+            original with{Keys=[new(0,720),new(4,720.00006f),new(34,720),new(43,720)]}
+        };
+        foreach(var curve in unsafeCurves)
+            check(!AnimationOptimization.CertifyCandidate(Clip(Track(curve)),result.Tracks,settings with{Mode=AnimationOptimizationMode.HighQuality,BindBoundsDiagonal=1}).Accepted,
+                "Constant join substitution fails closed for nonzero tangents, paired sides, signed zero and a near-constant authored pulse");
+        foreach(var protection in new[]{settings with{PreserveStructureBones=[bindTrack.Bone]},settings with{ProtectedRanges=[new(4,34,"contact")]},
+            settings with{ChannelRules=[new(bindTrack.Bone,3){PreserveStructure=true}]},
+            settings with{ChannelRules=[new(bindTrack.Bone,3){ProtectedRanges=[new(4,34,"pin dependency")]}]}})
+        {
+            var held=AnimationOptimization.Optimize(baseline,[bindTrack.Bone],protection);
+            check(held.Tracks.Single().Channels[3]!.Keys.Length>1&&!AnimationOptimization.CertifyCandidate(baseline,result.Tracks,protection).Accepted,
+                "Exact constant cleanup preserves explicit interval and pin/contact structural tuples instead of treating them as ordinary fitting joins");
+        }
+        check(original.Keys.Length==4&&original.Keys[1].Frame==4&&baseline.Tracks.Single().Channels[3]==original,
+            "Constant join cleanup and independent certification leave the frozen native source baseline unchanged");
     }
 
     static void SparseProtections(Action<bool,string> check)

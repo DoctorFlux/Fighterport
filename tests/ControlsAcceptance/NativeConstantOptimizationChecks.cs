@@ -35,7 +35,9 @@ internal static partial class Program
                 options.BindPoseCleanupBones=new[]{bone.Name}; options.ProtectedBones=new[]{bone.Name};
                 OptimizationReject(()=>NativeAnimationOptimization.Prepare(model,before,new ControlTrack[0],options,stage),"eligible exact bind","Native constants: structural pin/contact protections block even bind-equivalent removal");
                 options.ProtectedBones=new string[0]; options.MandatoryFrames=new[]{0,4};
-                OptimizationReject(()=>NativeAnimationOptimization.Prepare(model,before,new ControlTrack[0],options,stage),"eligible exact bind","Native constants: exact fitting endpoints retain their authored animation track");
+                using(var result=NativeAnimationOptimization.Prepare(model,before,new ControlTrack[0],options,stage))
+                    Check(result.AfterTracks==0 && result.MaximumEulerError==0 && result.MaximumWorldBoneError==0 && result.MaximumSkinError==0 && result.Samples>0,
+                        "Native constants: independent raw bind and model-flag proof preserves fitting endpoint values and zero slopes without a redundant track");
                 options.MandatoryFrames=new int[0];
                 entry.ScaleCompensateApply=!bone.SegScaleCompApply;
                 Check(!NativeAnimationOptimization.CanRemoveBindTrack(entry,bone),"Native constants: different animation scale-compensation flags keep the track even with bind-valued keys");
@@ -75,6 +77,44 @@ internal static partial class Program
                 Check(entry.KeyArrays[3].Entries.Single()._index == 4 && NativeAnimationOptimization.ContentKey(before) == original,
                     "Native constants: analysis and native size verification retain the original shifted knot for document Undo");
             }
+            NativeConstantJoinChecks(model,bone,names,stage);
+        }
+    }
+
+    static void NativeConstantJoinChecks(MDL0Node model,MDL0BoneNode bone,string[] names,string stage)
+    {
+        foreach(bool loop in new[]{false,true})
+        using(var before=OptimizationFixture(bone.Name,"Independent exact fitting-join constant"))
+        {
+            before.Version=loop?4:5; before.FrameCount=44; before.Loop=loop;
+            if(before.Version==4) before.UserEntries.Clear();
+            var entry=(CHR0EntryNode)before.Children[0];int[] joins={0,4,34,43};
+            for(int c=0;c<9;c++) OptimizationReplace(entry,c,joins.Select(frame=>OptimizationKey(frame,c<3?1:c==3?720:0,0)).ToArray());
+            string original=NativeAnimationOptimization.ContentKey(before);
+            var track=OptimizationTrack(entry);
+            for(int c=0;c<9;c++) track.Channels[c]=new[]{OptimizationKey(0,c<3?1:c==3?720:0,0)};
+            var options=new NativeAnimationOptimizationOptions{ExactOnly=true,TargetBones=names,MandatoryFrames=joins,
+                LengthScale=NativeAnimationOptimization.GetBindBoundsDiagonal(model)};
+            using(var result=NativeAnimationOptimization.Prepare(model,before,new[]{track},options,stage))
+            {
+                Check(result.HasChanges&&result.AfterKeys==9&&result.AfterBytes<result.BeforeBytes&&result.MaximumEulerError==0&&
+                    result.MaximumScaleError==0&&result.MaximumLocalTranslationError==0&&result.MaximumWorldBoneError==0&&result.MaximumSkinError==0&&result.Samples>0,
+                    "Native constants: all SRT fitting joins collapse to smaller fixed storage while independently retaining exact native poses and skin / loop="+loop);
+                Check(joins.All(frame=>ReplayKnotMatches(before,result.Candidate,frame,new System.Collections.Generic.HashSet<string>(new[]{bone.Name}),model)),
+                    "Native constants: independent join oracle proves the original raw function and decoded fixed first-frame representation / loop="+loop);
+            }
+            Check(NativeAnimationOptimization.ContentKey(before)==original,
+                "Native constants: fitting-join preparation never edits the original keys, timing, loop or metadata");
+            options.ProtectedBones=new[]{bone.Name};
+            OptimizationReject(()=>NativeAnimationOptimization.Prepare(model,before,new[]{track},options,stage),"protected native track",
+                "Native constants: structural pin/contact protection retains authored constant join tuples");
+            options.ProtectedBones=new string[0];
+            OptimizationReplace(entry,3,joins.Select(frame=>OptimizationKey(frame,720,frame==4?.001f:0)).ToArray());
+            OptimizationReject(()=>NativeAnimationOptimization.Prepare(model,before,new[]{track},options,stage),"mandatory or discontinuous",
+                "Native constants: equal values with real Hermite movement cannot use constant fitting-join substitution");
+            OptimizationReplace(entry,3,joins.Select(frame=>OptimizationKey(frame,frame==4?720.00006f:720,0)).ToArray());
+            OptimizationReject(()=>NativeAnimationOptimization.Prepare(model,before,new[]{track},options,stage),"mandatory or discontinuous",
+                "Native constants: a near-constant attack pulse cannot lose its exact authored fitting join");
         }
     }
 }

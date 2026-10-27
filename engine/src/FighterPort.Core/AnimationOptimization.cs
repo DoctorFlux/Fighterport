@@ -185,8 +185,8 @@ public static partial class AnimationOptimization
         var bindPoses = settings.BindPoses.ToDictionary(b => b.Bone, StringComparer.Ordinal);
         var originalTracks = baseline.Tracks.ToDictionary(t => t.Bone, StringComparer.Ordinal);
         var removedBind = tracks.Where(t => t.Rotation is null && bindPoses.TryGetValue(t.Bone, out var bind)
-            && !protectedBones.Contains(t.Bone) && settings.MandatoryFrames.Length == 0 && settings.ProtectedRanges.Length == 0
-            && !settings.ChannelRules.Any(r => r.Bone == t.Bone && (r.PreserveStructure || r.MandatoryFrames.Length != 0 || r.ProtectedRanges.Length != 0))
+            && !protectedBones.Contains(t.Bone) && settings.ProtectedRanges.Length == 0
+            && !settings.ChannelRules.Any(r => r.Bone == t.Bone && (r.PreserveStructure || r.ProtectedRanges.Length != 0))
             && originalTracks[t.Bone].Channels.Select((curve, channel) => curve is null || IsBindConstant(curve, bind.Channels[channel])).All(v => v))
             .Select(t => t.Bone).ToArray();
         var removedBindSet = removedBind.ToHashSet(StringComparer.Ordinal);
@@ -286,9 +286,9 @@ public static partial class AnimationOptimization
         {
             // A proved constant has no authored timing dependency. Native fixed
             // storage represents it at frame zero, including shifted constants.
-            if (Ranges.Length != 0 || Frames.Any(f => f != 0) || Keys.Any(HasSignedZero)) return false;
-            return Keys.All(k => Bits(k.Value) == Bits(Keys[0].Value) && Bits(k.InTangent) == 0 && Bits(k.OutTangent) == 0)
-                && Keys.Select(k => k.Frame).Distinct().Count() == Keys.Length;
+            // Mandatory fitting joins protect the exact value and slope; this
+            // identity preserves those at every time without redundant knots.
+            return Ranges.Length == 0 && IsExactConstant(Original);
         }
         public void CollapseConstant()
         {
@@ -317,6 +317,14 @@ public static partial class AnimationOptimization
 
     static int Bits(float value) => BitConverter.SingleToInt32Bits(value);
     static bool HasSignedZero(Key key) => Bits(key.Value) == int.MinValue || Bits(key.InTangent) == int.MinValue || Bits(key.OutTangent) == int.MinValue;
+    static bool IsExactConstant(Curve curve) => curve.Interpolation == Interpolation.Hermite
+        && !curve.Keys.Any(HasSignedZero)
+        && curve.Keys.All(k => Bits(k.Value) == Bits(curve.Keys[0].Value) && Bits(k.InTangent) == 0 && Bits(k.OutTangent) == 0)
+        && curve.Keys.Select(k => k.Frame).Distinct().Count() == curve.Keys.Length;
+    static bool IsExactFixedRepresentation(Curve original, Curve candidate) => IsExactConstant(original)
+        && candidate.Keys.Length == 1 && candidate.Keys[0].Frame == 0
+        && Bits(candidate.Keys[0].Value) == Bits(original.Keys[0].Value)
+        && Bits(candidate.Keys[0].InTangent) == 0 && Bits(candidate.Keys[0].OutTangent) == 0;
     static bool IsBindConstant(Curve curve, float bind) => curve.Interpolation == Interpolation.Hermite
         && !curve.Keys.Any(HasSignedZero) && Bits(bind) != int.MinValue
         && curve.Keys.All(k => Bits(k.Value) == Bits(bind) && Bits(k.InTangent) == 0 && Bits(k.OutTangent) == 0)

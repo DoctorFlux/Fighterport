@@ -131,11 +131,18 @@ namespace BrawlCrate.Studio
         private static readonly CultureInfo Invariant = CultureInfo.InvariantCulture;
 
         public static CHR0Node Copy(CHR0Node source)
+            => CopyNativeSnapshot(source, false);
+
+        internal static CHR0Node CopySource(CHR0Node source)
+            => CopyNativeSnapshot(source, true);
+
+        private static CHR0Node CopyNativeSnapshot(CHR0Node source, bool sourceSnapshot)
         {
             if (source == null) throw new ArgumentNullException(nameof(source));
-            ValidateMetadata(source);
-            var copy = new CHR0Node { Name = source.Name, Version = source.Version,
-                FrameCount = source.FrameCount, Loop = source.Loop, OriginalPath = source.OriginalPath };
+            ValidateMetadataPolicy(source, sourceSnapshot);
+            CHR0Node copy = sourceSnapshot ? new NativeSourceSnapshotNode(SourceScalingRule(source)) : new CHR0Node();
+            copy.Name = source.Name; copy.Version = source.Version; copy.FrameCount = source.FrameCount;
+            copy.Loop = source.Loop; copy.OriginalPath = source.OriginalPath;
             try
             {
                 foreach (UserDataClass user in source.UserEntries)
@@ -202,8 +209,14 @@ namespace BrawlCrate.Studio
         }
 
         public static string ContentKey(CHR0Node clip)
+            => NativeContentKey(clip, false);
+
+        internal static string SourceContentKey(CHR0Node clip)
+            => SourceScalingRule(clip) + ":" + NativeContentKey(clip, true);
+
+        private static string NativeContentKey(CHR0Node clip, bool sourceSnapshot)
         {
-            ValidateMetadata(clip);
+            ValidateMetadataPolicy(clip, sourceSnapshot);
             using (var buffer = new MemoryStream())
             {
                 using (var writer = new BinaryWriter(buffer, Encoding.UTF8, true))
@@ -309,7 +322,7 @@ namespace BrawlCrate.Studio
                     {
                         if (targets.Contains(entry.Name))
                         {
-                            if (!bindCleanup.Contains(entry.Name) || protectedBones.Contains(entry.Name) || mandatory.Count != 0 ||
+                            if (!bindCleanup.Contains(entry.Name) || protectedBones.Contains(entry.Name) ||
                                 !CanRemoveBindTrack(entry, bones.Single(b => b.Name == entry.Name)))
                                 throw new InvalidDataException("A removed target track is not an eligible exact bind-pose constant: " + entry.Name);
                         }
@@ -329,12 +342,13 @@ namespace BrawlCrate.Studio
                     for (int channel = 0; channel < 9; channel++)
                     {
                         var old = sourceEntry.KeyArrays[channel].Entries.ToArray();
+                        bool fixedConstant = ExactFixedChannel(old, track.Channels[channel]);
                         foreach (int frame in mandatory.Concat(old.GroupBy(k => k._index).Where(g => g.Count() > 1).Select(g => g.Key)).Distinct())
                         {
                             var required = old.Where(k => k._index == frame).ToArray();
                             if (required.Length == 0) continue;
                             var actual = track.Channels[channel].Where(k => k.Frame == frame).ToArray();
-                            if (required.Length != actual.Length || required.Where((k, i) => Bits(k._value) != Bits(actual[i].Value) || Bits(k._tangent) != Bits(actual[i].Tangent)).Any())
+                            if (!fixedConstant && (required.Length != actual.Length || required.Where((k, i) => Bits(k._value) != Bits(actual[i].Value) || Bits(k._tangent) != Bits(actual[i].Tangent)).Any()))
                                 throw new InvalidDataException("Optimization changed a mandatory or discontinuous native knot: " + track.Bone + " at " + frame);
                         }
                         var array = entry.KeyArrays[channel];

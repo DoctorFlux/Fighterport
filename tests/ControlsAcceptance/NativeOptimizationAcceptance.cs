@@ -9,6 +9,7 @@ internal static partial class Program
     {
         if (!PrivateDesktop) throw new InvalidOperationException("Native optimization qualification requires the private desktop.");
         NativeOptimizationChecks(args[0], output);
+        NativeSourceSnapshotChecks(System.IO.Path.Combine(output, "native-source-snapshots"));
         NativeConstantOptimizationChecks(args[0], System.IO.Path.Combine(output, "native-constants"));
         NativeCompactStorageChecks(System.IO.Path.Combine(output, "compact-storage"));
         NativeCompactRuntimeChecks(args[0], System.IO.Path.Combine(output, "compact-runtime")).GetAwaiter().GetResult();

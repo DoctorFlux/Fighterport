@@ -82,7 +82,18 @@ internal static partial class Program
                 };
                 Call(form, "ShowAnimationOptimization");
                 await GameLibraryWait(() => finished, "Compact optimization dialog did not finish.", 120);
-                form.OptimizationReady = null; if (failure != null) throw failure; await SimpleControlsReady(form);
+                form.OptimizationReady = null; if (failure != null) throw failure;
+                try { await SimpleControlsReady(form); }
+                catch (TimeoutException)
+                {
+                    Console.WriteLine("TRACE compact post-dialog controls timeout: " +
+                        "busy=" + Field(form, "_controlBusy") + ", queued=" + Field(form, "_controlSetupQueued") +
+                        ", reload=" + Field(form, "_controlReloadRequested") + ", epoch=" + Field(form, "_controlEpoch") +
+                        ", requests=" + form.ControlLoadRequests + ", frame=" + editor.CurrentFrame +
+                        ", sameClip=" + ReferenceEquals(editor.SelectedCHR0, clip) + ", tracks=" + clip.Children.Count +
+                        ", status=" + ((ToolStripStatusLabel)Field(form, "_fighterStatus")).Text);
+                    throw;
+                }
             }
 
             await Open(async window =>

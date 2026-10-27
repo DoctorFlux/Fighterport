@@ -15,14 +15,36 @@ namespace BrawlCrate.Studio
         // Qualification boundary only: the legacy reader/writer does not retain
         // these opaque modes. Never rebuild the source to discover its metadata.
         public static unsafe void ValidateMetadata(CHR0Node source)
+            => ValidateMetadataPolicy(source, false);
+
+        // A donor snapshot preserves the native scaling rule as opaque source
+        // metadata. This does not broaden target optimization qualification.
+        private static unsafe void ValidateMetadataPolicy(CHR0Node source, bool sourceSnapshot)
         {
             if (source == null) throw new ArgumentNullException(nameof(source));
             if (source.Version != 4 && source.Version != 5) throw UnsupportedMetadata("version must be 4 or 5");
+            if (source is NativeSourceSnapshotNode snapshot && (sourceSnapshot
+                ? snapshot.ScalingRule < 0 || snapshot.ScalingRule > 2 : snapshot.ScalingRule != 0))
+                throw UnsupportedMetadata(sourceSnapshot ? "unsupported managed donor scaling rule" : "nonzero scaling rule");
             ValidateMemoryMetadata(source);
             var original = source.UncompressedSource; var working = source.WorkingUncompressed;
-            if (original.Address != null) ValidateRawMetadata(source, original, false);
+            if (original.Address != null) ValidateRawMetadata(source, original, false, sourceSnapshot);
             if (working.Address != null && (working.Address != original.Address || working.Length != original.Length))
-                ValidateRawMetadata(source, working, source.IsBranch);
+                ValidateRawMetadata(source, working, source.IsBranch, sourceSnapshot);
+        }
+
+        private static unsafe int SourceScalingRule(CHR0Node source)
+        {
+            ValidateMetadataPolicy(source, true);
+            if (source is NativeSourceSnapshotNode snapshot) return snapshot.ScalingRule;
+            var data = source.UncompressedSource.Address != null ? source.UncompressedSource : source.WorkingUncompressed;
+            if (data.Address == null) return 0;
+            byte* start = (byte*)data.Address;
+            int rawVersion = (int)((uint)start[8] << 24 | (uint)start[9] << 16 | (uint)start[10] << 8 | start[11]);
+            int offset = rawVersion == 4 ? 0x24 : 0x28;
+            // ValidateMetadataPolicy already established bounded ownership and
+            // supported headers for both original and working memory.
+            return (int)((uint)start[offset] << 24 | (uint)start[offset + 1] << 16 | (uint)start[offset + 2] << 8 | start[offset + 3]);
         }
 
         private static NotSupportedException UnsupportedMetadata(string detail) => new NotSupportedException(
@@ -104,7 +126,7 @@ namespace BrawlCrate.Studio
             return spans.Where(r => r.Contains((byte*)data.Address, data.Length)).ToList();
         }
 
-        private static unsafe void ValidateRawMetadata(CHR0Node node, DataSource data, bool generated)
+        private static unsafe void ValidateRawMetadata(CHR0Node node, DataSource data, bool generated, bool sourceSnapshot = false)
         {
             var owners = MetadataOwners(node, data); byte* start = (byte*)data.Address;
             if (data.Length < 16 || !owners.Any(r => r.Contains(start, 16))) throw UnsupportedMetadata("truncated raw header");
@@ -118,7 +140,9 @@ namespace BrawlCrate.Studio
             }
             int loop = I(version == 4 ? 0x20 : 0x24);
             if (loop != 0 && loop != 1) throw UnsupportedMetadata("noncanonical loop integer");
-            if (I(version == 4 ? 0x24 : 0x28) != 0) throw UnsupportedMetadata("nonzero scaling rule");
+            int scalingRule = I(version == 4 ? 0x24 : 0x28);
+            if (sourceSnapshot ? scalingRule < 0 || scalingRule > 2 : scalingRule != 0)
+                throw UnsupportedMetadata(sourceSnapshot ? "unsupported donor scaling rule" : "nonzero scaling rule");
             if (I(version == 4 ? 0x18 : 0x1c) < 0) throw UnsupportedMetadata("negative original path offset");
             if (version != 5 || I(0x14) == 0) return;
             long user = I(0x14); Need(user, 4 + 0x18, "user-data collection");

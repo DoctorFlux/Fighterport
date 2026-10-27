@@ -95,17 +95,45 @@ internal static partial class Program
         beforeView.Pose(baseline, 1); afterView.Pose(candidate, 1);
     }
 
-    static bool ReplayKnotMatches(CHR0Node before, CHR0Node after, int frame, ISet<string> targetNames)
+    static bool ReplayBindTrackExact(CHR0EntryNode entry, MDL0BoneNode bone)
+    {
+        if (bone == null || entry.ScaleCompensateApply != bone.SegScaleCompApply ||
+            entry.ScaleCompensateParent != bone.SegScaleCompParent || entry.ClassicScaleOff != !bone.ClassicScale) return false;
+        return Enumerable.Range(0, 9).All(channel =>
+        {
+            float bind = bone.BindState[channel]; var keys = entry.KeyArrays[channel].Entries.ToArray();
+            return !float.IsNaN(bind) && !float.IsInfinity(bind) && ReplayFloatBits(bind) != int.MinValue &&
+                keys.Select(key => key._index).Distinct().Count() == keys.Length && keys.All(key =>
+                    ReplayFloatBits(key._value) == ReplayFloatBits(bind) && ReplayFloatBits(key._tangent) == 0);
+        });
+    }
+
+    static bool ReplayKnotMatches(CHR0Node before, CHR0Node after, int frame, ISet<string> targetNames, MDL0Node model = null)
     {
         foreach (var entry in before.Children.OfType<CHR0EntryNode>().Where(t => targetNames.Contains(t.Name)))
         {
             var candidate = after.Children.OfType<CHR0EntryNode>().SingleOrDefault(t => t.Name == entry.Name);
-            if (candidate == null) return false;
+            if (candidate == null)
+            {
+                if (model == null || !ReplayBindTrackExact(entry, model.AllBones.SingleOrDefault(b => b.Name == entry.Name))) return false;
+                continue;
+            }
             for (int channel = 0; channel < 9; channel++)
             {
                 var original = entry.KeyArrays[channel].Entries.Where(k => k._index == frame).ToArray();
                 if (original.Length == 0) continue;
                 var actual = candidate.KeyArrays[channel].Entries.Where(k => k._index == frame).ToArray();
+                // Independent oracle for an exact mathematical constant, not
+                // an exception based on what the optimizer says it removed.
+                var all = entry.KeyArrays[channel].Entries.ToArray();
+                var fixedKeys = candidate.KeyArrays[channel].Entries.ToArray();
+                bool exactConstant = all.Length != 0 && ReplayFloatBits(all[0]._value) != int.MinValue &&
+                    !float.IsNaN(all[0]._value) && !float.IsInfinity(all[0]._value) &&
+                    all.Select(k => k._index).Distinct().Count() == all.Length &&
+                    all.All(k => ReplayFloatBits(k._value) == ReplayFloatBits(all[0]._value) && ReplayFloatBits(k._tangent) == 0) &&
+                    fixedKeys.Length == 1 && fixedKeys[0]._index == 0 && ReplayFloatBits(fixedKeys[0]._value) == ReplayFloatBits(all[0]._value) &&
+                    ReplayFloatBits(fixedKeys[0]._tangent) == 0;
+                if (exactConstant) continue;
                 if (actual.Length != original.Length || original.Where((key, index) =>
                     ReplayFloatBits(key._value) != ReplayFloatBits(actual[index]._value) ||
                     ReplayFloatBits(key._tangent) != ReplayFloatBits(actual[index]._tangent)).Any()) return false;
@@ -153,15 +181,7 @@ internal static partial class Program
                 // Independently prove the native bind fallback. Do not ask the
                 // optimizer whether its own omission was safe: every original
                 // authored tuple, paired side and model flag is checked here.
-                var nativeBone = model.AllBones.Single(b => b.Name == entry.Name);
-                bool flags = entry.ScaleCompensateApply == nativeBone.SegScaleCompApply && entry.ScaleCompensateParent == nativeBone.SegScaleCompParent && entry.ClassicScaleOff == !nativeBone.ClassicScale;
-                bool constant = flags && Enumerable.Range(0, 9).All(channel =>
-                {
-                    float bind = nativeBone.BindState[channel]; var keys = entry.KeyArrays[channel].Entries.ToArray();
-                    return !float.IsNaN(bind) && !float.IsInfinity(bind) && ReplayFloatBits(bind) != int.MinValue &&
-                        keys.Select(key => key._index).Distinct().Count() == keys.Length && keys.All(key =>
-                            ReplayFloatBits(key._value) == ReplayFloatBits(bind) && ReplayFloatBits(key._tangent) == 0);
-                });
+                bool constant = ReplayBindTrackExact(entry, model.AllBones.Single(b => b.Name == entry.Name));
                 Check(constant, "An omitted source control independently proves finite exact bind constants, positive-zero tangents, no paired sides and authentic model flags: " + entry.Name);
             }
             else Check(entry.UseModelScale == actual.UseModelScale && entry.UseModelRotate == actual.UseModelRotate && entry.UseModelTranslate == actual.UseModelTranslate &&
@@ -303,7 +323,7 @@ internal static partial class Program
                                 File.WriteAllText(Path.Combine(output, "replay-native-storage.json"), json.Serialize(new { CompactStorage = true, BeforeBytes = beforeBytes,
                                     CandidateBytes = new FileInfo(candidatePath).Length, BeforeStorage = beforeStorage, CandidateStorage = optimizedStorage }));
                             }
-                            foreach (int at in mandatory) Check(ReplayKnotMatches(baseline, window.Candidate, at, targetNames), "Accepted fit endpoint/join retains all existing native key and tangent bits at " + at);
+                            foreach (int at in mandatory) Check(ReplayKnotMatches(baseline, window.Candidate, at, targetNames, model), "Accepted fit endpoint/join retains exact native values and tangents, including independently proven constants, at " + at);
                             ReplayRootsMatch(baseline, window.Candidate, model, roots);
                             if (!highQuality)
                             {

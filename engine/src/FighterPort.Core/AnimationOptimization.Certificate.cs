@@ -44,8 +44,8 @@ public static partial class AnimationOptimization
         foreach (var omitted in baseline.Tracks.Where(t => !outputs.ContainsKey(t.Bone)))
         {
             bool protectedTrack = settings.PreserveStructureBones.Contains(omitted.Bone, StringComparer.Ordinal)
-                || settings.MandatoryFrames.Length != 0 || settings.ProtectedRanges.Length != 0
-                || settings.ChannelRules.Any(r => r.Bone == omitted.Bone && (r.PreserveStructure || r.MandatoryFrames.Length != 0 || r.ProtectedRanges.Length != 0));
+                || settings.ProtectedRanges.Length != 0
+                || settings.ChannelRules.Any(r => r.Bone == omitted.Bone && (r.PreserveStructure || r.ProtectedRanges.Length != 0));
             bool bindConstant = !protectedTrack && binds.TryGetValue(omitted.Bone, out var bind)
                 && omitted.Channels.Select((curve, channel) => curve is null || IsBindConstant(curve, bind.Channels[channel])).All(v => v);
             if (protectedTrack || targets?.Contains(omitted.Bone) != false && !bindConstant)
@@ -77,6 +77,10 @@ public static partial class AnimationOptimization
                     var ranges = settings.ProtectedRanges.Concat(rules.SelectMany(r => r.ProtectedRanges)).ToArray();
                     var incoming = source.Keys.GroupBy(k => k.Frame).ToDictionary(g => g.Key, g => g.ToArray());
                     var outgoing = output.Keys.GroupBy(k => k.Frame).ToDictionary(g => g.Key, g => g.ToArray());
+                    // A raw +zero-slope constant has an exact fixed-storage
+                    // representation at all protected join times. Structural
+                    // and authored interval protections still retain tuples.
+                    bool fixedConstant = !preserve && ranges.Length == 0 && IsExactFixedRepresentation(source, output);
                     // Earlier proved reduction may have removed interior knots.
                     // Recheck the complete composed result against the original,
                     // while retaining all protected authored sides and tuple bits.
@@ -85,7 +89,7 @@ public static partial class AnimationOptimization
                         var a = source.Keys[k];
                         budget.Charge(1);
                         bool paired = k > 0 && source.Keys[k - 1].Frame == a.Frame || k + 1 < source.Keys.Length && source.Keys[k + 1].Frame == a.Frame;
-                        bool protectedKey = preserve || paired || HasSignedZero(a) || frames.Contains(a.Frame)
+                        bool protectedKey = preserve || paired || HasSignedZero(a) || !fixedConstant && frames.Contains(a.Frame)
                             || ranges.Any(r => a.Frame >= r.Start && a.Frame <= r.End);
                         if (!protectedKey) continue;
                         var required = incoming[a.Frame];
