@@ -26,7 +26,7 @@ internal static partial class Program
     // from the reducer and adapter's regular probe schedule. Both models are
     // dialog-owned snapshots; the editable native model is never posed here.
     static void OptimizationWithheldGeometry(FittingModelView beforeView, FittingModelView afterView,
-        CHR0Node baseline, CHR0Node candidate, string reportPath)
+        CHR0Node baseline, CHR0Node candidate, string reportPath, bool smallFile = false)
     {
         var original = beforeView.Model; var result = afterView.Model;
         var bones = original.AllBones.ToArray(); var targetBones = result.AllBones.ToDictionary(b => b.Name, StringComparer.Ordinal);
@@ -37,21 +37,33 @@ internal static partial class Program
         var bind = originalVertices.Select(v => v.WeightedPosition).ToArray();
         double length = Math.Sqrt(Math.Pow(bind.Max(p => p._x) - bind.Min(p => p._x), 2) + Math.Pow(bind.Max(p => p._y) - bind.Min(p => p._y), 2) + Math.Pow(bind.Max(p => p._z) - bind.Min(p => p._z), 2));
         Check(!double.IsNaN(length) && !double.IsInfinity(length) && length > 0, "Independent HQ bounds use actual native bind-geometry diagonal");
-        double worldBound = .0001 * length, localBound = Math.Min(.0002, .0001 * length);
+        double worldBound = (smallFile ? .001 : .0001) * length, localBound = smallFile ? .002 : Math.Min(.0002, .0001 * length);
+        double rotationBound = smallFile ? .1 : .01, scaleBound = smallFile ? .0001 : .00001;
         var times = new SortedSet<float> { 0, baseline.FrameCount - 1, baseline.Loop ? baseline.FrameCount : baseline.FrameCount - .0001f };
         for (int frame = 0; frame < baseline.FrameCount - 1; frame++) foreach (float fraction in new[] { .211f, .457f, .913f }) times.Add(frame + fraction);
+        if (smallFile && baseline.Loop) foreach (float fraction in new[] { .211f, .457f, .913f }) times.Add(baseline.FrameCount - 1 + fraction);
         double maximumWorld = 0, maximumSkin = 0, maximumEuler = 0, maximumOrientation = 0, maximumScale = 0, maximumLocal = 0, maximumWorldSpeed = 0, maximumSkinSpeed = 0;
+        double maximumEulerSpeed = 0, maximumOrientationSpeed = 0, maximumScaleSpeed = 0, maximumLocalSpeed = 0;
         var discontinuities = baseline.Children.OfType<CHR0EntryNode>().SelectMany(entry => entry.KeyArrays)
             .SelectMany(array => array.Entries.GroupBy(key => key._index).Where(group => group.Count() > 1).Select(group => (float)group.Key)).Distinct().ToArray();
-        double[] previousWorld = null, previousSkin = null; float previousTime = 0;
+        double[] previousWorld = null, previousSkin = null, previousLocal = null, previousRotation = null; float previousTime = 0;
         foreach (float time in times)
         {
             original.ApplyCHR(baseline, time + 1); result.ApplyCHR(candidate, time + 1);
             var worldErrors = new double[bones.Length * 12]; var skinErrors = new double[originalVertices.Length * 3];
+            var localErrors = smallFile ? new double[bones.Length * 9] : null; var rotationErrors = smallFile ? new double[bones.Length * 9] : null;
             double atWorld = 0, atSkin = 0, atEuler = 0, atOrientation = 0, atScale = 0, atLocal = 0;
             for (int i = 0; i < bones.Length; i++)
             {
                 var a = bones[i]; var b = targetBones[a.Name];
+                if (smallFile)
+                {
+                    for (int c = 0; c < 9; c++) localErrors[i * 9 + c] = (double)b.FrameState[c] - a.FrameState[c];
+                    var beforeRotation = LoopIndependentMatrix(Enumerable.Range(3, 3).Select(c => (double)a.FrameState[c]).ToArray());
+                    var afterRotation = LoopIndependentMatrix(Enumerable.Range(3, 3).Select(c => (double)b.FrameState[c]).ToArray());
+                    for (int column = 0; column < 3; column++) for (int row = 0; row < 3; row++)
+                        rotationErrors[i * 9 + column * 3 + row] = afterRotation[row, column] - beforeRotation[row, column];
+                }
                 atOrientation = Math.Max(atOrientation, LoopIndependentAngle(Enumerable.Range(3, 3).Select(c => (double)a.FrameState[c]).ToArray(), Enumerable.Range(3, 3).Select(c => (double)b.FrameState[c]).ToArray()));
                 atEuler = Math.Max(atEuler, Enumerable.Range(3, 3).Max(c => Math.Abs((double)a.FrameState[c] - b.FrameState[c])));
                 atScale = Math.Max(atScale, Enumerable.Range(0, 3).Max(c => Math.Abs((double)a.FrameState[c] - b.FrameState[c])));
@@ -76,22 +88,44 @@ internal static partial class Program
             }
             maximumWorld = Math.Max(maximumWorld, atWorld); maximumSkin = Math.Max(maximumSkin, atSkin); maximumEuler = Math.Max(maximumEuler, atEuler);
             maximumOrientation = Math.Max(maximumOrientation, atOrientation); maximumScale = Math.Max(maximumScale, atScale); maximumLocal = Math.Max(maximumLocal, atLocal);
-            Check(atWorld <= worldBound && atSkin <= worldBound && atEuler <= .01 && atOrientation <= .01 && atScale <= .00001 && atLocal <= localBound,
-                "Independent held-out HQ native local/FK/full-skin bounds pass at " + time.ToString("G8"));
+            Check(atWorld <= worldBound && atSkin <= worldBound && atEuler <= rotationBound && atOrientation <= rotationBound && atScale <= scaleBound && atLocal <= localBound,
+                "Independent held-out " + (smallFile ? "Small file" : "HQ") + " native local/FK/full-skin bounds pass at " + time.ToString("G8"));
             if (previousWorld != null && time - previousTime >= 1f / 64 && !discontinuities.Any(knot => knot > previousTime && knot <= time))
             {
                 double delta = time - previousTime, worldSpeed = 0, skinSpeed = 0;
                 for (int i = 0; i < worldErrors.Length; i += 3) worldSpeed = Math.Max(worldSpeed, Math.Sqrt(Enumerable.Range(i, 3).Sum(j => Math.Pow((worldErrors[j] - previousWorld[j]) / delta, 2))));
                 for (int i = 0; i < skinErrors.Length; i += 3) skinSpeed = Math.Max(skinSpeed, Math.Sqrt(Enumerable.Range(i, 3).Sum(j => Math.Pow((skinErrors[j] - previousSkin[j]) / delta, 2))));
                 maximumWorldSpeed = Math.Max(maximumWorldSpeed, worldSpeed); maximumSkinSpeed = Math.Max(maximumSkinSpeed, skinSpeed);
-                Check(worldSpeed <= worldBound && skinSpeed <= worldBound, "Independent held-out HQ cumulative error-chord bounds pass at " + time.ToString("G8"));
+                Check(worldSpeed <= worldBound && skinSpeed <= worldBound, "Independent held-out " + (smallFile ? "Small file" : "HQ") + " cumulative error-chord bounds pass at " + time.ToString("G8"));
+                if (smallFile)
+                {
+                    double eulerSpeed = 0, orientationSpeed = 0, scaleSpeed = 0, localSpeed = 0;
+                    for (int bone = 0; bone < bones.Length; bone++)
+                    {
+                        for (int channel = 0; channel < 6; channel++)
+                        {
+                            double speed = Math.Abs((localErrors[bone * 9 + channel] - previousLocal[bone * 9 + channel]) / delta);
+                            if (channel < 3) scaleSpeed = Math.Max(scaleSpeed, speed); else eulerSpeed = Math.Max(eulerSpeed, speed);
+                        }
+                        localSpeed = Math.Max(localSpeed, Math.Sqrt(Enumerable.Range(6, 3).Sum(channel => Math.Pow(
+                            (localErrors[bone * 9 + channel] - previousLocal[bone * 9 + channel]) / delta, 2))));
+                        orientationSpeed = Math.Max(orientationSpeed, Math.Sqrt(Enumerable.Range(0, 9).Sum(element => Math.Pow(
+                            (rotationErrors[bone * 9 + element] - previousRotation[bone * 9 + element]) / delta, 2)) / 2) * 180 / Math.PI);
+                    }
+                    maximumEulerSpeed = Math.Max(maximumEulerSpeed, eulerSpeed); maximumOrientationSpeed = Math.Max(maximumOrientationSpeed, orientationSpeed);
+                    maximumScaleSpeed = Math.Max(maximumScaleSpeed, scaleSpeed); maximumLocalSpeed = Math.Max(maximumLocalSpeed, localSpeed);
+                    Check(eulerSpeed <= .1 && orientationSpeed <= .1 && scaleSpeed <= .0001 && localSpeed <= .002,
+                        "Independent held-out Small file local error-chord derivative bounds pass at " + time.ToString("G8"));
+                }
             }
-            previousWorld = worldErrors; previousSkin = skinErrors; previousTime = time;
+            previousWorld = worldErrors; previousSkin = skinErrors; previousLocal = localErrors; previousRotation = rotationErrors; previousTime = time;
         }
         File.WriteAllText(reportPath, new JavaScriptSerializer().Serialize(new { NativeIndependent = true, Samples = times.Count, Bones = bones.Length, Vertices = originalVertices.Length,
-            Length = length, WorldBound = worldBound, LocalBound = localBound, MaximumWorld = maximumWorld, MaximumSkin = maximumSkin,
+            SmallFile = smallFile, Length = length, WorldBound = worldBound, LocalBound = localBound, RotationBound = rotationBound, ScaleBound = scaleBound, MaximumWorld = maximumWorld, MaximumSkin = maximumSkin,
             MaximumEuler = maximumEuler, MaximumOrientation = maximumOrientation, MaximumScale = maximumScale, MaximumLocal = maximumLocal,
-            MaximumWorldErrorChord = maximumWorldSpeed, MaximumSkinErrorChord = maximumSkinSpeed, ContinuousGeometryCertificate = false }));
+            MaximumWorldErrorChord = maximumWorldSpeed, MaximumSkinErrorChord = maximumSkinSpeed,
+            MaximumEulerErrorChord = maximumEulerSpeed, MaximumOrientationErrorChord = maximumOrientationSpeed, MaximumScaleErrorChord = maximumScaleSpeed, MaximumLocalErrorChord = maximumLocalSpeed,
+            ContinuousGeometryCertificate = false }));
         beforeView.Pose(baseline, 1); afterView.Pose(candidate, 1);
     }
 
@@ -140,6 +174,22 @@ internal static partial class Program
             }
         }
         return true;
+    }
+
+    static void ReplaySmallFileJoinBounds(CHR0Node baseline, CHR0Node candidate, int frame, MDL0Node model)
+    {
+        Check(candidate.FrameCount == baseline.FrameCount && candidate.Loop == baseline.Loop && candidate.Name == baseline.Name,
+            "Small file retains native clip identity, timing and loop state at the fitted join " + frame);
+        foreach (var bone in model.AllBones)
+        {
+            var before = RecoverySample(baseline, bone, frame); var after = RecoverySample(candidate, bone, frame);
+            double euler = Enumerable.Range(3, 3).Max(c => Math.Abs((double)before[c] - after[c]));
+            double orientation = LoopIndependentAngle(Enumerable.Range(3, 3).Select(c => (double)before[c]).ToArray(), Enumerable.Range(3, 3).Select(c => (double)after[c]).ToArray());
+            double translation = Math.Sqrt(Enumerable.Range(6, 3).Sum(c => Math.Pow((double)before[c] - after[c], 2)));
+            double scale = Enumerable.Range(0, 3).Max(c => Math.Abs((double)before[c] - after[c]));
+            Check(euler <= .1 && orientation <= .1 && translation <= .002 && scale <= .0001,
+                "Small file fitted endpoint/join independently respects the explicit body bounds: " + bone.Name + " / " + frame);
+        }
     }
 
     static void ReplayRestoreCurrent(CHR0Node destination, CHR0Node frozen)
@@ -218,7 +268,8 @@ internal static partial class Program
         int projectArg = Array.IndexOf(args, "--optimization-project");
         if (projectArg < 0 || projectArg + 1 >= args.Length) throw new InvalidDataException("Choose an accepted native project for optimization replay.");
         string path = Path.GetFullPath(args[projectArg + 1]);
-        bool rawNext = args.Contains("--optimization-raw-next"), highQuality = args.Contains("--optimization-high-quality"), compactStorage = args.Contains("--optimization-compact-storage");
+        bool rawNext = args.Contains("--optimization-raw-next"), smallFile = args.Contains("--optimization-small-file");
+        bool highQuality = smallFile || args.Contains("--optimization-high-quality"), compactStorage = smallFile || args.Contains("--optimization-compact-storage");
         var originalPaths = new[] { args[0], args[1], path }.Where(File.Exists)
             .Concat(Directory.Exists(path + ".assets") ? Directory.EnumerateFiles(path + ".assets", "*", SearchOption.AllDirectories) : new string[0])
             .Distinct(StringComparer.OrdinalIgnoreCase).ToDictionary(file => file, FighterProject.HashFile, StringComparer.OrdinalIgnoreCase);
@@ -276,9 +327,17 @@ internal static partial class Program
                 var untouchedBytes = OptimizationUntouchedBytes(form, clip);
                 File.WriteAllText(Path.Combine(output, "replay-untouched-before.json"), json.Serialize(untouchedBytes));
                 string before = SetNativeContent(clip), beforeStorage = NativeAnimationOptimization.StorageKey(clip), nativeIdentity = OptimizationNativeIdentity(clip), modelContent = (string)Call(form, "NativeControlHash", model, ".mdl0");
+                object review = null;
+                if (smallFile)
+                {
+                    Call(form, "AddSelectedBatchReviewClip"); Call(form, "MarkBatchReview");
+                    review = ReviewRows(form).Single(row => ReferenceEquals(Field(row, "Clip"), clip));
+                    Check(ReviewApproved(review), "Small file replay starts with an approval bound to this exact current native member");
+                }
                 var rootsBefore = editor._openedFiles.Select(r => r.RootNode).Concat(new[] { model.RootNode }).Distinct().ToDictionary(root => root,
                     root => (string)Call(form, "NativeControlHash", root, string.IsNullOrEmpty(Path.GetExtension(root.FilePath)) ? ".bin" : Path.GetExtension(root.FilePath)));
                 int undo = editor._undoSaves.Count, frame = editor.CurrentFrame, count = project.Animations.Count;
+                string camera = CompactCamera(form);
                 var selectedBone = editor.SelectedBone; var witness = new GameLibraryDocument(form);
                 string optimized = null, optimizedStorage = null; bool applied = false, finished = false; Exception failure = null;
                 var mandatory = new HashSet<int>();
@@ -299,15 +358,35 @@ internal static partial class Program
                             if (highQuality)
                             {
                                 Check(mode.Items.Count > 1 && Convert.ToString(mode.Items[1]) == "High quality", "High-quality replay is enabled only by the qualified application increment");
-                                mode.SelectedIndex = 1;
+                                if (smallFile) Check(mode.Items.Count > 2 && Convert.ToString(mode.Items[2]).StartsWith("Small file", StringComparison.Ordinal), "Small file replay is an explicit third optimization preset");
+                                mode.SelectedIndex = smallFile ? 2 : 1;
                             }
                             else Check(!window.ReadHighQuality(), "Accepted project replay opens in Exact mode");
                             if (compactStorage)
                             {
                                 var compact = SimpleControl<CheckBox>(window, "optimizationCompactStorage");
-                                Check(!compact.Checked && !window.ReadCompactStorage(), "Accepted replay requests smaller storage explicitly from its unchanged default");
-                                compact.Checked = true;
+                                if (smallFile) Check(compact.Checked && !compact.Enabled && window.ReadCompactStorage() && window.ReadSmallFile(),
+                                    "The explicit Small file preset includes compact storage and locks its required checkbox");
+                                else
+                                {
+                                    Check(!compact.Checked && !window.ReadCompactStorage(), "Accepted replay requests smaller storage explicitly from its unchanged default");
+                                    compact.Checked = true;
+                                }
                                 Check(window.ReadCompactStorage(), "The actual smaller-storage checkbox selects compact native storage for accepted replay");
+                            }
+                            if (smallFile)
+                            {
+                                var realPrepare = window.Prepare; var pending = new TaskCompletionSource<CHR0Node>();
+                                window.Prepare = quality => pending.Task; var cancelled = window.Analyze();
+                                Check(window.Busy && !mode.Enabled && !SimpleControl<Button>(window, "optimizeApply").Enabled,
+                                    "Small file analysis keeps its profile locked and Apply disabled while preparation is pending");
+                                mode.SelectedIndex = 1;
+                                Check(mode.SelectedIndex == 2 && window.ReadSmallFile(), "A programmatic profile change cannot redirect an in-flight Small file operation");
+                                SimpleControl<Button>(window, "optimizationCancel").PerformClick();
+                                pending.SetResult(new CHR0Node { Name = clip.Name, FrameCount = clip.FrameCount, Loop = clip.Loop }); await cancelled;
+                                Check(!window.Busy && window.Candidate == null && SetNativeContent(clip) == before && editor._undoSaves.Count == undo,
+                                    "Cancelled Small file analysis rejects its late candidate without changing the current animation or native Undo");
+                                window.Prepare = realPrepare;
                             }
                             await window.Analyze();
                             Check(window.Candidate != null, "Accepted project produces an independently prepared optimization result: " + SimpleControl<Label>(window, "optimizationSummary").Text);
@@ -320,10 +399,12 @@ internal static partial class Program
                                 using (var decoded = NodeFactory.FromFile(null, candidatePath) as CHR0Node)
                                     Check(decoded != null && SetNativeContent(decoded) == SetNativeContent(window.Candidate) && NativeAnimationOptimization.StorageKey(decoded) == optimizedStorage,
                                         "Independently reopening the compact replay candidate retains every native coefficient and storage plan");
-                                File.WriteAllText(Path.Combine(output, "replay-native-storage.json"), json.Serialize(new { CompactStorage = true, BeforeBytes = beforeBytes,
+                                File.WriteAllText(Path.Combine(output, "replay-native-storage.json"), json.Serialize(new { CompactStorage = true, SmallFile = smallFile, BeforeBytes = beforeBytes,
                                     CandidateBytes = new FileInfo(candidatePath).Length, BeforeStorage = beforeStorage, CandidateStorage = optimizedStorage }));
                             }
-                            foreach (int at in mandatory) Check(ReplayKnotMatches(baseline, window.Candidate, at, targetNames, model), "Accepted fit endpoint/join retains exact native values and tangents, including independently proven constants, at " + at);
+                            foreach (int at in mandatory)
+                                if (smallFile) ReplaySmallFileJoinBounds(baseline, window.Candidate, at, model);
+                                else Check(ReplayKnotMatches(baseline, window.Candidate, at, targetNames, model), "Accepted fit endpoint/join retains exact native values and tangents, including independently proven constants, at " + at);
                             ReplayRootsMatch(baseline, window.Candidate, model, roots);
                             if (!highQuality)
                             {
@@ -333,8 +414,9 @@ internal static partial class Program
                                 foreach (float at in times)
                                     Check(model.AllBones.All(b => RecoverySamePose(RecoverySample(baseline, b, at), RecoverySample(window.Candidate, b, at))), "Exact accepted replay retains the native full-clip pose at " + at.ToString("G8"));
                             }
-                            else OptimizationWithheldGeometry(window.SourceView, window.TargetView, baseline, window.Candidate, Path.Combine(output, "replay-hq-withheld.json"));
+                            else OptimizationWithheldGeometry(window.SourceView, window.TargetView, baseline, window.Candidate, Path.Combine(output, smallFile ? "replay-small-withheld.json" : "replay-hq-withheld.json"), smallFile);
                             witness.CheckPreserved("accepted " + (rawNext ? "original Next" : "fitted") + " optimization preparation");
+                            if (smallFile) Check(ReviewApproved(review), "Small file analysis and cancellation preserve the exact member's existing review approval");
                             Check(rootsBefore.All(proof => (string)Call(form, "NativeControlHash", proof.Key, string.IsNullOrEmpty(Path.GetExtension(proof.Key.FilePath)) ? ".bin" : Path.GetExtension(proof.Key.FilePath)) == proof.Value), "Preparing accepted replay preserves every open native source root");
                             optimized = SetNativeContent(window.Candidate);
                             applied = window.PreparedCanApply;
@@ -342,6 +424,25 @@ internal static partial class Program
                                 "Replay reports a useful applicable change or an honest unchanged no-op");
                             SimpleControl<TrackBar>(window, "optimizationFrame").Value = Math.Max(1, baseline.FrameCount / 2);
                             SimpleControl<Button>(window, "optimizationDetails").PerformClick();
+                            if (smallFile)
+                            {
+                                foreach (int text in new[] { 100, 175 })
+                                foreach (var size in new[] { new Size(980, 720), new Size(1600, 960) })
+                                {
+                                    Call(form, "SetWorkspaceTextSize", text); window.ApplyTextSize(); window.ClientSize = size; window.PerformLayout();
+                                    foreach (string name in new[] { "optimizationMode", "optimizeAnalyze", "optimizeApply", "optimizationClose", "optimizationFrame", "optimizationSummary", "optimizationModeHint" })
+                                    {
+                                        var control = SimpleControl<Control>(window, name);
+                                        Check(control.Visible && window.ClientRectangle.Contains(window.RectangleToClient(control.RectangleToScreen(control.ClientRectangle))),
+                                            "Small file control fits its compact/wide dialog: " + name + " / " + size.Width + " / " + text + "%");
+                                    }
+                                    Check(window.SourceView.Viewport.Width > 0 && window.SourceView.Viewport.Height > 0 && window.TargetView.Viewport.Width > 0 && window.TargetView.Viewport.Height > 0,
+                                        "Small file keeps both native preview surfaces visible at " + size.Width + " / " + text + "%");
+                                    await CaptureOptimization(window, Path.Combine(output, "replay-small-layout-" + size.Width + "-" + text + ".png"));
+                                    witness.CheckPreserved("Small file prepared layout " + size.Width + " / " + text + "%");
+                                }
+                                Call(form, "SetWorkspaceTextSize", 100); window.ApplyTextSize(); window.ClientSize = new Size(1060, 730);
+                            }
                             await CaptureOptimization(window, Path.Combine(output, "replay-original-result-details.png"));
                             File.WriteAllText(Path.Combine(output, "replay-optimization-report.txt"), SimpleControl<TextBox>(window, "optimizationReport").Text);
                             if (applied) SimpleControl<Button>(window, "optimizeApply").PerformClick();
@@ -351,13 +452,14 @@ internal static partial class Program
                         finally { finished = true; }
                     };
                     Call(form, "ShowAnimationOptimization");
-                    await GameLibraryWait(() => finished, "Accepted optimization replay did not complete.", 150);
+                    await GameLibraryWait(() => finished, "Accepted optimization replay did not complete.", smallFile ? 420 : 150);
                     form.OptimizationReady = null;
                     if (failure != null) throw failure;
                     await SimpleControlsReady(form);
                 }
-                Check(ReferenceEquals(editor.SelectedCHR0, clip) && ReferenceEquals(editor.TargetModel, model) && ReferenceEquals(editor.SelectedBone, selectedBone) && editor.CurrentFrame == frame && project.Animations.Count == count && SetNativeContent(clip) == optimized,
+                Check(ReferenceEquals(editor.SelectedCHR0, clip) && ReferenceEquals(editor.TargetModel, model) && ReferenceEquals(editor.SelectedBone, selectedBone) && editor.CurrentFrame == frame && project.Animations.Count == count && SetNativeContent(clip) == optimized && CompactCamera(form) == camera,
                     "Replay Apply/no-op retains the exact native target, clip, bone, frame and project asset count");
+                if (smallFile) Check(applied ? !ReviewApproved(review) : ReviewApproved(review), "Small file invalidates review approval only when the reviewed current clip actually changes");
                 if (compactStorage) Check(NativeAnimationOptimization.StorageKey(clip) == optimizedStorage, "Accepted replay Apply/no-op retains the independently verified compact storage");
                 Check(siblings.All(proof => SetNativeContent(proof.Key) == proof.Value) && (string)Call(form, "NativeControlHash", model, ".mdl0") == modelContent,
                     "Accepted replay preserves every sibling animation and the complete native target model");
@@ -388,7 +490,35 @@ internal static partial class Program
                         try {
                             Check(OptimizationRetainedBaseline(form) == before, "Ordinary replay export preserves the original native quality baseline including its complete source keys");
                             if (compactStorage) SimpleControl<CheckBox>(window, "optimizationCompactStorage").Checked = true;
-                            if (highQuality)
+                            if (smallFile)
+                            {
+                                var mode = SimpleControl<ComboBox>(window, "optimizationMode"); mode.SelectedIndex = 2;
+                                int beforeRepeat = form.OptimizationPrepares;
+                                await window.Analyze();
+                                Check(window.Candidate != null && !window.PreparedCanApply && form.OptimizationPrepares == beforeRepeat &&
+                                    SetNativeContent(window.Candidate) == optimized && OptimizationRetainedBaseline(form) == before,
+                                    "Repeated Small file analysis reuses the same output without cumulatively approximating its retained original baseline");
+                                mode.SelectedIndex = 1;
+                                Check(window.Candidate == null && !window.PreparedCanApply && !window.ReadSmallFile(),
+                                    "Switching Small file to High quality discards the previous prepared profile");
+                                await window.Analyze();
+                                Check(window.Candidate != null && form.OptimizationPrepares > beforeRepeat && SetNativeContent(clip) == optimized && OptimizationRetainedBaseline(form) == before &&
+                                    SimpleControl<TextBox>(window, "optimizationReport").Text.Contains("stricter analysis still uses the original session baseline"),
+                                    "High quality after Small file explicitly evaluates the retained pre-Small baseline without claiming the existing result satisfies stricter limits");
+                                File.WriteAllText(Path.Combine(output, "replay-small-to-hq-report.txt"), SimpleControl<TextBox>(window, "optimizationReport").Text);
+                                using (var stale = NativeAnimationOptimization.Copy(window.Candidate))
+                                {
+                                    var priorApply = window.Apply; int beforeUndo = editor._undoSaves.Count;
+                                    mode.SelectedIndex = 2;
+                                    Check(window.Candidate == null && !window.PreparedCanApply && window.ReadSmallFile(),
+                                        "Returning to Small file requires explicit Analyze after the profile switch");
+                                    bool rejected = false;
+                                    try { priorApply(true, stale); } catch (InvalidOperationException) { rejected = true; }
+                                    Check(rejected && SetNativeContent(clip) == optimized && editor._undoSaves.Count == beforeUndo && OptimizationRetainedBaseline(form) == before,
+                                        "Apply rejects a freshly prepared High quality candidate after switching to Small file without changing content, Undo or the original baseline");
+                                }
+                            }
+                            else if (highQuality)
                             {
                                 await window.Analyze();
                                 Check(window.Candidate != null && SetNativeContent(clip) == optimized && OptimizationRetainedBaseline(form) == before,
@@ -405,7 +535,7 @@ internal static partial class Program
                         } catch (Exception error) { repeatFailure = error; }
                         finally { window.Close(); repeatDone = true; }
                     };
-                    Call(form, "ShowAnimationOptimization"); await GameLibraryWait(() => repeatDone, "Repeated optimization did not finish.", 60);
+                    Call(form, "ShowAnimationOptimization"); await GameLibraryWait(() => repeatDone, "Repeated optimization did not finish.", smallFile ? 420 : 60);
                     form.OptimizationReady = null; if (repeatFailure != null) throw repeatFailure;
                 }
                 string exportedRetargetMetadata = json.Serialize(asset.Retarget);

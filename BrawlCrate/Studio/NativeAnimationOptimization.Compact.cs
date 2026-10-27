@@ -84,7 +84,7 @@ namespace BrawlCrate.Studio
                     {
                         token.ThrowIfCancellationRequested();
                         var proposal = NativeCompactAnimationStorage.CreateAlternatives(entry, group, true, true,
-                            options.MandatoryFrames, options.LengthScale, token).FirstOrDefault();
+                            options.MandatoryFrames, options.LengthScale, options.SmallFile, options.FitJoinFrames, token).FirstOrDefault();
                         if (proposal == null) continue;
                         NativeCompactAnimationStorage.ApplyGroup(exact, proposal); exactGroups++;
                     }
@@ -111,7 +111,7 @@ namespace BrawlCrate.Studio
                     {
                         token.ThrowIfCancellationRequested();
                         var proposals = NativeCompactAnimationStorage.CreateAlternatives(entry, group, false, strict.Contains(entry.Name),
-                            options.MandatoryFrames, options.LengthScale, token).Where(p => !p.IsExact).ToArray();
+                            options.MandatoryFrames, options.LengthScale, options.SmallFile, options.FitJoinFrames, token).Where(p => !p.IsExact).ToArray();
                         if (proposals.Length > 0) alternatives.Add(proposals);
                     }
                     alternatives = alternatives.OrderByDescending(p => p[0].BeforeBytes - p[0].AfterBytes).ToList();

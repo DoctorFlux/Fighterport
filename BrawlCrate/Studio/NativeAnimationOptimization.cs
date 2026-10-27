@@ -18,6 +18,7 @@ namespace BrawlCrate.Studio
     internal sealed class NativeAnimationOptimizationOptions
     {
         public bool ExactOnly { get; set; }
+        public bool SmallFile { get; set; }
         public double LengthScale { get; set; }
         public long? OriginalStoredBytes { get; set; }
         public long? OriginalStoredResourceBytes { get; set; }
@@ -25,6 +26,7 @@ namespace BrawlCrate.Studio
         public string[] ProtectedBones { get; set; } = new string[0];
         public string[] ExactBones { get; set; } = new string[0];
         public int[] MandatoryFrames { get; set; } = new int[0];
+        public int[] FitJoinFrames { get; set; } = new int[0];
         public double[] ProbeFrames { get; set; } = new double[0];
         public string[] BindPoseCleanupBones { get; set; } = new string[0];
         // Internal composition only: the complete indexed candidate must still
@@ -131,6 +133,16 @@ namespace BrawlCrate.Studio
         private const double ScaleLimit = .00001;
         private const double RotationDerivativeLimit = .05;
         private static readonly CultureInfo Invariant = CultureInfo.InvariantCulture;
+
+        // Only the explicitly selected Small file profile widens these ceilings.
+        // Exact fallback and all existing callers retain the established bounds.
+        private static bool SmallProfile(NativeAnimationOptimizationOptions options) => options.SmallFile && !options.ExactOnly;
+        private static double RotationBound(NativeAnimationOptimizationOptions options) => SmallProfile(options) ? .1 : RotationLimit;
+        private static double ScaleBound(NativeAnimationOptimizationOptions options) => SmallProfile(options) ? .0001 : ScaleLimit;
+        private static double RotationSpeedBound(NativeAnimationOptimizationOptions options) => SmallProfile(options) ? .1 : RotationDerivativeLimit;
+        private static double StrictLocalBound(double length) => length > 0 ? Math.Min(.0002, length * .0001) : .0002;
+        private static double LocalBound(NativeAnimationOptimizationOptions options) => SmallProfile(options) ? .002 : StrictLocalBound(options.LengthScale);
+        private static double WorldBound(NativeAnimationOptimizationOptions options) => options.LengthScale > 0 ? options.LengthScale * (SmallProfile(options) ? .001 : .0001) : .0002;
 
         public static CHR0Node Copy(CHR0Node source)
             => CopyNativeSnapshot(source, false);
@@ -298,7 +310,9 @@ namespace BrawlCrate.Studio
             var proposedNames = Set(tracks.Select(t => t.Bone).ToArray());
             var bindCleanup = Set(options.BindPoseCleanupBones);
             var mandatory = new HashSet<int>(options.MandatoryFrames ?? new int[0]);
+            var fitJoins = new HashSet<int>(options.FitJoinFrames ?? new int[0]);
             if (mandatory.Any(frame => frame < 0 || frame > beforeSnapshot.FrameCount)) throw new InvalidDataException("A mandatory optimization frame lies outside native timing.");
+            if (fitJoins.Any(frame => frame < 0 || frame > beforeSnapshot.FrameCount)) throw new InvalidDataException("A fitting optimization frame lies outside native timing.");
             string beforeContent = ContentKey(beforeSnapshot);
             string prefix = Path.Combine(Path.GetFullPath(stageDirectory), "optimization-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(Path.GetDirectoryName(prefix));
@@ -345,12 +359,15 @@ namespace BrawlCrate.Studio
                     {
                         var old = sourceEntry.KeyArrays[channel].Entries.ToArray();
                         bool fixedConstant = ExactFixedChannel(old, track.Channels[channel]);
-                        foreach (int frame in mandatory.Concat(old.GroupBy(k => k._index).Where(g => g.Count() > 1).Select(g => g.Key)).Distinct())
+                        var paired = new HashSet<int>(old.GroupBy(k => k._index).Where(g => g.Count() > 1).Select(g => g.Key));
+                        var signedZero = new HashSet<int>(SmallProfile(options) ? old.Where(k => Bits(k._value) == int.MinValue || Bits(k._tangent) == int.MinValue).Select(k => k._index) : Enumerable.Empty<int>());
+                        foreach (int frame in mandatory.Concat(fitJoins).Concat(paired).Concat(signedZero).Distinct())
                         {
                             var required = old.Where(k => k._index == frame).ToArray();
                             if (required.Length == 0) continue;
                             var actual = track.Channels[channel].Where(k => k.Frame == frame).ToArray();
-                            if (!fixedConstant && (required.Length != actual.Length || required.Where((k, i) => Bits(k._value) != Bits(actual[i].Value) || Bits(k._tangent) != Bits(actual[i].Tangent)).Any()))
+                            bool exactTuple = !SmallProfile(options) || mandatory.Contains(frame) || paired.Contains(frame) || signedZero.Contains(frame) || exactBones.Contains(track.Bone) || protectedBones.Contains(track.Bone);
+                            if (!fixedConstant && (required.Length != actual.Length || exactTuple && required.Where((k, i) => Bits(k._value) != Bits(actual[i].Value) || Bits(k._tangent) != Bits(actual[i].Tangent)).Any()))
                                 throw new InvalidDataException("Optimization changed a mandatory or discontinuous native knot: " + track.Bone + " at " + frame);
                         }
                         var array = entry.KeyArrays[channel];
@@ -422,7 +439,7 @@ namespace BrawlCrate.Studio
             // fractions. Both sides of native duplicate knots are sampled separately.
             for (int frame = 0; frame < end; frame++)
                 foreach (double fraction in new[] { 0d, .137, .25, .371, .5, .733, .75 }) sampleTimes.Add(frame + fraction);
-            foreach (int frame in options.MandatoryFrames ?? new int[0]) if (frame <= end) sampleTimes.Add(frame);
+            foreach (int frame in (options.MandatoryFrames ?? new int[0]).Concat(options.FitJoinFrames ?? new int[0])) if (frame <= end) sampleTimes.Add(frame);
             foreach (double frame in options.ProbeFrames ?? new double[0])
             {
                 if (!Finite(frame) || frame < 0 || frame > end) throw new InvalidDataException("A frozen Core verification probe lies outside native timing.");
@@ -448,10 +465,11 @@ namespace BrawlCrate.Studio
             budget.Require(minimumWitnesses, bones.Length, vertices.Length, "complete base probes and mandatory adaptive-midpoint estimate");
             var exact = Set(options.ExactBones); var protectedBones = Set(options.ProtectedBones);
             double length = options.LengthScale;
-            double localLimit = length > 0 ? Math.Min(.0002, length * .0001) : .0002;
-            double worldLimit = length > 0 ? length * .0001 : .0002;
+            double localLimit = LocalBound(options), worldLimit = WorldBound(options);
             var context = new EvaluationContext { Model = model, Bones = bones, Vertices = vertices, Before = before, After = after,
                 Options = options, Result = result, Token = token, LocalLimit = localLimit, WorldLimit = worldLimit,
+                RotationValueLimit = RotationBound(options), ScaleValueLimit = ScaleBound(options), RotationSpeedLimit = RotationSpeedBound(options),
+                StrictLocalLimit = StrictLocalBound(length), StrictWorldLimit = length > 0 ? length * .0001 : .0002,
                 Exact = exact, Protected = protectedBones, Discontinuities = discontinuities,
                 BeforeCurves = Curves(before), AfterCurves = Curves(after), Budget = budget };
             ErrorSample previous = null, derivativeAnchor = null;
@@ -481,7 +499,7 @@ namespace BrawlCrate.Studio
             internal MDL0Node Model; internal MDL0BoneNode[] Bones; internal Vertex3[] Vertices;
             internal CHR0Node Before, After; internal NativeAnimationOptimizationOptions Options;
             internal NativeAnimationOptimizationResult Result; internal CancellationToken Token;
-            internal double LocalLimit, WorldLimit, WorstRatio;
+            internal double LocalLimit, WorldLimit, RotationValueLimit, ScaleValueLimit, RotationSpeedLimit, StrictLocalLimit, StrictWorldLimit, WorstRatio;
             internal HashSet<string> Exact, Protected; internal HashSet<double> Discontinuities;
             internal Dictionary<string, NativeCurve[]> BeforeCurves, AfterCurves;
             internal NativeAnimationOptimizationBudget Budget;
@@ -508,11 +526,15 @@ namespace BrawlCrate.Studio
                 for (int bone = 0; bone < Bones.Length; bone++)
                 {
                     string name = Bones[bone].Name; var state = Bones[bone].FrameState;
+                    bool exactBone = SmallProfile(Options) && (Exact.Contains(name) || Protected.Contains(name));
+                    double localBound = exactBone ? StrictLocalLimit : LocalLimit, worldBound = exactBone ? StrictWorldLimit : WorldLimit;
+                    double rotationBound = exactBone ? RotationLimit : RotationValueLimit, scaleBound = exactBone ? ScaleLimit : ScaleValueLimit;
+                    double rotationSpeed = exactBone ? RotationDerivativeLimit : RotationSpeedLimit;
                     double translationDerivativeSquared = 0;
                     for (int channel = 0; channel < 9; channel++)
                     {
                         int index = bone * 9 + channel; double difference = state[channel] - sample.Local[index]; sample.Local[index] = difference;
-                        double limit = channel < 3 ? ScaleLimit : channel < 6 ? RotationLimit : LocalLimit;
+                        double limit = channel < 3 ? scaleBound : channel < 6 ? rotationBound : localBound;
                         double error = Math.Abs(difference);
                         if (channel < 3) Result.MaximumScaleError = Math.Max(Result.MaximumScaleError, error);
                         else if (channel < 6) Result.MaximumEulerError = Math.Max(Result.MaximumEulerError, error);
@@ -522,7 +544,7 @@ namespace BrawlCrate.Studio
                         var afterCurve = AfterCurves.TryGetValue(name, out var afterChannels) ? afterChannels[channel] : null;
                         double derivativeDifference = (afterCurve?.Derivative(time) ?? 0) - (beforeCurve?.Derivative(time) ?? 0);
                         double derivativeError = Math.Abs(derivativeDifference);
-                        double derivativeLimit = channel < 3 ? ScaleLimit : channel < 6 ? RotationDerivativeLimit : LocalLimit;
+                        double derivativeLimit = channel < 3 ? scaleBound : channel < 6 ? rotationSpeed : localBound;
                         if (channel < 3) Result.MaximumScaleDerivativeError = Math.Max(Result.MaximumScaleDerivativeError, derivativeError);
                         else if (channel < 6) Result.MaximumEulerDerivativeError = Math.Max(Result.MaximumEulerDerivativeError, derivativeError);
                         else Result.MaximumTranslationDerivativeError = Math.Max(Result.MaximumTranslationDerivativeError, derivativeError);
@@ -531,10 +553,10 @@ namespace BrawlCrate.Studio
                     }
                     double translationError = Norm(sample.Local, bone * 9 + 6);
                     Result.MaximumLocalTranslationError = Math.Max(Result.MaximumLocalTranslationError, translationError);
-                    Observe(sample, translationError, LocalLimit, name, "local translation vector");
+                    Observe(sample, translationError, localBound, name, "local translation vector");
                     double translationDerivativeError = Math.Sqrt(translationDerivativeSquared);
                     Result.MaximumTranslationDerivativeError = Math.Max(Result.MaximumTranslationDerivativeError, translationDerivativeError);
-                    Observe(sample, translationDerivativeError, LocalLimit, name, "native translation vector derivative");
+                    Observe(sample, translationDerivativeError, localBound, name, "native translation vector derivative");
                     var rotation = Matrix.TransformMatrix(new Vector3(1), state.Rotate, new Vector3()); double squared = 0;
                     for (int column = 0; column < 3; column++) for (int row = 0; row < 3; row++)
                     {
@@ -542,7 +564,7 @@ namespace BrawlCrate.Studio
                         double difference = rotation[column * 4 + row] - sample.Rotation[index]; sample.Rotation[index] = difference; squared += difference * difference;
                     }
                     double angle = 2 * Math.Asin(Math.Min(1, Math.Sqrt(squared) / (2 * Math.Sqrt(2)))) * 180 / Math.PI;
-                    Result.MaximumOrientationError = Math.Max(Result.MaximumOrientationError, angle); Observe(sample, angle, RotationLimit, name, "local orientation");
+                    Result.MaximumOrientationError = Math.Max(Result.MaximumOrientationError, angle); Observe(sample, angle, rotationBound, name, "local orientation");
                     for (int column = 0; column < 4; column++)
                     {
                         double errorSquared = 0;
@@ -555,7 +577,7 @@ namespace BrawlCrate.Studio
                             sample.World[index] = difference; errorSquared += difference * difference;
                         }
                         double error = Math.Sqrt(errorSquared); Result.MaximumWorldBoneError = Math.Max(Result.MaximumWorldBoneError, error);
-                        Observe(sample, error, WorldLimit, name, column == 3 ? "world bone position" : "world forward basis");
+                        Observe(sample, error, worldBound, name, column == 3 ? "world bone position" : "world forward basis");
                     }
                 }
                 for (int vertex = 0; vertex < Vertices.Length; vertex++)
@@ -598,11 +620,14 @@ namespace BrawlCrate.Studio
                 if (span < 1d / 64 || !Smooth(left, right)) return;
                 for (int bone = 0; bone < Bones.Length; bone++)
                 {
+                    bool exactBone = SmallProfile(Options) && (Exact.Contains(Bones[bone].Name) || Protected.Contains(Bones[bone].Name));
+                    double worldBound = exactBone ? StrictWorldLimit : WorldLimit;
+                    double rotationSpeed = exactBone ? RotationDerivativeLimit : RotationSpeedLimit;
                     for (int column = 0; column < 4; column++)
                     {
                         double error = DifferenceNorm(left.World, right.World, bone * 12 + column * 3) / span;
                         Result.MaximumWorldDerivativeError = Math.Max(Result.MaximumWorldDerivativeError, error);
-                        Observe(right, error, WorldLimit, Bones[bone].Name, "world forward derivative");
+                        Observe(right, error, worldBound, Bones[bone].Name, "world forward derivative");
                     }
                     double rotationSquared = 0;
                     for (int element = 0; element < 9; element++)
@@ -612,7 +637,7 @@ namespace BrawlCrate.Studio
                     }
                     double orientationDerivative = Math.Sqrt(rotationSquared / 2) * 180 / Math.PI;
                     Result.MaximumOrientationDerivativeError = Math.Max(Result.MaximumOrientationDerivativeError, orientationDerivative);
-                    Observe(right, orientationDerivative, RotationDerivativeLimit, Bones[bone].Name, "local orientation derivative");
+                    Observe(right, orientationDerivative, rotationSpeed, Bones[bone].Name, "local orientation derivative");
                 }
                 for (int vertex = 0; vertex < Vertices.Length; vertex++)
                 {
@@ -644,7 +669,8 @@ namespace BrawlCrate.Studio
 
         private static string BuildReport(NativeAnimationOptimizationResult result, NativeAnimationOptimizationOptions options)
         {
-            return (options.ExactOnly ? "Exact curve reduction; native float rounding checked." : "High quality curve reduction; frozen native error bounds checked.") +
+            return (options.ExactOnly ? "Exact curve reduction; native float rounding checked." : SmallProfile(options) ? "Small file curve reduction; explicitly selected bounded native profile checked." : "High quality curve reduction; frozen native error bounds checked.") +
+                (SmallProfile(options) ? "\r\nSmall file ceilings: raw Euler/orientation 0.1 degrees, local translation 0.002 native units, local scale 0.0001; Euler derivative 0.1 degrees/frame, translation 0.002/frame, scale 0.0001/frame; cumulative native bone/basis/skin and error-chord derivative 0.001 times target bind diagonal L. Fit join times remain present while numeric values may change within these limits; explicit mandatory knots, pairs, signed zero, protected pins/contacts and source-owned controls retain their exact policies." : "") +
                 "\r\nCHR0: " + result.BeforeBytes + " → " + result.AfterBytes + " bytes; " + result.BeforeKeys + " → " + result.AfterKeys + " keys; " + result.BeforeTracks + " → " + result.AfterTracks + " tracks." +
                 "\r\nNative resource block: " + result.BeforeResourceBytes + " → " + result.CandidateResourceBytes + " bytes, verified against each exported CHR0 header size; external/shared string tables excluded." +
                 "\r\nIndependent I12 decode preserves every candidate key, tangent, semantic flag, entry order and metadata field." +

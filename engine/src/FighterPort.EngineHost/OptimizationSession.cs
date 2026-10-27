@@ -9,7 +9,8 @@ sealed record OptimizationInput(string Name,int SampleCount,bool Loop,bool HighQ
     OptimizationRawTrack[] Tracks,string[] ExactBones,string[] ProtectedBones,int[] MandatoryFrames,
     ProtectedInterval[] ProtectedRanges,bool ProtectionKnown,double PrecisionScale=1,
     long MaximumWork=2_000_000,int MaximumCandidateSpans=100_000,
-    OptimizationBindBits[]? BindPoses=null,OptimizationRawTrack[]? CandidateTracks=null);
+    OptimizationBindBits[]? BindPoses=null,OptimizationRawTrack[]? CandidateTracks=null,
+    bool SmallFile=false,int[]? FitJoinFrames=null);
 
 sealed partial class ControlSession
 {
@@ -111,11 +112,11 @@ sealed partial class ControlSession
         var clip=new AnimationClip(state?.Clip??Guid.NewGuid(),input.Name,input.SampleCount,new(60,1),input.Loop,tracks);
         // Retries tighten only scalar construction tolerances. Authentic bind
         // scale, protections and independent native acceptance limits never move.
-        var frozenBounds=new AnimationOptimizationSettings();
+        var frozenBounds=new AnimationOptimizationSettings {Mode=input.SmallFile?AnimationOptimizationMode.SmallFile:AnimationOptimizationMode.HighQuality};
         double precision=input.PrecisionScale;
         var settings=frozenBounds with
         {
-            Mode=input.HighQuality?AnimationOptimizationMode.HighQuality:AnimationOptimizationMode.Exact,
+            Mode=input.HighQuality?frozenBounds.Mode:AnimationOptimizationMode.Exact,
             BindBoundsDiagonal=input.LengthScale,
             ScaleValueBound=frozenBounds.ScaleValueBound*precision,
             ScaleSpeedBoundPerFrame=frozenBounds.ScaleSpeedBoundPerFrame*precision,
@@ -130,6 +131,7 @@ sealed partial class ControlSession
             ExactOnlyBones=exact.Order(StringComparer.Ordinal).ToArray(),
             PreserveStructureBones=protectedBones.Order(StringComparer.Ordinal).ToArray(),
             MandatoryFrames=input.MandatoryFrames.Select(f=>(double)f).ToArray(),
+            FitJoinFrames=(input.FitJoinFrames??[]).Select(f=>(double)f).ToArray(),
             ProtectedRanges=input.ProtectedRanges,
             BindPoses=(input.BindPoses??[]).Select(b=>new AnimationOptimizationBindPose(b.Bone,b.Bits.Select(BitConverter.Int32BitsToSingle).ToArray())).ToArray()
         };
@@ -192,6 +194,7 @@ sealed partial class ControlSession
                 writer.WritePropertyName("ExactBones");JsonSerializer.Serialize(writer,settings.ExactOnlyBones,outputOptions);
                 writer.WritePropertyName("ProtectedBones");JsonSerializer.Serialize(writer,settings.PreserveStructureBones,outputOptions);
                 writer.WriteNumber("PrecisionScale",input.PrecisionScale);
+                writer.WriteBoolean("SmallFile",input.SmallFile);
                 writer.WriteNumber("MaximumWork",input.MaximumWork);
                 writer.WriteNumber("MaximumCandidateSpans",input.MaximumCandidateSpans);
                 writer.WriteEndObject();writer.Flush();file.Flush(true);
@@ -232,6 +235,7 @@ sealed partial class ControlSession
         if(input.ExactBones.Length>65536||input.ProtectedBones.Length>65536||
             input.ExactBones.Concat(input.ProtectedBones).Any(n=>string.IsNullOrEmpty(n)||n.Length>256)||
             input.MandatoryFrames.Length>200000||input.MandatoryFrames.Any(f=>f<0||f>input.SampleCount)||
+            input.FitJoinFrames is {} fitFrames&&(fitFrames.Length>200000||fitFrames.Any(f=>f<0||f>input.SampleCount))||
             input.ProtectedRanges.Length>65536||input.ProtectedRanges.Any(r=>r is null||!double.IsFinite(r.Start)||
                 !double.IsFinite(r.End)||r.Start<0||r.End<r.Start||r.End>input.SampleCount||r.Reason is null||r.Reason.Length>4096))
             throw new InvalidDataException("Invalid bounded optimization frame or bone protections.");

@@ -14,6 +14,7 @@ internal static partial class Program
         NativeCompactStorageChecks(System.IO.Path.Combine(output, "compact-storage"));
         NativeCompactRuntimeChecks(args[0], System.IO.Path.Combine(output, "compact-runtime")).GetAwaiter().GetResult();
         NativeSelectiveReductionChecks(args[0], System.IO.Path.Combine(output, "selective-reduction"));
+        NativeSmallFileQualityChecks(args[0], System.IO.Path.Combine(output, "small-file-quality")).GetAwaiter().GetResult();
         return Task.CompletedTask;
     }
 }

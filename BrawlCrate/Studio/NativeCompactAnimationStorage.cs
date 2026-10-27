@@ -35,6 +35,13 @@ namespace BrawlCrate.Studio
         public static NativeCompactStorageGroup[] CreateAlternatives(CHR0EntryNode entry, int group,
             bool exactOnly, bool exactGroup, int[] mandatoryFrames, double lengthScale,
             CancellationToken token = default(CancellationToken))
+            => CreateAlternatives(entry, group, exactOnly, exactGroup, mandatoryFrames, lengthScale, false, new int[0], token);
+
+        // Additive profile overload: existing callers retain their exact/HQ
+        // bounds. Fit joins are distinct from explicit exact mandatory knots.
+        public static NativeCompactStorageGroup[] CreateAlternatives(CHR0EntryNode entry, int group,
+            bool exactOnly, bool exactGroup, int[] mandatoryFrames, double lengthScale, bool smallFile, int[] fitJoinFrames,
+            CancellationToken token = default(CancellationToken))
         {
             if (entry == null || group < 0 || group > 2) throw new ArgumentException("A native storage proposal requires one exact SRT group.");
             token.ThrowIfCancellationRequested();
@@ -44,10 +51,13 @@ namespace BrawlCrate.Studio
             if (!exactOnly && (!Finite(lengthScale) || lengthScale <= 0))
                 throw new InvalidDataException("High-quality storage requires the verified finite positive target bind-geometry scale.");
             var mandatory = new HashSet<int>(mandatoryFrames ?? new int[0]);
+            bool small = smallFile && !exactOnly;
+            if (!small) mandatory.UnionWith(fitJoinFrames ?? new int[0]);
             bool exactScale = group == 0 && arrays.Any(RequiresExactScale);
             bool exact = exactOnly || exactGroup || exactScale;
-            double valueLimit = group == 0 ? .00001 : group == 1 ? .01 : Math.Min(.0002, .0001 * lengthScale);
-            double derivativeLimit = group == 1 ? .05 : valueLimit;
+            double valueLimit = small ? group == 0 ? .0001 : group == 1 ? .1 : .002 :
+                group == 0 ? .00001 : group == 1 ? .01 : Math.Min(.0002, .0001 * lengthScale);
+            double derivativeLimit = group == 1 ? small ? .1 : .05 : valueLimit;
             var result = new List<NativeCompactStorageGroup>();
             foreach (AnimDataFormat format in new[] { AnimDataFormat.I4, AnimDataFormat.I6 })
             {
@@ -56,7 +66,7 @@ namespace BrawlCrate.Studio
                 for (int axis = 0; axis < 3; axis++)
                 {
                     var keys = arrays[axis]; if (keys.Length <= 1) continue;
-                    var curve = TryCurve(keys, format, exact, mandatory, valueLimit, derivativeLimit, token);
+                    var curve = TryCurve(keys, format, exact, mandatory, valueLimit, derivativeLimit, small, small && group != 0, token);
                     if (curve == null) { accepted = false; break; }
                     curves[axis] = curve; before += 8 + keys.Length * 12; after += curve.ByteCount;
                     var values = curve.Values; var tangents = curve.Tangents;
@@ -98,7 +108,7 @@ namespace BrawlCrate.Studio
         }
 
         private static IndexedCHR0CurveStorage TryCurve(KeyframeEntry[] keys, AnimDataFormat format, bool exact,
-            HashSet<int> mandatory, double valueLimit, double derivativeLimit, CancellationToken token)
+            HashSet<int> mandatory, double valueLimit, double derivativeLimit, bool zeroAlignedGrid, bool allowPositiveZero, CancellationToken token)
         {
             int frameLimit = format == AnimDataFormat.I4 ? 255 : 2047, valueMaximum = format == AnimDataFormat.I4 ? 4095 : 65535;
             int tangentMinimum = format == AnimDataFormat.I4 ? -2048 : -32768, tangentMaximum = format == AnimDataFormat.I4 ? 2047 : 32767;
@@ -122,37 +132,53 @@ namespace BrawlCrate.Studio
             foreach (float step in steps.Distinct())
             {
                 token.ThrowIfCancellationRequested();
-                var values = new int[keys.Length]; var tangents = new int[keys.Length]; bool valid = true;
-                for (int i = 0; i < keys.Length; i++)
+                var bases = new List<float> { minimum };
+                if (zeroAlignedGrid && step > 0)
                 {
-                    double q = step == 0 ? 0 : Math.Round(((double)keys[i]._value - minimum) / step, MidpointRounding.ToEven);
-                    double tangent = Math.Round((double)keys[i]._tangent * tangentScale, MidpointRounding.ToEven);
-                    if (q < 0 || q > valueMaximum || tangent < tangentMinimum || tangent > tangentMaximum) { valid = false; break; }
-                    values[i] = (int)q; tangents[i] = (int)tangent;
+                    // A minimum-based grid need not represent an authored +zero.
+                    // Keep it as the first choice, then try one bounded grid
+                    // whose origin is an integer multiple of this same step.
+                    // Binary power-of-two steps can represent zero exactly.
+                    double aligned = Math.Floor((double)minimum / step) * step;
+                    if (Finite(aligned) && aligned >= -float.MaxValue && aligned <= float.MaxValue) bases.Add((float)aligned);
                 }
-                if (!valid) continue;
-                IndexedCHR0CurveStorage curve;
-                try { curve = IndexedCHR0CurveStorage.Create(format, keys.Select(k => k._index).ToArray(), values, tangents, minimum, step); }
-                catch (ArgumentException) { continue; }
-                var decodedValues = curve.Values; var decodedTangents = curve.Tangents; double error = 0;
-                for (int i = 0; i < keys.Length; i++)
+                foreach (float valueBase in bases.Distinct())
                 {
-                    bool strict = exact || mandatory.Contains(keys[i]._index) || duplicateFrames.Contains(keys[i]._index);
-                    if (!Allowed(keys[i]._value, decodedValues[i], strict, valueLimit) || !Allowed(keys[i]._tangent, decodedTangents[i], strict, derivativeLimit)) { valid = false; break; }
-                    error = Math.Max(error, Math.Abs((double)keys[i]._value - decodedValues[i]) / Math.Max(valueLimit, double.Epsilon));
-                    error = Math.Max(error, Math.Abs((double)keys[i]._tangent - decodedTangents[i]) / Math.Max(derivativeLimit, double.Epsilon));
+                    token.ThrowIfCancellationRequested();
+                    var values = new int[keys.Length]; var tangents = new int[keys.Length]; bool valid = true;
+                    for (int i = 0; i < keys.Length; i++)
+                    {
+                        double q = step == 0 ? 0 : Math.Round(((double)keys[i]._value - valueBase) / step, MidpointRounding.ToEven);
+                        double tangent = Math.Round((double)keys[i]._tangent * tangentScale, MidpointRounding.ToEven);
+                        if (q < 0 || q > valueMaximum || tangent < tangentMinimum || tangent > tangentMaximum) { valid = false; break; }
+                        values[i] = (int)q; tangents[i] = (int)tangent;
+                    }
+                    if (!valid) continue;
+                    IndexedCHR0CurveStorage curve;
+                    try { curve = IndexedCHR0CurveStorage.Create(format, keys.Select(k => k._index).ToArray(), values, tangents, valueBase, step); }
+                    catch (ArgumentException) { continue; }
+                    var decodedValues = curve.Values; var decodedTangents = curve.Tangents; double error = 0;
+                    for (int i = 0; i < keys.Length; i++)
+                    {
+                        bool strict = exact || mandatory.Contains(keys[i]._index) || duplicateFrames.Contains(keys[i]._index);
+                        if (!Allowed(keys[i]._value, decodedValues[i], strict, valueLimit, allowPositiveZero) || !Allowed(keys[i]._tangent, decodedTangents[i], strict, derivativeLimit, allowPositiveZero)) { valid = false; break; }
+                        error = Math.Max(error, Math.Abs((double)keys[i]._value - decodedValues[i]) / Math.Max(valueLimit, double.Epsilon));
+                        error = Math.Max(error, Math.Abs((double)keys[i]._tangent - decodedTangents[i]) / Math.Max(derivativeLimit, double.Epsilon));
+                    }
+                    if (valid && error < bestError) { best = curve; bestError = error; }
                 }
-                if (valid && error < bestError) { best = curve; bestError = error; }
             }
             return best;
         }
 
-        private static bool Allowed(float original, float candidate, bool exact, double limit)
+        private static bool Allowed(float original, float candidate, bool exact, double limit, bool allowPositiveZero)
         {
             if (Bits(original) == Bits(candidate)) return true;
-            // Neither quality mode silently erases an authored signed zero, nor
-            // creates a different zero representation from a nonzero coefficient.
-            if (exact || original == 0 || candidate == 0) return false;
+            // Authored +/-zero always retains its exact bits. Only explicit
+            // Small file rotation/translation may round a tiny nonzero value
+            // or tangent to +zero, inside the same approved scalar bounds.
+            // Exact/HQ and scale groups retain the previous zero policy.
+            if (exact || original == 0 || candidate == 0 && (!allowPositiveZero || Bits(candidate) != 0)) return false;
             return Math.Abs((double)original - candidate) <= limit;
         }
         private static bool RequiresExactScale(KeyframeEntry[] keys)

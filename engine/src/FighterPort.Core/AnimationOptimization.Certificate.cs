@@ -73,7 +73,7 @@ public static partial class AnimationOptimization
                     var rules = settings.ChannelRules.Where(r => r.Bone == sourceTrack.Bone && (r.Channel < 0 || r.Channel == channel)).ToArray();
                     bool exact = settings.Mode == AnimationOptimizationMode.Exact || exactBones.Contains(sourceTrack.Bone) || singular || rules.Any(r => r.ExactOnly);
                     bool preserve = protectedBones.Contains(sourceTrack.Bone) || rules.Any(r => r.PreserveStructure);
-                    var frames = settings.MandatoryFrames.Concat(rules.SelectMany(r => r.MandatoryFrames)).ToArray();
+                    var frames = ExactFrames(settings,rules);
                     var ranges = settings.ProtectedRanges.Concat(rules.SelectMany(r => r.ProtectedRanges)).ToArray();
                     var incoming = source.Keys.GroupBy(k => k.Frame).ToDictionary(g => g.Key, g => g.ToArray());
                     var outgoing = output.Keys.GroupBy(k => k.Frame).ToDictionary(g => g.Key, g => g.ToArray());
@@ -91,25 +91,26 @@ public static partial class AnimationOptimization
                         bool paired = k > 0 && source.Keys[k - 1].Frame == a.Frame || k + 1 < source.Keys.Length && source.Keys[k + 1].Frame == a.Frame;
                         bool protectedKey = preserve || paired || HasSignedZero(a) || !fixedConstant && frames.Contains(a.Frame)
                             || ranges.Any(r => a.Frame >= r.Start && a.Frame <= r.End);
-                        if (!protectedKey) continue;
+                        bool fitTime=settings.Mode==AnimationOptimizationMode.SmallFile&&!fixedConstant&&settings.FitJoinFrames.Contains(a.Frame);
+                        if (!protectedKey&&!fitTime) continue;
                         var required = incoming[a.Frame];
                         var actual = outgoing.GetValueOrDefault(a.Frame, []);
-                        if (required.Length != actual.Length || required.Where((key, side) =>
+                        if (required.Length != actual.Length || protectedKey&&required.Where((key, side) =>
                             Bits(key.Value) != Bits(actual[side].Value) || Bits(key.InTangent) != Bits(actual[side].InTangent)
                             || Bits(key.OutTangent) != Bits(actual[side].OutTangent)).Any())
                             return Failed("Indexed storage changed a protected native key, paired side, signed zero or index.");
                     }
                     double valueBound = exact ? 0 : channel < 3 ? settings.ScaleValueBound : channel < 6 ? settings.EulerValueBoundDegrees
-                        : Math.Min(settings.TranslationAbsoluteCap, settings.TranslationValueFraction * settings.BindBoundsDiagonal);
+                        : TranslationBound(settings,false);
                     double speedBound = exact ? 0 : channel < 3 ? settings.ScaleSpeedBoundPerFrame : channel < 6 ? settings.EulerSpeedBoundDegreesPerFrame
-                        : Math.Min(settings.TranslationSpeedAbsoluteCapPerFrame, settings.TranslationSpeedFractionPerFrame * settings.BindBoundsDiagonal);
+                        : TranslationBound(settings,true);
                     double end = Math.Max(baseline.SampleCount, Math.Max(source.Keys[^1].Frame, output.Keys[^1].Frame));
                     var breaks = source.Keys.Concat(output.Keys).Select(k => k.Frame).Where(f => f >= 0 && f <= end).Append(0).Append(end).Distinct().Order().ToArray();
                     double valueMaximum = 0, speedMaximum = 0; int channelIntervals = 0;
                     // Protection points are additional value witnesses, not new
                     // polynomial breaks. Splitting at a mandatory interior
                     // frame would hide that it protects the original segment.
-                    var points = breaks.Concat(frames).Concat(ranges.SelectMany(r => new[] { r.Start, r.End }))
+                    var points = breaks.Concat(frames).Concat(settings.FitJoinFrames).Concat(ranges.SelectMany(r => new[] { r.Start, r.End }))
                         .Where(f => f >= 0 && f <= end).Distinct().Order();
                     foreach (double point in points)
                     {

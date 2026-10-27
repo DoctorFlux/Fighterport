@@ -309,7 +309,7 @@ internal static partial class Program
             await Open(async window =>
             {
                 var mode = SimpleControl<ComboBox>(window, "optimizationMode");
-                Check(mode.Items.Count == 2 && mode.SelectedIndex == 0 && Convert.ToString(mode.SelectedItem) == "Exact" && Convert.ToString(mode.Items[1]) == "High quality" && !window.ReadHighQuality(), "Exact remains the default while the separately qualified High quality option is available");
+                Check(mode.Items.Count == 3 && mode.SelectedIndex == 0 && Convert.ToString(mode.SelectedItem) == "Exact" && Convert.ToString(mode.Items[1]) == "High quality" && !window.ReadHighQuality() && !window.ReadSmallFile(), "Exact remains the default while the separate High quality and opt-in Small file options are available");
                 var optionalStorage=SimpleDescendants(window).OfType<CheckBox>().ToArray();
                 Check(optionalStorage.Length==1&&optionalStorage[0].Name=="optimizationCompactStorage"&&!optionalStorage[0].Checked&&
                     !SimpleControl<Button>(window, "optimizeApply").Enabled,

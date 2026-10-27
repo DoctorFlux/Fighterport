@@ -104,10 +104,10 @@ namespace BrawlCrate.Studio
                 key.Frame == b.Channels[c][i].Frame && Bits(key.Value) == Bits(b.Channels[c][i].Value) && Bits(key.Tangent) == Bits(b.Channels[c][i].Tangent)).All(same => same));
 
         static NativeAnimationOptimizationOptions ReductionOptions(NativeAnimationOptimizationOptions source, NativeAnimationOptimizationBudget budget) =>
-            new NativeAnimationOptimizationOptions { ExactOnly = source.ExactOnly, LengthScale = source.LengthScale,
+            new NativeAnimationOptimizationOptions { ExactOnly = source.ExactOnly, SmallFile = source.SmallFile, LengthScale = source.LengthScale,
                 OriginalStoredBytes = source.OriginalStoredBytes, OriginalStoredResourceBytes = source.OriginalStoredResourceBytes,
                 TargetBones = source.TargetBones?.ToArray(), ProtectedBones = source.ProtectedBones?.ToArray(), ExactBones = source.ExactBones?.ToArray(),
-                MandatoryFrames = source.MandatoryFrames?.ToArray(), ProbeFrames = source.ProbeFrames?.ToArray(),
+                MandatoryFrames = source.MandatoryFrames?.ToArray(), FitJoinFrames = source.FitJoinFrames?.ToArray(), ProbeFrames = source.ProbeFrames?.ToArray(),
                 BindPoseCleanupBones = source.BindPoseCleanupBones?.ToArray(), DeferSizeValidation = source.DeferSizeValidation, Budget = budget };
     }
 }

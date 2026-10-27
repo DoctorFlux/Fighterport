@@ -45,7 +45,7 @@ namespace BrawlCrate.Studio
         readonly Stopwatch previewTime = new Stopwatch();
         readonly Dictionary<Control, Control> regionFocus = new Dictionary<Control, Control>();
         int generation, previewStart;
-        bool loading = true, preparedHighQuality, preparedCompact, analyzingCompact, layingOut, analyzingHighQuality, cancellationRequested, closeQueued;
+        bool loading = true, preparedHighQuality, preparedSmallFile, preparedCompact, analyzingCompact, layingOut, analyzingHighQuality, analyzingSmallFile, cancellationRequested, closeQueued;
 
         internal AnimationOptimizationDialog(ResourceNode originalRoot, MDL0Node originalModel,
             ResourceNode resultRoot, MDL0Node resultModel, CHR0Node originalSnapshot,
@@ -71,7 +71,7 @@ namespace BrawlCrate.Studio
                 Text = "Analyze the current animation, compare its prepared result, then Apply optimization. Save or export afterward." };
 
             mode.Items.Add("Exact");
-            if (highQualityQualified) mode.Items.Add("High quality");
+            if (highQualityQualified) { mode.Items.Add("High quality"); mode.Items.Add("Small file (0.1°)"); }
             mode.SelectedIndex = 0;
             mode.AccessibleName = "Animation optimization mode";
             mode.AccessibleDescription = "Changing the mode discards the prepared result. Analyze explicitly to prepare another result.";
@@ -167,8 +167,9 @@ namespace BrawlCrate.Studio
             ApplyTextSize();
         }
 
-        internal bool ReadHighQuality() => highQualityQualified && mode.SelectedIndex == 1;
-        internal bool ReadCompactStorage() => compactStorage.Checked;
+        internal bool ReadHighQuality() => highQualityQualified && mode.SelectedIndex >= 1;
+        internal bool ReadSmallFile() => highQualityQualified && mode.SelectedIndex == 2;
+        internal bool ReadCompactStorage() => ReadSmallFile() || compactStorage.Checked;
 
         internal async Task Analyze()
         {
@@ -177,6 +178,7 @@ namespace BrawlCrate.Studio
             int token = ++generation;
             bool quality = ReadHighQuality();
             analyzingHighQuality = quality;
+            analyzingSmallFile = ReadSmallFile();
             analyzingCompact = ReadCompactStorage();
             cancellationRequested = false;
             PreparedReport = PreparedSummary = null;
@@ -196,6 +198,7 @@ namespace BrawlCrate.Studio
                 { result.Dispose(); throw new InvalidOperationException("Optimization changed the native duration or loop flag. The result was discarded."); }
                 Candidate = result;
                 preparedHighQuality = quality;
+                preparedSmallFile = analyzingSmallFile;
                 preparedCompact = analyzingCompact;
                 TargetView.Heading.Text = "Optimization result · review before applying";
                 summary.Text = PreparedSummary ?? "Optimization ready. Compare the original and result, then Apply optimization. Native Undo restores the previous animation.";
@@ -240,7 +243,7 @@ namespace BrawlCrate.Studio
             Stop();
             try
             {
-                if (preparedHighQuality != ReadHighQuality() || preparedCompact != ReadCompactStorage()) throw new InvalidOperationException("The optimization settings changed. Analyze again.");
+                if (preparedHighQuality != ReadHighQuality() || preparedSmallFile != ReadSmallFile() || preparedCompact != ReadCompactStorage()) throw new InvalidOperationException("The optimization settings changed. Analyze again.");
                 if (Apply == null) throw new InvalidOperationException("Applying optimization is unavailable.");
                 Apply(preparedHighQuality, Candidate);
                 DialogResult = DialogResult.OK;
@@ -258,11 +261,12 @@ namespace BrawlCrate.Studio
                 // The disabled selector can still receive a programmatic
                 // change. Retain the active operation's mode until it finishes.
                 loading = true;
-                try { mode.SelectedIndex = analyzingHighQuality ? 1 : 0; compactStorage.Checked = analyzingCompact; }
+                try { mode.SelectedIndex = analyzingSmallFile ? 2 : analyzingHighQuality ? 1 : 0; compactStorage.Checked = analyzingCompact; }
                 finally { loading = false; }
                 return;
             }
             generation++;
+            if (ReadSmallFile()) { loading = true; try { compactStorage.Checked = true; } finally { loading = false; } }
             Stop();
             CancelWork?.Invoke();
             SetBusy(false);
@@ -291,7 +295,8 @@ namespace BrawlCrate.Studio
             Busy = value;
             cancel.Enabled = value;
             if (value && analyze.ContainsFocus) cancel.Focus();
-            analyze.Enabled = mode.Enabled = compactStorage.Enabled = play.Enabled = frame.Enabled = !value;
+            analyze.Enabled = mode.Enabled = play.Enabled = frame.Enabled = !value;
+            compactStorage.Enabled = !value && !ReadSmallFile();
             apply.Enabled = !value && Candidate != null && PreparedCanApply;
             if (!value && restoreFocus) analyze.Focus();
         }
@@ -310,7 +315,9 @@ namespace BrawlCrate.Studio
 
         void UpdateModeHint()
         {
-            modeHint.Text = ReadHighQuality()
+            modeHint.Text = ReadSmallFile()
+                ? "Small file · up to 0.1° rotation, 0.002 translation and 0.0001 scale. Fitting joins can change; root motion and authored pin/contact protections stay exact. Compact storage included."
+                : ReadHighQuality()
                 ? "High quality · uses the qualified measured error bounds shown in Details. Duration and loop remain unchanged."
                 : "Exact · removes redundant data while preserving native curves. Tracks absent from this target are listed before Apply.";
         }

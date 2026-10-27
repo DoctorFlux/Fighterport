@@ -30,7 +30,7 @@
     </Copyright>
     <AssemblyVersion>2.0.0.0</AssemblyVersion>
     <FileVersion>2.0.0.29</FileVersion>
-    <InformationalVersion>2.0.0-preview.51-source-key-motion-guards</InformationalVersion>
+    <InformationalVersion>2.0.0-preview.52-small-file-optimization</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Platforms>AnyCPU;x64;x86</Platforms>

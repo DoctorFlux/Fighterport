@@ -39,7 +39,7 @@ namespace BrawlCrate.UI
             internal FighterProject Project; internal MDL0Node Model; internal CHR0Node Clip, Baseline;
             internal string ModelContent, Protection, ProtectionHash, OutputContent, OutputStorage, BaselineHash, Report, MarkerReport;
             internal long BaselineKeys, BaselineBytes, LastUse;
-            internal bool HighQuality, CompactStorage;
+            internal bool HighQuality, SmallFile, CompactStorage;
             private static long TextBytes(string value) => value == null ? 0 : checked(2L * value.Length);
             internal long MarkerBytes => TextBytes(ModelContent) + TextBytes(ProtectionHash) + TextBytes(OutputContent) + TextBytes(OutputStorage) + TextBytes(BaselineHash) + TextBytes(MarkerReport);
             internal long RetainedBytes => BaselineBytes + TextBytes(ModelContent) + TextBytes(Protection) + TextBytes(ProtectionHash) + TextBytes(OutputContent) + TextBytes(OutputStorage) + TextBytes(BaselineHash) + TextBytes(Report) + (ReferenceEquals(Report, MarkerReport) ? 0 : TextBytes(MarkerReport));
@@ -115,16 +115,20 @@ namespace BrawlCrate.UI
         }
         private OptimizationCacheCommit PrepareOptimizationCache(OptimizationCacheKey key, OptimizationSessionBaseline previous,
             CHR0Node original, string modelContent, string protection, string outputContent, string outputStorage, bool quality, bool compact, string report, string stage)
+            => PrepareOptimizationCacheMode(key, previous, original, modelContent, protection, outputContent, outputStorage, quality, false, compact, report, stage);
+
+        private OptimizationCacheCommit PrepareOptimizationCacheMode(OptimizationCacheKey key, OptimizationSessionBaseline previous,
+            CHR0Node original, string modelContent, string protection, string outputContent, string outputStorage, bool quality, bool smallFile, bool compact, string report, string stage)
         {
             var pending = new OptimizationSessionBaseline { Project = key.Project, Model = key.Model, Clip = key.Clip,
                 ModelContent = modelContent, Protection = protection, ProtectionHash = OptimizationTextHash(protection), OutputContent = outputContent,
-                OutputStorage = outputStorage, HighQuality = quality, CompactStorage = compact, Report = report, LastUse = ++_optimizationCacheClock,
+                OutputStorage = outputStorage, HighQuality = quality, SmallFile = smallFile, CompactStorage = compact, Report = report, LastUse = ++_optimizationCacheClock,
                 BaselineHash = previous?.BaselineHash ?? NativeAnimationOptimization.ContentKey(original) };
             try
             {
                 pending.MarkerReport = "This unchanged clip retains its original session baseline identity, but its native snapshot was evicted under the shared 2000000-key / 256 MiB session cache budget.\r\n" +
                     "Original baseline SHA-256: " + pending.BaselineHash + "\r\nCurrent optimized content SHA-256: " + outputContent +
-                    "\r\nRepeated " + (quality ? "High quality" : "Exact") + " optimization is a no-op. Exact cleanup remains available; another quality calculation requires the retained original snapshot or an explicit project reopen/authored edit establishing a new baseline.";
+                    "\r\nRepeated " + (smallFile ? "Small file" : quality ? "High quality" : "Exact") + " optimization is a no-op. Exact cleanup remains available; another quality calculation requires the retained original snapshot or an explicit project reopen/authored edit establishing a new baseline.";
                 // Allocate, serialize and measure the new cache before live Apply.
                 // An evicted marker must never silently become a new baseline.
                 if (original != null)
@@ -219,7 +223,7 @@ namespace BrawlCrate.UI
             if (cached) sessionBaseline.LastUse = ++_optimizationCacheClock;
             string stage = Path.Combine(_controlStage, "optimization-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(stage);
             var roots = new List<ResourceNode>(); AnimationControlClient client = null; CancellationTokenSource cancellation = null;
-            NativeAnimationOptimizationResult prepared = null; string preparedContent = null, preparedStorage = null; bool preparedQuality = false, preparedCompact = false;
+            NativeAnimationOptimizationResult prepared = null; string preparedContent = null, preparedStorage = null; bool preparedQuality = false, preparedSmallFile = false, preparedCompact = false;
             using (var before = NativeAnimationOptimization.Copy(source))
             using (var qualityBaseline = cached && sessionBaseline.Baseline == null ? null : NativeAnimationOptimization.Copy(cached ? sessionBaseline.Baseline : source))
             {
@@ -267,9 +271,10 @@ namespace BrawlCrate.UI
                         window.Prepare = async highQuality =>
                         {
                             bool compact = window.ReadCompactStorage();
+                            bool smallFile = window.ReadSmallFile();
                             current(); if (highQuality && !HighQualityOptimizationQualified) throw new InvalidOperationException("High-quality reduction is not qualified in this increment.");
                             prepared?.Dispose(); prepared = null; cancellation?.Dispose(); cancellation = new CancellationTokenSource(); var token = cancellation.Token;
-                            if (cached && sessionBaseline.HighQuality == highQuality && sessionBaseline.CompactStorage == compact && sessionBaseline.OutputStorage == storageContent)
+                            if (cached && sessionBaseline.HighQuality == highQuality && sessionBaseline.SmallFile == smallFile && sessionBaseline.CompactStorage == compact && sessionBaseline.OutputStorage == storageContent)
                             {
                                 window.PreparedCanApply = false; window.PreparedSummary = "This unchanged animation is already optimized in this mode.";
                                 window.PreparedReport = sessionBaseline.Report + "\r\nOriginal session baseline SHA-256: " + sessionBaseline.BaselineHash +
@@ -305,9 +310,10 @@ namespace BrawlCrate.UI
                                 string inputPath = Path.Combine(stage, "input-" + Guid.NewGuid().ToString("N") + ".json"), outputPath = Path.Combine(stage, "output-" + Guid.NewGuid().ToString("N") + ".json");
                                 try
                                 {
-                                    var input = new { baseline.Name, SampleCount = baseline.FrameCount, baseline.Loop, HighQuality = approximate, LengthScale = length,
+                                    var input = new { baseline.Name, SampleCount = baseline.FrameCount, baseline.Loop, HighQuality = approximate, SmallFile = approximate && smallFile, LengthScale = length,
                                         PrecisionScale = precision, MaximumWork = 2000000 - work, MaximumCandidateSpans = 100000 - spans,
-                                        Tracks = wire, ExactBones = exact.ToArray(), ProtectedBones = protectedBones.ToArray(), MandatoryFrames = mandatory.OrderBy(f => f).ToArray(),
+                                        Tracks = wire, ExactBones = exact.ToArray(), ProtectedBones = protectedBones.ToArray(), MandatoryFrames = approximate && smallFile ? new int[0] : mandatory.OrderBy(f => f).ToArray(),
+                                        FitJoinFrames = approximate && smallFile ? mandatory.OrderBy(f => f).ToArray() : new int[0],
                                         ProtectedRanges = ranges, ProtectionKnown = protectionKnown, BindPoses = bindPoses };
                                     await Task.Run(() => { token.ThrowIfCancellationRequested(); File.WriteAllText(inputPath, json.Serialize(input)); }, token);
                                     token.ThrowIfCancellationRequested(); current();
@@ -328,10 +334,11 @@ namespace BrawlCrate.UI
                                     // Retain proof/protection receipts, not a second
                                     // raw-key object graph for every retry.
                                     output.Tracks = null;
-                                    var options = new NativeAnimationOptimizationOptions { ExactOnly = !approximate, LengthScale = length, OriginalStoredBytes = storedBytes, OriginalStoredResourceBytes = storedResourceBytes,
+                                    var options = new NativeAnimationOptimizationOptions { ExactOnly = !approximate, SmallFile = approximate && smallFile, LengthScale = length, OriginalStoredBytes = storedBytes, OriginalStoredResourceBytes = storedResourceBytes,
                                         TargetBones = model.AllBones.Select(b => b.Name).ToArray(), ProtectedBones = output.ProtectedBones, ExactBones = output.ExactBones,
                                         BindPoseCleanupBones = output.RemovedBindTracks, DeferSizeValidation = compact,
-                                        MandatoryFrames = mandatory.ToArray(), ProbeFrames = output.Report.ProbeFrames, Budget = budget };
+                                        MandatoryFrames = approximate && smallFile ? new int[0] : mandatory.ToArray(),
+                                        FitJoinFrames = approximate && smallFile ? mandatory.ToArray() : new int[0], ProbeFrames = output.Report.ProbeFrames, Budget = budget };
                                     OptimizationNativeChecks++;
                                     var verified = await Task.Run(() => approximate
                                         ? NativeAnimationOptimization.PrepareReduction(validationModel, baseline, tracks, exactReductionTracks, options, stage, token)
@@ -347,6 +354,9 @@ namespace BrawlCrate.UI
                                         // reduction must not prevent bounded
                                         // storage of a verified Exact result.
                                         options.ExactOnly = !highQuality;
+                                        options.SmallFile = highQuality && smallFile;
+                                        options.MandatoryFrames = smallFile ? new int[0] : mandatory.ToArray();
+                                        options.FitJoinFrames = smallFile ? mandatory.ToArray() : new int[0];
                                         using (var precise = verified)
                                         {
                                             async Task<NativeCompactCurveCertificate> Certificate(CHR0Node decoded, CancellationToken proofToken)
@@ -356,10 +366,11 @@ namespace BrawlCrate.UI
                                                 string certificateInput = Path.Combine(stage, "certificate-" + Guid.NewGuid().ToString("N") + ".json"), certificateOutput = Path.Combine(stage, "certificate-" + Guid.NewGuid().ToString("N") + ".json");
                                                 try
                                                 {
-                                                    var certificateRequest = new { baseline.Name, SampleCount = baseline.FrameCount, baseline.Loop, HighQuality = highQuality, LengthScale = length,
+                                                    var certificateRequest = new { baseline.Name, SampleCount = baseline.FrameCount, baseline.Loop, HighQuality = highQuality, SmallFile = smallFile, LengthScale = length,
                                                         PrecisionScale = 1, MaximumWork = 2000000 - work, MaximumCandidateSpans = 100000 - spans,
                                                         Tracks = wire, CandidateTracks = OptimizationWireTracks(decoded), BindPoses = bindPoses,
-                                                        ExactBones = output.ExactBones, ProtectedBones = output.ProtectedBones, MandatoryFrames = mandatory.ToArray(), ProtectedRanges = ranges, ProtectionKnown = protectionKnown };
+                                                        ExactBones = output.ExactBones, ProtectedBones = output.ProtectedBones, MandatoryFrames = smallFile ? new int[0] : mandatory.ToArray(),
+                                                        FitJoinFrames = smallFile ? mandatory.ToArray() : new int[0], ProtectedRanges = ranges, ProtectionKnown = protectionKnown };
                                                     File.WriteAllText(certificateInput, json.Serialize(certificateRequest));
                                                     var response = await session.Send(new { Operation = "animation-optimize-prepare", Model = modelPath, State = controls, Optimization = new { InputPath = certificateInput, OutputPath = certificateOutput } });
                                                     proofToken.ThrowIfCancellationRequested();
@@ -391,7 +402,9 @@ namespace BrawlCrate.UI
                                 {
                                     token.ThrowIfCancellationRequested(); current();
                                     var verified = choice.Result;
-                                    string common = choice.Report + "\r\nBaseline: " + (cached && highQuality ? "retained original session animation" : "current animation frozen at Analyze") +
+                                    string common = (smallFile ? choice.Report.Replace("High quality", "Small file") : choice.Report) +
+                                        (cached && sessionBaseline.SmallFile && !smallFile ? "\r\nThe current result used Small file limits. This stricter analysis still uses the original session baseline; an unchanged result is not a new strict-quality certification." : "") +
+                                        "\r\nBaseline: " + (cached && highQuality ? "retained original session animation" : "current animation frozen at Analyze") +
                                         "\r\nBaseline content SHA-256: " + NativeAnimationOptimization.ContentKey(baseline) +
                                         "\r\nProtection context: " + (protectionKnown ? "reviewed exact native rig bindings" : "unavailable; no motion/contact roles inferred, Exact cleanup only") +
                                         "\r\nAggregate Core proof work " + work + "/2000000; spans " + spans + "/100000; native witnesses " + budget.Samples + "/100000, bone visits " + budget.BoneVisits + "/10000000, skin visits " + budget.VertexVisits + "/1000000000.";
@@ -402,7 +415,7 @@ namespace BrawlCrate.UI
                                     }
                                     var output = receipts[verified];
                                     bool changed = verified.Candidate != null && (NativeAnimationOptimization.ContentKey(verified.Candidate) != content || NativeAnimationOptimization.StorageKey(verified.Candidate) != storageContent);
-                                    prepared = verified; choice.Result = null; preparedContent = verified.ContentKey; preparedStorage = NativeAnimationOptimization.StorageKey(verified.Candidate); preparedQuality = highQuality; preparedCompact = compact;
+                                    prepared = verified; choice.Result = null; preparedContent = verified.ContentKey; preparedStorage = NativeAnimationOptimization.StorageKey(verified.Candidate); preparedQuality = highQuality; preparedSmallFile = smallFile; preparedCompact = compact;
                                     window.PreparedCanApply = changed;
                                     window.PreparedSummary = changed ? "Keys " + before.Children.OfType<CHR0EntryNode>().Sum(t => t.KeyArrays.Sum(a => a.KeyCount)) + " → " + verified.AfterKeys + " · current export " + currentBytes + " → " + verified.AfterBytes + " bytes. Review and Apply optimization."
                                         : "No useful saving for this animation; the current native content is unchanged.";
@@ -411,8 +424,12 @@ namespace BrawlCrate.UI
                                         : "\r\nMeasured: Euler " + verified.MaximumEulerError.ToString("G4") + "° · translation " + verified.MaximumLocalTranslationError.ToString("G4") + " · scale " + verified.MaximumScaleError.ToString("G4") + " · skin " + verified.MaximumSkinError.ToString("G4") + ".";
                                     window.PreparedReport = "Algorithm: " + output.Report.Version + "\r\n" + common + "\r\n" + verified.Report +
                                         "\r\nCandidate native CHR0 SHA-256: " + verified.EncodedSha256 +
-                                        "\r\nAuthentic bind-geometry diagonal L: " + length.ToString("G9") + ". Frozen ceilings: Euler/orientation 0.01°, scale 0.00001, local translation " + Math.Min(.0002, length > 0 ? length * .0001 : .0002).ToString("G6") +
-                                        "; bone/skin " + (length > 0 ? length * .0001 : .0002).ToString("G6") + "; Euler derivative 0.05°/frame; translation/scale derivative uses the corresponding value ceiling per frame." +
+                                        "\r\nAuthentic bind-geometry diagonal L: " + length.ToString("G9") + ". Frozen " + (smallFile ? "Small file" : "High quality") +
+                                        " ceilings: Euler/orientation " + (smallFile ? "0.1°" : "0.01°") + ", scale " + (smallFile ? "0.0001" : "0.00001") +
+                                        ", local translation vector " + (smallFile ? .002 : Math.Min(.0002, length > 0 ? length * .0001 : .0002)).ToString("G6") +
+                                        "; bone/skin " + (length > 0 ? length * (smallFile ? .001 : .0001) : .0002).ToString("G6") +
+                                        "; Euler derivative " + (smallFile ? "0.1°" : "0.05°") + "/frame; translation/scale derivative uses the corresponding value ceiling per frame." +
+                                        (smallFile ? "\r\nFitting join poses/tangents may change within these bounds. Source-owned motion controls and authored pin/contact protections remain exact. Timing and stored loop state remain unchanged." : "") +
                                         "\r\nAbsent-target tracks to remove: " + (output.RemovedUnmatchedTracks.Length == 0 ? "none" : string.Join(", ", output.RemovedUnmatchedTracks)) +
                                         "\r\nExact bind-pose tracks to remove: " + (output.RemovedBindTracks.Length == 0 ? "none" : string.Join(", ", output.RemovedBindTracks)) +
                                         "\r\nExact-only controls: " + string.Join(", ", output.ExactBones) + "\r\nProtected pin/contact paths: " + string.Join(", ", output.ProtectedBones) +
@@ -431,7 +448,7 @@ namespace BrawlCrate.UI
                         };
                         window.Apply = (highQuality, candidate) =>
                         {
-                            current(); if (_workspaceBusy || prepared == null || prepared.Candidate == null || highQuality != preparedQuality || window.ReadCompactStorage() != preparedCompact ||
+                            current(); if (_workspaceBusy || prepared == null || prepared.Candidate == null || highQuality != preparedQuality || window.ReadSmallFile() != preparedSmallFile || window.ReadCompactStorage() != preparedCompact ||
                                 NativeAnimationOptimization.ContentKey(candidate) != preparedContent || NativeAnimationOptimization.StorageKey(candidate) != preparedStorage) throw new InvalidOperationException("Analyze the current animation again before Apply.");
                             var names = source.Children.Concat(candidate.Children).Select(n => n.Name).Distinct(StringComparer.Ordinal).ToArray();
                             var original = NativeControlSnapshot.Capture(source, names); var optimized = NativeControlSnapshot.Capture(candidate, names);
@@ -454,8 +471,8 @@ namespace BrawlCrate.UI
                                 }
                                 finally { _restoringCurve = restoring; }
                             }
-                            using (var cacheCommit = PrepareOptimizationCache(sessionKey, sessionBaseline, qualityBaseline,
-                                modelContent, cacheProtection, preparedContent, preparedStorage, highQuality, preparedCompact, window.PreparedReport, stage))
+                            using (var cacheCommit = PrepareOptimizationCacheMode(sessionKey, sessionBaseline, qualityBaseline,
+                                modelContent, cacheProtection, preparedContent, preparedStorage, highQuality, preparedSmallFile, preparedCompact, window.PreparedReport, stage))
                             {
                                 try
                                 {

@@ -2,7 +2,7 @@ using System.Numerics;
 
 namespace FighterPort.Core;
 
-public enum AnimationOptimizationMode { Exact, HighQuality }
+public enum AnimationOptimizationMode { Exact, HighQuality, SmallFile }
 
 // Raw native XYZ Euler/SRT bind channels, supplied by the owning adapter. A
 // quaternion-derived rest pose cannot identify authored full Euler turns.
@@ -20,17 +20,22 @@ public sealed record AnimationOptimizationSettings
 {
     public AnimationOptimizationMode Mode { get; init; } = AnimationOptimizationMode.Exact;
     public double BindBoundsDiagonal { get; init; }
-    public double ScaleValueBound { get; init; } = 1e-5;
-    public double ScaleSpeedBoundPerFrame { get; init; } = 1e-5;
-    public double EulerValueBoundDegrees { get; init; } = .01;
-    public double EulerSpeedBoundDegreesPerFrame { get; init; } = .05;
+    double? scaleValueBound, scaleSpeedBound, eulerValueBound, eulerSpeedBound, translationCap, translationSpeedCap;
+    public double ScaleValueBound { get => scaleValueBound ?? (Mode == AnimationOptimizationMode.SmallFile ? .0001 : 1e-5); init => scaleValueBound = value; }
+    public double ScaleSpeedBoundPerFrame { get => scaleSpeedBound ?? (Mode == AnimationOptimizationMode.SmallFile ? .0001 : 1e-5); init => scaleSpeedBound = value; }
+    public double EulerValueBoundDegrees { get => eulerValueBound ?? (Mode == AnimationOptimizationMode.SmallFile ? .1 : .01); init => eulerValueBound = value; }
+    public double EulerSpeedBoundDegreesPerFrame { get => eulerSpeedBound ?? (Mode == AnimationOptimizationMode.SmallFile ? .1 : .05); init => eulerSpeedBound = value; }
     public double TranslationValueFraction { get; init; } = 1e-4;
     public double TranslationSpeedFractionPerFrame { get; init; } = 1e-4;
-    public double TranslationAbsoluteCap { get; init; } = .0002;
-    public double TranslationSpeedAbsoluteCapPerFrame { get; init; } = .0002;
+    public double TranslationAbsoluteCap { get => translationCap ?? (Mode == AnimationOptimizationMode.SmallFile ? .002 : .0002); init => translationCap = value; }
+    public double TranslationSpeedAbsoluteCapPerFrame { get => translationSpeedCap ?? (Mode == AnimationOptimizationMode.SmallFile ? .002 : .0002); init => translationSpeedCap = value; }
     public string[] ExactOnlyBones { get; init; } = [];
     public string[] PreserveStructureBones { get; init; } = [];
     public double[] MandatoryFrames { get; init; } = [];
+    // These are fitting joins, not authored pins or arbitrary mandatory points.
+    // SmallFile keeps authored knot times/sides but permits bounded numeric
+    // changes. Explicit MandatoryFrames and protected ranges remain exact.
+    public double[] FitJoinFrames { get; init; } = [];
     public ProtectedInterval[] ProtectedRanges { get; init; } = [];
     public AnimationOptimizationChannelRule[] ChannelRules { get; init; } = [];
     public AnimationOptimizationBindPose[] BindPoses { get; init; } = [];
@@ -110,19 +115,19 @@ public static partial class AnimationOptimization
         foreach (var track in tracks.OrderBy(t => t.Bone, StringComparer.Ordinal))
         {
             cancellation.ThrowIfCancellationRequested();
-            bool singular = settings.Mode == AnimationOptimizationMode.HighQuality && track.Channels.Take(3).OfType<Curve>().Any(c => MayHaveSingularScale(c, cancellation));
+            bool singular = settings.Mode != AnimationOptimizationMode.Exact && track.Channels.Take(3).OfType<Curve>().Any(c => MayHaveSingularScale(c, cancellation));
             for (int channel = 0; channel < 9; channel++)
             {
                 if (track.Channels[channel] is not { } curve) continue;
                 var rules = settings.ChannelRules.Where(r => r.Bone == track.Bone && (r.Channel < 0 || r.Channel == channel)).ToArray();
                 bool exact = settings.Mode == AnimationOptimizationMode.Exact || exactBones.Contains(track.Bone) || singular || rules.Any(r => r.ExactOnly);
                 bool preserve = protectedBones.Contains(track.Bone) || rules.Any(r => r.PreserveStructure);
-                var mandatory = settings.MandatoryFrames.Concat(rules.SelectMany(r => r.MandatoryFrames)).Distinct().Order().ToArray();
+                var mandatory = ExactFrames(settings,rules).Concat(settings.FitJoinFrames).Distinct().Order().ToArray();
                 var ranges = settings.ProtectedRanges.Concat(rules.SelectMany(r => r.ProtectedRanges)).ToArray();
                 double valueBound = exact ? 0 : channel < 3 ? settings.ScaleValueBound : channel < 6 ? settings.EulerValueBoundDegrees
-                    : Math.Min(settings.TranslationAbsoluteCap, settings.TranslationValueFraction * settings.BindBoundsDiagonal);
+                    : TranslationBound(settings,false);
                 double speedBound = exact ? 0 : channel < 3 ? settings.ScaleSpeedBoundPerFrame : channel < 6 ? settings.EulerSpeedBoundDegreesPerFrame
-                    : Math.Min(settings.TranslationSpeedAbsoluteCapPerFrame, settings.TranslationSpeedFractionPerFrame * settings.BindBoundsDiagonal);
+                    : TranslationBound(settings,true);
                 if (!exact && (valueBound <= 0 || speedBound <= 0))
                     throw new ArgumentException("The declared authentic bind scale is too small to represent a positive translation tolerance.");
                 var state = new ChannelState(track.Bone, channel, curve, exact, valueBound, speedBound, mandatory, ranges);
@@ -219,19 +224,23 @@ public static partial class AnimationOptimization
         if (!Enum.IsDefined(settings.Mode) || settings.MaximumWork < 0 || settings.MaximumCandidateSpans < 0 || settings.MaximumProbeFrames < 1
             || settings.MaximumSubdivisionDepth < 0 || settings.MaximumSubdivisionDepth > 32)
             throw new ArgumentException("Optimization needs finite nonnegative work limits and subdivision depth 0..32.");
-        if (settings.Mode == AnimationOptimizationMode.HighQuality && (!double.IsFinite(settings.BindBoundsDiagonal) || settings.BindBoundsDiagonal <= 0))
-            throw new ArgumentException("High-quality optimization needs a positive finite authentic bind-bounds diagonal.");
+        if (settings.Mode != AnimationOptimizationMode.Exact && (!double.IsFinite(settings.BindBoundsDiagonal) || settings.BindBoundsDiagonal <= 0))
+            throw new ArgumentException("Approximate optimization needs a positive finite authentic bind-bounds diagonal.");
         double[] positive = [settings.ScaleValueBound, settings.ScaleSpeedBoundPerFrame, settings.EulerValueBoundDegrees,
             settings.EulerSpeedBoundDegreesPerFrame, settings.TranslationValueFraction, settings.TranslationSpeedFractionPerFrame,
             settings.TranslationAbsoluteCap, settings.TranslationSpeedAbsoluteCapPerFrame];
         if (positive.Any(v => !double.IsFinite(v) || v <= 0)) throw new ArgumentException("Optimization tolerances must be positive finite declared bounds.");
+        if(settings.Mode==AnimationOptimizationMode.SmallFile && (settings.EulerValueBoundDegrees>.1 || settings.EulerSpeedBoundDegreesPerFrame>.1 ||
+            settings.ScaleValueBound>.0001 || settings.ScaleSpeedBoundPerFrame>.0001 || settings.TranslationAbsoluteCap>.002 ||
+            settings.TranslationSpeedAbsoluteCapPerFrame>.002 || settings.MaximumWork>2_000_000 || settings.MaximumCandidateSpans>100_000))
+            throw new ArgumentException("Small-file construction cannot exceed its frozen scalar ceilings or existing operation budgets.");
         void Frames(double[] frames) { if (frames.Any(f => !double.IsFinite(f) || f < 0)) throw new ArgumentException("Protected frames must be finite and nonnegative."); }
         void Ranges(ProtectedInterval[] ranges)
         {
             if (ranges.Any(r => !double.IsFinite(r.Start) || !double.IsFinite(r.End) || r.Start < 0 || r.End < r.Start))
                 throw new ArgumentException("Protected ranges must be finite ordered intervals.");
         }
-        Frames(settings.MandatoryFrames); Ranges(settings.ProtectedRanges);
+        Frames(settings.MandatoryFrames); Frames(settings.FitJoinFrames); Ranges(settings.ProtectedRanges);
         foreach (var rule in settings.ChannelRules)
         {
             if (string.IsNullOrEmpty(rule.Bone) || rule.Channel < -1 || rule.Channel > 8) throw new ArgumentException("A channel rule needs an exact bone identity and channel -1..8.");
@@ -241,6 +250,15 @@ public static partial class AnimationOptimization
             || settings.BindPoses.Select(b => b.Bone).Distinct(StringComparer.Ordinal).Count() != settings.BindPoses.Length)
             throw new ArgumentException("Bind cleanup needs unique exact bone identities and nine finite raw native bind channels.");
     }
+
+    static double[] ExactFrames(AnimationOptimizationSettings settings,AnimationOptimizationChannelRule[] rules) =>
+        settings.MandatoryFrames.Concat(settings.Mode==AnimationOptimizationMode.SmallFile ? [] : settings.FitJoinFrames)
+            .Concat(rules.SelectMany(r=>r.MandatoryFrames)).Distinct().ToArray();
+
+    static double TranslationBound(AnimationOptimizationSettings settings,bool derivative) => settings.Mode==AnimationOptimizationMode.SmallFile
+        ? derivative ? settings.TranslationSpeedAbsoluteCapPerFrame : settings.TranslationAbsoluteCap
+        : derivative ? Math.Min(settings.TranslationSpeedAbsoluteCapPerFrame,settings.TranslationSpeedFractionPerFrame*settings.BindBoundsDiagonal)
+            : Math.Min(settings.TranslationAbsoluteCap,settings.TranslationValueFraction*settings.BindBoundsDiagonal);
 
     static void ValidateCurve(Curve curve)
     {
@@ -485,7 +503,7 @@ public static partial class AnimationOptimization
         }
         Add(0); Add(baseline.LastSampleFrame); Add(baseline.PreviewEndFrame);
         if (baseline.Loop) Add(baseline.SampleCount);
-        foreach (double f in settings.MandatoryFrames.Concat(settings.ChannelRules.SelectMany(r => r.MandatoryFrames))) Add(f);
+        foreach (double f in settings.MandatoryFrames.Concat(settings.FitJoinFrames).Concat(settings.ChannelRules.SelectMany(r => r.MandatoryFrames))) Add(f);
         foreach (var range in settings.ProtectedRanges.Concat(settings.ChannelRules.SelectMany(r => r.ProtectedRanges))) { Add(range.Start); Add(range.End); }
         var retainedBones = output.Select(t => t.Bone).ToHashSet(StringComparer.Ordinal);
         foreach (var track in baseline.Tracks.Where(t => retainedBones.Contains(t.Bone)).Concat(output))
