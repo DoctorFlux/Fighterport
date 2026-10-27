@@ -28,7 +28,7 @@ namespace BrawlCrate.UI
             _fighterRetarget.ToolTipText = "Next retargeting: source skeleton mapping, proportions, limb IK and baked ground contacts.";
             _fighterRetarget.AccessibleName = "Retarget to This Model";
             _fighterRetargetDetails = menu.DropDownItems.Add("Retarget Details...", null, (s,e) => ShowFighterRetargetDetails());
-            menu.DropDownItems.Add("Retarget Options...",null,(s,e)=>ShowFighterRetargetOptions());
+            menu.DropDownItems.Add("Retarget Options...",null,(s,e)=>RunFighterAction(ShowFighterRetargetOptions));
             menu.DropDownItems.Add("Advanced Scene / Body Fitting...",null,(s,e)=>RunFighterAction(OpenAdvancedSceneFitting));
             AddFighterButton(toolbar,"Fit / Transitions...","fighterTransitionFit",()=>RunFighterAction(ShowTransitionFit));
             menu.DropDownItems.Add("Fit start and end...",null,(s,e)=>RunFighterAction(ShowTransitionFit));
@@ -57,22 +57,42 @@ namespace BrawlCrate.UI
         private void ChooseFighterRetarget() => ChooseFighterRetarget(false);
         private void ShowFighterRetargetOptions()
         {
-            using(var dialog=new Form{Text="Retarget Options",ClientSize=new Size(450,172),FormBorderStyle=FormBorderStyle.FixedDialog,
+            if(_retargetBusy||_controlBusy||_workspaceBusy)throw new InvalidOperationException("Finish the current edit before changing retarget options.");
+            using(var dialog=new Form{Text="Retarget Options",ClientSize=new Size(590,Math.Max(246,WorkspaceAppearance.Font.Height*11+60)),MinimumSize=new Size(500,270),Font=WorkspaceAppearance.Font,AutoScaleMode=AutoScaleMode.None,
                 StartPosition=FormStartPosition.CenterParent,MinimizeBox=false,MaximizeBox=false,ShowInTaskbar=false})
             {
-                var mode=new ComboBox{Name="retargetGroundMode",AccessibleName="Ground contact mode",DropDownStyle=ComboBoxStyle.DropDownList,Bounds=new Rectangle(130,14,300,26)};
+                var mode=new ComboBox{Name="retargetGroundMode",AccessibleName="Ground contact mode",DropDownStyle=ComboBoxStyle.DropDownList,Dock=DockStyle.Fill};
                 mode.Items.AddRange(new object[]{"Auto — detect source contact evidence","Grounded — analyze floor contacts","Airborne — keep floor correction off","Source contacts — preserve small lifts"});
                 mode.SelectedIndex=(int)_fighterProject.GroundMode;
-                var apply=new Button{Text="Apply",DialogResult=DialogResult.OK,Bounds=new Rectangle(250,128,86,28)};
-                var cancel=new Button{Text="Cancel",DialogResult=DialogResult.Cancel,Bounds=new Rectangle(344,128,86,28)};
-                dialog.Controls.AddRange(new Control[]{new Label{Text="Ground contacts",Bounds=new Rectangle(14,18,116,22)},mode,
-                    new Label{Text="Retargeting bakes FK, proportions and limb IK into native keys.\r\nAuto detects support from source geometry and movement.\r\nPlayback reads the saved keys; no live contact solver runs.",Bounds=new Rectangle(14,54,420,64)},apply,cancel});
+                var keys=new ComboBox{Name="retargetKeyframeMode",AccessibleName="Retarget keyframes",DropDownStyle=ComboBoxStyle.DropDownList,Dock=DockStyle.Fill};
+                keys.Items.AddRange(new object[]{"Dense Next (default)","Source bone keys","Source channel keys"});keys.SelectedIndex=(int)_retargetKeyframeMode;
+                keys.AccessibleDescription="Dense keeps original Next. Source bone keys use each source bone's union of key times. Source channel keys also keep absent channels and individual counts. Sparse results require a measured comparison and review.";
+                var hint=new Label{Name="retargetKeyframeHint",AutoSize=true,Dock=DockStyle.Fill};
+                Action update=()=>hint.Text=keys.SelectedIndex==0?"Original Next: complete target-space motion, baked at every frame. Playback reads saved native keys; no solver runs.":
+                    keys.SelectedIndex==1?"Keep each mapped source bone's key times. Target axes can differ for its authentic bind. Review measured motion differences before adding the result.":
+                    "Keep each mapped source channel's key times and counts; absent channels stay absent. Unequal rigs can need extra axes, so motion can change substantially. Review the measured result.";
+                keys.SelectedIndexChanged+=(s,e)=>update();update();
+                var apply=new Button{Name="retargetOptionsApply",Text="Apply",DialogResult=DialogResult.OK,AutoSize=true};
+                var cancel=new Button{Text="Cancel",DialogResult=DialogResult.Cancel,AutoSize=true};
+                var actions=new FlowLayoutPanel{Dock=DockStyle.Fill,AutoSize=true,FlowDirection=FlowDirection.RightToLeft};actions.Controls.Add(cancel);actions.Controls.Add(apply);
+                var layout=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=2,RowCount=5,Padding=new Padding(10)};
+                layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
+                for(int row=0;row<5;row++)layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));layout.RowStyles[3]=new RowStyle(SizeType.Percent,100);
+                layout.Controls.Add(new Label{Text="Ground contacts",AutoSize=true,Padding=new Padding(0,6,6,0)},0,0);layout.Controls.Add(mode,1,0);
+                layout.Controls.Add(new Label{Text="Keyframes",AutoSize=true,Padding=new Padding(0,6,6,0)},0,1);layout.Controls.Add(keys,1,1);
+                layout.Controls.Add(hint,0,2);layout.SetColumnSpan(hint,2);
+                var protection=new Label{AutoSize=true,Dock=DockStyle.Fill,Text="Source-owned motion controls retain their existing exact local curves in every mode. Keyframe choice is session-only; the result keeps its chosen recipe."};layout.Controls.Add(protection,0,3);layout.SetColumnSpan(protection,2);
+                layout.Controls.Add(actions,0,4);layout.SetColumnSpan(actions,2);dialog.Controls.Add(layout);
+                dialog.Resize+=(s,e)=>hint.MaximumSize=protection.MaximumSize=new Size(Math.Max(200,dialog.ClientSize.Width-30),0);
                 dialog.AcceptButton=apply;dialog.CancelButton=cancel;
-                DarkTheme.Apply(dialog);
+                DarkTheme.Apply(dialog);WorkspaceAppearance.SizeDialog(dialog);
+                hint.MaximumSize=protection.MaximumSize=new Size(Math.Max(200,dialog.ClientSize.Width-30),0);
                 if(dialog.ShowDialog(this)==DialogResult.OK)
                 {
+                    bool groundChanged=_fighterProject.GroundMode!=(GroundContactMode)mode.SelectedIndex;
                     _fighterProject.GroundMode=(GroundContactMode)mode.SelectedIndex;
-                    MarkFighterChanged();UpdateFighterStatus();
+                    _retargetKeyframeMode=(RetargetKeyframeMode)keys.SelectedIndex;
+                    if(groundChanged)MarkFighterChanged();UpdateFighterStatus();
                 }
             }
         }
@@ -138,6 +158,7 @@ namespace BrawlCrate.UI
                         IgnoredSourceBones = result.IgnoredSourceBones,
                         Mapping = result.Plan.Mapping.Select(m => new RetargetBoneBinding {Role = m.Role, Source = m.Source, Target = m.Target}).ToList()
                     };
+                    generated.Retarget.RecordKeyframeEvidence(result);
                     ResourceNode root = FighterRoot(generated); // Prove native decoding before changing the visible project.
                     RememberFighterImport();
                     _fighterProject.Animations.Add(generated);
@@ -172,6 +193,12 @@ namespace BrawlCrate.UI
             var text = new StringBuilder();
             text.AppendLine(p.FromProfile + " → " + p.ToProfile + " · " + p.Mapping.Count + " mapped bones");
             text.AppendLine("Retargeter: "+p.Algorithm);
+            if(p.KeyframeMode!=RetargetKeyframeMode.Dense)
+            {
+                text.AppendLine("Historical prepared retargeting evidence — later native edits/optimization do not rewrite this receipt.");
+                text.AppendLine(p.ReadKeyframeReport().Describe());
+                text.AppendLine("The original dense Next solver statistics are retained separately as historical reference evidence.");
+            }
             if(p.ReviewDraft)text.AppendLine("REVIEW DRAFT — automatic contacts and motion/contact acceptance remain unresolved.");
             if(!string.IsNullOrEmpty(p.EngineReceipt))
             {
@@ -191,9 +218,13 @@ namespace BrawlCrate.UI
             text.AppendLine("Leg ratio: " + p.LegScale.ToString("0.000") + " · Arm ratio: " + p.ArmScale.ToString("0.000"));
             text.AppendLine("Source model: " + Path.GetFileName(p.SourceModelPath));
             text.AppendLine("Ground mode: "+p.GroundMode);
+            if(p.KeyframeMode==RetargetKeyframeMode.Dense)
+            {
             text.AppendLine("Reach clamps: " + p.ClampedLimbSamples + " sampled limbs · Largest residual: " + p.MaximumLimbResidual.ToString("0.000") + " units");
             text.AppendLine(p.FloorContactsEnabled ? "Ground contact samples: " + p.PlantedFootSamples + " feet · " + p.PlantedHandSamples + " hands · " + p.PlantedBodySamples + " body · " + p.LockedContactSamples + " stationary locks" : "Floor correction disabled for this motion.");
             text.AppendLine("Solver contact residual: " + p.MaximumContactResidual.ToString("0.000") + " · Pelvis adjustment: " + p.MaximumPelvisCorrection.ToString("0.000") + " units");
+            }
+            else text.AppendLine("Changed source-key curves have no qualified contact paths. Original dense reference contact residual: "+p.DenseReferenceStatistics.MaximumContactResidual.ToString("0.000")+" (historical only).");
             text.AppendLine("Target-only helpers keep their own bind transforms. Root motion is baked and follows in preview.");
             text.AppendLine("Body/skeletal channels only. Facial, material and visibility motions are not transferred.");
             text.AppendLine("Inspect the generated motion and contacts before use; native saving does not establish game or general motion-quality acceptance.");

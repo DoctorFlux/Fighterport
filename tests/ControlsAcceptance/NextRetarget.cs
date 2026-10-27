@@ -31,10 +31,10 @@ internal static partial class Program
         string targetHash=(string)Call(form,"NativeControlHash",target,".mdl0");
         using(var timer=Modal("Retarget Options",dialog=>
         {
-            var mode=dialog.Controls.OfType<ComboBox>().Single();
-            Check(mode.Enabled&&mode.Items.Count==4&&mode.Location==new Point(130,14)&&mode.Width==300,"Next's four ground-contact modes retain their original field offsets");
+            var mode=SimpleControl<ComboBox>(dialog,"retargetGroundMode");
+            Check(mode.Enabled&&mode.Items.Count==4&&mode.Visible&&mode.Width>200,"Next's four ground-contact modes remain usable beside the additive keyframe option");
             mode.SelectedIndex=(int)GroundContactMode.SourceContacts;CaptureDialog(dialog,output,"retarget-options.png");
-            dialog.Controls.OfType<Button>().Single(b=>b.Text=="Apply").PerformClick();
+            SimpleControl<Button>(dialog,"retargetOptionsApply").PerformClick();
         }))Call(form,"ShowFighterRetargetOptions");
         Check(project.GroundMode==GroundContactMode.SourceContacts,"Retarget Options applies the native project setting");project.GroundMode=GroundContactMode.Auto;
         using(var timer=Modal("Skeleton Mapping",dialog=>
@@ -71,14 +71,20 @@ internal static partial class Program
                 var save=dialog.Controls.OfType<Button>().Single(b=>b.Text=="Save Result As...");var text=dialog.Controls.OfType<TextBox>().Single();
                 Check(save.Visible&&dialog.ClientRectangle.Contains(save.Bounds)&&!save.Bounds.IntersectsWith(text.Bounds),"Retarget Details visibly exposes Save Result As below its report");CaptureDialog(dialog,output,"retarget-details.png");dialog.Close();
             }))Call(form,"ShowFighterRetargetDetails");
-            editor.SelectedBone=target._linker.BoneCache.First();await(Task)Call(form,"AttachControlPin",false);
+            // The source-owned ancestor controls deliberately reject posing.
+            // Exercise the editable reviewed body, independently of bone order.
+            var bodyRig=BrawlRetargeter.Capture(target);
+            editor.SelectedBone=bodyRig.Bones[bodyRig.Rig.Roles["pelvis"]];await(Task)Call(form,"AttachControlPin",false);
             var loaded=await Await<ControlReply>(Call(form,"LoadControls"));var pin=editor.AnimationPins.Single();
             var before=loaded.Pose[pin.Bone];float angle=(float)Math.PI/12;
+            var body=target._linker.BoneCache.Single(b=>b.Name==pin.BoneName);var beforeWorld=BrawlRetargeter.Vector(body._frameMatrix.GetPoint());
             Call(form,"BeginControlGesture",pin);await Wait(()=>Field(form,"_pinGesture")!=null&&(bool)Field(Field(form,"_pinGesture"),"Ready"));
             var q=new System.Numerics.Quaternion(pin.Rotation[0],pin.Rotation[1],pin.Rotation[2],pin.Rotation[3]);q=System.Numerics.Quaternion.Normalize(System.Numerics.Quaternion.CreateFromAxisAngle(System.Numerics.Vector3.UnitY,angle)*q);
             Call(form,"MoveControlGesture",new[]{pin.Position[0]+.5f,pin.Position[1],pin.Position[2],q.X,q.Y,q.Z,q.W,before[0],before[1],before[2]});Call(form,"EndControlGesture");await Wait(()=>Field(form,"_pinGesture")==null);
             var bone=target._linker.BoneCache.Single(b=>b.Name==pin.BoneName);var moved=bone.FrameState;
-            Check(Math.Abs(moved._translate._x-before[6]-.5f)<.0002f&&Math.Abs(moved._rotate._y-before[4]-15)<.002f,"Moving and rotating a pin on the native retarget result saves the expected animation channels");
+            double turned=RigMath.RotationError(BrawlRetargeter.Rotation(new Vector3(before[3],before[4],before[5])),BrawlRetargeter.Rotation(moved.Rotate))*180/Math.PI;
+            Check(System.Numerics.Vector3.Distance(BrawlRetargeter.Vector(body._frameMatrix.GetPoint()),beforeWorld+System.Numerics.Vector3.UnitX*.5f)<.0002f&&Math.Abs(turned-15)<.002f,
+                "Moving and rotating the reviewed body pin saves the expected native world displacement and local orientation change");
             editor.SetFrame(Math.Min(8,clip.FrameCount));editor.SetFrame(1);Check(Math.Abs(bone.FrameState._translate._x-moved._translate._x)<.0001f,"Retargeted pin pose survives timeline changes");
             editor.Undo();await Wait(()=>!(bool)Field(form,"_controlBusy"));Check(Math.Abs(bone.FrameState._translate._x-before[6])<.0002f,"Pin Undo restores the native retarget result");
             editor.Redo();await Wait(()=>!(bool)Field(form,"_controlBusy"));Check(Math.Abs(bone.FrameState._rotate._y-moved._rotate._y)<.0002f,"Pin Redo restores the authored rotation on the retarget result");
@@ -113,7 +119,7 @@ internal static partial class Program
                     Check(Call(form,"BakeWithProgress",source,target,probe)==null,"Cancelling Next's native progress window publishes no result");
                 bool stale=false;using(var ready=OnRetargetReady(form,dialog=>project.GroundMode=GroundContactMode.Airborne))
                 {
-                    try{using(var result=(RetargetResult)Call(form,"BakeWithProgress",source,target,probe)){} }catch(System.Reflection.TargetInvocationException e){stale=e.InnerException is InvalidOperationException&&e.InnerException.Message.Contains("inputs changed");}
+                    try{using(var result=(RetargetResult)Call(form,"BakeWithProgress",source,target,probe)){} }catch(System.Reflection.TargetInvocationException e){stale=e.InnerException is InvalidOperationException&&e.InnerException.Message.Contains("stale result");}
                 }
                 Check(stale,"Changed native retarget settings reject stale asynchronous publication");project.GroundMode=GroundContactMode.Auto;
             }
@@ -138,7 +144,26 @@ internal static partial class Program
         form.SaveFighterProject(Path.Combine(output,"library-retarget.fpstudio"));
         using(var reopened=FighterProject.Open(Path.Combine(output,"library-retarget.fpstudio")))Check(reopened.Animations.Last().Retarget.Library.ClipId==item.Clip.Id,"Source-bound native retarget result and provenance survive project save/reopen");
         bool transitionFinished=false;Exception transitionFailure=null;int beforeTransition=project.Animations.Count;
-        form.TransitionFitReady=async window=>{try{((CheckBox)window.Controls.Find("transition_binding",true).Single()).Checked=true;((Button)window.Controls.Find("prepareTransition",true).Single()).PerformClick();await Wait(()=>!window.Busy);var report=(TextBox)window.Controls.Find("transitionReport",true).Single();Check(window.Candidate==null&&report.Text.Contains("baked support contacts")&&project.Animations.Count==beforeTransition,"FK-only fitting blocks the actual Next result's baked support contacts instead of breaking them after IK");await CaptureWindow(window,Path.Combine(output,"transition-contact-conflict.png"));}catch(Exception error){transitionFailure=error;}finally{window.Close();transitionFinished=true;}};
+        form.TransitionFitReady=async window=>
+        {
+            try
+            {
+                // Current fitting starts with both boundaries off and safely
+                // enables contact preservation for a supported dense result.
+                // Explicitly request the conflicting legacy FK policy here.
+                var exit=SimpleControl<ComboBox>(window,"transition_exit");exit.SelectedIndex=1;
+                SimpleControl<CheckBox>(window,"transition_boundaryContactRecovery").Checked=false;
+                SimpleControl<CheckBox>(window,"transition_contacts").Checked=false;
+                SimpleControl<CheckBox>(window,"transition_binding").Checked=true;
+                SimpleControl<Button>(window,"prepareTransition").PerformClick();await Wait(()=>!window.Busy);
+                var report=SimpleControl<TextBox>(window,"transitionReport");
+                Check(window.Candidate==null&&report.Text.Contains("baked support contacts")&&project.Animations.Count==beforeTransition,
+                    "FK-only fitting blocks the actual Next result's baked support contacts instead of breaking them after IK");
+                await CaptureWindow(window,Path.Combine(output,"transition-contact-conflict.png"));
+            }
+            catch(Exception error){transitionFailure=error;}
+            finally{window.Close();transitionFinished=true;}
+        };
         Call(form,"ShowTransitionFit");await Wait(()=>transitionFinished);if(transitionFailure!=null)throw transitionFailure;
         string combinedOutput=null;if(args.Contains("--combined-stress")){combinedOutput=await ContactTransitions(form,project,output);await NativePaintLifetime(form,output);}
         Check(inputHashes.All(p=>FighterProject.HashFile(p.Key)==p.Value),"Every supplied source container remains byte-identical");

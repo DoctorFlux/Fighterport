@@ -32,13 +32,19 @@ internal static partial class Program
     static void ReviewRecipeProjectionCases(ModelForm form)
     {
         var probe=new FighterAsset{RigIdentity="Procedural exact rig",Retarget=new RetargetProvenance{
-            Timing=new NativeTimingFit{Start=1,End=8,Frames=9},Library=new LibraryClipReference(),
+            Timing=new NativeTimingFit{Start=1,End=8,Frames=9},Library=new LibraryClipReference(),DenseReferenceStatistics=new RetargetDenseReferenceStatistics(),
             IgnoredSourceBones=new[]{"first omitted","second omitted"},Mapping=new List<RetargetBoneBinding>{new RetargetBoneBinding{Role="first",Source="source a",Target="target a"},new RetargetBoneBinding{Role="second",Source="source b",Target="target b"}}},
             TransitionFit=new NativeTransitionFit{Inputs=new[]{new TransitionNativeInput{Role="source",Snapshot="AQID\r\n\"\\",Name="source",AssetId="asset a",Entry="entry a",Sha256="hash a",Samples=9},new TransitionNativeInput{Role="exit",Snapshot="BAUG",Name="exit",AssetId="asset b",Entry="entry b",Sha256="hash b",Samples=8}}}};
         foreach(var owner in new object[]{probe.Retarget,probe.Retarget.Library,probe.TransitionFit})
         foreach(var property in owner.GetType().GetProperties().Where(p=>p.PropertyType==typeof(string)))property.SetValue(owner,"Procedural "+property.Name+" \"\\\r\n");
-        string[] expectedRetarget="Timing ReviewDraft EngineReceipt Library Algorithm MotionControlPolicy SourceModelPath SourceModelSha256 SourceRig SourceAnimationId SourceClip FromProfile ToProfile LegScale ArmScale MaximumLimbResidual ClampedLimbSamples FloorContactsEnabled SuspendedSupportEnabled GroundMode PlantedFootSamples PlantedHandSamples PlantedBodySamples LockedContactSamples MaximumContactResidual MaximumPelvisCorrection IgnoredSourceBones Mapping".Split(' ');
+        string[] expectedRetarget="KeyframeMode KeyframeReceipt DenseReferenceStatistics Timing ReviewDraft EngineReceipt Library Algorithm MotionControlPolicy SourceModelPath SourceModelSha256 SourceRig SourceAnimationId SourceClip FromProfile ToProfile LegScale ArmScale MaximumLimbResidual ClampedLimbSamples FloorContactsEnabled SuspendedSupportEnabled GroundMode PlantedFootSamples PlantedHandSamples PlantedBodySamples LockedContactSamples MaximumContactResidual MaximumPelvisCorrection IgnoredSourceBones Mapping".Split(' ');
         Check(typeof(RetargetProvenance).GetProperties().Select(p=>p.Name).OrderBy(n=>n).SequenceEqual(expectedRetarget.OrderBy(n=>n)),"Compact review projection covers the complete current retarget metadata schema");
+        Check(typeof(RetargetDenseReferenceStatistics).GetProperties().Select(p=>p.Name).OrderBy(n=>n).SequenceEqual("FloorContactsEnabled SuspendedSupportEnabled PlantedFootSamples PlantedHandSamples PlantedBodySamples LockedContactSamples MaximumContactResidual MaximumPelvisCorrection MaximumLimbResidual ClampedLimbSamples".Split(' ').OrderBy(n=>n)),
+            "Review projection covers every historical dense reference statistic");
+        var keyframes=new RetargetKeyframeReport{Mode=RetargetKeyframeMode.SourceBoneTimes};
+        foreach(var property in keyframes.GetType().GetProperties().Where(p=>p.PropertyType==typeof(string[])))property.SetValue(keyframes,new[]{"first "+property.Name,"second "+property.Name});
+        var keyframeJson=new JavaScriptSerializer{MaxJsonLength=1024*1024};
+        Action refreshKeys=()=>probe.Retarget.KeyframeReceipt=keyframeJson.Serialize(keyframes);refreshKeys();
         Check(typeof(NativeTransitionFit).GetProperties().Select(p=>p.Name).OrderBy(n=>n).SequenceEqual(new[]{"Algorithm","ModelSha256","Options","Receipt","InitialResultSha256","Inputs"}.OrderBy(n=>n))&&typeof(TransitionNativeInput).GetProperties().Select(p=>p.Name).OrderBy(n=>n).SequenceEqual(new[]{"Role","AssetId","Entry","Sha256","Snapshot","Name","Samples"}.OrderBy(n=>n)),"Compact review projection covers every transition and frozen-input field");
         string original=LegacyReviewRecipe(probe);object snapshot=Call(form,"ReviewRecipe",probe);
         void Mutation(string name,Action change,Action restore,bool same=false)
@@ -46,7 +52,7 @@ internal static partial class Program
             try{change();Check((LegacyReviewRecipe(probe)==original)==same&&snapshot.Equals(Call(form,"ReviewRecipe",probe))==same,"Compact review equality matches the complete legacy recipe: "+name);}
             finally{restore();}
         }
-        void Scalars(object owner,string prefix)
+        void Scalars(object owner,string prefix,Action refresh=null)
         {
             foreach(var property in owner.GetType().GetProperties())
             {
@@ -55,17 +61,27 @@ internal static partial class Program
                 else if(type==typeof(bool))changed=!(bool)before;
                 else if(type==typeof(int))changed=(int)before+1;
                 else if(type==typeof(float))changed=(float)before+.25f;
+                else if(type==typeof(long))changed=(long)before+1;
+                else if(type==typeof(double))changed=(double)before+.25;
                 else if(type.IsEnum)changed=Enum.ToObject(type,Convert.ToInt32(before)+1);
                 else continue;
-                Mutation(prefix+property.Name,()=>property.SetValue(owner,changed),()=>property.SetValue(owner,before),prefix=="Library."&&(property.Name=="LastExportSha256"||property.Name=="LastExportFormat"));
+                Mutation(prefix+property.Name,()=>{property.SetValue(owner,changed);refresh?.Invoke();},()=>{property.SetValue(owner,before);refresh?.Invoke();},prefix=="Library."&&(property.Name=="LastExportSha256"||property.Name=="LastExportFormat"));
             }
         }
         Scalars(probe.Retarget,"Retarget.");Scalars(probe.Retarget.Timing,"Timing.");Scalars(probe.Retarget.Library,"Library.");Scalars(probe.TransitionFit,"Transition.");
+        Scalars(probe.Retarget.DenseReferenceStatistics,"Dense reference.");Scalars(keyframes,"Source-key report.",refreshKeys);
+        foreach(var property in keyframes.GetType().GetProperties().Where(p=>p.PropertyType==typeof(string[])))
+        {
+            var values=(string[])property.GetValue(keyframes);string firstValue=values[0];
+            Mutation("source-key "+property.Name+" content",()=>{values[0]+=" changed";refreshKeys();},()=>{values[0]=firstValue;refreshKeys();});
+            Mutation("source-key "+property.Name+" order",()=>{property.SetValue(keyframes,values.Reverse().ToArray());refreshKeys();},()=>{property.SetValue(keyframes,values);refreshKeys();});
+        }
         foreach(var input in probe.TransitionFit.Inputs)Scalars(input,"Input "+input.Role+".");
         foreach(var binding in probe.Retarget.Mapping)Scalars(binding,"Mapping "+binding.Role+".");
         string rig=probe.RigIdentity;Mutation("exact target rig",()=>probe.RigIdentity+=" changed",()=>probe.RigIdentity=rig);
         var recipe=probe.Retarget;Mutation("null retarget",()=>probe.Retarget=null,()=>probe.Retarget=recipe);
         var timing=recipe.Timing;Mutation("null timing",()=>recipe.Timing=null,()=>recipe.Timing=timing);
+        var denseReference=recipe.DenseReferenceStatistics;Mutation("null dense reference statistics",()=>recipe.DenseReferenceStatistics=null,()=>recipe.DenseReferenceStatistics=denseReference);
         var reference=recipe.Library;Mutation("null library",()=>recipe.Library=null,()=>recipe.Library=reference);
         var fit=probe.TransitionFit;Mutation("null transition",()=>probe.TransitionFit=null,()=>probe.TransitionFit=fit);
         var inputs=fit.Inputs;Mutation("null frozen inputs",()=>fit.Inputs=null,()=>fit.Inputs=inputs);

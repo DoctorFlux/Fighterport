@@ -73,6 +73,7 @@ namespace BrawlCrate.UI
                 var library=recipe.Library?.Copy();
                 if(library!=null)library.LastExportSha256=library.LastExportFormat=null;
                 return new { recipe.Timing,recipe.ReviewDraft,EngineReceipt=Text(recipe.EngineReceipt),Library=library,
+                    recipe.KeyframeMode,KeyframeReceipt=Text(recipe.KeyframeReceipt),recipe.DenseReferenceStatistics,
                     recipe.Algorithm,recipe.MotionControlPolicy,recipe.SourceModelPath,recipe.SourceModelSha256,recipe.SourceRig,recipe.SourceAnimationId,recipe.SourceClip,
                     recipe.FromProfile,recipe.ToProfile,recipe.LegScale,recipe.ArmScale,recipe.MaximumLimbResidual,recipe.ClampedLimbSamples,
                     recipe.FloorContactsEnabled,recipe.SuspendedSupportEnabled,recipe.GroundMode,recipe.PlantedFootSamples,recipe.PlantedHandSamples,recipe.PlantedBodySamples,
@@ -204,7 +205,9 @@ namespace BrawlCrate.UI
                 "Source: " + recipe.SourceClip + " · " + recipe.Library?.ClipId + Environment.NewLine +
                 (recipe.Timing == null ? "Original timing" : "Source trim " + (recipe.Timing.Start + 1) + "–" + (recipe.Timing.End + 1) + " → " + recipe.Timing.Frames + " frames; non-looping") + Environment.NewLine +
                 "Omitted tracks: " + (recipe.IgnoredSourceBones == null || recipe.IgnoredSourceBones.Length == 0 ? "none" : string.Join(", ", recipe.IgnoredSourceBones)) + Environment.NewLine +
-                "Contact residual: " + recipe.MaximumContactResidual.ToString("G4") + "; visual review does not establish game/contact acceptance.";
+                (recipe.KeyframeMode==BrawlCrate.Studio.Retargeting.RetargetKeyframeMode.Dense?
+                    "Contact residual: " + recipe.MaximumContactResidual.ToString("G4") + "; visual review does not establish game/contact acceptance.":
+                    recipe.ReadKeyframeReport().Describe());
         }
         private void MarkBatchReview()
         {

@@ -14,16 +14,20 @@ namespace BrawlCrate.UI
     internal partial class ModelForm
     {
         private bool _retargetBusy;
+        private RetargetKeyframeMode _retargetKeyframeMode;
         internal event Action<Form> RetargetDialogReady;
-        private RetargetResult BakeWithProgress(MDL0Node source,MDL0Node target,CHR0Node clip)
+        internal Action<Form> RetargetKeyframeReviewReady;
+        private RetargetResult BakeWithProgress(MDL0Node source,MDL0Node target,CHR0Node clip)=>BakeWithProgressMode(source,target,clip,null);
+        private RetargetResult BakeWithProgressMode(MDL0Node source,MDL0Node target,CHR0Node clip,RetargetKeyframeMode? forcedMode)
         {
             if(_controlBusy||_retargetBusy||_workspaceBusy||_pinGesture!=null)throw new InvalidOperationException("Finish the current animation-control or workspace edit before retargeting.");
             _retargetBusy=true;
             UpdateSimpleWorkspace();
-            try{return BakeNextSnapshots(source,target,clip);}
-            finally{_retargetBusy=false;UpdateSimpleWorkspace();if(_controlReloadRequested)QueueControlSetup();}
+            var restore=CaptureWorkspaceFocus();
+            try{return BakeNextSnapshots(source,target,clip,forcedMode);}
+            finally{_retargetBusy=false;UpdateSimpleWorkspace();if(_controlReloadRequested)QueueControlSetup();if((forcedMode??_retargetKeyframeMode)!=RetargetKeyframeMode.Dense)restore();}
         }
-        private RetargetResult BakeNextSnapshots(MDL0Node source,MDL0Node target,CHR0Node clip)
+        private RetargetResult BakeNextSnapshots(MDL0Node source,MDL0Node target,CHR0Node clip,RetargetKeyframeMode? forcedMode)
         {
             modelEditControl1.StopAnim();
             // Keep Next's solver unchanged. The worker reads owned immutable
@@ -31,11 +35,29 @@ namespace BrawlCrate.UI
             var sourceReview=CaptureFighterRig(source);var targetReview=CaptureFighterRig(target);
             Directory.CreateDirectory(_controlStage);
             string sourcePath=Path.Combine(_controlStage,Guid.NewGuid().ToString("N")+".mdl0"),targetPath=Path.Combine(_controlStage,Guid.NewGuid().ToString("N")+".mdl0"),clipPath=Path.Combine(_controlStage,Guid.NewGuid().ToString("N")+".chr0");
+            string previewPath=null;var keyMode=forcedMode??_retargetKeyframeMode;
             try
             {
-            source.Export(sourcePath);target.Export(targetPath);clip.Export(clipPath);
+            string sourceClipContent=keyMode==RetargetKeyframeMode.Dense?null:NativeAnimationOptimization.ContentKey(clip);
+            source.Export(sourcePath);target.Export(targetPath);
+            if(keyMode==RetargetKeyframeMode.Dense)clip.Export(clipPath);
+            else
+            {
+                // Preserve the live authored knots before the legacy native
+                // writer can choose a quantized or per-frame codec. Only the
+                // independently owned precise copy is rebuilt for this mode.
+                using(var frozen=NativeAnimationOptimization.Copy(clip))frozen.ExportChecked(clipPath);
+                using(var decoded=NodeFactory.FromFile(null,clipPath) as CHR0Node)
+                    if(decoded==null||NativeAnimationOptimization.ContentKey(decoded)!=sourceClipContent)
+                        throw new InvalidDataException("The independent source-key snapshot did not preserve the live authored channels exactly.");
+            }
             string sourceHash=FighterProject.HashFile(sourcePath),targetHash=FighterProject.HashFile(targetPath),clipHash=FighterProject.HashFile(clipPath);
             var project=_fighterProject;var selected=modelEditControl1.TargetAnimation;var groundMode=project.GroundMode;
+            if(keyMode!=RetargetKeyframeMode.Dense)
+            {
+                string extension=Path.GetExtension(target.RootNode.FilePath);if(string.IsNullOrEmpty(extension))extension=".brres";
+                previewPath=Path.Combine(_controlStage,Guid.NewGuid().ToString("N")+extension);target.RootNode.Export(previewPath);
+            }
             using(var sourceCopy=NodeFactory.FromFile(null,sourcePath) as MDL0Node)
             using(var targetCopy=NodeFactory.FromFile(null,targetPath) as MDL0Node)
             using(var clipCopy=NodeFactory.FromFile(null,clipPath) as CHR0Node)
@@ -71,7 +93,7 @@ namespace BrawlCrate.UI
                     elapsedTimer.Start();
                     var scheduler=TaskScheduler.FromCurrentSynchronizationContext();
                     Task.Run(()=>BrawlRetargeter.Bake(sourceRig,targetRig,clipCopy,true,cancellation.Token,
-                        (percent,message)=>((IProgress<Tuple<int,string>>)progress).Report(Tuple.Create(percent,message)),groundMode),cancellation.Token)
+                        (percent,message)=>((IProgress<Tuple<int,string>>)progress).Report(Tuple.Create(percent,message)),groundMode,keyMode),cancellation.Token)
                     .ContinueWith(task=>
                     {
                         completed=true;
@@ -87,14 +109,37 @@ namespace BrawlCrate.UI
             if(result==null)return null;
             try
             {
-                if(IsDisposed||_fighterProject!=project||modelEditControl1.TargetModel!=target||modelEditControl1.TargetAnimation!=selected||project.GroundMode!=groundMode||NativeControlHash(source,".mdl0")!=sourceHash||NativeControlHash(target,".mdl0")!=targetHash||NativeControlHash(clip,".chr0")!=clipHash)
-                    throw new InvalidOperationException("Retarget inputs changed. The stale result was discarded; retarget the current source and target again.");
+                void Current()
+                {
+                    if(IsDisposed||_fighterProject!=project||modelEditControl1.TargetModel!=target||modelEditControl1.TargetAnimation!=selected||project.GroundMode!=groundMode||
+                        !forcedMode.HasValue&&_retargetKeyframeMode!=keyMode||NativeControlHash(source,".mdl0")!=sourceHash||NativeControlHash(target,".mdl0")!=targetHash||
+                        (keyMode==RetargetKeyframeMode.Dense?NativeControlHash(clip,".chr0")!=clipHash:NativeAnimationOptimization.ContentKey(clip)!=sourceClipContent))
+                        throw new InvalidOperationException("Retarget inputs or key options changed. The stale result was discarded; retarget the current source and target again.");
+                }
+                Current();
+                if(keyMode!=RetargetKeyframeMode.Dense)
+                {
+                    using(var beforeRoot=NodeFactory.FromFile(null,previewPath))
+                    using(var afterRoot=NodeFactory.FromFile(null,previewPath))
+                    using(var review=new RetargetKeyframeReviewDialog(beforeRoot,RetargetPreviewModel(beforeRoot,targetHash),afterRoot,RetargetPreviewModel(afterRoot,targetHash),
+                        result,modelEditControl1.ModelPanel.CurrentViewport,modelEditControl1.CurrentFrame,project.Name))
+                    {
+                        review.Shown+=(s,e)=>RetargetKeyframeReviewReady?.Invoke(review);
+                        if(review.ShowDialog(this)!=DialogResult.OK){result.Dispose();return null;}
+                    }
+                    Current();
+                }
                 return result;
             }
             catch{result.Dispose();throw;}
             }
             }
-            finally{foreach(string path in new[]{sourcePath,targetPath,clipPath})if(File.Exists(path))File.Delete(path);}
+            finally{foreach(string path in new[]{sourcePath,targetPath,clipPath,previewPath})if(path!=null&&File.Exists(path))File.Delete(path);}
+        }
+        private MDL0Node RetargetPreviewModel(ResourceNode root,string content)
+        {
+            if(root==null)throw new InvalidDataException("The independent retarget review snapshot could not be opened.");
+            return BrawlLib.Internal.Windows.Controls.Model_Panel.ModelPanel.CollectModels(root).OfType<MDL0Node>().Single(m=>NativeControlHash(m,".mdl0")==content);
         }
     }
 }

@@ -34,7 +34,12 @@ namespace BrawlCrate.Studio.Retargeting
         public ContactMotion Contacts { get; internal set; }
         public float MaximumContactResidual { get; internal set; }
         public float MaximumPelvisCorrection { get; internal set; }
-        public void Dispose() => Animation?.Dispose();
+        public RetargetKeyframeMode KeyframeMode { get; internal set; }
+        public RetargetKeyframeReport KeyframeReport { get; internal set; }
+        // Kept only for the explicit, read-only sparse-result review. The live
+        // target is never selected or replaced while this comparison is open.
+        internal CHR0Node DenseAnimation { get; set; }
+        public void Dispose() { Animation?.Dispose(); DenseAnimation?.Dispose(); }
     }
 
     // Native CHR0 is an adapter, never the solver's intermediate representation.
@@ -235,18 +240,21 @@ namespace BrawlCrate.Studio.Retargeting
             return new RigPose(source.Rig, locals);
         }
 
-        public static RetargetResult Bake(MDL0Node sourceModel, MDL0Node targetModel, CHR0Node clip, bool correction = true,GroundContactMode groundMode=GroundContactMode.Auto)
+        public static RetargetResult Bake(MDL0Node sourceModel, MDL0Node targetModel, CHR0Node clip, bool correction = true,GroundContactMode groundMode=GroundContactMode.Auto,
+            RetargetKeyframeMode keyframeMode=RetargetKeyframeMode.Dense)
         {
             BrawlRig source = Capture(sourceModel), target = Capture(targetModel);
-            return Bake(source, target, clip, correction,default,null,groundMode);
+            return Bake(source, target, clip, correction,default,null,groundMode,keyframeMode);
         }
 
         public static RetargetResult Bake(BrawlRig source, BrawlRig target, CHR0Node clip, bool correction = true,
-            CancellationToken cancellation=default,Action<int,string> progress=null,GroundContactMode groundMode=GroundContactMode.Auto)
+            CancellationToken cancellation=default,Action<int,string> progress=null,GroundContactMode groundMode=GroundContactMode.Auto,
+            RetargetKeyframeMode keyframeMode=RetargetKeyframeMode.Dense)
         {
             Interlocked.Increment(ref _diagnosticBakes);
             cancellation.ThrowIfCancellationRequested();
             if(!Enum.IsDefined(typeof(GroundContactMode),groundMode))throw new ArgumentOutOfRangeException(nameof(groundMode));
+            if(!Enum.IsDefined(typeof(RetargetKeyframeMode),keyframeMode))throw new ArgumentOutOfRangeException(nameof(keyframeMode));
             if (clip == null || clip.FrameCount < 1 || clip.FrameCount > 4096) throw new NotSupportedException("Select a CHR0 body animation with 1–4096 frames.");
             var plan = new HumanoidRetargeter(source.Rig, target.Rig);
             ValidateSource(source, clip);
@@ -308,6 +316,11 @@ namespace BrawlCrate.Studio.Retargeting
                 }
                 FitContactCurves(target,output,result.Contacts,last,cancellation,progress);
                 PreserveMotionControls(plan,clip,output,source,target,last);
+                // The original dense solver, contact fit and source-owned
+                // controls above remain the reference. Sparse storage is an
+                // explicit, separately measured representation of that result.
+                if(keyframeMode!=RetargetKeyframeMode.Dense)
+                    RetargetKeyframes.Prepare(result,source,target,clip,keyframeMode,cancellation,progress);
                 progress?.Invoke(100,"Animation ready");
                 return result;
             }

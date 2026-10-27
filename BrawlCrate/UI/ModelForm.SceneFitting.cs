@@ -76,7 +76,7 @@ namespace BrawlCrate.UI
                         {
                             var model=isSource?source.Model:target;var rig=CaptureFighterRig(model);ReviewEngineCoordinates(model,rig.Rig.Roles.ToDictionary(p=>p.Key,p=>rig.Bones[p.Value].Name));loadedKey=null;
                         };
-                        window.OriginalNext=()=>{current();return BakeWithProgress(source.Model,target,source.Animation);};
+                        window.OriginalNext=()=>{current();return BakeWithProgressMode(source.Model,target,source.Animation,BrawlCrate.Studio.Retargeting.RetargetKeyframeMode.Dense);};
                         window.SaveReview=async(value,reply,path,contextClip)=>
                         {
                             current();string hash=string.IsNullOrEmpty(path)?null:FighterProject.HashFile(path);

@@ -24,7 +24,7 @@ namespace BrawlCrate.UI
             modelEditControl1.StopAnim();_libraryTimer.Stop();_libraryPlay.Text="Play";
             var query=CurrentLibraryQuery();int matches=0;var items=LibraryWork.Run(this,"Loading Batch Catalogue",(cancel,progress)=>{cancel.ThrowIfCancellationRequested();return _library.Search(query,0,out matches,200);});
             if(items==null)return;
-            var project=_fighterProject;string targetHash=NativeControlHash(target,".mdl0");var mode=project.GroundMode;
+            var project=_fighterProject;string targetHash=NativeControlHash(target,".mdl0");var mode=project.GroundMode;var keyMode=_retargetKeyframeMode;
             var drafts=new List<LibraryBatchDraft>();bool working=false;
             using(var window=new Form{Text="Batch Retarget and Timing Fit",ClientSize=new Size(1040,590),MinimumSize=new Size(820,420),ShowInTaskbar=false,StartPosition=FormStartPosition.CenterParent})
             {
@@ -49,7 +49,7 @@ namespace BrawlCrate.UI
                 grid.CurrentCellDirtyStateChanged+=(s,e)=>{if(grid.IsCurrentCellDirty)grid.CommitEdit(DataGridViewDataErrorContexts.Commit);};
                 grid.DataError+=(s,e)=>{e.ThrowException=false;};shared.ValueChanged+=(s,e)=>clear();
                 review.CheckedChanged+=(s,e)=>apply.Enabled=review.Checked&&drafts.Count>0&&!working;
-                Action current=()=>{if(IsDisposed||_fighterProject!=project||modelEditControl1.TargetModel!=target||project.GroundMode!=mode||NativeControlHash(target,".mdl0")!=targetHash)throw new InvalidOperationException("The target or contact options changed. Retarget the batch again.");};
+                Action current=()=>{if(IsDisposed||_fighterProject!=project||modelEditControl1.TargetModel!=target||project.GroundMode!=mode||_retargetKeyframeMode!=keyMode||NativeControlHash(target,".mdl0")!=targetHash)throw new InvalidOperationException("The target, contact or key options changed. Retarget the batch again.");};
                 prepare.Click+=(s,e)=>
                 {
                     grid.EndEdit();clear();working=true;grid.Enabled=false;shared.Enabled=false;prepare.Enabled=false;
@@ -72,7 +72,7 @@ namespace BrawlCrate.UI
                                 if(result==null){row.Cells["Result"].Value="Cancelled; no result added";break;}
                                 long keys=result.Animation.Children.OfType<CHR0EntryNode>().Sum(entry=>entry.KeyArrays.Sum(channel=>(long)channel.KeyCount));
                                 if(preparedKeys+keys>2000000)throw new InvalidOperationException("This review exceeds two million native keys. Use a smaller batch.");preparedKeys+=keys;
-                                current();row.Cells["Result"].Value="Review: limb "+result.MaximumLimbResidual.ToString("G4")+", contact "+result.MaximumContactResidual.ToString("G4")+"; omitted: "+(result.IgnoredSourceBones.Length==0?"none":string.Join(", ",result.IgnoredSourceBones));
+                                current();row.Cells["Result"].Value=result.KeyframeReport?.Describe()??("Review: limb "+result.MaximumLimbResidual.ToString("G4")+", contact "+result.MaximumContactResidual.ToString("G4")+"; omitted: "+(result.IgnoredSourceBones.Length==0?"none":string.Join(", ",result.IgnoredSourceBones)));
                                 row.Cells["Result"].ToolTipText=Convert.ToString(row.Cells["Result"].Value);
                                 drafts.Add(new LibraryBatchDraft{Source=source.Reference.Copy(),SourceName=source.Animation.Name,SourceModelPath=source.ProvenanceModelPath??source.ModelPath,Result=result,Timing=timing});result=null;
                             }

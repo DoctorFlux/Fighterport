@@ -285,6 +285,7 @@ namespace BrawlCrate.Studio
                 PlantedFootSamples=result.Contacts.PlantedFootSamples,PlantedHandSamples=result.Contacts.PlantedHandSamples,PlantedBodySamples=result.Contacts.PlantedBodySamples,
                 LockedContactSamples=result.Contacts.LockedSamples,MaximumContactResidual=result.MaximumContactResidual,MaximumPelvisCorrection=result.MaximumPelvisCorrection,
                 IgnoredSourceBones=result.IgnoredSourceBones,Mapping=map,Library=reference};
+            generated.Retarget.RecordKeyframeEvidence(result);
             return generated;
         }
 
@@ -317,6 +318,7 @@ namespace BrawlCrate.Studio
             }
             if(Animations.SelectMany(a=>a.TransitionRecipes()).Sum(f=>(long)(f.Inputs?.Sum(i=>i?.Snapshot?.Length??0)??0))>32L*1024*1024)throw new InvalidDataException("Frozen transition inputs exceed the project review budget.");
             if(Animations.Sum(a=>(long)(a.ContactBake?.BaseSnapshot?.Length??0))>32L*1024*1024)throw new InvalidDataException("Frozen contact originals exceed the project review budget.");
+            if(Animations.Sum(a=>(long)(a.Retarget?.KeyframeReceipt?.Length??0))>32L*1024*1024)throw new InvalidDataException("Source-key comparison receipts exceed the project review budget.");
             foreach (FighterAsset asset in RegisteredAssets())
             {
                 if (asset == null || !Guid.TryParseExact(asset.Id, "N", out _) || !ids.Add(asset.Id))
@@ -338,6 +340,7 @@ namespace BrawlCrate.Studio
                 if (asset.Retarget != null)
                 {
                     RetargetProvenance p = asset.Retarget;
+                    p.ValidateKeyframeEvidence();
                     if(p.Timing!=null){if(p.Library==null)throw new InvalidDataException("A timing fit requires its authentic library source.");p.Timing.Validate(p.Library.FrameCount);}
                     bool engine=p.Algorithm=="native-body-surface-96.2";
                     if(p.MotionControlPolicy!=null && p.MotionControlPolicy!=Retargeting.HumanoidRetargeter.MotionControlPolicy)throw new InvalidDataException("Unknown saved motion-control policy.");
@@ -565,6 +568,9 @@ namespace BrawlCrate.Studio
 
     public sealed class RetargetProvenance
     {
+        public Retargeting.RetargetKeyframeMode KeyframeMode {get;set;}
+        public string KeyframeReceipt {get;set;}
+        public RetargetDenseReferenceStatistics DenseReferenceStatistics {get;set;}
         public NativeTimingFit Timing {get;set;}
         public bool ReviewDraft {get;set;}
         public string EngineReceipt {get;set;}
@@ -593,6 +599,65 @@ namespace BrawlCrate.Studio
         public float MaximumPelvisCorrection { get; set; }
         [XmlArrayItem("Bone")] public string[] IgnoredSourceBones { get; set; } = new string[0];
         [XmlArrayItem("Bone")] public List<RetargetBoneBinding> Mapping { get; set; } = new List<RetargetBoneBinding>();
+
+        internal void RecordKeyframeEvidence(Retargeting.RetargetResult result)
+        {
+            KeyframeMode=result.KeyframeMode;
+            if(KeyframeMode==Retargeting.RetargetKeyframeMode.Dense)return;
+            if(result.KeyframeReport==null)throw new InvalidDataException("A source-key target revision requires its independent native comparison.");
+            result.KeyframeReport.Validate();
+            KeyframeReceipt=new System.Web.Script.Serialization.JavaScriptSerializer{MaxJsonLength=1024*1024,RecursionLimit=40}.Serialize(result.KeyframeReport);
+            DenseReferenceStatistics=new RetargetDenseReferenceStatistics {FloorContactsEnabled=FloorContactsEnabled,SuspendedSupportEnabled=SuspendedSupportEnabled,
+                PlantedFootSamples=PlantedFootSamples,PlantedHandSamples=PlantedHandSamples,PlantedBodySamples=PlantedBodySamples,LockedContactSamples=LockedContactSamples,
+                MaximumContactResidual=MaximumContactResidual,MaximumPelvisCorrection=MaximumPelvisCorrection,MaximumLimbResidual=MaximumLimbResidual,ClampedLimbSamples=ClampedLimbSamples};
+            // These statistics belong to the dense reference. Sparse curves must
+            // not enter contact recovery as though those paths were validated.
+            FloorContactsEnabled=SuspendedSupportEnabled=false;
+            PlantedFootSamples=PlantedHandSamples=PlantedBodySamples=LockedContactSamples=ClampedLimbSamples=0;
+            MaximumContactResidual=MaximumPelvisCorrection=MaximumLimbResidual=0;
+            ValidateKeyframeEvidence();
+        }
+        public Retargeting.RetargetKeyframeReport ReadKeyframeReport()
+        {
+            if(string.IsNullOrEmpty(KeyframeReceipt)||KeyframeReceipt.Length>1024*1024)throw new InvalidDataException("Missing or excessive source-key comparison receipt.");
+            var report=new System.Web.Script.Serialization.JavaScriptSerializer{MaxJsonLength=1024*1024,RecursionLimit=40}.Deserialize<Retargeting.RetargetKeyframeReport>(KeyframeReceipt);
+            if(report==null||report.Mode!=KeyframeMode)throw new InvalidDataException("The source-key recipe and comparison receipt disagree.");
+            report.Validate();return report;
+        }
+        internal void ValidateKeyframeEvidence()
+        {
+            if(!Enum.IsDefined(typeof(Retargeting.RetargetKeyframeMode),KeyframeMode))throw new InvalidDataException("Unknown retarget keyframe representation.");
+            if(KeyframeMode==Retargeting.RetargetKeyframeMode.Dense)
+            {
+                if(KeyframeReceipt!=null||DenseReferenceStatistics!=null)throw new InvalidDataException("A dense retarget cannot claim a source-key comparison.");
+                return;
+            }
+            ReadKeyframeReport();
+            if(DenseReferenceStatistics==null||FloorContactsEnabled||SuspendedSupportEnabled||PlantedFootSamples!=0||PlantedHandSamples!=0||
+                PlantedBodySamples!=0||LockedContactSamples!=0||MaximumContactResidual!=0||MaximumPelvisCorrection!=0||MaximumLimbResidual!=0||ClampedLimbSamples!=0)
+                throw new InvalidDataException("Sparse motion requires separately labelled historical dense statistics; dense contacts cannot qualify changed curves.");
+            DenseReferenceStatistics.Validate();
+        }
+    }
+    public sealed class RetargetDenseReferenceStatistics
+    {
+        public bool FloorContactsEnabled {get;set;}
+        public bool SuspendedSupportEnabled {get;set;}
+        public int PlantedFootSamples {get;set;}
+        public int PlantedHandSamples {get;set;}
+        public int PlantedBodySamples {get;set;}
+        public int LockedContactSamples {get;set;}
+        public float MaximumContactResidual {get;set;}
+        public float MaximumPelvisCorrection {get;set;}
+        public float MaximumLimbResidual {get;set;}
+        public int ClampedLimbSamples {get;set;}
+        internal void Validate()
+        {
+            if(new[]{MaximumContactResidual,MaximumPelvisCorrection,MaximumLimbResidual}.Any(v=>!Retargeting.RigMath.Finite(v)||v<0)||
+                PlantedFootSamples<0||PlantedFootSamples>131080||PlantedHandSamples<0||PlantedHandSamples>131080||PlantedBodySamples<0||PlantedBodySamples>524320||
+                LockedContactSamples<0||LockedContactSamples>786480||ClampedLimbSamples<0||ClampedLimbSamples>10000000)
+                throw new InvalidDataException("Invalid historical dense retarget statistics.");
+        }
     }
     public sealed class RetargetBoneBinding
     {

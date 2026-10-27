@@ -352,7 +352,7 @@ internal static partial class Program
                         }))
                         {
                             try { using (var result = (RetargetResult)Call(form, "BakeWithProgress", source.Model, target, probe)) { } }
-                            catch (TargetInvocationException error) { rejected = error.InnerException is InvalidOperationException && error.InnerException.Message.Contains("inputs changed"); }
+                            catch (TargetInvocationException error) { rejected = error.InnerException is InvalidOperationException && error.InnerException.Message.Contains("stale result"); }
                         }
                     }
                     finally
