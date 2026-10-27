@@ -1,5 +1,7 @@
 # Fighterport
 
+27 October 2026 preview.44-rotation-paths is accepted: **3,222 checks / 14 admitted runs / 68 inspected native PNGs**. Shared native XYZ FK fitting compares actual orientation travel across equivalent endpoint families and a bounded integral midpoint, without character/bone exceptions. The sealed Sonic AttackAirLw to Mario Fall recovery reduces HipN exit travel 124.7654 to 102.5254 degrees with no peak-speed increase; all 63 bones retain or reduce measured travel/speed. Original joins, middle, TransN, full previewer, Next and native Undo/Save/export remain exact under the existing policies. Versioned additive receipts retain legacy reads and schema 1. See [acceptance](docs/ROTATION_PATH_ACCEPTANCE_2026-10-27.md). ONE G1/M2 stays incomplete; physical input/DPI, human usability, universal contacts and games remain unverified.
+
 27 October 2026 preview.43-apply-current-fit is accepted: **1,271 checks /
 9 admitted background runs / 65 inspected native PNGs**. Fitting is Preview fit
 then Apply fitting to the exact current native clip, including motion PAC members.

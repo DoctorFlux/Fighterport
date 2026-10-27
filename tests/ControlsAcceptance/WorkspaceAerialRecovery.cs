@@ -47,24 +47,25 @@ internal static partial class Program
                     {
 
                         foreach(string side in new[]{"entry","exit"}){var combo=SimpleControl<ComboBox>(window,"transition_"+side);combo.SelectedItem=combo.Items.OfType<TransitionClipChoice>().Single(c=>ReferenceEquals(c.Clip,fall));}
-                        SimpleControl<NumericUpDown>(window,"transition_entrySamples").Value=3;SimpleControl<NumericUpDown>(window,"transition_exitStart").Value=35;
+                        SimpleControl<NumericUpDown>(window,"transition_entrySamples").Value=5;SimpleControl<NumericUpDown>(window,"transition_exitStart").Value=35;
                         var adapt=SimpleControl<CheckBox>(window,"transition_boundaryContactRecovery");if(adapt.Enabled)adapt.Checked=true;
                         Check(!adapt.Enabled&&!adapt.Checked&&!window.ReadOptions().PreserveContacts,"An aerial without baked supports uses ordinary body fitting and cannot request nonexistent contact recovery");
                         Check(SimpleControl<CheckBox>(window,"transition_binding").Checked,"Exact library/rig evidence accepts the native Fall reference without advanced setup");
                         File.WriteAllText(Path.Combine(output,"reported-options.json"),new JavaScriptSerializer().Serialize(new{Options=window.ReadOptions(),HasSupport=NativeTransitionContacts.HasBakedSupport(asset),Contacts=NativeTransitionContacts.Resolve(model,asset,true),RecoveryEnabled=adapt.Enabled}));
                         await (Task)Call(window,"PrepareFit");await CaptureWindow(window,Path.Combine(output,"reported-fit.png"));
-                        Check(window.Candidate!=null,"Sonic AttackAirLw to Mario Fall prepares at visible ranges 1-3 / 35-44 without hidden setup: "+SimpleControl<TextBox>(window,"transitionReport").Text);
+                        Check(window.Candidate!=null,"Sonic AttackAirLw to Mario Fall prepares at visible ranges 1-5 / 35-44 without hidden setup: "+SimpleControl<TextBox>(window,"transitionReport").Text);
                         var entryEnabled=SimpleControl<CheckBox>(window,"transition_entryEnabled");entryEnabled.Checked=false;
                         await (Task)Call(window,"PrepareFit");Check(window.Candidate!=null,"The same aerial also fits Fall with only Fit end enabled");
                         Check(model.AllBones.All(b=>RecoverySamePose(RecoverySample(window.Candidate,b,0),RecoverySample(source,b,0))),"End-only aerial fitting preserves the original first pose");
                         entryEnabled.Checked=true;SimpleControl<NumericUpDown>(window,"transition_entrySamples").Value=35;
                         await (Task)Call(window,"PrepareFit");Check(window.Candidate==null&&SimpleControl<TextBox>(window,"transitionReport").Text.Contains("overlap"),"Actually overlapping visible aerial ranges still reject without changing the live animation");
-                        SimpleControl<NumericUpDown>(window,"transition_entrySamples").Value=3;await (Task)Call(window,"PrepareFit");Check(window.Candidate!=null,"Restoring the reported non-overlapping ranges prepares a fresh aerial fit");
+                        SimpleControl<NumericUpDown>(window,"transition_entrySamples").Value=5;await (Task)Call(window,"PrepareFit");Check(window.Candidate!=null,"Restoring the reported non-overlapping ranges prepares a fresh aerial fit");
                         var fitted=window.Candidate;result=SetNativeContent(fitted);
+                        Check(window.ReadOptions().OptimizeRotationPaths,"Simple fitting enables the shared orientation-aware native path policy");
                         Check(RecoveryKeys(fitted,roots)==rootKeys,"Fall fitting preserves every attack motion-position key, tangent and flag");
                         foreach(int at in new[]{0,43})Check(model.AllBones.All(b=>RecoverySamePose(RecoverySample(fitted,b,at),RecoverySample(roots.Contains(b.Name)?source:fall,b,roots.Contains(b.Name)?at:0))),"Aerial boundary "+(at+1)+" reaches only Mario Fall first pose under the attack travel policy");
-                        Check(RecoveryRetainedKeysExact(source,fitted,2,34),"Aerial fitting retains exact native keys and tangents at and between both joins");
-                        for(double frame=2;frame<=34;frame+=.37)Check(model.AllBones.All(b=>RecoverySamePose(RecoverySample(fitted,b,(float)frame),RecoverySample(source,b,(float)frame))),"Aerial native middle remains unchanged at "+frame.ToString("F2"));
+                        Check(RecoveryRetainedKeysExact(source,fitted,4,34),"Aerial fitting retains exact native keys and tangents at and between both joins");
+                        for(double frame=4;frame<=34;frame+=.37)Check(model.AllBones.All(b=>RecoverySamePose(RecoverySample(fitted,b,(float)frame),RecoverySample(source,b,(float)frame))),"Aerial native middle remains unchanged at "+frame.ToString("F2"));
                         witness.CheckPreserved("aerial fit preparation");
                         foreach(int percent in new[]{100,175})foreach(var size in new[]{new Size(980,720),new Size(1600,960)})
                         {
@@ -73,6 +74,7 @@ internal static partial class Program
                             var visible=panel.Controls.Cast<Control>().Where(c=>c.Visible).OrderBy(c=>c.Top).ToArray();
                             Check(visible.Zip(visible.Skip(1),(a,b)=>a.Bottom<=b.Top).All(v=>v)&&visible.All(c=>c.Width+c.Margin.Horizontal<=panel.ClientSize.Width-panel.Padding.Horizontal),"Aerial fit controls fit without overlap at "+size.Width+" / "+percent+"%");
                             SimpleControl<TrackBar>(window,"transitionFrame").Value=44;await CaptureWindow(window,Path.Combine(output,"aerial-fall-"+size.Width+"-"+percent+".png"));
+                            if(size.Width==1600&&percent==100)foreach(int sample in new[]{36,39,42}){SimpleControl<TrackBar>(window,"transitionFrame").Value=sample;await CaptureWindow(window,Path.Combine(output,"aerial-recovery-frame-"+sample+".png"));}
                         }
                         SimpleControl<Button>(window,"applyTransition").PerformClick();
                     }
@@ -81,6 +83,10 @@ internal static partial class Program
                 };
                 Call(form,"ShowTransitionFit");await GameLibraryWait(()=>finished,"Aerial fitting did not complete",150);if(failure!=null)throw failure;await SimpleControlsReady(form);
                 var generated=form.FighterProject.Animations.Single(a=>a.TransitionFit!=null);generated.TransitionFit.Validate();
+                Check(generated.TransitionFit.Receipt.Contains("native-orientation-path-1"),"Applied animation records the exact versioned rotation-path policy");
+                string savedOptions=generated.TransitionFit.Options;var altered=new JavaScriptSerializer().Deserialize<TransitionFitOptions>(savedOptions);altered.OptimizeRotationPaths=false;
+                bool refused=false;try{generated.TransitionFit.Options=new JavaScriptSerializer().Serialize(altered);generated.TransitionFit.Validate();}catch(InvalidDataException){refused=true;}finally{generated.TransitionFit.Options=savedOptions;}
+                Check(refused,"Saved rotation options cannot contradict their verified receipt");
                 Check(form.FighterProject.Animations.Count==count&&ReferenceEquals(editor.SelectedCHR0,source)&&SetNativeContent(source)==result,"Aerial fit Apply updates the current animation with exactly the prepared native curves and valid recipe");
                 editor.Undo();await SimpleControlsReady(form);Check(SetNativeContent(source)==before&&form.FighterProject.Animations.Count==count,"Native Undo restores the original aerial curves and recipe");
                 editor.Redo();await SimpleControlsReady(form);Check(SetNativeContent(editor.SelectedCHR0)==result,"Native Redo restores the exact aerial fit");

@@ -22,6 +22,7 @@ namespace BrawlCrate.Studio
         public int EntrySamples {get;set;}public int ExitSamples {get;set;}public int Components {get;set;}
         public string[] Bones {get;set;}public TransitionProtected[] Protected {get;set;}public bool PreserveRootTranslation {get;set;}
         public bool NearestEquivalentAngles {get;set;}
+        public bool OptimizeRotationPaths {get;set;}
         public bool MatchReferenceControls {get;set;}
         public bool BindingReviewed {get;set;}
         public bool PreserveContacts {get;set;}
@@ -55,6 +56,16 @@ namespace BrawlCrate.Studio
             bool recovery=Algorithm=="contact-exit-recovery-1"||Algorithm=="contact-exit-recovery-2"||Algorithm=="contact-exit-recovery-3"||floor;
             if((Algorithm!="fixed-duration-fk-hermite-1"&&Algorithm!="fixed-duration-fk-hermite-2"&&Algorithm!="contact-trajectory-preserve-1"&&Algorithm!="contact-trajectory-preserve-2"&&!recovery&&!boundary)||!Hash(ModelSha256)||!Hash(InitialResultSha256)||string.IsNullOrEmpty(Options)||Options.Length>65536||string.IsNullOrEmpty(Receipt)||Receipt.Length>1024*1024||Inputs==null||Inputs.Length<2||Inputs.Length>3||Inputs.Any(i=>i==null)||Inputs.Select(i=>i.Role).Distinct().Count()!=Inputs.Length)throw new InvalidDataException("Invalid native transition recipe.");
             var settings=new System.Web.Script.Serialization.JavaScriptSerializer().Deserialize<TransitionFitOptions>(Options);
+            var rotationReceipt=SavedReceipt();var rotationSettings=ReceiptValue(rotationReceipt,"Settings") as IDictionary<string,object>;
+            bool rotationEnabled=ReceiptValue(rotationSettings,"OptimizeRotationPaths") is bool smooth&&smooth;
+            if(settings==null||rotationEnabled!=settings.OptimizeRotationPaths)throw new InvalidDataException("Saved rotation options and receipt disagree.");
+            if(rotationEnabled)
+            {
+                bool Numeric(object v)=>v is double||v is float||v is decimal||v is int||v is long;
+                object pathValue=ReceiptValue(rotationReceipt,"RotationPathDegrees"),legacyValue=ReceiptValue(rotationReceipt,"LegacyRotationPathDegrees");
+                if(!settings.NearestEquivalentAngles||Convert.ToString(ReceiptValue(rotationReceipt,"RotationInterpolation"))!="native-orientation-path-1"||!Numeric(pathValue)||!Numeric(legacyValue))throw new InvalidDataException("Invalid saved rotation interpolation policy.");
+                double path=Convert.ToDouble(pathValue),legacyPath=Convert.ToDouble(legacyValue);if(double.IsNaN(path)||double.IsInfinity(path)||path<0||double.IsNaN(legacyPath)||double.IsInfinity(legacyPath)||legacyPath<0||path>legacyPath+.01)throw new InvalidDataException("Invalid saved native rotation path measurement.");
+            }
             if(settings==null||settings.ExitContactRecovery!=(recovery&&!boundary)||settings.BoundaryContactRecovery!=boundary||boundary&&(!settings.PreserveContacts||settings.Components!=7||settings.Entry==null&&settings.Exit==null||settings.Entry!=null&&(!settings.EntryFrozen||settings.EntryFrame!=0)||settings.Exit!=null&&(!settings.ExitFrozen||settings.ExitFrame!=0))||settings.ExitContactRecovery&&(!settings.PreserveContacts||settings.Entry!=null||settings.Exit==null||!settings.ExitFrozen||settings.ExitFrame!=0||settings.Components!=7)||settings.PreventFootDipping!=floor)throw new InvalidDataException("Invalid saved exit contact recovery policy.");
             if(boundary||new[]{"fixed-duration-fk-hermite-2","contact-trajectory-preserve-2","contact-exit-recovery-3","contact-floor-recovery-2"}.Contains(Algorithm))
             {
