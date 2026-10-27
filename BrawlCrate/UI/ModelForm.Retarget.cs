@@ -66,11 +66,11 @@ namespace BrawlCrate.UI
                 mode.SelectedIndex=(int)_fighterProject.GroundMode;
                 var keys=new ComboBox{Name="retargetKeyframeMode",AccessibleName="Retarget keyframes",DropDownStyle=ComboBoxStyle.DropDownList,Dock=DockStyle.Fill};
                 keys.Items.AddRange(new object[]{"Dense Next (default)","Source bone keys","Source channel keys"});keys.SelectedIndex=(int)_retargetKeyframeMode;
-                keys.AccessibleDescription="Dense keeps original Next. Source bone keys use each source bone's union of key times. Source channel keys also keep absent channels and individual counts. Sparse results require a measured comparison and review.";
+                keys.AccessibleDescription="Dense keeps original Next. Source bone keys start from each source bone's combined key times. Source channel keys start from individual channel times. Both add target axes and keys where needed to pass the motion checks, then show a measured review.";
                 var hint=new Label{Name="retargetKeyframeHint",AutoSize=true,Dock=DockStyle.Fill};
                 Action update=()=>hint.Text=keys.SelectedIndex==0?"Original Next: complete target-space motion, baked at every frame. Playback reads saved native keys; no solver runs.":
-                    keys.SelectedIndex==1?"Keep each mapped source bone's key times. Target axes can differ for its authentic bind. Review measured motion differences before adding the result.":
-                    "Keep each mapped source channel's key times and counts; absent channels stay absent. Unequal rigs can need extra axes, so motion can change substantially. Review the measured result.";
+                    keys.SelectedIndex==1?"Start with each source bone's combined key times. Add target keys where needed to preserve motion; review the verified result before adding it.":
+                    "Start with individual source channel times. Keep needed target axes and add keys where motion needs them; the final counts can differ from the source.";
                 keys.SelectedIndexChanged+=(s,e)=>update();update();
                 var apply=new Button{Name="retargetOptionsApply",Text="Apply",DialogResult=DialogResult.OK,AutoSize=true};
                 var cancel=new Button{Text="Cancel",DialogResult=DialogResult.Cancel,AutoSize=true};

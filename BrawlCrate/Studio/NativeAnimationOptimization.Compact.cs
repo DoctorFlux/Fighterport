@@ -20,6 +20,18 @@ namespace BrawlCrate.Studio
 
     internal static partial class NativeAnimationOptimization
     {
+        // Shared scalar/native budgets remain the governing limits. This extra
+        // bound also caps failed scalar-only partition work on large catalogues.
+        private const int MaximumCompactQuantizedAttempts = 24;
+
+        private sealed class CompactStoragePartition
+        {
+            internal NativeCompactStorageGroup[][] Choices;
+            internal int Precision;
+            internal long Order;
+            internal long Savings => Choices.Sum(c => (long)c[Math.Min(Precision, c.Length - 1)].BeforeBytes - c[Math.Min(Precision, c.Length - 1)].AfterBytes);
+        }
+
         // Every returned result is independently encoded/reopened. Quantized
         // proposals need both the complete Core certificate against the retained
         // baseline and collective native hierarchy/skin verification. Intermediate
@@ -42,7 +54,7 @@ namespace BrawlCrate.Studio
             var frozenOptions = CompactOptions(options, options.ProbeFrames, budget);
             string stage = Path.Combine(Path.GetFullPath(stageDirectory), "compact-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(stage);
             NativeAnimationOptimizationResult best = null; CHR0Node initial = null;
-            int exactGroups = 0, quantizedGroups = 0, attempted = 0; bool stoppedByBudget = false;
+            int exactGroups = 0, quantizedGroups = 0, attempted = 0, selectiveAttempts = 0; bool stoppedByBudget = false, stoppedByAttemptLimit = false;
             var diagnostics = new StringBuilder();
             try
             {
@@ -126,21 +138,73 @@ namespace BrawlCrate.Studio
                             { diagnostics.AppendLine(error.Message); stoppedByBudget = true; break; }
                         }
                     }
+
+                    // A failing finger or ancestor must not discard unrelated
+                    // useful storage. Retry deterministic high-saving subsets;
+                    // each complete cumulative candidate is still certified and
+                    // evaluated against the immutable retained baseline, never
+                    // against the last accepted approximation.
+                    if (quantizedGroups == 0 && !stoppedByBudget && alternatives.Count > 1)
+                    {
+                        var pending = new List<CompactStoragePartition>(); long order = 0;
+                        void Split(NativeCompactStorageGroup[][] choices)
+                        {
+                            int middle = choices.Length / 2;
+                            if (middle == 0) return;
+                            pending.Add(new CompactStoragePartition { Choices = choices.Take(middle).ToArray(), Precision = 1, Order = order++ });
+                            pending.Add(new CompactStoragePartition { Choices = choices.Skip(middle).ToArray(), Precision = 1, Order = order++ });
+                        }
+                        Split(alternatives.ToArray());
+                        while (pending.Count > 0 && !stoppedByBudget && attempted < MaximumCompactQuantizedAttempts)
+                        {
+                            token.ThrowIfCancellationRequested();
+                            var partition = pending.OrderByDescending(p => p.Savings).ThenBy(p => p.Order).First(); pending.Remove(partition);
+                            bool kept = false;
+                            using (var batch = Copy(best.Candidate))
+                            {
+                                foreach (var choices in partition.Choices)
+                                    NativeCompactAnimationStorage.ApplyGroup(batch, choices[Math.Min(partition.Precision, choices.Length - 1)]);
+                                attempted++; selectiveAttempts++;
+                                try
+                                {
+                                    var accepted = await TryVerifyCompact(batch, retainedBaseline, bones, modelSnapshot, frozenOptions, stage,
+                                        certify, verifiedPrecise, currentKey, currentStorage, currentBytes, currentBlock, diagnostics, token).ConfigureAwait(false);
+                                    if (accepted != null && CompactSmaller(accepted, best))
+                                    { best.Dispose(); best = accepted; quantizedGroups += partition.Choices.Length; kept = true; }
+                                    else accepted?.Dispose();
+                                }
+                                catch (InvalidDataException error) when (error.Data.Contains("OptimizationBudget"))
+                                { diagnostics.AppendLine(error.Message); stoppedByBudget = true; }
+                            }
+                            if (!kept && !stoppedByBudget)
+                            {
+                                if (partition.Choices.Length > 1) Split(partition.Choices);
+                                else if (partition.Precision > 0 && partition.Choices[0].Length > 1)
+                                    pending.Add(new CompactStoragePartition { Choices = partition.Choices, Precision = 0, Order = order++ });
+                            }
+                        }
+                        stoppedByAttemptLimit = pending.Count > 0 && !stoppedByBudget && attempted >= MaximumCompactQuantizedAttempts;
+                    }
                 }
 
                 token.ThrowIfCancellationRequested();
                 if (ContentKey(retainedBaseline) != baselineKey || ContentKey(currentSnapshot) != currentKey || StorageKey(currentSnapshot) != currentStorage)
                     throw new InvalidOperationException("Compact optimization dependencies changed during preparation.");
                 RequireCompactSize(best, options);
+                best.UsedApproximateStorage = quantizedGroups > 0;
+                best.ReductionSelectionReport = verifiedPrecise.ReductionSelectionReport;
                 best.BeforeKeys = CountKeys(currentSnapshot); best.BeforeTracks = currentSnapshot.Children.Count;
                 best.BudgetSamples = budget.Samples; best.BudgetBoneVisits = budget.BoneVisits; best.BudgetVertexVisits = budget.VertexVisits;
                 string scalarReport = best.Report;
                 best.Report = "Explicit native indexed storage: I4/I6 where independently verified; precise I12 fallback per SRT group. No dense linear codec or automatic tangent regeneration.\r\n" +
-                    "Lossless packing proposals: " + exactGroups + "; accepted quantized groups: " + quantizedGroups + "; complete quantized batch attempts: " + attempted + ".\r\n" +
+                    (string.IsNullOrEmpty(best.ReductionSelectionReport) ? "" : best.ReductionSelectionReport + "\r\n") +
+                    "Lossless packing proposals: " + exactGroups + "; accepted quantized groups: " + quantizedGroups + "; complete quantized batch attempts: " + (attempted - selectiveAttempts) +
+                    "; selective cumulative attempts: " + selectiveAttempts + "/" + MaximumCompactQuantizedAttempts + ".\r\n" +
                     (attempted > 0 && quantizedGroups == 0 ? "Complete quantized batches were not accepted; the verified lossless/precise fallback was retained.\r\n" : "") +
                     BuildReport(best, frozenOptions).Replace("Independent I12 decode", "Independent I4/I6/I12 decode") +
                     "\r\nContinuous scalar certificate: " + scalarReport +
                     (stoppedByBudget ? "\r\nThe shared operation budget stopped further packing; the returned candidate already passed complete verification." : "") +
+                    (stoppedByAttemptLimit ? "\r\nThe bounded storage search reached its attempt limit; the returned candidate already passed complete retained-baseline verification." : "") +
                     (diagnostics.Length > 0 ? "\r\nRejected compact attempts (not applied):\r\n" + diagnostics : "");
                 var result = best; best = null; return result;
             }

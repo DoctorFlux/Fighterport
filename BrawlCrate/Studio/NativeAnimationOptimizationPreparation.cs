@@ -45,12 +45,12 @@ namespace BrawlCrate.Studio
                             continue;
                         }
                         bool useful = verified.Candidate != null && verified.HasChanges;
-                        notes.Add(label + ": fully verified, " + verified.AfterKeys + " keys / " + verified.AfterBytes + " bytes" + (useful ? "." : "; unchanged.") );
+                        notes.Add(label + (verified.UsedApproximateStorage ? " + bounded storage" : "") + ": fully verified, " + verified.AfterKeys + " keys / " + verified.AfterBytes + " bytes" + (useful ? "." : "; unchanged.") );
                         if (useful && (choice.Result == null || verified.AfterBytes < choice.Result.AfterBytes ||
                             verified.AfterBytes == choice.Result.AfterBytes && verified.AfterKeys < choice.Result.AfterKeys))
                         {
                             choice.Result?.Dispose(); choice.Result = verified; verified = null;
-                            choice.HighQuality = approximate; choice.PrecisionScale = approximate ? scale : 1;
+                            choice.HighQuality = approximate || choice.Result.UsedApproximateStorage; choice.PrecisionScale = approximate ? scale : 1;
                         }
                         if (approximate) break;
                     }

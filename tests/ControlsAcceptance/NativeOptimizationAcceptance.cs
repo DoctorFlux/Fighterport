@@ -13,6 +13,7 @@ internal static partial class Program
         NativeConstantOptimizationChecks(args[0], System.IO.Path.Combine(output, "native-constants"));
         NativeCompactStorageChecks(System.IO.Path.Combine(output, "compact-storage"));
         NativeCompactRuntimeChecks(args[0], System.IO.Path.Combine(output, "compact-runtime")).GetAwaiter().GetResult();
+        NativeSelectiveReductionChecks(args[0], System.IO.Path.Combine(output, "selective-reduction"));
         return Task.CompletedTask;
     }
 }

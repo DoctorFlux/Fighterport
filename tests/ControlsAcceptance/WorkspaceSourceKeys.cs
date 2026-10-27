@@ -201,15 +201,19 @@ internal static partial class Program
                 try
                 {
                     var candidate=(CHR0Node)Field(raw,"candidate");var body=(CHR0EntryNode)candidate.FindChild(targetBody,false);
-                    foreach(int c in new[]{3,4,5})Check(body.KeyArrays[c].Entries.Select(k=>k._index).SequenceEqual(times),
-                        "Dirty ordinary source: strict target channel "+c+" retains the visible live authored times/counts, not the legacy encoded snapshot");
+                    foreach(int c in new[]{3,4,5})Check(times.All(time=>body.KeyArrays[c].GetKeyframe(time)!=null),
+                        "Dirty ordinary source: target channel "+c+" retains every visible authored source seed while quality guards may add required knots");
+                    var window=(RetargetKeyframeReviewDialog)raw;
+                    OptimizationWithheldGeometry(window.DenseView,window.ResultView,(CHR0Node)Field(raw,"dense"),candidate,
+                        Path.Combine(output,"dirty-source-withheld-native.json"));
                     reviewed=true;
                 }
                 catch(Exception error){failure=error;}
                 finally{SimpleControl<Button>(raw,"sourceKeysCancel").PerformClick();}
             };
-            Check(form.RetargetFighterAnimation(donor)==null&&reviewed,"Dirty ordinary source reaches a verified sparse review and cancellation adds no revision");
+            bool cancelled=form.RetargetFighterAnimation(donor)==null;
             if(failure!=null)throw failure;
+            Check(cancelled&&reviewed,"Dirty ordinary source reaches a verified sparse review and cancellation adds no revision");
             witness.CheckPreserved("dirty ordinary source precise snapshot and cancelled review");
             Check(NativeAnimationOptimization.ContentKey(clip)==original&&clip.IsDirty==dirty&&clip.IsBranch==branch&&entry.IsDirty==entryDirty&&!entry.Keyframes.PreserveInterpolation,
                 "Dirty ordinary source snapshot preserves exact live curves, codec preference, native dirty/branch state and native Undo");

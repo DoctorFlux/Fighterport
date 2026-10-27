@@ -17,6 +17,8 @@ internal static partial class Program
         {
             var model=Walk(root).OfType<MDL0Node>().OrderByDescending(m=>m.NumVertices).First();
             SourceKeysProcedural(model,output);
+            SourceKeyQualityChecks(model,output);
+            NativeSourceKeyFallbackChecks(model);
         }
         if(args.Contains("--retarget-source"))SourceKeysAuthentic(args,output);
         return Task.CompletedTask;
@@ -61,17 +63,18 @@ internal static partial class Program
                     mode+": actual native bytes shrink and complete native bone/skin witnesses are measured");
                 if(mode==RetargetKeyframeMode.SourceBoneTimes)
                 {
-                    foreach(int c in new[]{3,4,5})Check(track.KeyArrays[c].Entries.Select(k=>k._index).SequenceEqual(new[]{0,2,4}),
-                        "Source bone keys: required target axis "+c+" uses the exact source-bone union without extra frames");
+                    foreach(int c in new[]{3,4,5})Check(new[]{0,2,4}.All(at=>track.KeyArrays[c].Entries.Any(k=>k._index==at)),
+                        "Source bone keys: required target axis "+c+" retains the source-bone union as quality-repair seeds");
                     Check(result.KeyframeReport.MaximumEulerError<.0001&&result.KeyframeReport.MaximumSkinError<.001,
                         "Source bone keys: independently authored linear reference retains target-space motion through native Hermite interpolation");
                 }
                 else
                 {
-                    Check(track.KeyArrays[3].Entries.Select(k=>k._index).SequenceEqual(new[]{0,4})&&track.KeyArrays[4].Entries.Select(k=>k._index).SequenceEqual(new[]{0,2,4})&&track.KeyArrays[5].KeyCount==1&&Enumerable.Range(6,3).All(c=>track.KeyArrays[c].KeyCount==0),
-                        "Source channel keys: individual times/counts are exact and absent source channels remain absent");
-                    Check(Math.Abs(result.KeyframeReport.MaximumEulerError-8)<.0001&&result.KeyframeReport.MaximumOrientationError>7.9&&result.KeyframeReport.MaximumSkinError>.01,
-                        "Source channel keys: independent eight-degree omitted-axis contradiction is measured, rather than hidden behind a key-count claim");
+                    Check(new[]{0,4}.All(at=>track.KeyArrays[3].Entries.Any(k=>k._index==at))&&new[]{0,2,4}.All(at=>track.KeyArrays[4].Entries.Any(k=>k._index==at)),
+                        "Source channel keys: original varying-channel times remain seeds while quality repair may add keys");
+                    Check(Math.Abs(track.GetFrameValue(5,4)-track.GetFrameValue(5,0)-8)<.0001&&Math.Abs(track.GetFrameValue(6,4)-track.GetFrameValue(6,0)-8)<.0001&&
+                        result.KeyframeReport.MaximumEulerError<=.01&&result.KeyframeReport.MaximumOrientationError<=.01,
+                        "Source channel keys: derived target rotation and translation are restored instead of accepting the former eight-degree omitted-axis contradiction");
                 }
                 Check(result.Animation.Children.All(e=>rig.Bones.Any(b=>b.Name==e.Name))&&!result.Animation.Children.Any(e=>e.Name=="unmatched procedural extension"),
                     mode+": no absent-target or unmapped donor track enters the target animation");
@@ -92,9 +95,10 @@ internal static partial class Program
             input.KeyArrays[5].Remove(0);
             using(var result=new RetargetResult{Animation=NativeAnimationOptimization.Copy(dense),Plan=plan})
             {
-                bool rejected=false;try{RetargetKeyframes.Prepare(result,rig,rig,source,RetargetKeyframeMode.SourceChannelTimes,CancellationToken.None,null);}
-                catch(NotSupportedException error){rejected=error.Message.Contains("partial-axis");}
-                Check(rejected&&NativeAnimationOptimization.ContentKey(result.Animation)==baseline,"Unsupported in-memory partial-axis groups are explained and rejected without manufacturing source keys");
+                RetargetKeyframes.Prepare(result,rig,rig,source,RetargetKeyframeMode.SourceChannelTimes,CancellationToken.None,null);
+                var restored=(CHR0EntryNode)result.Animation.FindChild(name,false);
+                Check(restored!=null&&Math.Abs(restored.GetFrameValue(5,4)-restored.GetFrameValue(5,0)-8)<.0001&&result.KeyframeReport.QualityVerified,
+                    "Partial-axis source groups restore required frozen target-space axes rather than rejecting the complete animation or silently dropping motion");
             }
             input.Keyframes.SetFrameValue(5,0,0,true)._tangent=0;
 
@@ -106,7 +110,7 @@ internal static partial class Program
             {
                 RetargetKeyframes.Prepare(result,rig,rig,source,mode,CancellationToken.None,null);
                 var track=(CHR0EntryNode)result.Animation.FindChild(name,false);
-                Check(track.KeyArrays[3].Entries.Select(k=>k._index).SequenceEqual(new[]{0,2,2,4})&&result.KeyframeReport.PairedKnots>0,
+                Check(track.KeyArrays[3].Entries.Count(k=>k._index==2)==2&&new[]{0,4}.All(at=>track.KeyArrays[3].Entries.Any(k=>k._index==at))&&result.KeyframeReport.PairedKnots>0,
                     mode+": source paired sides/count survive precise independent CHR0 encoding");
             }
             // Raw 720-degree body turns must not be replaced by a shortest-path
@@ -166,7 +170,16 @@ internal static partial class Program
             var sourceModel=Walk(sourceRoot).OfType<MDL0Node>().OrderByDescending(m=>m.NumVertices).First();
             var clip=Walk(motionRoot).OfType<CHR0Node>().First(c=>c.Name==name);
             var source=BrawlRetargeter.Capture(sourceModel);var target=BrawlRetargeter.Capture(targetModel);
-            string before=NativeAnimationOptimization.ContentKey(clip);
+            string before=NativeAnimationOptimization.SourceContentKey(clip);
+            string targetContainer=Path.Combine(output,"source-key-native-target"+Path.GetExtension(args[0]));
+            string sourceContainer=Path.Combine(output,"source-key-native-source"+Path.GetExtension(donor));
+            File.Copy(args[0],targetContainer);File.Copy(donor,sourceContainer);
+            string sourceAnimation=Path.Combine(output,"source-key-native-source.chr0");
+            SourceKeyArtifactExport(clip,sourceAnimation);
+            File.WriteAllText(Path.Combine(output,"source-key-native-fixtures.json"),new JavaScriptSerializer().Serialize(new{
+                TargetContainer=targetContainer,TargetModel=targetModel.Name,SourceContainer=sourceContainer,SourceModel=sourceModel.Name,
+                SourceAnimation=sourceAnimation,Frames=clip.FrameCount,Loop=clip.Loop,SourceRig=source.Fingerprint,TargetRig=target.Fingerprint,
+                SourceAnimationContent=before,BackgroundOnly=true,OSInputInjected=false,ScreenCopied=false}));
             using(var original=BrawlRetargeter.Bake(source,target,clip,false,groundMode:GroundContactMode.Airborne))
             using(var explicitDense=BrawlRetargeter.Bake(source,target,clip,false,groundMode:GroundContactMode.Airborne,keyframeMode:RetargetKeyframeMode.Dense))
             {
@@ -175,6 +188,8 @@ internal static partial class Program
                 foreach(var mode in new[]{RetargetKeyframeMode.SourceBoneTimes,RetargetKeyframeMode.SourceChannelTimes})
                 using(var result=BrawlRetargeter.Bake(source,target,clip,false,groundMode:GroundContactMode.Airborne,keyframeMode:mode))
                 {
+                    SourceKeyArtifactExport(result.DenseAnimation,Path.Combine(output,"source-keys-authentic-"+mode+"-dense.chr0"));
+                    SourceKeyArtifactExport(result.Animation,Path.Combine(output,"source-keys-authentic-"+mode+".chr0"));
                     Check(result.Animation.FrameCount==clip.FrameCount&&result.Animation.Loop==clip.Loop&&result.KeyframeReport.DenseContent==NativeAnimationOptimization.ContentKey(original.Animation),
                         "Authentic "+sourceModel.Name+" → "+targetModel.Name+" "+mode+": timing/loop and exact original dense reference retained");
                     var controls=result.KeyframeReport.ProtectedControls;
@@ -183,19 +198,29 @@ internal static partial class Program
                         Check(target.Bones.Any(b=>b.Name==entry.Name),"Authentic "+mode+": output track belongs to the exact target: "+entry.Name);
                         if(controls.Contains(entry.Name))
                         {SourceKeysSameTrack((CHR0EntryNode)original.Animation.FindChild(entry.Name,false),entry,"Authentic "+mode+": own-source protected control "+entry.Name);continue;}
-                        var map=result.Plan.Mapping.Single(m=>m.Target==entry.Name);var input=(CHR0EntryNode)clip.FindChild(map.Source,false);
-                        for(int c=0;c<9;c++)if(mode==RetargetKeyframeMode.SourceChannelTimes)
-                            Check(input.KeyArrays[c].Entries.Select(k=>k._index).SequenceEqual(entry.KeyArrays[c].Entries.Select(k=>k._index)),
-                                "Authentic strict source channel times/counts: "+entry.Name+" / "+c);
+                        var map=result.Plan.Mapping.SingleOrDefault(m=>m.Target==entry.Name);var input=map==null?null:(CHR0EntryNode)clip.FindChild(map.Source,false);
+                        for(int c=0;c<9;c++)if(mode==RetargetKeyframeMode.SourceChannelTimes&&input!=null&&input.KeyArrays[c].KeyCount>1)
+                            Check(input.KeyArrays[c].Entries.All(k=>entry.KeyArrays[c].Entries.Any(actual=>actual._index==k._index))||SourceKeyRawConstant(((CHR0EntryNode)original.Animation.FindChild(entry.Name,false)).KeyArrays[c]),
+                                "Authentic source channel seeds survive unless their whole raw constant function has proved fixed storage: "+entry.Name+" / "+c);
                     }
-                    Check(result.KeyframeReport.VertexVisits>0&&result.KeyframeReport.Samples>=clip.FrameCount&&result.KeyframeReport.Describe().Contains("sampled differences"),
-                        "Authentic "+mode+": full native skin/pose drift is reported separately from universal quality/contact claims");
+                    bool exactIdentity=result.KeyframeReport.DenseFallback&&result.KeyframeReport.DenseContent==result.KeyframeReport.ResultContent;
+                    Check((exactIdentity||result.KeyframeReport.VertexVisits>0&&result.KeyframeReport.Samples>=clip.FrameCount)&&result.KeyframeReport.Version=="source-key-quality-v2"&&
+                        result.KeyframeReport.ScalarCertified&&result.KeyframeReport.QualityVerified&&result.KeyframeReport.MaximumEulerError<=.01&&result.KeyframeReport.MaximumOrientationError<=.01,
+                        "Authentic "+mode+": full native skin/pose drift obeys the frozen quality gate and remains separate from universal contact claims");
                     File.WriteAllText(Path.Combine(output,"source-keys-authentic-"+mode+".json"),new JavaScriptSerializer{MaxJsonLength=1024*1024}.Serialize(result.KeyframeReport));
                 }
             }
-            Check(NativeAnimationOptimization.ContentKey(clip)==before&&hashes.All(pair=>FighterProject.HashFile(pair.Key)==pair.Value),
+            Check(NativeAnimationOptimization.SourceContentKey(clip)==before&&hashes.All(pair=>FighterProject.HashFile(pair.Key)==pair.Value),
                 "Authentic source-key retargeting leaves original source files and all authored donor curves immutable");
         }
+    }
+    static void SourceKeyArtifactExport(CHR0Node clip,string path)
+    {
+        string content=NativeAnimationOptimization.SourceContentKey(clip);
+        using(var snapshot=NativeAnimationOptimization.CopySource(clip))snapshot.ExportChecked(path);
+        using(var decoded=NodeFactory.FromFile(null,path) as CHR0Node)
+            if(decoded==null||NativeAnimationOptimization.SourceContentKey(decoded)!=content)
+                throw new InvalidDataException("The source-key rendering artifact did not independently reopen with the frozen native content.");
     }
     static void SourceKeysSameTrack(CHR0EntryNode a,CHR0EntryNode b,string message)
     {

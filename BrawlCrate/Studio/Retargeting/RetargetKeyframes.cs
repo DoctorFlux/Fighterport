@@ -43,23 +43,76 @@ namespace BrawlCrate.Studio.Retargeting
         public string[] OmittedTargetChannels { get; set; } = new string[0];
         public string[] OmittedTargetTracks { get; set; } = new string[0];
         public int PairedKnots { get; set; }
+        public int SourceSeedKeys { get; set; }
+        public int AddedQualityKeys { get; set; }
+        public int QualityAttempts { get; set; }
+        public long ScalarCertificateWork { get; set; }
+        public bool ScalarCertified { get; set; }
+        public bool QualityVerified { get; set; }
+        public bool DenseFallback { get; set; }
+        public double LengthScale { get; set; }
+        public double MaximumCertifiedEulerError { get; set; }
+        public double MaximumCertifiedScaleError { get; set; }
+        public double MaximumCertifiedTranslationError { get; set; }
+        public double MaximumCertifiedEulerDerivativeError { get; set; }
+        public double MaximumCertifiedScaleDerivativeError { get; set; }
+        public double MaximumCertifiedTranslationDerivativeError { get; set; }
+        public string[] RestoredTargetTracks { get; set; } = new string[0];
+        public string[] RestoredTargetChannels { get; set; } = new string[0];
+        public string QualityNotes { get; set; }
 
         internal void Validate()
         {
             bool Hash(string s) => s!=null&&s.Length==64&&s.All(c=>c>='0'&&c<='9'||c>='a'&&c<='f');
-            if(Version!="source-key-layout-v1"||Mode==RetargetKeyframeMode.Dense||!Enum.IsDefined(typeof(RetargetKeyframeMode),Mode)||
+            if((Version!="source-key-layout-v1"&&Version!="source-key-quality-v2")||Mode==RetargetKeyframeMode.Dense||!Enum.IsDefined(typeof(RetargetKeyframeMode),Mode)||
                 DenseKeys<0||DenseKeys>2000000||ResultKeys<0||ResultKeys>2000000||DenseBytes<1||ResultBytes<1||
-                !Hash(DenseContent)||!Hash(ResultContent)||!Hash(VerifiedSha256)||Samples<1||Samples>100000||
+                !Hash(DenseContent)||!Hash(ResultContent)||!Hash(VerifiedSha256)||Samples<0||Samples>100000||Samples==0&&(Version!="source-key-quality-v2"||!DenseFallback||ResultContent!=DenseContent)||
                 BoneVisits<0||BoneVisits>10000000||VertexVisits<0||VertexVisits>1000000000||PairedKnots<0||PairedKnots>2000000||
                 new[]{MaximumEulerError,MaximumOrientationError,MaximumScaleError,MaximumLocalTranslationError,MaximumWorldBoneError,
                     MaximumWorldBasisError,MaximumSkinError,WorstFrame}.Any(v=>double.IsNaN(v)||double.IsInfinity(v)||v<0)||
                 (WorstBone?.Length??0)>256||new[]{ProtectedControls,OmittedSourceTracks,OmittedTargetChannels,OmittedTargetTracks}.Any(a=>a==null||a.Length>65536||a.Any(s=>string.IsNullOrEmpty(s)||s.Length>512)))
                 throw new InvalidDataException("Invalid source-key retarget comparison receipt.");
+            if(Version=="source-key-quality-v2")
+            {
+                double translation=LengthScale>0?Math.Min(.0002,.0001*LengthScale):0;
+                if(!ScalarCertified||!QualityVerified||SourceSeedKeys<0||SourceSeedKeys>2000000||AddedQualityKeys<0||AddedQualityKeys>2000000||SourceSeedKeys+AddedQualityKeys!=ResultKeys||
+                    QualityAttempts<1||QualityAttempts>5||ScalarCertificateWork<0||ScalarCertificateWork>2000000||DenseFallback&&ResultContent!=DenseContent||
+                    new[]{LengthScale,MaximumCertifiedEulerError,MaximumCertifiedScaleError,MaximumCertifiedTranslationError,
+                        MaximumCertifiedEulerDerivativeError,MaximumCertifiedScaleDerivativeError,MaximumCertifiedTranslationDerivativeError}
+                        .Any(v=>double.IsNaN(v)||double.IsInfinity(v)||v<0)||
+                    MaximumCertifiedEulerError>.01||MaximumCertifiedScaleError>.00001||MaximumCertifiedTranslationError>translation||
+                    MaximumCertifiedEulerDerivativeError>.05||MaximumCertifiedScaleDerivativeError>.00001||MaximumCertifiedTranslationDerivativeError>translation||
+                    MaximumEulerError>.01||MaximumOrientationError>.01||MaximumScaleError>.00001||MaximumLocalTranslationError>translation||
+                    MaximumWorldBoneError>LengthScale*.0001||MaximumSkinError>LengthScale*.0001||
+                    LengthScale==0&&(!DenseFallback||ResultContent!=DenseContent)||
+                    new[]{RestoredTargetTracks,RestoredTargetChannels}.Any(a=>a==null||a.Length>65536||a.Any(s=>string.IsNullOrEmpty(s)||s.Length>512))||
+                    (QualityNotes?.Length??0)>1024*1024)
+                    throw new InvalidDataException("Invalid quality-guarded source-key receipt.");
+            }
         }
 
         public string Describe()
         {
             string N(double value)=>value.ToString("G7",CultureInfo.InvariantCulture);
+            if(Version=="source-key-quality-v2")return
+                (Mode==RetargetKeyframeMode.SourceBoneTimes?"Source bone keys":"Source channel keys")+
+                " — source-seeded target curves with motion guards. Necessary target axes, bones and keys are retained.\r\n"+
+                "Keys: "+DenseKeys+" → "+ResultKeys+". Fresh CHR0 bytes: "+DenseBytes+" → "+ResultBytes+".\r\n"+
+                "Source/end/protected seeds after exact constant cleanup: "+SourceSeedKeys+"; quality keys added: "+AddedQualityKeys+
+                "; attempts: "+QualityAttempts+"; rational scalar proof work: "+ScalarCertificateWork+"/2000000.\r\n"+
+                "Continuous raw Hermite bounds: Euler ≤ "+N(MaximumCertifiedEulerError)+"°, scale ≤ "+N(MaximumCertifiedScaleError)+
+                ", translation component ≤ "+N(MaximumCertifiedTranslationError)+"; derivatives/frame ≤ "+N(MaximumCertifiedEulerDerivativeError)+
+                "°, "+N(MaximumCertifiedScaleDerivativeError)+", "+N(MaximumCertifiedTranslationDerivativeError)+".\r\n"+
+                "Independent final native comparison: Euler "+N(MaximumEulerError)+"°, orientation "+N(MaximumOrientationError)+
+                "°, local translation "+N(MaximumLocalTranslationError)+", scale "+N(MaximumScaleError)+
+                ", world/basis distance "+N(MaximumWorldBoneError)+", all skin "+N(MaximumSkinError)+" ("+Samples+" final native verification samples).\r\n"+
+                "Protected controls retain exact original own-source curves: "+string.Join(", ",ProtectedControls)+".\r\n"+
+                (DenseFallback?"Dense fallback retained; a smaller approximation could not be completely qualified.\r\n":"")+
+                (RestoredTargetTracks.Length==0?"":"Required target tracks restored: "+string.Join(", ",RestoredTargetTracks)+".\r\n")+
+                (RestoredTargetChannels.Length==0?"":"Required target channels restored: "+string.Join(", ",RestoredTargetChannels)+".\r\n")+
+                (OmittedSourceTracks.Length==0?"":"Unmapped source tracks omitted: "+string.Join(", ",OmittedSourceTracks)+".\r\n")+
+                (OmittedTargetTracks.Length==0?"":"Independently proved bind-constant target tracks omitted: "+string.Join(", ",OmittedTargetTracks)+".\r\n")+
+                (QualityNotes??"")+"\r\nContinuous scalar certificates and sampled cumulative native geometry are separate claims. Dense solver contact statistics remain historical; no universal contact, PAC/container or actual game acceptance is established.";
             return (Mode==RetargetKeyframeMode.SourceBoneTimes?"Source bone keys":"Source channel keys")+
                 " — retargeted values, source key layout; poses between keys can differ.\r\n"+
                 "Keys: "+DenseKeys+" → "+ResultKeys+". Fresh precise CHR0 bytes: "+DenseBytes+" → "+ResultBytes+".\r\n"+
@@ -78,7 +131,7 @@ namespace BrawlCrate.Studio.Retargeting
         }
     }
 
-    internal static class RetargetKeyframes
+    internal static partial class RetargetKeyframes
     {
         static readonly string[] Channels={"SX","SY","SZ","RX","RY","RZ","TX","TY","TZ"};
         internal static void Prepare(RetargetResult result,BrawlRig source,BrawlRig target,CHR0Node sourceClip,
@@ -87,71 +140,20 @@ namespace BrawlCrate.Studio.Retargeting
             token.ThrowIfCancellationRequested();
             var dense=result.Animation;
             if(Count(dense)>2000000||Count(sourceClip)>2000000)throw new InvalidDataException("Source-key preparation exceeds the two-million-key operation limit.");
-            var report=new RetargetKeyframeReport {Mode=mode,DenseKeys=Count(dense),DenseContent=NativeAnimationOptimization.ContentKey(dense),
+            ValidateDenseInput(dense,token);
+            var report=new RetargetKeyframeReport {Version="source-key-quality-v2",Mode=mode,DenseKeys=Count(dense),DenseContent=NativeAnimationOptimization.ContentKey(dense),
                 ProtectedControls=result.Plan.TargetMotionControls.Select(i=>target.Bones[i].Name).ToArray(),OmittedSourceTracks=result.IgnoredSourceBones.ToArray()};
-            var controls=new HashSet<string>(report.ProtectedControls,StringComparer.Ordinal);
-            CHR0Node candidate=NativeAnimationOptimization.Copy(dense),decoded=null;
+            CHR0Node candidate=null,decoded=null;
             string folder=Path.Combine(Path.GetTempPath(),"Fighterport-sourcekeys-"+Guid.NewGuid().ToString("N"));
             string beforePath=Path.Combine(folder,"dense.chr0"),afterPath=Path.Combine(folder,"source-keys.chr0");
             try
             {
                 Directory.CreateDirectory(folder);
-                var sourceTracks=sourceClip.Children.OfType<CHR0EntryNode>().ToDictionary(t=>t.Name,StringComparer.Ordinal);
-                var omitted=new List<string>();var omittedTracks=new List<string>();
-                long plannedKeys=candidate.Children.OfType<CHR0EntryNode>().Where(e=>controls.Contains(e.Name)).Sum(e=>e.KeyArrays.Sum(a=>(long)a.KeyCount));
-                foreach(var entry in candidate.Children.OfType<CHR0EntryNode>().ToArray())
-                {
-                    token.ThrowIfCancellationRequested();
-                    if(controls.Contains(entry.Name))continue;
-                    var map=result.Plan.Mapping.SingleOrDefault(m=>m.Target==entry.Name);
-                    CHR0EntryNode input=null;
-                    if(map==null||!sourceTracks.TryGetValue(map.Source,out input)||!input.KeyArrays.Any(a=>a.KeyCount>0))
-                    {omittedTracks.Add(entry.Name);entry.Remove();entry.Dispose();continue;}
-                    int[] union=input.KeyArrays.SelectMany(a=>a.Entries.GroupBy(k=>k._index).Select(g=>new{Time=g.Key,Count=g.Count()}))
-                        .GroupBy(p=>p.Time).OrderBy(g=>g.Key).SelectMany(g=>Enumerable.Repeat(g.Key,g.Max(p=>p.Count))).ToArray();
-                    if(mode==RetargetKeyframeMode.SourceChannelTimes)
-                        for(int group=0;group<3;group++)
-                        {
-                            int present=Enumerable.Range(group*3,3).Count(c=>input.KeyArrays[c].KeyCount>0);
-                            if(present!=0&&present!=3)throw new NotSupportedException("Source channel keys cannot preserve a partial-axis "+(group==0?"scale":group==1?"rotation":"translation")+
-                                " group on "+input.Name+" with the qualified Brawl CHR0 writer. Use Source bone keys or Dense Next; no replacement fixed keys were added.");
-                        }
-                    var neededGroups=Enumerable.Range(0,3).Select(group=>Enumerable.Range(group*3,3).Any(c=>
-                        entry.KeyArrays[c].Entries.Any(k=>!SameBits(k._value,target.Bones[map.TargetIndex].BindState[c])||!SameBits(k._tangent,0)))).ToArray();
-                    for(int channel=0;channel<9;channel++)
-                    {
-                        var original=entry.KeyArrays[channel];
-                        int[] times=mode==RetargetKeyframeMode.SourceBoneTimes?union:input.KeyArrays[channel].Entries.Select(k=>k._index).ToArray();
-                        // Native CHR0 stores complete S/R/T groups. Retain the
-                        // union on every axis of each required target group;
-                        // an entirely bind-equivalent group stays absent.
-                        if(mode==RetargetKeyframeMode.SourceBoneTimes&&!neededGroups[channel/3])times=new int[0];
-                        if(times.Length==1&&times[0]!=0)throw new NotSupportedException("The source has one timed key away from frame zero on "+input.Name+" "+Channels[channel]+". Native fixed-channel storage cannot preserve that exact key layout.");
-                        if(times.Any(t=>t<0||t>(sourceClip.Loop?sourceClip.FrameCount:sourceClip.FrameCount-1))||times.GroupBy(t=>t).Any(g=>g.Count()>2))
-                            throw new InvalidDataException("The source key layout has unsupported timing or more than two sides on "+input.Name+" "+Channels[channel]+".");
-                        plannedKeys=checked(plannedKeys+times.Length);
-                        if(plannedKeys>2000000)throw new InvalidDataException("The projected source-key result exceeds two million keys; no partial candidate can be applied.");
-                        var curve=new KeyframeArray(entry.Keyframes.FrameLimit,target.Bones[map.TargetIndex].BindState[channel]){Loop=candidate.Loop};
-                        var seen=new HashSet<int>();
-                        foreach(int time in times)
-                        {
-                            bool after=!seen.Add(time);
-                            var key=original.GetKeyframe(time);
-                            if(key==null)throw new InvalidDataException("The frozen dense reference lacks a source knot required by "+entry.Name+".");
-                            if(after&&key.Second!=null)key=key.Second;
-                            curve.SetFrameValue(time,original.GetFrameValue(time,after),true)._tangent=times.Length==1?0:key._tangent;
-                        }
-                        report.PairedKnots+=times.GroupBy(t=>t).Count(g=>g.Count()==2);
-                        entry.Keyframes._keyArrays[channel]=curve;
-                        if(times.Length==0&&original.KeyCount>0)omitted.Add(entry.Name+" "+Channels[channel]);
-                    }
-                    entry.UseModelScale=!Enumerable.Range(0,3).Any(c=>entry.KeyArrays[c].KeyCount>0);
-                    entry.UseModelRotate=!Enumerable.Range(3,3).Any(c=>entry.KeyArrays[c].KeyCount>0);
-                    entry.UseModelTranslate=!Enumerable.Range(6,3).Any(c=>entry.KeyArrays[c].KeyCount>0);
-                    entry.Keyframes.PreserveInterpolation=true;entry.SignalPropertyChange();
-                }
+                var nativeBudget=new NativeAnimationOptimizationBudget();
+                candidate=QualityCandidate(result,target,sourceClip,mode,report,folder,nativeBudget,token,progress);
                 if(candidate.Children.Any(e=>!target.Bones.Any(b=>b.Name==e.Name)))throw new InvalidDataException("A source-key candidate contains a track absent from its exact target.");
-                report.OmittedTargetChannels=omitted.ToArray();report.OmittedTargetTracks=omittedTracks.ToArray();report.ResultKeys=Count(candidate);
+                report.PairedKnots=candidate.Children.OfType<CHR0EntryNode>().SelectMany(e=>e.KeyArrays).Sum(a=>a.Entries.GroupBy(k=>k._index).Count(g=>g.Count()==2));
+                report.ResultKeys=Count(candidate);
                 if(report.ResultKeys>2000000)throw new InvalidDataException("The projected source-key result exceeds two million keys.");
                 progress?.Invoke(92,"Independently verifying source-key storage and motion...");
                 // Encode both representations precisely. Reopen and compare
@@ -165,21 +167,20 @@ namespace BrawlCrate.Studio.Retargeting
                 report.DenseBytes=new FileInfo(beforePath).Length;report.ResultBytes=new FileInfo(afterPath).Length;report.VerifiedSha256=FighterProject.HashFile(afterPath);
                 var model=target.Bones.First().Model;
                 if(model==null)throw new InvalidDataException("Source-key verification requires the independently owned native target model.");
-                Measure(model,target.Bones,dense,decoded,sourceClip,report,token,progress);
                 if(NativeAnimationOptimization.ContentKey(dense)!=report.DenseContent)throw new InvalidOperationException("The frozen dense baseline changed during source-key preparation.");
                 token.ThrowIfCancellationRequested();report.Validate();
                 result.KeyframeMode=mode;result.KeyframeReport=report;result.DenseAnimation=dense;result.Animation=decoded;decoded=null;
             }
             finally
             {
-                decoded?.Dispose();candidate.Dispose();
+                decoded?.Dispose();candidate?.Dispose();
                 foreach(string path in new[]{beforePath,afterPath})if(File.Exists(path))File.Delete(path);
                 if(Directory.Exists(folder))Directory.Delete(folder);
             }
         }
 
         static void Measure(MDL0Node model,MDL0BoneNode[] bones,CHR0Node before,CHR0Node after,CHR0Node source,
-            RetargetKeyframeReport result,CancellationToken token,Action<int,string> progress)
+            RetargetKeyframeReport result,NativeAnimationOptimizationBudget budget,CancellationToken token,Action<int,string> progress)
         {
             int last=before.Loop?before.FrameCount:before.FrameCount-1;
             var times=new SortedSet<float>{0,last};
@@ -190,7 +191,7 @@ namespace BrawlCrate.Studio.Retargeting
             foreach(var key in source.Children.OfType<CHR0EntryNode>().SelectMany(e=>e.KeyArrays).SelectMany(a=>a.Entries))
             {times.Add(key._index);if(key.Second!=null){if(key._index>0)times.Add(PreviousFloat(key._index+1)-1);if(key._index<last)times.Add(NextFloat(key._index+1)-1);}}
             var vertices=model.Objects.OfType<MDL0ObjectNode>().SelectMany(o=>o.Vertices??new List<Vertex3>()).ToArray();
-            var budget=new NativeAnimationOptimizationBudget();budget.Require(times.Count+1,bones.Length,vertices.Length,"complete source-key pose and mesh comparison");
+            budget.Require(times.Count+1,bones.Length,vertices.Length,"complete source-key pose and mesh comparison");
             var local=new float[bones.Length*9];var rotation=new Matrix[bones.Length];var world=new Matrix[bones.Length];var skin=new Vector3[vertices.Length];
             double worst=0;int count=0;
             foreach(float time in new[]{-1f}.Concat(times))
@@ -232,7 +233,7 @@ namespace BrawlCrate.Studio.Retargeting
                 }
                 if(++count%64==0)progress?.Invoke(92+count*7/Math.Max(1,times.Count+1),"Measuring source-key motion differences...");
             }
-            result.BoneVisits=budget.BoneVisits;result.VertexVisits=budget.VertexVisits;
+            result.Samples=checked((int)budget.Samples);result.BoneVisits=budget.BoneVisits;result.VertexVisits=budget.VertexVisits;
         }
 
         static int Count(CHR0Node clip)=>checked(clip.Children.OfType<CHR0EntryNode>().Sum(e=>e.KeyArrays.Sum(a=>a.KeyCount)));

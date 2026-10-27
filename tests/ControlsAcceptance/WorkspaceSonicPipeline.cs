@@ -152,6 +152,12 @@ internal static partial class Program
                         Console.WriteLine("TRACE " + keyMode + " retarget preparation returned");
                         Check(reviewed && resultAsset != null && resultAsset.Retarget.KeyframeMode == keyMode,
                             keyMode + ": actual retarget progress/review imports the exact provided source animation as an independent revision");
+                        var quality = resultAsset.Retarget.ReadKeyframeReport();
+                        File.WriteAllText(Path.Combine(modeDirectory, "retarget-quality.json"), json.Serialize(quality));
+                        Check(quality.Version == "source-key-quality-v2" && quality.ScalarCertified && quality.QualityVerified &&
+                            quality.MaximumOrientationError <= .01 && quality.MaximumEulerError <= .01 &&
+                            quality.MaximumWorldBoneError <= .0001 * quality.LengthScale && quality.MaximumSkinError <= .0001 * quality.LengthScale,
+                            keyMode + ": guarded source seeds independently pass frozen scalar and cumulative native quality ceilings");
                         await SimpleControlsReady(form);
                         var clip = editor.SelectedCHR0;
                         Check(clip.FrameCount == 44 && !clip.Loop, keyMode + ": source-key retargeting preserves 44-frame native timing");

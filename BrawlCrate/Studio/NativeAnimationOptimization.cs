@@ -96,6 +96,8 @@ namespace BrawlCrate.Studio
         public int BeforeTracks { get; internal set; }
         public int AfterTracks { get; internal set; }
         public bool HasChanges { get; internal set; }
+        public bool UsedApproximateStorage { get; internal set; }
+        public string ReductionSelectionReport { get; internal set; }
         public double WorstFrame { get; internal set; }
         public string WorstBone { get; internal set; }
         public string WorstMetric { get; internal set; }

@@ -287,6 +287,7 @@ namespace BrawlCrate.UI
                             long work = 0; int spans = 0;
                             var budget = new NativeAnimationOptimizationBudget();
                             var receipts = new Dictionary<NativeAnimationOptimizationResult, OptimizationOutput>();
+                            ControlTrack[] exactReductionTracks = null;
                             var wire = OptimizationWireTracks(baseline);
                             var nativeBones = model.AllBones.ToDictionary(b => b.Name, StringComparer.Ordinal);
                             var bindPoses = baseline.Children.OfType<CHR0EntryNode>().Select(entry => new { Entry = entry, Bone = nativeBones.TryGetValue(entry.Name, out var bound) ? bound : null })
@@ -332,9 +333,20 @@ namespace BrawlCrate.UI
                                         BindPoseCleanupBones = output.RemovedBindTracks, DeferSizeValidation = compact,
                                         MandatoryFrames = mandatory.ToArray(), ProbeFrames = output.Report.ProbeFrames, Budget = budget };
                                     OptimizationNativeChecks++;
-                                    var verified = await Task.Run(() => NativeAnimationOptimization.Prepare(validationModel, baseline, tracks, options, stage, token), token);
+                                    var verified = await Task.Run(() => approximate
+                                        ? NativeAnimationOptimization.PrepareReduction(validationModel, baseline, tracks, exactReductionTracks, options, stage, token)
+                                        : NativeAnimationOptimization.Prepare(validationModel, baseline, tracks, options, stage, token), token);
+                                    // Reuse the already allocated, independently
+                                    // verified Exact wire for partial HQ fallback.
+                                    // Its keys remain immutable within this Analyze.
+                                    if (!approximate) exactReductionTracks = tracks;
                                     if (compact)
                                     {
+                                        // Packing has its own frozen-baseline
+                                        // certificate. A rejected approximate
+                                        // reduction must not prevent bounded
+                                        // storage of a verified Exact result.
+                                        options.ExactOnly = !highQuality;
                                         using (var precise = verified)
                                         {
                                             async Task<NativeCompactCurveCertificate> Certificate(CHR0Node decoded, CancellationToken proofToken)
@@ -344,7 +356,7 @@ namespace BrawlCrate.UI
                                                 string certificateInput = Path.Combine(stage, "certificate-" + Guid.NewGuid().ToString("N") + ".json"), certificateOutput = Path.Combine(stage, "certificate-" + Guid.NewGuid().ToString("N") + ".json");
                                                 try
                                                 {
-                                                    var certificateRequest = new { baseline.Name, SampleCount = baseline.FrameCount, baseline.Loop, HighQuality = approximate, LengthScale = length,
+                                                    var certificateRequest = new { baseline.Name, SampleCount = baseline.FrameCount, baseline.Loop, HighQuality = highQuality, LengthScale = length,
                                                         PrecisionScale = 1, MaximumWork = 2000000 - work, MaximumCandidateSpans = 100000 - spans,
                                                         Tracks = wire, CandidateTracks = OptimizationWireTracks(decoded), BindPoses = bindPoses,
                                                         ExactBones = output.ExactBones, ProtectedBones = output.ProtectedBones, MandatoryFrames = mandatory.ToArray(), ProtectedRanges = ranges, ProtectionKnown = protectionKnown };
@@ -407,6 +419,7 @@ namespace BrawlCrate.UI
                                         "\r\nContinuous scalar proof: " + output.Report.Claim + "\r\nChosen candidate work " + output.Report.Work + "; spans " + output.Report.CandidateSpans + "; merges " + output.Report.AcceptedMerges +
                                         (output.Report.WorkLimitReached || output.Report.CandidateLimitReached ? "; resource-limited, fully verified best candidate only" : "") +
                                         "\r\nNo PAC/PCS or Melee size/game claim. Current clip metadata and native flags retained.\r\n" +
+                                        "Core reduction proposal before native per-bone fallback and storage verification (final key/byte counts are above):\r\n" +
                                         string.Join("\r\n", (output.Report.Channels ?? new OptimizationChannelInfo[0]).Select(c => c.Bone + " / " + c.Channel + ": " + c.BeforeKeys + " → " + c.AfterKeys + " · " + c.Policy + " · certified scalar value ≤ " + c.CertifiedValueErrorBound.ToString("G6") + ", derivative/frame ≤ " + c.CertifiedSpeedErrorBound.ToString("G6") + " · " + c.RetainedReason));
                                     return NativeAnimationOptimization.Copy(verified.Candidate ?? before);
                                 }
