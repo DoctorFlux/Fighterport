@@ -29,8 +29,8 @@
       Super Smash Bros. Brawl © 2008 Nintendo and HAL Laboratory
     </Copyright>
     <AssemblyVersion>2.0.0.0</AssemblyVersion>
-    <FileVersion>2.0.0.25</FileVersion>
-    <InformationalVersion>2.0.0-preview.45-exact-optimization</InformationalVersion>
+    <FileVersion>2.0.0.26</FileVersion>
+    <InformationalVersion>2.0.0-preview.46-high-quality-optimization</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Platforms>AnyCPU;x64;x86</Platforms>

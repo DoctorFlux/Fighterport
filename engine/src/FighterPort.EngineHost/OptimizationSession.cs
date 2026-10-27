@@ -6,7 +6,8 @@ sealed record OptimizationRawKey(int Frame,int ValueBits,int TangentBits);
 sealed record OptimizationRawTrack(string Bone,OptimizationRawKey[][] Channels,int FrameLimit,bool Loop);
 sealed record OptimizationInput(string Name,int SampleCount,bool Loop,bool HighQuality,double LengthScale,
     OptimizationRawTrack[] Tracks,string[] ExactBones,string[] ProtectedBones,int[] MandatoryFrames,
-    ProtectedInterval[] ProtectedRanges,bool ProtectionKnown);
+    ProtectedInterval[] ProtectedRanges,bool ProtectionKnown,double PrecisionScale=1,
+    long MaximumWork=2_000_000,int MaximumCandidateSpans=100_000);
 
 sealed partial class ControlSession
 {
@@ -105,10 +106,24 @@ sealed partial class ControlSession
                 BitConverter.Int32BitsToSingle(key.TangentBits),BitConverter.Int32BitsToSingle(key.TangentBits))).ToArray(),
                 Interpolation.Hermite,track.Loop?track.FrameLimit:null)).ToArray())).ToArray();
         var clip=new AnimationClip(state?.Clip??Guid.NewGuid(),input.Name,input.SampleCount,new(60,1),input.Loop,tracks);
-        var settings=new AnimationOptimizationSettings
+        // Retries tighten only scalar construction tolerances. Authentic bind
+        // scale, protections and independent native acceptance limits never move.
+        var frozenBounds=new AnimationOptimizationSettings();
+        double precision=input.PrecisionScale;
+        var settings=frozenBounds with
         {
             Mode=input.HighQuality?AnimationOptimizationMode.HighQuality:AnimationOptimizationMode.Exact,
             BindBoundsDiagonal=input.LengthScale,
+            ScaleValueBound=frozenBounds.ScaleValueBound*precision,
+            ScaleSpeedBoundPerFrame=frozenBounds.ScaleSpeedBoundPerFrame*precision,
+            EulerValueBoundDegrees=frozenBounds.EulerValueBoundDegrees*precision,
+            EulerSpeedBoundDegreesPerFrame=frozenBounds.EulerSpeedBoundDegreesPerFrame*precision,
+            TranslationValueFraction=frozenBounds.TranslationValueFraction*precision,
+            TranslationSpeedFractionPerFrame=frozenBounds.TranslationSpeedFractionPerFrame*precision,
+            TranslationAbsoluteCap=frozenBounds.TranslationAbsoluteCap*precision,
+            TranslationSpeedAbsoluteCapPerFrame=frozenBounds.TranslationSpeedAbsoluteCapPerFrame*precision,
+            MaximumWork=input.MaximumWork,
+            MaximumCandidateSpans=input.MaximumCandidateSpans,
             ExactOnlyBones=exact.Order(StringComparer.Ordinal).ToArray(),
             PreserveStructureBones=protectedBones.Order(StringComparer.Ordinal).ToArray(),
             MandatoryFrames=input.MandatoryFrames.Select(f=>(double)f).ToArray(),
@@ -153,6 +168,9 @@ sealed partial class ControlSession
                 writer.WritePropertyName("Report");JsonSerializer.Serialize(writer,result.Report,outputOptions);
                 writer.WritePropertyName("ExactBones");JsonSerializer.Serialize(writer,settings.ExactOnlyBones,outputOptions);
                 writer.WritePropertyName("ProtectedBones");JsonSerializer.Serialize(writer,settings.PreserveStructureBones,outputOptions);
+                writer.WriteNumber("PrecisionScale",input.PrecisionScale);
+                writer.WriteNumber("MaximumWork",input.MaximumWork);
+                writer.WriteNumber("MaximumCandidateSpans",input.MaximumCandidateSpans);
                 writer.WriteEndObject();writer.Flush();file.Flush(true);
             }
             File.Move(pending,outputPath);
@@ -169,6 +187,9 @@ sealed partial class ControlSession
             throw new InvalidDataException("Invalid bounded native optimization input.");
         if(!double.IsFinite(input.LengthScale)||input.LengthScale<0||input.HighQuality&&input.LengthScale<=0)
             throw new InvalidDataException("Optimization requires a finite authentic bind-bounds diagonal; high quality needs a positive length.");
+        if(!double.IsFinite(input.PrecisionScale)||input.PrecisionScale<=0||input.PrecisionScale>1||
+            input.MaximumWork is <0 or >2_000_000||input.MaximumCandidateSpans is <0 or >100_000)
+            throw new InvalidDataException("Optimization precision must be in (0,1] and remaining proof/candidate budgets must stay inside their aggregate limits.");
         if(input.Tracks.Select(t=>t.Bone).Distinct(StringComparer.Ordinal).Count()!=input.Tracks.Length||
             input.Tracks.Any(t=>string.IsNullOrEmpty(t.Bone)||t.Bone.Length>256||t.FrameLimit is <1 or >65536||
                 t.Channels is null||t.Channels.Length!=9||t.Channels.Any(c=>c is null)))

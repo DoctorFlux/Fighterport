@@ -198,7 +198,7 @@ namespace BrawlCrate.Studio
             catch (Exception error)
             {
                 if (!IsDisposed && !Disposing && token == generation)
-                { Discard(); summary.Text = error is OperationCanceledException ? "Analysis cancelled; the current animation is unchanged." : error.Message; report.Text = summary.Text; }
+                { Discard(); summary.Text = error is OperationCanceledException ? "Analysis cancelled; the current animation is unchanged." : error.Message; report.Text = error.Data["OptimizationDetails"] as string ?? summary.Text; }
             }
             finally
             {
@@ -352,7 +352,16 @@ namespace BrawlCrate.Studio
             SourceView.Heading.Height = TargetView.Heading.Height = Math.Max(38, Font.Height * 2 + 12);
             mode.ItemHeight = Font.Height + 6;
             modeSlot.Width = WorkspaceAppearance.Pixels(190);
-            modeSlot.Height = mode.PreferredHeight;
+            // PreferredHeight uses the font, while the native selection box also
+            // honors ItemHeight. Release docking before measuring so shrinking
+            // text does not retain the previous slot height. Include native
+            // chrome before handle creation as well as the measured HWND height.
+            var docking = mode.Dock;
+            mode.Dock = DockStyle.None;
+            mode.Height = mode.PreferredHeight;
+            int chrome = Math.Max(0, mode.PreferredHeight - mode.Font.Height);
+            modeSlot.Height = Math.Max(mode.Height, mode.ItemHeight + chrome);
+            mode.Dock = docking;
             frame.Height = Math.Max(38, Font.Height + 18);
             LayoutText();
         }

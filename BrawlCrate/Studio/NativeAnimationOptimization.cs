@@ -20,6 +20,7 @@ namespace BrawlCrate.Studio
         public bool ExactOnly { get; set; }
         public double LengthScale { get; set; }
         public long? OriginalStoredBytes { get; set; }
+        public long? OriginalStoredResourceBytes { get; set; }
         public string[] TargetBones { get; set; } = new string[0];
         public string[] ProtectedBones { get; set; } = new string[0];
         public string[] ExactBones { get; set; } = new string[0];
@@ -82,6 +83,9 @@ namespace BrawlCrate.Studio
         public string Report { get; internal set; }
         public long BeforeBytes { get; internal set; }
         public long AfterBytes { get; internal set; }
+        public long BeforeResourceBytes { get; internal set; }
+        public long CandidateResourceBytes { get; internal set; }
+        public long? OriginalInputResourceBytes { get; internal set; }
         public int BeforeKeys { get; internal set; }
         public int AfterKeys { get; internal set; }
         public int BeforeTracks { get; internal set; }
@@ -112,7 +116,7 @@ namespace BrawlCrate.Studio
     // Adapter-only final gate. Core owns curve reduction and continuous scalar
     // proofs. This verifies independent native serialization and cumulative native
     // evaluation, using caller-owned snapshots exclusively, never a live document.
-    internal static class NativeAnimationOptimization
+    internal static partial class NativeAnimationOptimization
     {
         private const int MaximumKeys = 2000000;
         private const int MaximumBones = 4096;
@@ -124,6 +128,7 @@ namespace BrawlCrate.Studio
         public static CHR0Node Copy(CHR0Node source)
         {
             if (source == null) throw new ArgumentNullException(nameof(source));
+            ValidateMetadata(source);
             var copy = new CHR0Node { Name = source.Name, Version = source.Version,
                 FrameCount = source.FrameCount, Loop = source.Loop, OriginalPath = source.OriginalPath };
             try
@@ -168,6 +173,7 @@ namespace BrawlCrate.Studio
 
         public static string ContentKey(CHR0Node clip)
         {
+            ValidateMetadata(clip);
             using (var buffer = new MemoryStream())
             {
                 using (var writer = new BinaryWriter(buffer, Encoding.UTF8, true))
@@ -204,6 +210,8 @@ namespace BrawlCrate.Studio
             token.ThrowIfCancellationRequested();
             if (!Finite(options.LengthScale) || options.LengthScale < 0 || !options.ExactOnly && options.LengthScale <= 0)
                 throw new InvalidDataException("High quality optimization requires a positive verified target geometry scale; exact mode does not guess one.");
+            if (options.OriginalStoredResourceBytes.HasValue && options.OriginalStoredResourceBytes.Value <= 0)
+                throw new InvalidDataException("The original native resource-block size must be positive; invalid size metadata cannot be retried as a quality failure.");
             if (beforeSnapshot.Version != 4 && beforeSnapshot.Version != 5) throw new NotSupportedException("Optimization supports native Brawl CHR0 version 4 or 5.");
             var targets = Set(options.TargetBones); var protectedBones = Set(options.ProtectedBones); var exactBones = Set(options.ExactBones);
             var bones = modelSnapshot.AllBones.ToArray();
@@ -226,15 +234,18 @@ namespace BrawlCrate.Studio
             string prefix = Path.Combine(Path.GetFullPath(stageDirectory), "optimization-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(Path.GetDirectoryName(prefix));
             string beforePath = prefix + "-before.chr0", afterPath = prefix + "-after.chr0";
-            CHR0Node candidate = null, decoded = null;
+            CHR0Node candidate = null, decoded = null; long beforeResourceBytes = 0;
             try
             {
                 using (var before = Copy(beforeSnapshot))
                 {
                     before.ExportChecked(beforePath);
                     using (var reopened = NodeFactory.FromFile(null, beforePath) as CHR0Node)
+                    {
                         if (reopened == null || ContentKey(reopened) != beforeContent)
                             throw new InvalidDataException("The precise native baseline did not retain every metadata field, flag, knot and tangent. Optimization was discarded.");
+                        beforeResourceBytes = ResourceBlockBytes(beforePath, reopened);
+                    }
                 }
                 token.ThrowIfCancellationRequested();
                 candidate = Copy(beforeSnapshot);
@@ -279,15 +290,30 @@ namespace BrawlCrate.Studio
                 var result = new NativeAnimationOptimizationResult { BeforeBytes = new FileInfo(beforePath).Length,
                     AfterBytes = new FileInfo(afterPath).Length, BeforeKeys = beforeKeys, AfterKeys = CountKeys(decoded),
                     BeforeTracks = beforeSnapshot.Children.Count, AfterTracks = decoded.Children.Count, ContentKey = expected,
-                    EncodedSha256 = FighterProject.HashFile(afterPath), HasChanges = beforeContent != expected };
+                    EncodedSha256 = FighterProject.HashFile(afterPath), HasChanges = beforeContent != expected,
+                    BeforeResourceBytes = beforeResourceBytes, CandidateResourceBytes = ResourceBlockBytes(afterPath, decoded), OriginalInputResourceBytes = options.OriginalStoredResourceBytes };
                 if (!result.HasChanges)
                 {
                     result.Report = "No useful saving: the optimized native animation is unchanged. No changes need to be applied.\r\n" +
-                        result.BeforeKeys + " keys, " + result.BeforeTracks + " tracks, " + result.BeforeBytes + " bytes in the independently verified current precise CHR0 export.";
+                        result.BeforeKeys + " keys, " + result.BeforeTracks + " tracks, " + result.BeforeBytes + " bytes in the independently verified current precise CHR0 export." +
+                        "\r\nCurrent precise resource block: " + result.BeforeResourceBytes + " bytes; external strings excluded." +
+                        (options.OriginalStoredResourceBytes.HasValue ? " Clean original input resource block: " + options.OriginalStoredResourceBytes.Value + " bytes. No resource rewrite is proposed." : "");
                     return result;
                 }
-                if (result.AfterBytes > result.BeforeBytes || options.OriginalStoredBytes.HasValue && result.AfterBytes > options.OriginalStoredBytes.Value)
-                    throw new InvalidDataException("Optimized CHR0 would be larger than the current native bytes. No changes were applied.");
+                bool resourceGrowth = result.CandidateResourceBytes > result.BeforeResourceBytes ||
+                    options.OriginalStoredResourceBytes.HasValue && result.CandidateResourceBytes > options.OriginalStoredResourceBytes.Value;
+                if (result.AfterBytes > result.BeforeBytes || options.OriginalStoredBytes.HasValue && result.AfterBytes > options.OriginalStoredBytes.Value || resourceGrowth)
+                {
+                    var growth = new InvalidDataException(resourceGrowth ? "Optimized CHR0 resource block would be larger: candidate " + result.CandidateResourceBytes +
+                        " bytes, current precise block " + result.BeforeResourceBytes + (options.OriginalStoredResourceBytes.HasValue ? ", clean original input block " + options.OriginalStoredResourceBytes.Value : "") +
+                        ". External/shared string tables are excluded from every resource-block count. No changes were applied." :
+                        "Optimized CHR0 would be larger than the current native bytes. No changes were applied.");
+                    growth.Data["OptimizationSize"] = true; growth.Data["BeforeBytes"] = result.BeforeBytes; growth.Data["AfterBytes"] = result.AfterBytes;
+                    growth.Data["BeforeResourceBytes"] = result.BeforeResourceBytes; growth.Data["CandidateResourceBytes"] = result.CandidateResourceBytes;
+                    if (options.OriginalStoredBytes.HasValue) growth.Data["OriginalStoredBytes"] = options.OriginalStoredBytes.Value;
+                    if (options.OriginalStoredResourceBytes.HasValue) growth.Data["OriginalInputResourceBytes"] = options.OriginalStoredResourceBytes.Value;
+                    throw growth;
+                }
                 Evaluate(modelSnapshot, bones, beforeSnapshot, decoded, options, result, token);
                 if (ContentKey(beforeSnapshot) != beforeContent) throw new InvalidOperationException("The operation's baseline snapshot changed during native verification.");
                 result.Report = BuildReport(result, options);
@@ -543,6 +569,7 @@ namespace BrawlCrate.Studio
         {
             return (options.ExactOnly ? "Exact curve reduction; native float rounding checked." : "High quality curve reduction; frozen native error bounds checked.") +
                 "\r\nCHR0: " + result.BeforeBytes + " → " + result.AfterBytes + " bytes; " + result.BeforeKeys + " → " + result.AfterKeys + " keys; " + result.BeforeTracks + " → " + result.AfterTracks + " tracks." +
+                "\r\nNative resource block: " + result.BeforeResourceBytes + " → " + result.CandidateResourceBytes + " bytes, verified against each exported CHR0 header size; external/shared string tables excluded." +
                 "\r\nIndependent I12 decode preserves every candidate key, tangent, semantic flag, entry order and metadata field." +
                 "\r\n" + result.Samples + " native samples: integer/quarter/withheld fractions, loop endpoints, mandatory knots and bounded adaptive midpoints; all native bones and skinned vertices." +
                 "\r\nAggregate native work: " + result.BudgetSamples + "/" + NativeAnimationOptimizationBudget.MaximumSamples + " logical witnesses (" + (result.BudgetSamples * 2) + " baseline/candidate pose evaluations), " +
@@ -550,7 +577,8 @@ namespace BrawlCrate.Studio
                 "\r\nMaximum errors: Euler " + G(result.MaximumEulerError) + "°, orientation " + G(result.MaximumOrientationError) + "°, scale " + G(result.MaximumScaleError) + ", local translation " + G(result.MaximumLocalTranslationError) + ", world/basis " + G(result.MaximumWorldBoneError) + ", skin " + G(result.MaximumSkinError) + "." +
                 "\r\nDerivative error/frame: Euler " + G(result.MaximumEulerDerivativeError) + "°, orientation " + G(result.MaximumOrientationDerivativeError) + "°, scale " + G(result.MaximumScaleDerivativeError) + ", translation " + G(result.MaximumTranslationDerivativeError) + ", world " + G(result.MaximumWorldDerivativeError) + ", skin " + G(result.MaximumSkinDerivativeError) + "." +
                 "\r\nScalar derivatives use decoded native Hermite coefficients. Cumulative orientation/world/skin derivative chords use smooth intervals at least 1/64 native frame apart; near-knot value witnesses remain included. Sampled cumulative geometry/derivatives are not a continuous-time certificate." +
-                (options.OriginalStoredBytes.HasValue ? "\r\nRecorded clean stored-resource size: " + options.OriginalStoredBytes.Value + " bytes; candidate cannot exceed either this size or the current precise export." : "") +
+                (options.OriginalStoredBytes.HasValue ? "\r\nRecorded clean standalone file size: " + options.OriginalStoredBytes.Value + " bytes; candidate cannot exceed either this size or the current precise export." : "") +
+                (options.OriginalStoredResourceBytes.HasValue ? "\r\nClean original input resource block: " + options.OriginalStoredResourceBytes.Value + " bytes; candidate resource block cannot exceed it. This is not a PAC alignment/compression size claim." : "") +
                 (options.LengthScale > 0 ? "\r\nVerified target length scale " + G(options.LengthScale) + "." : "\r\nNo nonzero target length scale; exact-mode native rounding uses the existing absolute 0.0002 translation/position bound.") +
                 "\r\nWorst measured gate: " + (result.WorstMetric ?? "zero error") + " · " + (result.WorstBone ?? "all") + " · frame " + G(result.WorstFrame) + "." +
                 "\r\nThese are standalone CHR0 byte counts. PAC/BRRES alignment or compressed container savings require a separate actual export. Contacts/game behavior are not newly accepted.";
@@ -619,6 +647,19 @@ namespace BrawlCrate.Studio
         private static bool Finite(double value) => !double.IsNaN(value) && !double.IsInfinity(value);
         private static string Hex(byte[] value) => BitConverter.ToString(value).Replace("-", "").ToLowerInvariant();
         private static string G(double value) => value.ToString("G9", Invariant);
+        private static long ResourceBlockBytes(string path, CHR0Node decoded)
+        {
+            var header = new byte[8];
+            using (var input = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                if (input.Read(header, 0, header.Length) != header.Length || header[0] != 'C' || header[1] != 'H' || header[2] != 'R' || header[3] != '0')
+                    throw new InvalidDataException("Independent native resource-size verification requires a complete CHR0 header.");
+                long declared = ((long)header[4] << 24) | ((long)header[5] << 16) | ((long)header[6] << 8) | header[7];
+                if (declared < 8 || declared > input.Length || declared != decoded.WorkingUncompressed.Length)
+                    throw new InvalidDataException("Independent CHR0 header size and freshly decoded native resource block disagree.");
+                return declared;
+            }
+        }
         private static double Norm(double[] values, int index) => Math.Sqrt(values[index] * values[index] + values[index + 1] * values[index + 1] + values[index + 2] * values[index + 2]);
         private static double DifferenceNorm(double[] a, double[] b, int index)
         { double x = a[index] - b[index], y = a[index + 1] - b[index + 1], z = a[index + 2] - b[index + 2]; return Math.Sqrt(x * x + y * y + z * z); }

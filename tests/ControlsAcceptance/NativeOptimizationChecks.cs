@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 
 internal static partial class Program
 {
@@ -179,7 +180,210 @@ internal static partial class Program
                 }
                 Check(rejected, "Native optimizer: exhausted " + counter + " budget reports actual required/consumed counts without being a retryable quality failure");
             }
+            NativeOptimizationQualityChecks(model, stage, names, options.LengthScale);
+            NativeOptimizationPreparationChecks(model, stage, names, options.LengthScale);
+            NativeOptimizationNextBakeChecks(modelPath, model, stage);
+            NativeOptimizationResourceSizeChecks(model, stage, names, options.LengthScale);
+            NativeOptimizationMetadataChecks(names[0], stage);
             Check(!Directory.GetFiles(stage, "optimization-*.chr0").Any(), "Native optimizer: success/reject/cancel verification files are cleaned without retained input copies");
+        }
+    }
+
+    static NativeAnimationOptimizationOptions OptimizationQualityOptions(string[] names, double length, bool quality, NativeAnimationOptimizationBudget budget = null)
+    {
+        return new NativeAnimationOptimizationOptions { ExactOnly = !quality, LengthScale = length, TargetBones = names, Budget = budget,
+            ProbeFrames = new[] { .19, 1.63, 3.89, 5 - .0001,
+                BitConverter.Int64BitsToDouble(BitConverter.DoubleToInt64Bits(2d) - 1), BitConverter.Int64BitsToDouble(BitConverter.DoubleToInt64Bits(2d) + 1),
+                (double)BitConverter.ToSingle(BitConverter.GetBytes(BitConverter.ToInt32(BitConverter.GetBytes(2f), 0) - 1), 0),
+                (double)BitConverter.ToSingle(BitConverter.GetBytes(BitConverter.ToInt32(BitConverter.GetBytes(2f), 0) + 1), 0) } };
+    }
+
+    static void NativeOptimizationQualityChecks(MDL0Node model, string stage, string[] names, double length)
+    {
+        var options = OptimizationQualityOptions(names, length, true);
+        using (var before = OptimizationFixture(names[0], "Independent accepted nonzero approximation"))
+        {
+            var entry = (CHR0EntryNode)before.Children[0];
+            OptimizationReplace(entry, 6, new[] { OptimizationKey(0, 0, 0), OptimizationKey(2, .00005f, 0), OptimizationKey(4, 0, 0) });
+            var reduced = OptimizationTrack(entry); reduced.Channels[6] = new[] { OptimizationKey(0, 0, 0), OptimizationKey(4, 0, 0) };
+            string original = NativeAnimationOptimization.ContentKey(before);
+            using (var result = NativeAnimationOptimization.Prepare(model, before, new[] { reduced }, options, stage))
+            {
+                Check(result.HasChanges && result.AfterKeys < result.BeforeKeys && result.AfterBytes < result.BeforeBytes && result.MaximumLocalTranslationError > 0 && result.MaximumSkinError > 0,
+                    "Native HQ: retained-endpoint approximation produces real nonzero local/full-skin errors and actual native savings");
+                Check(result.MaximumLocalTranslationError <= Math.Min(.0002, .0001 * length) && result.MaximumWorldBoneError <= .0001 * length && result.MaximumSkinError <= .0001 * length &&
+                    result.MaximumTranslationDerivativeError <= Math.Min(.0002, .0001 * length) && result.MaximumSkinDerivativeError <= .0001 * length,
+                    "Native HQ: independently authored small pulse passes unchanged frozen native value and derivative bounds");
+                Check(result.Samples > 80 && result.Report.Contains("1/64") && NativeAnimationOptimization.ContentKey(before) == original,
+                    "Native HQ: double/float-adjacent knot witnesses and non-loop end hold do not create spurious tiny-gap derivatives or mutate the source");
+                File.WriteAllText(Path.Combine(stage, "hq-nonzero-report.txt"), result.Report);
+            }
+        }
+
+        using (var before = OptimizationFixture(names[0], "Independent derivative-only native contradiction"))
+        {
+            var entry = (CHR0EntryNode)before.Children[0];
+            OptimizationReplace(entry, 6, new[] { OptimizationKey(0, 0, .0003f), OptimizationKey(2, 0, .0003f), OptimizationKey(4, 0, .0003f) });
+            var reduced = OptimizationTrack(entry); reduced.Channels[6] = new[] { OptimizationKey(0, 0, .0003f), OptimizationKey(4, 0, .0003f) };
+            // For equal endpoint slopes m and zero values, max |H| is
+            // |m|*span/(6*sqrt(3)). The sum bounds this difference everywhere.
+            double independentValueBound = .0003 * (2 + 4) / (6 * Math.Sqrt(3));
+            Check(independentValueBound < Math.Min(.0002, .0001 * length), "Native HQ: independent Hermite extrema prove the derivative-only witness remains inside its translation value bound");
+            var budget = new NativeAnimationOptimizationBudget(); options.Budget = budget;
+            bool rejected = false;
+            try { using (var result = NativeAnimationOptimization.Prepare(model, before, new[] { reduced }, options, stage)) { } }
+            catch (InvalidDataException error)
+            {
+                rejected = Equals(error.Data["OptimizationQuality"], true) && ((string)error.Data["Metric"]).Contains("derivative") &&
+                    error.Data["Bone"] != null && error.Data["Frame"] is double && budget.Samples > 0 && Convert.ToInt64(error.Data["BudgetSamples"]) == budget.Samples;
+                File.WriteAllText(Path.Combine(stage, "hq-derivative-rejection.txt"), error.Message);
+            }
+            Check(rejected, "Native HQ: derivative-only failure carries exact native bone/frame/metric evidence and consumes shared operation work");
+        }
+
+        var deepest = model.AllBones.OrderByDescending(OptimizationDepth).First();
+        using (var before = new CHR0Node { Name = "Independent cumulative hierarchy amplification", FrameCount = 33 })
+        {
+            var tracks = new List<ControlTrack>();
+            for (var bone = deepest; bone != null; bone = bone.Parent as MDL0BoneNode)
+            {
+                var entry = before.CreateEntry(bone.Name);
+                for (int channel = 0; channel < 9; channel++) OptimizationReplace(entry, channel, new[] { OptimizationKey(0, bone.BindState[channel], 0) });
+                for (int channel = 0; channel < 3; channel++) OptimizationReplace(entry, channel,
+                    new[] { OptimizationKey(0, 1, 0), OptimizationKey(16, 1.0000095f, 0), OptimizationKey(32, 1, 0) });
+                var reduced = OptimizationTrack(entry);
+                for (int channel = 0; channel < 3; channel++) reduced.Channels[channel] = new[] { OptimizationKey(0, 1, 0), OptimizationKey(32, 1, 0) };
+                tracks.Add(reduced);
+            }
+            double scalarError = 1.0000095f - 1d;
+            Check(scalarError < .00001 && scalarError * 1.5 / 16 < .00001 && OptimizationDepth(deepest) >= 11,
+                "Native HQ: each independently authored hierarchy scale error/speed passes scalar limits before cumulative verification");
+            var cumulativeOptions = OptimizationQualityOptions(names, length, true); cumulativeOptions.Budget = new NativeAnimationOptimizationBudget();
+            bool rejected = false;
+            try { using (var result = NativeAnimationOptimization.Prepare(model, before, tracks.ToArray(), cumulativeOptions, stage)) { } }
+            catch (InvalidDataException error)
+            {
+                rejected = Equals(error.Data["OptimizationQuality"], true) && ((string)error.Data["Metric"]).StartsWith("world", StringComparison.Ordinal) &&
+                    cumulativeOptions.Budget.Samples > 0 && Convert.ToDouble(error.Data["Error"]) > Convert.ToDouble(error.Data["Limit"]);
+                File.WriteAllText(Path.Combine(stage, "hq-cumulative-rejection.txt"), error.Message);
+            }
+            Check(rejected, "Native HQ: scalar-safe errors across a structural native parent chain fail cumulative world/basis or derivative verification");
+        }
+    }
+
+    static int OptimizationDepth(MDL0BoneNode bone)
+    { int result = 0; for (; bone != null; bone = bone.Parent as MDL0BoneNode) result++; return result; }
+
+    static void NativeOptimizationPreparationChecks(MDL0Node model, string stage, string[] names, double length)
+    {
+        using (var before = OptimizationFixture(names[0], "Independent coordinator ownership and retry fixture"))
+        {
+            var entry = (CHR0EntryNode)before.Children[0];
+            OptimizationReplace(entry, 6, new[] { OptimizationKey(0, 0, 0), OptimizationKey(2, .00005f, 0), OptimizationKey(4, 0, 0) });
+            OptimizationFixed(before, "Unmatched coordinator fixture", new float[] { 1, 1, 1, 0, 0, 0, 0, 0, 0 });
+            var exactTrack = OptimizationTrack(entry); var qualityTrack = OptimizationTrack(entry);
+            qualityTrack.Channels[6] = new[] { OptimizationKey(0, 0, 0), OptimizationKey(4, 0, 0) };
+            var tampered = OptimizationTrack(entry); tampered.Channels[6] = new[] { OptimizationKey(0, 1, 0), OptimizationKey(4, 1, 0) };
+            string content = NativeAnimationOptimization.ContentKey(before);
+            long currentBytes; string bytePath = Path.Combine(stage, "coordinator-current.chr0");
+            try { using (var copy = NativeAnimationOptimization.Copy(before)) copy.ExportChecked(bytePath); currentBytes = new FileInfo(bytePath).Length; }
+            finally { if (File.Exists(bytePath)) File.Delete(bytePath); }
+            var calls = new List<string>(); var budget = new NativeAnimationOptimizationBudget();
+            NativeAnimationOptimizationResult exact = null, quality = null;
+            using (var choice = NativeAnimationOptimizationPreparation.Prepare(true, currentBytes, (high, scale) =>
+            {
+                calls.Add(high ? "HQ " + scale.ToString(System.Globalization.CultureInfo.InvariantCulture) : "Exact");
+                if (!high) return Task.FromResult(exact = NativeAnimationOptimization.Prepare(model, before, new[] { exactTrack }, OptimizationQualityOptions(names, length, false, budget), stage));
+                if (scale == 1) return Task.FromResult(NativeAnimationOptimization.Prepare(model, before, new[] { tampered }, OptimizationQualityOptions(names, length, true, budget), stage));
+                return Task.FromResult(quality = NativeAnimationOptimization.Prepare(model, before, new[] { qualityTrack }, OptimizationQualityOptions(names, length, true, budget), stage));
+            }, CancellationToken.None).GetAwaiter().GetResult())
+            {
+                Check(calls.SequenceEqual(new[] { "Exact", "HQ 1", "HQ 0.5" }) && choice.HighQuality && choice.PrecisionScale == .5 && ReferenceEquals(choice.Result, quality),
+                    "HQ coordinator: Exact precedes strict precision retries and stops at the first independently verified HQ result");
+                Check(exact.Candidate == null && quality.Candidate != null && budget.Samples > exact.Samples + quality.Samples &&
+                    quality.BudgetSamples == budget.Samples && quality.BudgetBoneVisits == budget.BoneVisits && quality.BudgetVertexVisits == budget.VertexVisits,
+                    "HQ coordinator: replacing Exact disposes its candidate while failed/accepted attempts share charged native counters");
+                File.WriteAllText(Path.Combine(stage, "hq-coordinator-retry.txt"), choice.Report);
+            }
+            Check(quality.Candidate == null, "HQ coordinator: disposing the selected choice releases its independently verified native candidate");
+
+            calls.Clear(); budget = new NativeAnimationOptimizationBudget(); exact = null;
+            var grown = OptimizationTrack(entry);
+            for (int channel = 0; channel < 9; channel++) grown.Channels[channel] = Enumerable.Range(0, 5).Select(i => OptimizationKey(i, channel < 3 ? 1 : 0, 0)).ToArray();
+            using (var choice = NativeAnimationOptimizationPreparation.Prepare(true, currentBytes, (high, scale) =>
+            {
+                calls.Add(high ? "HQ " + scale.ToString(System.Globalization.CultureInfo.InvariantCulture) : "Exact");
+                if (!high) return Task.FromResult(exact = NativeAnimationOptimization.Prepare(model, before, new[] { exactTrack }, OptimizationQualityOptions(names, length, false, budget), stage));
+                return Task.FromResult(NativeAnimationOptimization.Prepare(model, before, new[] { scale == 1 ? grown : tampered }, OptimizationQualityOptions(names, length, true, budget), stage));
+            }, CancellationToken.None).GetAwaiter().GetResult())
+            {
+                Check(calls.SequenceEqual(new[] { "Exact", "HQ 1", "HQ 0.5", "HQ 0.25", "HQ 0.125" }) && !choice.HighQuality && ReferenceEquals(choice.Result, exact) && exact.Candidate != null,
+                    "HQ coordinator: native size rejection and all remaining quality rejections retain the fully verified Exact fallback");
+                Check(budget.Samples == exact.Samples + 3 && choice.Report.Contains("larger") && choice.Report.IndexOf("native", StringComparison.OrdinalIgnoreCase) >= 0,
+                    "HQ coordinator: encoded-size failure consumes no pose budget while each native quality failure remains charged");
+            }
+
+            calls.Clear(); budget = new NativeAnimationOptimizationBudget(); exact = null; quality = null;
+            var largerQuality = OptimizationTrack(entry); largerQuality.Channels[6] = qualityTrack.Channels[6];
+            for (int channel = 0; channel < 3; channel++) largerQuality.Channels[channel] = new[] { OptimizationKey(0, 1, 0), OptimizationKey(4, 1, 0) };
+            using (var choice = NativeAnimationOptimizationPreparation.Prepare(true, currentBytes, (high, scale) =>
+            {
+                calls.Add(high ? "HQ" : "Exact");
+                if (!high) return Task.FromResult(exact = NativeAnimationOptimization.Prepare(model, before, new[] { exactTrack }, OptimizationQualityOptions(names, length, false, budget), stage));
+                return Task.FromResult(quality = NativeAnimationOptimization.Prepare(model, before, new[] { largerQuality }, OptimizationQualityOptions(names, length, true, budget), stage));
+            }, CancellationToken.None).GetAwaiter().GetResult())
+            {
+                Check(quality.AfterBytes > exact.AfterBytes && quality.AfterBytes < currentBytes && ReferenceEquals(choice.Result, exact) && !choice.HighQuality,
+                    "HQ coordinator: a fully verified HQ result cannot replace a smaller verified Exact fallback");
+                Check(calls.SequenceEqual(new[] { "Exact", "HQ" }) && quality.Candidate == null && exact.Candidate != null,
+                    "HQ coordinator: first completed HQ verification stops retries and disposes its unused larger candidate");
+            }
+
+            calls.Clear(); budget = new NativeAnimationOptimizationBudget(); exact = null;
+            using (var choice = NativeAnimationOptimizationPreparation.Prepare(true, currentBytes, (high, scale) =>
+            {
+                calls.Add(high ? "HQ" : "Exact");
+                if (!high) return Task.FromResult(exact = NativeAnimationOptimization.Prepare(model, before, new[] { exactTrack }, OptimizationQualityOptions(names, length, false, budget), stage));
+                budget.Require(NativeAnimationOptimizationBudget.MaximumSamples + 1, names.Length, 0, "independent coordinator exhausted retry");
+                throw new Exception("The exhausted budget must reject before preparing another result.");
+            }, CancellationToken.None).GetAwaiter().GetResult())
+                Check(calls.SequenceEqual(new[] { "Exact", "HQ" }) && ReferenceEquals(choice.Result, exact) && exact.Candidate != null && budget.Samples == exact.Samples,
+                    "HQ coordinator: exhausted aggregate budget stops retries and retains only the already verified Exact fallback");
+
+            foreach (bool cancel in new[] { false, true })
+            {
+                var cancellation = new CancellationTokenSource(); exact = null; bool rejected = false;
+                try
+                {
+                    using (var choice = NativeAnimationOptimizationPreparation.Prepare(true, currentBytes, (high, scale) =>
+                    {
+                        if (!high) return Task.FromResult(exact = NativeAnimationOptimization.Prepare(model, before, new[] { exactTrack }, OptimizationQualityOptions(names, length, false), stage));
+                        if (cancel) { cancellation.Cancel(); throw new OperationCanceledException(cancellation.Token); }
+                        throw new InvalidDataException("Independent untagged native format/dependency failure");
+                    }, cancellation.Token).GetAwaiter().GetResult()) { }
+                }
+                catch (OperationCanceledException) { rejected = cancel; }
+                catch (InvalidDataException) { rejected = !cancel; }
+                Check(rejected && exact != null && exact.Candidate == null,
+                    "HQ coordinator: " + (cancel ? "cancellation" : "untagged failure") + " propagates and disposes the held Exact result without presenting fallback output");
+                cancellation.Dispose();
+            }
+            Check(NativeAnimationOptimization.ContentKey(before) == content, "HQ coordinator: retry, fallback, budget, failure and cancellation leave the immutable native input unchanged");
+        }
+
+        using (var before = OptimizationFixture(names[0], "Exact no-op remains eligible for HQ"))
+        {
+            var entry = (CHR0EntryNode)before.Children[0]; OptimizationReplace(entry, 6,
+                new[] { OptimizationKey(0, 0, 0), OptimizationKey(2, .00005f, 0), OptimizationKey(4, 0, 0) });
+            var reduced = OptimizationTrack(entry); reduced.Channels[6] = new[] { OptimizationKey(0, 0, 0), OptimizationKey(4, 0, 0) };
+            var calls = new List<bool>();
+            using (var choice = NativeAnimationOptimizationPreparation.Prepare(true, long.MaxValue, (quality, scale) =>
+            {
+                calls.Add(quality); return Task.FromResult(NativeAnimationOptimization.Prepare(model, before,
+                    new[] { quality ? reduced : OptimizationTrack(entry) }, OptimizationQualityOptions(names, length, quality), stage));
+            }, CancellationToken.None).GetAwaiter().GetResult())
+                Check(calls.SequenceEqual(new[] { false, true }) && choice.HighQuality && choice.Result?.Candidate != null,
+                    "HQ coordinator: an honest Exact no-op still permits independently verified approximate reduction");
         }
     }
 

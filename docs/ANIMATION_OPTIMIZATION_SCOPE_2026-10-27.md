@@ -90,3 +90,41 @@ logical witnesses, ten million bone visits and one billion skin visits, counting
 both baseline/candidate evaluation. No sampling density, scalar/pose tolerance or
 contact/floor gate changes. Shared counters will bound cumulative retries in the
 later High-quality increment; exhaustion still leaves the document unchanged.
+
+## Frozen preview.46 preparation policy
+
+Verify an Exact candidate first, retaining it as a possible fallback. Then try
+High-quality scalar bounds at 1, 1/2, 1/4 and 1/8 of the fixed ceilings, always
+starting from the immutable session baseline. Native pose/mesh limits never grow.
+Stop after the first completely verified High-quality candidate, choosing a smaller
+verified Exact candidate if it saves more bytes. This bounded greedy search does
+not promise a global minimum or monotonic geometry improvement across retries.
+
+Share 2,000,000 Core proof work units and 100,000 candidate spans across attempts,
+and share the existing native witness/bone/skin budgets. Retry only identified
+quality or size rejection. Work exhaustion stops preparation and offers only a
+previously complete verified candidate or unchanged content. Cancellation, stale
+dependencies, encoding/metadata/ownership failures discard the operation. Reports
+identify each rejected attempt, chosen mode, baseline hash and aggregate work.
+
+Session retention is per exact clip/target, including A → B → A navigation.
+Bound aggregate retained snapshots by the existing two-million-key / 256 MiB
+operation ceilings, with LRU disposal of snapshot payloads. Keep a compact exact
+identity/hash marker when a payload is evicted. Such a marker may replay the
+unchanged result but cannot silently authorize another approximation: unavailable
+original baselines block new HQ preparation. Exact cleanup remains available;
+manual authored edits or reopen establish an explicitly identified new baseline.
+Prepare the cache-owned baseline before changing the live clip, so an allocation
+or snapshot failure cannot leave a successful edit presented as failed Apply.
+
+## Native metadata qualification boundary
+
+The existing reader/writer does not represent nonzero CHR0 scaling rules or
+arbitrary opaque v5 user data. Reject those inputs before snapshot/content hashing
+instead of silently replacing metadata. Check both original and working raw
+buffers, because a prior native rebuild can already canonicalize working bytes.
+Qualify v4/v5 with scaling rule zero, canonical loop integers, supported original
+path layout, and canonical known Int/Float/single-String user data with unique
+UTF-8 names, ordinal IDs and exact finite native float roundtrips. Unsupported or
+malformed metadata leaves the animation unchanged with an explicit explanation.
+This is a narrow qualification guard, not a new writer/evaluation adapter.

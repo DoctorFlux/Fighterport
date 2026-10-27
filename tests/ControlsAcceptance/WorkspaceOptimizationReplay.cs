@@ -15,6 +15,86 @@ internal static partial class Program
 {
     static int ReplayFloatBits(float value) => BitConverter.ToInt32(BitConverter.GetBytes(value), 0);
 
+    static string OptimizationRetainedBaseline(ModelForm form)
+    {
+        var cache = Field(form, "_optimizationBaseline");
+        var baseline = cache == null ? null : (CHR0Node)Field(cache, "Baseline");
+        return baseline == null ? null : SetNativeContent(baseline);
+    }
+
+    // Independent native CPU skin/FK witnesses deliberately use fractions absent
+    // from the reducer and adapter's regular probe schedule. Both models are
+    // dialog-owned snapshots; the editable native model is never posed here.
+    static void OptimizationWithheldGeometry(FittingModelView beforeView, FittingModelView afterView,
+        CHR0Node baseline, CHR0Node candidate, string reportPath)
+    {
+        var original = beforeView.Model; var result = afterView.Model;
+        var bones = original.AllBones.ToArray(); var targetBones = result.AllBones.ToDictionary(b => b.Name, StringComparer.Ordinal);
+        var originalVertices = original.Objects.OfType<MDL0ObjectNode>().Where(o => o.Vertices != null).SelectMany(o => o.Vertices).ToArray();
+        var resultVertices = result.Objects.OfType<MDL0ObjectNode>().Where(o => o.Vertices != null).SelectMany(o => o.Vertices).ToArray();
+        Check(originalVertices.Length > 0 && originalVertices.Length == resultVertices.Length && bones.All(b => targetBones.ContainsKey(b.Name)), "Independent HQ witnesses retain the complete native target skeleton and skin");
+        original.ApplyCHR(null, 0);
+        var bind = originalVertices.Select(v => v.WeightedPosition).ToArray();
+        double length = Math.Sqrt(Math.Pow(bind.Max(p => p._x) - bind.Min(p => p._x), 2) + Math.Pow(bind.Max(p => p._y) - bind.Min(p => p._y), 2) + Math.Pow(bind.Max(p => p._z) - bind.Min(p => p._z), 2));
+        Check(!double.IsNaN(length) && !double.IsInfinity(length) && length > 0, "Independent HQ bounds use actual native bind-geometry diagonal");
+        double worldBound = .0001 * length, localBound = Math.Min(.0002, .0001 * length);
+        var times = new SortedSet<float> { 0, baseline.FrameCount - 1, baseline.Loop ? baseline.FrameCount : baseline.FrameCount - .0001f };
+        for (int frame = 0; frame < baseline.FrameCount - 1; frame++) foreach (float fraction in new[] { .211f, .457f, .913f }) times.Add(frame + fraction);
+        double maximumWorld = 0, maximumSkin = 0, maximumEuler = 0, maximumOrientation = 0, maximumScale = 0, maximumLocal = 0, maximumWorldSpeed = 0, maximumSkinSpeed = 0;
+        var discontinuities = baseline.Children.OfType<CHR0EntryNode>().SelectMany(entry => entry.KeyArrays)
+            .SelectMany(array => array.Entries.GroupBy(key => key._index).Where(group => group.Count() > 1).Select(group => (float)group.Key)).Distinct().ToArray();
+        double[] previousWorld = null, previousSkin = null; float previousTime = 0;
+        foreach (float time in times)
+        {
+            original.ApplyCHR(baseline, time + 1); result.ApplyCHR(candidate, time + 1);
+            var worldErrors = new double[bones.Length * 12]; var skinErrors = new double[originalVertices.Length * 3];
+            double atWorld = 0, atSkin = 0, atEuler = 0, atOrientation = 0, atScale = 0, atLocal = 0;
+            for (int i = 0; i < bones.Length; i++)
+            {
+                var a = bones[i]; var b = targetBones[a.Name];
+                atOrientation = Math.Max(atOrientation, LoopIndependentAngle(Enumerable.Range(3, 3).Select(c => (double)a.FrameState[c]).ToArray(), Enumerable.Range(3, 3).Select(c => (double)b.FrameState[c]).ToArray()));
+                atEuler = Math.Max(atEuler, Enumerable.Range(3, 3).Max(c => Math.Abs((double)a.FrameState[c] - b.FrameState[c])));
+                atScale = Math.Max(atScale, Enumerable.Range(0, 3).Max(c => Math.Abs((double)a.FrameState[c] - b.FrameState[c])));
+                atLocal = Math.Max(atLocal, Math.Sqrt(Enumerable.Range(6, 3).Sum(c => Math.Pow((double)a.FrameState[c] - b.FrameState[c], 2))));
+                for (int column = 0; column < 4; column++)
+                {
+                    double squared = 0;
+                    for (int row = 0; row < 3; row++)
+                    {
+                        double difference = ((double)b._frameMatrix[column * 4 + row] - a._frameMatrix[column * 4 + row]) * (column < 3 ? length : 1);
+                        worldErrors[i * 12 + column * 3 + row] = difference; squared += difference * difference;
+                    }
+                    atWorld = Math.Max(atWorld, Math.Sqrt(squared));
+                }
+            }
+            for (int vertex = 0; vertex < originalVertices.Length; vertex++)
+            {
+                var a = originalVertices[vertex].WeightedPosition; var b = resultVertices[vertex].WeightedPosition;
+                double x = (double)b._x - a._x, y = (double)b._y - a._y, z = (double)b._z - a._z;
+                skinErrors[vertex * 3] = x; skinErrors[vertex * 3 + 1] = y; skinErrors[vertex * 3 + 2] = z;
+                atSkin = Math.Max(atSkin, Math.Sqrt(x * x + y * y + z * z));
+            }
+            maximumWorld = Math.Max(maximumWorld, atWorld); maximumSkin = Math.Max(maximumSkin, atSkin); maximumEuler = Math.Max(maximumEuler, atEuler);
+            maximumOrientation = Math.Max(maximumOrientation, atOrientation); maximumScale = Math.Max(maximumScale, atScale); maximumLocal = Math.Max(maximumLocal, atLocal);
+            Check(atWorld <= worldBound && atSkin <= worldBound && atEuler <= .01 && atOrientation <= .01 && atScale <= .00001 && atLocal <= localBound,
+                "Independent held-out HQ native local/FK/full-skin bounds pass at " + time.ToString("G8"));
+            if (previousWorld != null && time - previousTime >= 1f / 64 && !discontinuities.Any(knot => knot > previousTime && knot <= time))
+            {
+                double delta = time - previousTime, worldSpeed = 0, skinSpeed = 0;
+                for (int i = 0; i < worldErrors.Length; i += 3) worldSpeed = Math.Max(worldSpeed, Math.Sqrt(Enumerable.Range(i, 3).Sum(j => Math.Pow((worldErrors[j] - previousWorld[j]) / delta, 2))));
+                for (int i = 0; i < skinErrors.Length; i += 3) skinSpeed = Math.Max(skinSpeed, Math.Sqrt(Enumerable.Range(i, 3).Sum(j => Math.Pow((skinErrors[j] - previousSkin[j]) / delta, 2))));
+                maximumWorldSpeed = Math.Max(maximumWorldSpeed, worldSpeed); maximumSkinSpeed = Math.Max(maximumSkinSpeed, skinSpeed);
+                Check(worldSpeed <= worldBound && skinSpeed <= worldBound, "Independent held-out HQ cumulative error-chord bounds pass at " + time.ToString("G8"));
+            }
+            previousWorld = worldErrors; previousSkin = skinErrors; previousTime = time;
+        }
+        File.WriteAllText(reportPath, new JavaScriptSerializer().Serialize(new { NativeIndependent = true, Samples = times.Count, Bones = bones.Length, Vertices = originalVertices.Length,
+            Length = length, WorldBound = worldBound, LocalBound = localBound, MaximumWorld = maximumWorld, MaximumSkin = maximumSkin,
+            MaximumEuler = maximumEuler, MaximumOrientation = maximumOrientation, MaximumScale = maximumScale, MaximumLocal = maximumLocal,
+            MaximumWorldErrorChord = maximumWorldSpeed, MaximumSkinErrorChord = maximumSkinSpeed, ContinuousGeometryCertificate = false }));
+        beforeView.Pose(baseline, 1); afterView.Pose(candidate, 1);
+    }
+
     static bool ReplayKnotMatches(CHR0Node before, CHR0Node after, int frame, ISet<string> targetNames)
     {
         foreach (var entry in before.Children.OfType<CHR0EntryNode>().Where(t => targetNames.Contains(t.Name)))
@@ -157,6 +237,8 @@ internal static partial class Program
                 Check(roots.Length > 0 && roots.All(name => model.AllBones.Any(b => b.Name == name)), "Replay retains exact reviewed native motion-control bindings");
                 var targetNames = new HashSet<string>(model.AllBones.Select(b => b.Name), StringComparer.Ordinal);
                 var siblings = Walk(clip.RootNode).OfType<CHR0Node>().Where(c => !ReferenceEquals(c, clip)).ToDictionary(c => c, SetNativeContent);
+                var untouchedBytes = OptimizationUntouchedBytes(form, clip);
+                File.WriteAllText(Path.Combine(output, "replay-untouched-before.json"), json.Serialize(untouchedBytes));
                 string before = SetNativeContent(clip), nativeIdentity = OptimizationNativeIdentity(clip), modelContent = (string)Call(form, "NativeControlHash", model, ".mdl0");
                 var rootsBefore = editor._openedFiles.Select(r => r.RootNode).Concat(new[] { model.RootNode }).Distinct().ToDictionary(root => root,
                     root => (string)Call(form, "NativeControlHash", root, string.IsNullOrEmpty(Path.GetExtension(root.FilePath)) ? ".bin" : Path.GetExtension(root.FilePath)));
@@ -199,6 +281,7 @@ internal static partial class Program
                                 foreach (float at in times)
                                     Check(model.AllBones.All(b => RecoverySamePose(RecoverySample(baseline, b, at), RecoverySample(window.Candidate, b, at))), "Exact accepted replay retains the native full-clip pose at " + at.ToString("G8"));
                             }
+                            else OptimizationWithheldGeometry(window.SourceView, window.TargetView, baseline, window.Candidate, Path.Combine(output, "replay-hq-withheld.json"));
                             witness.CheckPreserved("accepted " + (rawNext ? "original Next" : "fitted") + " optimization preparation");
                             Check(rootsBefore.All(proof => (string)Call(form, "NativeControlHash", proof.Key, string.IsNullOrEmpty(Path.GetExtension(proof.Key.FilePath)) ? ".bin" : Path.GetExtension(proof.Key.FilePath)) == proof.Value), "Preparing accepted replay preserves every open native source root");
                             optimized = SetNativeContent(window.Candidate);
@@ -234,6 +317,7 @@ internal static partial class Program
                     Check(SetNativeContent(clip) == before && siblings.All(proof => SetNativeContent(proof.Key) == proof.Value), "Accepted replay Undo restores the precise pre-optimization animation and preserves siblings");
                     editor.Redo(); await SimpleControlsReady(form);
                     Check(SetNativeContent(clip) == optimized && json.Serialize(asset.Retarget) == retargetMetadata && json.Serialize(new { asset.TransitionFit, asset.ClipTransitionFits }) == fitMetadata, "Accepted replay Redo restores optimized native curves without changing retarget or fit provenance");
+                    Check(OptimizationRetainedBaseline(form) == before, "Accepted replay Apply and native Undo/Redo retain the original session baseline content");
                 }
                 editor.FrameFighterModel(); await CaptureSimpleWorkspace(form, Path.Combine(output, "replay-native-applied.png"));
                 string export = Path.Combine(output, "replay-optimized.chr0"); form.ExportSimpleWorkspaceResult(export);
@@ -241,12 +325,21 @@ internal static partial class Program
                     Check(decoded != null && SetNativeContent(decoded) == optimized, "Export before Save independently reopens the accepted replay result exactly");
                 if (applied)
                 {
-                    int prepares = form.OptimizationPrepares; bool repeatDone = false; Exception repeatFailure = null;
+                    bool repeatDone = false; Exception repeatFailure = null;
                     form.OptimizationReady = async window => {
                         try {
-                            if (highQuality) SimpleControl<ComboBox>(window, "optimizationMode").SelectedIndex = 1;
+                            Check(OptimizationRetainedBaseline(form) == before, "Ordinary replay export preserves the original native quality baseline including its complete source keys");
+                            if (highQuality)
+                            {
+                                await window.Analyze();
+                                Check(window.Candidate != null && SetNativeContent(clip) == optimized && OptimizationRetainedBaseline(form) == before,
+                                    "Exact preview after HQ export leaves the current result and original approximation baseline unchanged");
+                                SimpleControl<ComboBox>(window, "optimizationMode").SelectedIndex = 1;
+                                Check(window.Candidate == null && !window.PreparedCanApply, "Switching the post-export Exact preview back to HQ requires explicit preparation");
+                            }
+                            int prepares = form.OptimizationPrepares;
                             await window.Analyze();
-                            Check(window.Candidate != null && !window.PreparedCanApply && form.OptimizationPrepares == prepares && SetNativeContent(window.Candidate) == optimized,
+                            Check(window.Candidate != null && !window.PreparedCanApply && form.OptimizationPrepares == prepares && SetNativeContent(window.Candidate) == optimized && OptimizationRetainedBaseline(form) == before,
                                 "Repeating unchanged optimization after ordinary export retains its original session baseline without another approximation or engine pass");
                         } catch (Exception error) { repeatFailure = error; }
                         finally { window.Close(); repeatDone = true; }
@@ -256,6 +349,7 @@ internal static partial class Program
                 }
                 string exportedRetargetMetadata = json.Serialize(asset.Retarget);
                 string saved = Path.Combine(output, "replay-optimized.fpstudio"); form.SaveFighterProject(saved);
+                OptimizationCheckUntouchedBytes(form, clip, untouchedBytes, "accepted replay project Save", Path.Combine(output, "replay-untouched-after-save.json"));
                 using (var reopened = FighterProject.Open(saved))
                 using (var freshForm = new ModelForm())
                 {
@@ -266,6 +360,7 @@ internal static partial class Program
                     await SimpleControlsReady(freshForm);
                     var restored = freshForm.FighterEditor.SelectedCHR0; var restoredAsset = (FighterAsset)Call(freshForm, "SelectedFighterAsset");
                     Check(restored != null && OptimizationNativeIdentity(restored) == nativeIdentity && SetNativeContent(restored) == optimized, "Save/fresh reopen retains the accepted replay's exact current native member and curves");
+                    OptimizationCheckUntouchedBytes(freshForm, restored, untouchedBytes, "accepted replay fresh reopen", Path.Combine(output, "replay-untouched-after-reopen.json"));
                     Check((string)Call(freshForm, "NativeControlHash", (MDL0Node)freshForm.FighterEditor.TargetModel, ".mdl0") == modelContent, "Fresh replay project retains the complete native target model and binds");
                     Check(json.Serialize(restoredAsset.Retarget) == exportedRetargetMetadata && json.Serialize(new { restoredAsset.TransitionFit, restoredAsset.ClipTransitionFits }) == fitMetadata, "Fresh replay project preserves original retarget provenance, ordinary export evidence and frozen fit recipes");
                     foreach (var proof in siblings)
