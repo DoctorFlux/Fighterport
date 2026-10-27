@@ -83,7 +83,7 @@ namespace BrawlCrate.Studio
             mode.Dock = DockStyle.Fill;
             modeSlot.Controls.Add(mode);
             options.Controls.Add(modeSlot);
-            compactStorage.AccessibleDescription = "Try smaller native indexed storage. Exact requires lossless decoded coefficients. High quality keeps the same measured error limits. Analyze explicitly; native Undo restores the original storage.";
+            compactStorage.AccessibleDescription = "Try smaller native storage. Exact requires lossless decoded coefficients. High quality and Small file keep their selected measured error limits. Analyze explicitly; native Undo restores the original storage.";
             options.Controls.Add(compactStorage);
 
             SourceView = new FittingModelView(originalModel, originalRoot, "Original current animation · read-only", true, viewer, references) { Dock = DockStyle.Fill };

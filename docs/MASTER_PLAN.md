@@ -1,5 +1,18 @@
 # Fighterport master plan
 
+27 October 2026 preview.53-dense-storage-source-orientation has bounded source
+acceptance: **4,564 application checks**, 1,303 separate final renderer assertions,
+23 inspected native UI PNGs, six inspected GIFs/250 decoded frames and a complete
+20-file byte audit. Shared coordinate evidence fixes the large native-frame kick
+orientation error while original Next, root curves, binds/skin and Undo remain.
+Guarded L1/L2 proposals retain indexed fallback for these attacks under unchanged
+quality/work limits. Final bone/channel files are **30,608/28,492 bytes**; the
+12,016-byte source is unmatched. See [acceptance](DENSE_STORAGE_SOURCE_ORIENTATION_ACCEPTANCE_2026-10-27.md)
+and the sole [current](plans/current.md) G1/M2. Fractional baking and the existing
+four-influence worker boundary remain open; reverse native-only evidence does
+not qualify worker fitting. No broader milestone, game, contact or human
+acceptance is promoted. Source publication stays public main as DoctorFlux only.
+
 27 October 2026 preview.52-small-file-optimization has bounded source acceptance: **5,682 checks / 11 admitted application runs / 30 inspected native PNGs**, with separate side-GIF and 20-file byte-audit evidence. The optional Small file preset keeps existing Exact/HQ behavior and adds the explicitly approved 0.1-degree rotation, 0.002 translation and 0.0001 scale profile; source-owned motion and authored pin/contact protections remain exact. Sonic-to-Mario fitted results measure **32,268/29,836 bytes**, versus strict 49,120/45,052; the different-target Mario-to-Snake case measures 59,392 from 338,468 bytes. The 12,016-byte donor remains unmatched. Full native previewer, original dense Next, source-key motion guards and native Undo remain. See [acceptance](SMALL_FILE_OPTIMIZATION_ACCEPTANCE_2026-10-27.md). ONE G1/M2 remains incomplete; no broader increment is promoted. The launcher selects preview.52 native-final1. Background-only testing and DoctorFlux-only source publication remain. Physical input/DPI, human usability, universal contacts, Melee/new adapters and game acceptance stay unverified.
 
 27 October 2026 preview.51-source-key-motion-guards has bounded source acceptance: **8,593 checks / 17 admitted runs / 55 inspected native PNGs**, with 229 inspected GIF frames and a separate 16-file byte audit. Both shared source-key modes now preserve required target data and add keys under rational scalar and cumulative native quality guards; Sonic/Mario maximum orientation differences fall from 12.22°/58.41° to about 0.0016°/0.0015°. Fitted optimized files measure 49,120/45,052 bytes; the 12 KB objective remains unmet. Full previewer, original dense Next, source-owned roots and native Undo remain. See [acceptance](SOURCE_KEY_QUALITY_ACCEPTANCE_2026-10-27.md). ONE G1/M2 remains incomplete. The user separately approved the next bounded preview.52 Small file profile (0.1° rotation, 0.002 translation, 0.0001 scale, bounded fit-join changes; exact roots/pin/contact protections), developed separately until qualification. The launcher selects preview.51 native-final1; background-only testing and DoctorFlux-only source publication remain. Physical input/DPI, universal contacts, Melee and game acceptance stay unverified.

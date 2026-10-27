@@ -38,7 +38,7 @@ internal static partial class Program
                 rig.Rig.Joints[old].Parent < 0 ? -1 : newIndex[rig.Rig.Joints[old].Parent], rig.Rig.Joints[old].Bind)).ToArray();
             var roles = rig.Rig.Roles.ToDictionary(p => p.Key, p => newIndex[p.Value]);
             var unfamiliar = new BrawlRig { Bones = order.Select(i => rig.Bones[i]).ToArray(),
-                Rig = new Rig("Independent anonymous rig", "reviewed structural fixture", joints, roles, rig.Rig.HeadRadius),
+                Rig = new Rig("Independent anonymous rig", "reviewed structural fixture", joints, roles, rig.Rig.HeadRadius, rig.Rig.CoordinateUp, rig.Rig.CoordinateFrame),
                 Fingerprint = BrawlRetargeter.SkeletonFingerprint(model) };
             Check(order.Count == rig.Bones.Length && order.Where((old, index) => old != index).Any() &&
                 unfamiliar.Bones.All(b => b.Name.StartsWith("joint_", StringComparison.Ordinal)),

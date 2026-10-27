@@ -309,6 +309,7 @@ internal static partial class Program
                     "Independent export/reopen retains the reviewed high-quality coefficient tuples and compact formats exactly");
             Check(siblings.All(p => SetNativeContent(p.Key) == p.Value) && originals.All(p => FighterProject.HashFile(p.Key) == p.Value),
                 "Compact optimization, cache reuse, export, Save, reopen and bind cleanup preserve original files and every sibling animation");
+            await WorkspaceImportedDenseOptimization(form, project, model, name, output);
         }
         finally
         {

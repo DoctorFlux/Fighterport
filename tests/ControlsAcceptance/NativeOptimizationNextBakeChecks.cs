@@ -40,7 +40,7 @@ internal static partial class Program
                 new RigJoint(firstIdentity, parent, new JointTransform(new Vector3(0, 0, -2), Quaternion.Identity, Vector3.One)),
                 new RigJoint(secondIdentity, firstIndex, new JointTransform(new Vector3(0, 0, -1), Quaternion.Identity, Vector3.One))
             }).ToArray();
-            var rig = new Rig(authenticSource.Rig.Name, authenticSource.Rig.Profile, joints, authenticSource.Rig.Roles, authenticSource.Rig.HeadRadius) {
+            var rig = new Rig(authenticSource.Rig.Name, authenticSource.Rig.Profile, joints, authenticSource.Rig.Roles, authenticSource.Rig.HeadRadius, authenticSource.Rig.CoordinateUp, authenticSource.Rig.CoordinateFrame) {
                 GroundNormal = authenticSource.Rig.GroundNormal, GroundHeight = authenticSource.Rig.GroundHeight };
             foreach (var surface in authenticSource.Rig.Surfaces) rig.Surfaces.Add(surface.Key, surface.Value);
             var source = new BrawlRig { Rig = rig, Bones = authenticSource.Bones.Concat(new[] { first, second }).ToArray(),

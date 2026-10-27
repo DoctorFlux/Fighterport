@@ -20,7 +20,7 @@ internal static partial class Program
         basis = Enumerable.Range(0, rig.Joints.Length).Select(i => Quaternion.CreateFromYawPitchRoll(i * 0.13f, i * -0.07f, i * 0.11f)).ToArray();
         var localBasis = basis;
         var joints = rig.Joints.Select((j, i) => new RigJoint(j.Name, j.Parent, RebaseLocal(j.Bind, j.Parent, i, localBasis)));
-        return new Rig(rig.Name, rig.Profile, joints, rig.Roles, rig.HeadRadius);
+        return new Rig(rig.Name, rig.Profile, joints, rig.Roles, rig.HeadRadius, rig.CoordinateUp, rig.CoordinateFrame);
     }
     private static JointTransform RebaseLocal(JointTransform value, int parent, int index, Quaternion[] basis)
     {
@@ -227,7 +227,7 @@ internal static partial class Program
 
     private static Rig CoreRig(Rig original,HashSet<string> roles)
     {
-        var rig=new Rig(original.Name,"Core humanoid",original.Joints,original.Roles.Where(p=>roles.Contains(p.Key)).ToDictionary(p=>p.Key,p=>p.Value),original.HeadRadius);
+        var rig=new Rig(original.Name,"Core humanoid",original.Joints,original.Roles.Where(p=>roles.Contains(p.Key)).ToDictionary(p=>p.Key,p=>p.Value),original.HeadRadius,original.CoordinateUp,original.CoordinateFrame);
         rig.GroundHeight=original.GroundHeight;rig.GroundNormal=original.GroundNormal;
         foreach(var p in original.Surfaces)rig.Surfaces.Add(p.Key,p.Value);
         return rig;
@@ -235,7 +235,7 @@ internal static partial class Program
 
     private static Rig RenameRig(Rig original,string prefix)
     {
-        var rig=new Rig(prefix,"Mapped humanoid",original.Joints.Select((j,i)=>new RigJoint(prefix+i,j.Parent,j.Bind)),original.Roles,original.HeadRadius);
+        var rig=new Rig(prefix,"Mapped humanoid",original.Joints.Select((j,i)=>new RigJoint(prefix+i,j.Parent,j.Bind)),original.Roles,original.HeadRadius,original.CoordinateUp,original.CoordinateFrame);
         rig.GroundHeight=original.GroundHeight;rig.GroundNormal=original.GroundNormal;
         foreach(var pair in original.Surfaces)rig.Surfaces.Add(pair.Key,pair.Value);
         return rig;

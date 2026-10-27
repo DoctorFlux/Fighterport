@@ -13,20 +13,37 @@ namespace BrawlCrate.UI
     internal partial class ModelForm
     {
         private readonly Dictionary<string,Dictionary<string,string>> _fighterRigMaps=new Dictionary<string,Dictionary<string,string>>();
+        private EngineRigReview ReviewedFighterCoordinates(MDL0Node model) =>
+            _fighterProject?.RigReviews.FirstOrDefault(r=>r.Fingerprint==EngineRigReview.FingerprintOf(model));
+        private System.Numerics.Quaternion? ReviewedFighterCoordinateFrame(MDL0Node model)
+        {
+            var review=ReviewedFighterCoordinates(model);if(review==null)return null;
+            System.Numerics.Vector3 Axis(float[] values)
+            {
+                if(values==null||values.Length!=3)throw new InvalidDataException("The exact-rig coordinate review is incomplete.");
+                return new System.Numerics.Vector3(values[0],values[1],values[2]);
+            }
+            return RigMath.ReviewedCoordinateFrame(Axis(review.Right),Axis(review.Up),Axis(review.Forward));
+        }
+        private string ReviewedFighterCoordinateKey(MDL0Node model)
+        {
+            var review=ReviewedFighterCoordinates(model);if(review==null)return "native-declared-up:+Y";
+            return new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new{review.Fingerprint,review.Right,review.Up,review.Forward,review.NativeRoles,review.NativeBones});
+        }
         private BrawlRig CaptureFighterRig(MDL0Node model,bool review=false)
         {
             string identity=BrawlRetargeter.SkeletonFingerprint(model);
+            var reviewed=ReviewedFighterCoordinates(model);
             if(!_fighterRigMaps.TryGetValue(identity,out Dictionary<string,string> map))
             {
                 var asset=_fighterProject?.Animations.LastOrDefault(a=>a.Retarget!=null && string.IsNullOrEmpty(a.Retarget.EngineReceipt) && (a.Retarget.SourceRig==identity || a.RigIdentity==identity));
                 var saved=asset?.Retarget;
                 if(saved!=null)map=saved.Mapping.ToDictionary(m=>m.Role,m=>saved.SourceRig==identity?m.Source:m.Target);
-                var reviewed=_fighterProject?.RigReviews.FirstOrDefault(r=>r.Fingerprint==EngineRigReview.FingerprintOf(model));
-                if(reviewed?.NativeRoles!=null)map=reviewed.NativeRoles.Zip(reviewed.NativeBones,(r,b)=>new{r,b}).ToDictionary(p=>p.r,p=>p.b);
             }
+            if(reviewed?.NativeRoles!=null)map=reviewed.NativeRoles.Zip(reviewed.NativeBones,(r,b)=>new{r,b}).ToDictionary(p=>p.r,p=>p.b);
             SkeletonCharacterization auto=BrawlRetargeter.Characterize(model);
             if(review || (map==null && (auto.Missing.Length>0 || auto.Warnings.Count>0)))map=ReviewFighterSkeleton(model,map,auto);
-            BrawlRig captured=BrawlRetargeter.Capture(model,map);
+            BrawlRig captured=BrawlRetargeter.Capture(model,map,coordinateFrame:ReviewedFighterCoordinateFrame(model));
             _fighterRigMaps[identity]=captured.Rig.Roles.ToDictionary(p=>p.Key,p=>captured.Bones[p.Value].Name);
             return captured;
         }
@@ -35,9 +52,11 @@ namespace BrawlCrate.UI
         private BrawlRig CaptureFighterPreviewRig(MDL0Node model)
         {
             string identity=BrawlRetargeter.SkeletonFingerprint(model);
-            if(_fighterRigMaps.TryGetValue(identity,out Dictionary<string,string> map))return BrawlRetargeter.Capture(model,map);
+            var reviewed=ReviewedFighterCoordinates(model);
+            if(reviewed?.NativeRoles!=null)return BrawlRetargeter.Capture(model,reviewed.NativeRoles.Zip(reviewed.NativeBones,(r,b)=>new{r,b}).ToDictionary(p=>p.r,p=>p.b),coordinateFrame:ReviewedFighterCoordinateFrame(model));
+            if(_fighterRigMaps.TryGetValue(identity,out Dictionary<string,string> map))return BrawlRetargeter.Capture(model,map,coordinateFrame:ReviewedFighterCoordinateFrame(model));
             var saved=_fighterProject?.Animations.LastOrDefault(a=>a.Retarget!=null && string.IsNullOrEmpty(a.Retarget.EngineReceipt) && a.RigIdentity==identity)?.Retarget;
-            return BrawlRetargeter.Capture(model,saved?.Mapping.ToDictionary(m=>m.Role,m=>m.Target));
+            return BrawlRetargeter.Capture(model,saved?.Mapping.ToDictionary(m=>m.Role,m=>m.Target),coordinateFrame:ReviewedFighterCoordinateFrame(model));
         }
         private Dictionary<string,string> ReviewFighterSkeleton(MDL0Node model,Dictionary<string,string> previous,SkeletonCharacterization auto)
         {

@@ -15,6 +15,10 @@ internal static partial class Program
         NativeCompactRuntimeChecks(args[0], System.IO.Path.Combine(output, "compact-runtime")).GetAwaiter().GetResult();
         NativeSelectiveReductionChecks(args[0], System.IO.Path.Combine(output, "selective-reduction"));
         NativeSmallFileQualityChecks(args[0], System.IO.Path.Combine(output, "small-file-quality")).GetAwaiter().GetResult();
+        NativeDenseStorageChecks(System.IO.Path.Combine(output, "dense-native-characterization"));
+        NativeDenseEncodedFormatChecks(System.IO.Path.Combine(output, "dense-encoded-format"));
+        NativeDenseWriterChecks(System.IO.Path.Combine(output, "dense-storage-writer"));
+        NativeDenseImportedExactChecks(args[0], System.IO.Path.Combine(output, "dense-imported-retention"));
         return Task.CompletedTask;
     }
 }

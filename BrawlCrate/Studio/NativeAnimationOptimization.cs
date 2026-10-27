@@ -2,6 +2,7 @@ using BrawlLib.Internal;
 using BrawlLib.Modeling;
 using BrawlLib.SSBB;
 using BrawlLib.SSBB.ResourceNodes;
+using BrawlLib.Wii.Animations;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -172,6 +173,8 @@ namespace BrawlCrate.Studio
                             entry.Keyframes.SetFrameValue(channel, key._index, key._value, true)._tangent = key._tangent;
                     entry.Keyframes.PreserveInterpolation = true;
                     var storage = PreciseCHR0EntryNode.CaptureStorage(sourceEntry);
+                    if (storage == null && IndexedCHR0EntryStorage.HasEncodedDenseRotation(sourceEntry))
+                        throw new InvalidDataException("A complete imported baked rotation payload cannot be bounded or verified. Its terminal context is unavailable; the source remains unchanged.");
                     if (storage != null) PreciseCHR0EntryNode.RestoreStorage(entry, storage);
                 }
                 PreciseCHR0EntryNode.Promote(copy);
@@ -377,10 +380,12 @@ namespace BrawlCrate.Studio
                     entry.Keyframes.PreserveInterpolation = true; entry.SignalPropertyChange();
                 }
                 if (CountKeys(candidate) > MaximumKeys) throw new InvalidDataException("Optimized native candidate exceeds the key budget.");
+                RequireImportedDenseRetention(beforeSnapshot, candidate, targets);
                 string expected = ContentKey(candidate); candidate.ExportChecked(afterPath);
                 decoded = NodeFactory.FromFile(null, afterPath) as CHR0Node;
                 if (decoded == null || ContentKey(decoded) != expected)
                     throw new InvalidDataException("Optimized native encode changed metadata, entry order, flags, knots or tangents (including scale-axis sharing). No candidate can be applied.");
+                RequireImportedDenseRetention(beforeSnapshot, decoded, targets);
                 var result = new NativeAnimationOptimizationResult { BeforeBytes = new FileInfo(beforePath).Length,
                     AfterBytes = new FileInfo(afterPath).Length, BeforeKeys = beforeKeys, AfterKeys = CountKeys(decoded),
                     BeforeTracks = beforeSnapshot.Children.Count, AfterTracks = decoded.Children.Count, ContentKey = expected, StorageKey = StorageKey(decoded),
@@ -419,6 +424,32 @@ namespace BrawlCrate.Studio
                 decoded?.Dispose(); candidate?.Dispose();
                 if (File.Exists(beforePath)) File.Delete(beforePath);
                 if (File.Exists(afterPath)) File.Delete(afterPath);
+            }
+        }
+
+        // A baked imported resource can own a terminal encoded sample that the
+        // historical non-loop native reader does not project into its key array.
+        // Until that complete authored context is explicitly editable, ordinary
+        // Exact/HQ/Small cleanup must retain the complete imported payload. Native
+        // prefix equality alone is insufficient evidence for replacing it.
+        private static void RequireImportedDenseRetention(CHR0Node baseline, CHR0Node candidate, HashSet<string> targets)
+        {
+            var entries = candidate.Children.OfType<CHR0EntryNode>().ToDictionary(e => e.Name, StringComparer.Ordinal);
+            foreach (var original in baseline.Children.OfType<CHR0EntryNode>())
+            {
+                if (!targets.Contains(original.Name)) continue;
+                var previous = PreciseCHR0EntryNode.CaptureStorage(original);
+                if (previous == null || !previous.MatchesGroup(original.Keyframes, 1)) continue;
+                for (int channel = 3; channel < 6; channel++)
+                {
+                    var curve = previous[channel]; if (curve == null || !curve.IsDense) continue;
+                    IndexedCHR0EntryStorage retained = null;
+                    if (entries.TryGetValue(original.Name, out CHR0EntryNode entry)) retained = PreciseCHR0EntryNode.CaptureStorage(entry);
+                    if (retained != null && retained.MatchesGroup(entry.Keyframes, 1) && retained[channel]?.ContentKey == curve.ContentKey) continue;
+                    var error = new InvalidDataException("Optimization cannot rewrite this imported baked rotation payload without losing its complete encoded terminal context: " + original.Name +
+                        ". Its native prefix is not the full authored payload. No changes were applied.");
+                    error.Data["OptimizationQuality"] = true; error.Data["OptimizationDenseRetention"] = true; throw error;
+                }
             }
         }
 

@@ -34,12 +34,44 @@ namespace BrawlCrate.Studio.Retargeting
         internal int[][] Branches { get; }
         internal bool[][] Ancestors { get; }
         public float HeadRadius { get; }
+        // Immutable adapter/review evidence for coordinate-up. It is separate
+        // from the mutable contact/support plane and never changes native binds.
+        // Null retains the labelled legacy anatomical-rest fallback.
+        public Vector3? CoordinateUp { get; }
+        // A complete exact-rig user/adapter review takes precedence over the
+        // anatomical heading estimate. Quaternion frames are proper rotations;
+        // reflected/left-handed coordinate systems need a separate adapter.
+        public Quaternion? CoordinateFrame { get; }
         public Dictionary<string, ContactSurface> Surfaces { get; } = new Dictionary<string, ContactSurface>();
         public Vector3 GroundNormal { get; set; } = Vector3.UnitY;
         public float GroundHeight { get; set; }
         public Rig(string name, string profile, IEnumerable<RigJoint> joints, IDictionary<string, int> roles, float headRadius)
+            : this(name, profile, joints, roles, headRadius, null, null) { }
+        public Rig(string name, string profile, IEnumerable<RigJoint> joints, IDictionary<string, int> roles, float headRadius, Vector3? coordinateUp = null, Quaternion? coordinateFrame = null)
         {
             Name = name; Profile = profile; Joints = joints.ToArray(); Roles = new Dictionary<string, int>(roles);
+            if (coordinateFrame.HasValue)
+            {
+                Quaternion frame = coordinateFrame.Value;
+                if (!RigMath.Finite(frame.X) || !RigMath.Finite(frame.Y) || !RigMath.Finite(frame.Z) || !RigMath.Finite(frame.W) ||
+                    !RigMath.Finite(frame.LengthSquared()) || frame.LengthSquared() < 1e-10f)
+                    throw new InvalidDataException("The reviewed coordinate frame must be a finite nonzero proper rotation.");
+                CoordinateFrame = Quaternion.Normalize(frame);
+            }
+            if (coordinateUp.HasValue)
+            {
+                Vector3 up = coordinateUp.Value;
+                if (!RigMath.Finite(up) || up.LengthSquared() < 1e-10f || !RigMath.Finite(up.LengthSquared()))
+                    throw new InvalidDataException("The declared coordinate-up must be a finite nonzero axis.");
+                CoordinateUp = Vector3.Normalize(up);
+            }
+            if (CoordinateFrame.HasValue)
+            {
+                Vector3 reviewedUp = Vector3.Transform(Vector3.UnitY, CoordinateFrame.Value);
+                if (CoordinateUp.HasValue && Vector3.Dot(reviewedUp, CoordinateUp.Value) < .9999f)
+                    throw new InvalidDataException("The declared up axis disagrees with the reviewed coordinate frame.");
+                CoordinateUp = reviewedUp;
+            }
             if (Joints.Length == 0 || Joints.Length > 512 || Joints.Select(j => j.Name).Distinct(StringComparer.Ordinal).Count() != Joints.Length)
                 throw new InvalidDataException("A retarget rig needs unique joints and at most 512 bones.");
             for (int i = 0; i < Joints.Length; i++)
@@ -164,11 +196,39 @@ namespace BrawlCrate.Studio.Retargeting
             2 * (float)Math.Acos(Clamp(Math.Abs(Quaternion.Dot(Quaternion.Normalize(a), Quaternion.Normalize(b))), 0, 1));
         public static Quaternion BodyFrame(Rig rig)
         {
+            if (rig.CoordinateFrame.HasValue) return rig.CoordinateFrame.Value;
             Vector3 right = Unit(rig.Rest.Point("left.upperArm") - rig.Rest.Point("right.upperArm"));
-            Vector3 up = rig.Rest.Point("head") - rig.Rest.Point("pelvis");
-            up = Unit(up - right * Vector3.Dot(up, right)); Vector3 forward = Unit(Vector3.Cross(right, up));
+            Vector3 up;
+            if (rig.CoordinateUp.HasValue)
+            {
+                // Head/neck position is authored anatomy/posture, not a game
+                // coordinate axis. Keep the reviewed lateral heading in the
+                // plane perpendicular to the adapter's declared up direction.
+                up = rig.CoordinateUp.Value;
+                right -= up * Vector3.Dot(right, up);
+                if (right.LengthSquared() < 1e-10f)
+                    throw new InvalidDataException("The declared coordinate-up is parallel to the reviewed lateral axis; review coordinate evidence.");
+                right = Unit(right);
+            }
+            else
+            {
+                up = rig.Rest.Point("head") - rig.Rest.Point("pelvis");
+                up = Unit(up - right * Vector3.Dot(up, right));
+            }
+            Vector3 forward = Unit(Vector3.Cross(right, up));
             var matrix = new Matrix4x4(right.X, right.Y, right.Z, 0, up.X, up.Y, up.Z, 0,
                 forward.X, forward.Y, forward.Z, 0, 0, 0, 0, 1);
+            return Quaternion.Normalize(Quaternion.CreateFromRotationMatrix(matrix));
+        }
+        public static Quaternion ReviewedCoordinateFrame(Vector3 right, Vector3 up, Vector3 forward)
+        {
+            var axes = new[] {right, up, forward};
+            if (axes.Any(v => !Finite(v) || Math.Abs(v.LengthSquared() - 1) > .0001f) ||
+                Math.Abs(Vector3.Dot(right, up)) > .0001f || Math.Abs(Vector3.Dot(right, forward)) > .0001f || Math.Abs(Vector3.Dot(up, forward)) > .0001f)
+                throw new InvalidDataException("Reviewed coordinates require finite orthogonal unit right, up and forward axes.");
+            if (Vector3.Dot(Vector3.Cross(right, up), forward) < .9999f)
+                throw new NotSupportedException("The reviewed coordinate axes are left-handed. Original Next requires a reviewed proper frame; reflected-axis conversion needs a separate adapter.");
+            var matrix = new Matrix4x4(right.X, right.Y, right.Z, 0, up.X, up.Y, up.Z, 0, forward.X, forward.Y, forward.Z, 0, 0, 0, 0, 1);
             return Quaternion.Normalize(Quaternion.CreateFromRotationMatrix(matrix));
         }
     }

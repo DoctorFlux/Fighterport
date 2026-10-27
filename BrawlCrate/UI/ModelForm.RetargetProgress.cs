@@ -33,6 +33,7 @@ namespace BrawlCrate.UI
             // Keep Next's solver unchanged. The worker reads owned immutable
             // native snapshots, never the viewer's live resources.
             var sourceReview=CaptureFighterRig(source);var targetReview=CaptureFighterRig(target);
+            string sourceCoordinates=ReviewedFighterCoordinateKey(source),targetCoordinates=ReviewedFighterCoordinateKey(target);
             Directory.CreateDirectory(_controlStage);
             string sourcePath=Path.Combine(_controlStage,Guid.NewGuid().ToString("N")+".mdl0"),targetPath=Path.Combine(_controlStage,Guid.NewGuid().ToString("N")+".mdl0"),clipPath=Path.Combine(_controlStage,Guid.NewGuid().ToString("N")+".chr0");
             string previewPath=null;var keyMode=forcedMode??_retargetKeyframeMode;
@@ -62,7 +63,7 @@ namespace BrawlCrate.UI
             using(var targetCopy=NodeFactory.FromFile(null,targetPath) as MDL0Node)
             using(var clipCopy=NodeFactory.FromFile(null,clipPath) as CHR0Node)
             {
-            BrawlRig sourceRig=BrawlRetargeter.Capture(sourceCopy,sourceReview.Rig.Roles.ToDictionary(p=>p.Key,p=>sourceReview.Bones[p.Value].Name)),targetRig=BrawlRetargeter.Capture(targetCopy,targetReview.Rig.Roles.ToDictionary(p=>p.Key,p=>targetReview.Bones[p.Value].Name));
+            BrawlRig sourceRig=BrawlRetargeter.Capture(sourceCopy,sourceReview.Rig.Roles.ToDictionary(p=>p.Key,p=>sourceReview.Bones[p.Value].Name),sourceReview.Rig.CoordinateUp,sourceReview.Rig.CoordinateFrame),targetRig=BrawlRetargeter.Capture(targetCopy,targetReview.Rig.Roles.ToDictionary(p=>p.Key,p=>targetReview.Bones[p.Value].Name),targetReview.Rig.CoordinateUp,targetReview.Rig.CoordinateFrame);
             foreach(var entry in clipCopy.Children.OfType<CHR0EntryNode>())
                 for(int channel=0;channel<9;channel++){int populated=entry.Keyframes[channel].KeyCount;}
             RetargetResult result=null;Exception failure=null;bool completed=false;
@@ -112,7 +113,7 @@ namespace BrawlCrate.UI
                 void Current()
                 {
                     if(IsDisposed||_fighterProject!=project||modelEditControl1.TargetModel!=target||modelEditControl1.TargetAnimation!=selected||project.GroundMode!=groundMode||
-                        !forcedMode.HasValue&&_retargetKeyframeMode!=keyMode||NativeControlHash(source,".mdl0")!=sourceHash||NativeControlHash(target,".mdl0")!=targetHash||
+                        !forcedMode.HasValue&&_retargetKeyframeMode!=keyMode||ReviewedFighterCoordinateKey(source)!=sourceCoordinates||ReviewedFighterCoordinateKey(target)!=targetCoordinates||NativeControlHash(source,".mdl0")!=sourceHash||NativeControlHash(target,".mdl0")!=targetHash||
                         (keyMode==RetargetKeyframeMode.Dense?NativeControlHash(clip,".chr0")!=clipHash:NativeAnimationOptimization.SourceContentKey(clip)!=sourceClipContent))
                         throw new InvalidOperationException("Retarget inputs or key options changed. The stale result was discarded; retarget the current source and target again.");
                 }

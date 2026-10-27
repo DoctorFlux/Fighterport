@@ -63,7 +63,7 @@ internal static partial class Program
         Check(rootlessMap.Roles.Count==17 && !rootlessMap.Roles.ContainsKey("root"),"A pelvis-root humanoid characterizes without global helpers, clavicles, toes or fingers");
         foreach(float unitScale in new[]{0.01f,100f})
         {
-            var scaled=new Rig("Unrelated units","Humanoid",rootless.Select(j=>new RigJoint(j.Name,j.Parent,new JointTransform(j.Bind.Translation*unitScale,j.Bind.Rotation,j.Bind.Scale))),rootlessMap.Roles,source.Rig.HeadRadius*unitScale);
+            var scaled=new Rig("Unrelated units","Humanoid",rootless.Select(j=>new RigJoint(j.Name,j.Parent,new JointTransform(j.Bind.Translation*unitScale,j.Bind.Rotation,j.Bind.Scale))),rootlessMap.Roles,source.Rig.HeadRadius*unitScale,source.Rig.CoordinateUp,source.Rig.CoordinateFrame);
             var plan=new HumanoidRetargeter(scaled,target.Rig);var rest=plan.Evaluate(scaled.Rest).Pose;
             double error=Enumerable.Range(0,target.Bones.Length).Max(i=>Vector3.Distance(rest.Point(i),target.Rig.Rest.Point(i)));
             var animated=new RigPose(scaled);int arm=scaled.Roles["left.upperArm"];

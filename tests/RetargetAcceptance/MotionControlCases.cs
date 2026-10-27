@@ -101,7 +101,7 @@ internal static partial class Program
             {
                 var order=Enumerable.Range(0,rig.Joints.Length).OrderBy(i=>Depth(rig,i)).ThenByDescending(i=>i).ToArray();
                 var indices=order.Select((old,index)=>new{old,index}).ToDictionary(x=>x.old,x=>x.index);
-                return new Rig("anonymous","reviewed",order.Select(i=>new RigJoint("joint_"+indices[i],rig.Joints[i].Parent<0?-1:indices[rig.Joints[i].Parent],rig.Joints[i].Bind)),rig.Roles.ToDictionary(p=>p.Key,p=>indices[p.Value]),rig.HeadRadius);
+                return new Rig("anonymous","reviewed",order.Select(i=>new RigJoint("joint_"+indices[i],rig.Joints[i].Parent<0?-1:indices[rig.Joints[i].Parent],rig.Joints[i].Bind)),rig.Roles.ToDictionary(p=>p.Key,p=>indices[p.Value]),rig.HeadRadius,rig.CoordinateUp,rig.CoordinateFrame);
             }
             var anonymous=new HumanoidRetargeter(Anonymous(source.Rig),Anonymous(target.Rig));
             var pose=new RigPose(anonymous.Source);
@@ -123,7 +123,7 @@ internal static partial class Program
                     var bind=j.Bind;if(legEnds.Contains(i))bind.Translation*=legRatio;
                     return new RigJoint(j.Name,j.Parent,RebaseLocal(bind,j.Parent,i,basis));
                 });
-                return Anonymous(new Rig("anonymous motion proportions","reviewed",joints,rig.Roles,rig.HeadRadius));
+                return Anonymous(new Rig("anonymous motion proportions","reviewed",joints,rig.Roles,rig.HeadRadius,rig.CoordinateUp,rig.CoordinateFrame));
             }
             foreach(float factor in new[]{.65f,1.6f})
             {

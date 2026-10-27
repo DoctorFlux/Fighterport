@@ -291,10 +291,33 @@ namespace BrawlCrate.UI
                             bool protectionKnown = BindingReady();
                             long work = 0; int spans = 0;
                             var budget = new NativeAnimationOptimizationBudget();
+                            // Dense proposals and Core certificates share the
+                            // existing operation work ceiling across all retries.
+                            var denseProofBudget = new NativeDenseProofBudget(amount =>
+                            {
+                                token.ThrowIfCancellationRequested();
+                                if (amount < 0 || amount > 2000000 - work) return false;
+                                work += amount;
+                                return true;
+                            });
                             var receipts = new Dictionary<NativeAnimationOptimizationResult, OptimizationOutput>();
                             ControlTrack[] exactReductionTracks = null;
                             var wire = OptimizationWireTracks(baseline);
                             var nativeBones = model.AllBones.ToDictionary(b => b.Name, StringComparer.Ordinal);
+                            // An imported baked rotation owns a complete stored
+                            // terminal sample and an interpolation context beyond
+                            // the native projection. Preserve it as a whole; other
+                            // eligible target tracks can still be optimized.
+                            var retainedDense = baseline.Children.OfType<CHR0EntryNode>()
+                                .Where(entry => nativeBones.ContainsKey(entry.Name))
+                                .Where(entry =>
+                                {
+                                    var storage = PreciseCHR0EntryNode.CaptureStorage(entry);
+                                    return storage != null && storage.MatchesGroup(entry.Keyframes, 1) &&
+                                        Enumerable.Range(3, 3).Any(channel => storage[channel]?.IsDense == true);
+                                }).Select(entry => entry.Name).ToArray();
+                            var analysisProtected = new HashSet<string>(protectedBones, StringComparer.Ordinal);
+                            analysisProtected.UnionWith(retainedDense);
                             var bindPoses = baseline.Children.OfType<CHR0EntryNode>().Select(entry => new { Entry = entry, Bone = nativeBones.TryGetValue(entry.Name, out var bound) ? bound : null })
                                 .Where(pair => NativeAnimationOptimization.CanRemoveBindTrack(pair.Entry, pair.Bone))
                                 .Select(pair => new { pair.Bone.Name, Bits = Enumerable.Range(0, 9).Select(c => OptimizationFloatBits(pair.Bone.BindState[c])).ToArray() })
@@ -312,7 +335,7 @@ namespace BrawlCrate.UI
                                 {
                                     var input = new { baseline.Name, SampleCount = baseline.FrameCount, baseline.Loop, HighQuality = approximate, SmallFile = approximate && smallFile, LengthScale = length,
                                         PrecisionScale = precision, MaximumWork = 2000000 - work, MaximumCandidateSpans = 100000 - spans,
-                                        Tracks = wire, ExactBones = exact.ToArray(), ProtectedBones = protectedBones.ToArray(), MandatoryFrames = approximate && smallFile ? new int[0] : mandatory.OrderBy(f => f).ToArray(),
+                                        Tracks = wire, ExactBones = exact.ToArray(), ProtectedBones = analysisProtected.ToArray(), MandatoryFrames = approximate && smallFile ? new int[0] : mandatory.OrderBy(f => f).ToArray(),
                                         FitJoinFrames = approximate && smallFile ? mandatory.OrderBy(f => f).ToArray() : new int[0],
                                         ProtectedRanges = ranges, ProtectionKnown = protectionKnown, BindPoses = bindPoses };
                                     await Task.Run(() => { token.ThrowIfCancellationRequested(); File.WriteAllText(inputPath, json.Serialize(input)); }, token);
@@ -383,7 +406,7 @@ namespace BrawlCrate.UI
                                                 }
                                                 finally { foreach (string file in new[] { certificateInput, certificateOutput }) if (File.Exists(file)) File.Delete(file); }
                                             }
-                                            verified = await Task.Run(() => NativeAnimationOptimization.PrepareCompact(validationModel, baseline, before, precise, options, stage, Certificate, token), token);
+                                            verified = await Task.Run(() => NativeAnimationOptimization.PrepareCompact(validationModel, baseline, before, precise, options, stage, Certificate, denseProofBudget, token), token);
                                         }
                                     }
                                     try { token.ThrowIfCancellationRequested(); current(); receipts.Add(verified, output); return verified; }
@@ -407,7 +430,7 @@ namespace BrawlCrate.UI
                                         "\r\nBaseline: " + (cached && highQuality ? "retained original session animation" : "current animation frozen at Analyze") +
                                         "\r\nBaseline content SHA-256: " + NativeAnimationOptimization.ContentKey(baseline) +
                                         "\r\nProtection context: " + (protectionKnown ? "reviewed exact native rig bindings" : "unavailable; no motion/contact roles inferred, Exact cleanup only") +
-                                        "\r\nAggregate Core proof work " + work + "/2000000; spans " + spans + "/100000; native witnesses " + budget.Samples + "/100000, bone visits " + budget.BoneVisits + "/10000000, skin visits " + budget.VertexVisits + "/1000000000.";
+                                        "\r\nAggregate scalar proof work " + work + "/2000000; spans " + spans + "/100000; native witnesses " + budget.Samples + "/100000, bone visits " + budget.BoneVisits + "/10000000, skin visits " + budget.VertexVisits + "/1000000000.";
                                     if (verified == null)
                                     {
                                         window.PreparedCanApply = false; window.PreparedSummary = "No useful verified saving for this animation; the current native content is unchanged.";
@@ -432,7 +455,8 @@ namespace BrawlCrate.UI
                                         (smallFile ? "\r\nFitting join poses/tangents may change within these bounds. Source-owned motion controls and authored pin/contact protections remain exact. Timing and stored loop state remain unchanged." : "") +
                                         "\r\nAbsent-target tracks to remove: " + (output.RemovedUnmatchedTracks.Length == 0 ? "none" : string.Join(", ", output.RemovedUnmatchedTracks)) +
                                         "\r\nExact bind-pose tracks to remove: " + (output.RemovedBindTracks.Length == 0 ? "none" : string.Join(", ", output.RemovedBindTracks)) +
-                                        "\r\nExact-only controls: " + string.Join(", ", output.ExactBones) + "\r\nProtected pin/contact paths: " + string.Join(", ", output.ProtectedBones) +
+                                        "\r\nExact-only controls: " + string.Join(", ", output.ExactBones) + "\r\nProtected tracks and dependency paths: " + string.Join(", ", output.ProtectedBones) +
+                                        "\r\nImported rotation tracks retained with their complete stored data: " + (retainedDense.Length == 0 ? "none" : string.Join(", ", retainedDense)) +
                                         "\r\nContinuous scalar proof: " + output.Report.Claim + "\r\nChosen candidate work " + output.Report.Work + "; spans " + output.Report.CandidateSpans + "; merges " + output.Report.AcceptedMerges +
                                         (output.Report.WorkLimitReached || output.Report.CandidateLimitReached ? "; resource-limited, fully verified best candidate only" : "") +
                                         "\r\nNo PAC/PCS or Melee size/game claim. Current clip metadata and native flags retained.\r\n" +

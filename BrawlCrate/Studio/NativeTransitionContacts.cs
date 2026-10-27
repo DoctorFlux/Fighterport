@@ -19,7 +19,10 @@ namespace BrawlCrate.Studio
             var proof=asset.Retarget;
             if(!HasBakedSupport(asset))return new string[0];
             if(!preserve)throw new NotSupportedException("This retargeted clip has baked support contacts. Enable Preserve existing contact trajectories. Reviewed hip / leg recovery can be explicitly enabled inside explicitly selected start/end windows; general support repositioning still needs a coupled contact adapter. Original animation and pins remain unchanged.");
-            if(proof.Algorithm!=HumanoidRetargeter.Algorithm||!string.IsNullOrEmpty(proof.EngineReceipt)||asset.RigIdentity!=BrawlRetargeter.SkeletonFingerprint(model))throw new InvalidDataException("Support protection requires the exact original Next target rig and its reviewed native mapping.");
+            // v7's already-authored contact paths remain historical evidence.
+            // Reconstruct their dependency closure; never rerun or relabel that
+            // result as the new coordinate-calibrated solver revision.
+            if((proof.Algorithm!=HumanoidRetargeter.Algorithm&&proof.Algorithm!="bind-world-fk-body-contact-ik-v7")||!string.IsNullOrEmpty(proof.EngineReceipt)||asset.RigIdentity!=BrawlRetargeter.SkeletonFingerprint(model))throw new InvalidDataException("Support protection requires the exact original Next target rig and its reviewed native mapping.");
             // Reuse the original native support regions and ALL their skin
             // influences. Counts do not identify individual intervals, so freeze
             // both sides for the whole clip rather than inventing a timeline.

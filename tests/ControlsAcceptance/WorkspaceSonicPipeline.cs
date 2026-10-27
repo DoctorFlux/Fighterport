@@ -63,6 +63,12 @@ internal static partial class Program
     {
         if (!PrivateDesktop) throw new InvalidOperationException("Sonic fitting/size qualification requires a private desktop.");
         string Arg(string key) => args[Array.IndexOf(args, key) + 1];
+        bool reciprocal = args.Contains("--sonic-pipeline-reciprocal"), fitOnly = args.Contains("--sonic-pipeline-fit-only");
+        string sourceCharacter = reciprocal ? "mario" : "sonic", sourceModelName = reciprocal ? "FitMario00" : "FitSonic00";
+        string sourceLabel = reciprocal ? "Mario" : "Sonic", targetLabel = reciprocal ? "Sonic" : "Mario";
+        int expectedFrames = reciprocal ? 35 : 44, exitStart = expectedFrames - 9;
+        string sourceFingerprint = reciprocal ? "87b3134758d85871c2f5fadb1bd84332fcac9f252df7da82738a024cad68f0e9" : "c3813c2db05d2fee9eb43222432dd6ac62395ffd2d02ade940bf6b81499444aa";
+        string targetFingerprint = reciprocal ? "c3813c2db05d2fee9eb43222432dd6ac62395ffd2d02ade940bf6b81499444aa" : "87b3134758d85871c2f5fadb1bd84332fcac9f252df7da82738a024cad68f0e9";
         var json = new JavaScriptSerializer { MaxJsonLength = 256 * 1024 * 1024, RecursionLimit = 200 };
         string sourceFile = Path.GetFullPath(args[1]), providedMario = Path.GetFullPath(Arg("--provided-mario")), targetMotion = Path.GetFullPath(Arg("--target-motion"));
         string libraryRoot = Path.Combine(output, "isolated-library"); Directory.CreateDirectory(libraryRoot);
@@ -74,15 +80,15 @@ internal static partial class Program
         string sourceModelPath = Path.Combine(output, "source-model.mdl0"), sourceContainer = Path.Combine(output, "source-root.pac"), targetContainer = Path.Combine(output, "target-root.pac");
         File.Copy(args[0], targetContainer); File.Copy(sourceFile, Path.Combine(output, "source-original-native.chr0")); File.Copy(providedMario, Path.Combine(output, "provided-mario-original.chr0"));
         var library = new AnimationLibrary(libraryRoot);
-        var sourceItem = library.Browse(new LibraryQuery { Character = "sonic", Text = "AttackAirLw", Channel = "CHR0 skeletal" })
-            .Single(i => i.Clip.Name == "AttackAirLw" && i.Model.Name == "FitSonic00");
+        var sourceItem = library.Browse(new LibraryQuery { Character = sourceCharacter, Text = "AttackAirLw", Channel = "CHR0 skeletal" })
+            .Single(i => i.Clip.Name == "AttackAirLw" && i.Model.Name == sourceModelName);
         using (var lease = library.Open(sourceItem.Clip.Id))
         {
             lease.Model.ExportChecked(sourceModelPath); lease.Model.RootNode.ExportChecked(sourceContainer);
         }
         using (var original = NodeFactory.FromFile(null, sourceFile) as CHR0Node)
         {
-            Check(original != null && original.FrameCount == 44, "Exact provided Sonic AttackAirLw is the 44-frame source, without substituting the catalogue animation");
+            Check(original != null && original.FrameCount == expectedFrames, "Exact " + sourceLabel + " AttackAirLw retains its authentic " + expectedFrames + "-frame timing without substituting the catalogue animation");
             File.WriteAllText(Path.Combine(output, "provided-source-native.json"), json.Serialize(new { File = sourceFile, Bytes = new FileInfo(sourceFile).Length,
                 Sha256 = FighterProject.HashFile(sourceFile), original.Name, original.Version, original.FrameCount, original.Loop,
                 Keys = OptimizationKeyCount(original), Tracks = original.Children.Count }));
@@ -99,7 +105,7 @@ internal static partial class Program
         void WriteManifest() => File.WriteAllText(Path.Combine(output, "stages-manifest.json"), json.Serialize(new {
             SourceAnimation = Path.Combine(output, "source-original-native.chr0"), SourceModel = sourceModelPath, SourceContainer = sourceContainer,
             TargetModel = Path.Combine(output, "target-model.mdl0"), TargetContainer = targetContainer, Fall = Path.Combine(output, "Fall.chr0"),
-            ProvidedMario = Path.Combine(output, "provided-mario-original.chr0"), SampleCount = 44, EntryJoinDisplay = 5, ExitJoinDisplay = 35,
+            ProvidedMario = Path.Combine(output, "provided-mario-original.chr0"), SampleCount = expectedFrames, EntryJoinDisplay = 5, ExitJoinDisplay = exitStart,
             FallSampleDisplay = 1, AttackTravelControls = attackTravelControls.ToArray(), PrivateDesktop, OSInputInjected = false, ScreenCopied = false, Modes = allModes }));
         WriteManifest();
         try
@@ -107,7 +113,7 @@ internal static partial class Program
             foreach (var keyMode in new[] { RetargetKeyframeMode.SourceBoneTimes, RetargetKeyframeMode.SourceChannelTimes })
             {
                 string modeDirectory = Path.Combine(output, keyMode.ToString()); Directory.CreateDirectory(modeDirectory);
-                using (var project = FighterProject.Create("Sonic AttackAirLw to Mario — " + keyMode))
+                using (var project = FighterProject.Create(sourceLabel + " AttackAirLw to " + targetLabel + " — " + keyMode))
                 using (var form = new ModelForm())
                 {
                     try
@@ -122,19 +128,23 @@ internal static partial class Program
                         var fall = editor._openedFiles.SelectMany(Walk).OfType<CHR0Node>().Single(c => c.Name == "Fall");
                         if (!File.Exists(Path.Combine(output, "Fall.chr0")))
                         {
-                            using (var fallCopy = NativeAnimationOptimization.Copy(fall)) fallCopy.ExportChecked(Path.Combine(output, "Fall.chr0"));
+                            // A frozen, read-only source reference retains native
+                            // metadata (including its scaling rule); it is not an
+                            // optimization candidate subject to writer qualification.
+                            using (var fallCopy = NativeAnimationOptimization.CopySource(fall)) fallCopy.ExportChecked(Path.Combine(output, "Fall.chr0"));
                             model.ExportChecked(Path.Combine(output, "target-model.mdl0"));
                         }
                         foreach (ListViewItem row in editor.leftPanel.listAnims.Items) row.Selected = ReferenceEquals(row.Tag, source);
                         editor.SelectedCHR0 = source; await SimpleControlsReady(form); await Await<ControlReply>(Call(form, "LoadControls"));
                         Console.WriteLine("TRACE " + keyMode + " exact provided source selected and controls loaded");
-                        SonicReviewNativeMapping(form, model, "87b3134758d85871c2f5fadb1bd84332fcac9f252df7da82738a024cad68f0e9", modeDirectory, "target");
+                        SonicReviewNativeMapping(form, model, targetFingerprint, modeDirectory, "target");
                         using (var donorRoot = NodeFactory.FromFile(null, sourceModelPath))
-                            SonicReviewNativeMapping(form, Walk(donorRoot).OfType<MDL0Node>().Single(), "c3813c2db05d2fee9eb43222432dd6ac62395ffd2d02ade940bf6b81499444aa", modeDirectory, "source");
+                            SonicReviewNativeMapping(form, Walk(donorRoot).OfType<MDL0Node>().Single(), sourceFingerprint, modeDirectory, "source");
                         Console.WriteLine("TRACE " + keyMode + " native source/target mappings reviewed");
                         using (var modal = Modal("Retarget Options", window =>
                         {
                             SimpleControl<ComboBox>(window, "retargetKeyframeMode").SelectedIndex = (int)keyMode;
+                            if (reciprocal) SimpleControl<ComboBox>(window, "retargetGroundMode").SelectedIndex = (int)GroundContactMode.Airborne;
                             SimpleControl<Button>(window, "retargetOptionsApply").PerformClick();
                         })) Call(form, "ShowFighterRetargetOptions");
                         Console.WriteLine("TRACE " + keyMode + " retarget options applied");
@@ -160,7 +170,7 @@ internal static partial class Program
                             keyMode + ": guarded source seeds independently pass frozen scalar and cumulative native quality ceilings");
                         await SimpleControlsReady(form);
                         var clip = editor.SelectedCHR0;
-                        Check(clip.FrameCount == 44 && !clip.Loop, keyMode + ": source-key retargeting preserves 44-frame native timing");
+                        Check(clip.FrameCount == expectedFrames && !clip.Loop, keyMode + ": source-key retargeting preserves authentic " + expectedFrames + "-frame native timing");
                         var setup = await Await<ControlReply>(Call(form, "LoadControls"));
                         var rootNames = (setup.ProtectedMotionBones ?? new int[0]).Select(i => setup.BoneNames[i]).ToArray();
                         var positionNames = setup.Roles.Where(r => r.Reviewed && r.Role == "RootMotion").Select(r => setup.BoneNames[r.Bone.Value]).ToArray();
@@ -194,7 +204,7 @@ internal static partial class Program
                                             SimpleControl<NumericUpDown>(window, "transition_" + side + "Frame").Value = 1;
                                         }
                                         SimpleControl<NumericUpDown>(window, "transition_entrySamples").Value = 5;
-                                        SimpleControl<NumericUpDown>(window, "transition_exitStart").Value = 35;
+                                        SimpleControl<NumericUpDown>(window, "transition_exitStart").Value = exitStart;
                                         SimpleControl<CheckBox>(window, "transition_existingTracksOnly").Checked = scoped;
                                         SimpleControl<CheckBox>(window, "transition_binding").Checked = true;
                                         await (Task)Call(window, "PrepareFit");
@@ -203,10 +213,10 @@ internal static partial class Program
                                         Check(window.Candidate != null, keyMode + ": " + (scoped ? "existing-track" : "full") + " fitting prepares both frozen first-Fall references: " + SimpleControl<TextBox>(window, "transitionReport").Text);
                                         var fitted = window.Candidate;
                                         Check(RecoveryKeys(fitted, positionNames) == RecoveryKeys(attack, positionNames), keyMode + ": fitting never replaces the attack's own TransN/root-motion curves with Fall");
-                                        Check(RecoveryRetainedKeysExact(attack, fitted, 4, 34), keyMode + ": both native joins and unchanged attack middle retain exact authored keys/tangents");
+                                        Check(RecoveryRetainedKeysExact(attack, fitted, 4, exitStart - 1), keyMode + ": both native joins and unchanged attack middle retain exact authored keys/tangents");
                                         var fittedBones = new HashSet<string>(window.ReadOptions().Bones, StringComparer.Ordinal);
-                                        foreach (int frame in new[] { 0, 43 }) Check(model.AllBones.Where(b => fittedBones.Contains(b.Name) && !positionNames.Contains(b.Name))
-                                            .All(b => RecoverySamePose(RecoverySample(fitted, b, frame), RecoverySample(fall, b, 0))), keyMode + ": selected body at frame " + (frame + 1) + " reaches only Mario Fall first pose");
+                                        foreach (int frame in new[] { 0, expectedFrames - 1 }) Check(model.AllBones.Where(b => fittedBones.Contains(b.Name) && !positionNames.Contains(b.Name))
+                                            .All(b => RecoverySamePose(RecoverySample(fitted, b, frame), RecoverySample(fall, b, 0))), keyMode + ": selected body at frame " + (frame + 1) + " reaches only " + targetLabel + " Fall first pose");
                                         string export = Path.Combine(modeDirectory, scoped ? "fitted-candidate.chr0" : "full-fit-control.chr0"); fitted.ExportChecked(export);
                                         stages.Add(SonicStage(fitted, export, scoped ? "fitted-candidate" : "full-fit-control"));
                                         if (apply) SimpleControl<Button>(window, "applyTransition").PerformClick(); else window.Close();
@@ -221,7 +231,7 @@ internal static partial class Program
                             using (var fittedBaseline = NativeAnimationOptimization.Copy(clip))
                             {
                                 string baselineContent = NativeAnimationOptimization.ContentKey(clip);
-                                foreach (bool highQuality in new[] { false, true })
+                                foreach (bool highQuality in (fitOnly ? new bool[0] : new[] { false, true }))
                                 {
                                     string tag = highQuality ? "optimized-hq" : "optimized-exact";
                                     bool applied = false, finished = false; Exception failure = null;
@@ -233,7 +243,7 @@ internal static partial class Program
                                             SimpleControl<CheckBox>(window, "optimizationCompactStorage").Checked = true; await window.Analyze();
                                             Check(window.Candidate != null, keyMode + ": " + tag + " prepares a fully verified current-animation candidate: " + SimpleControl<Label>(window, "optimizationSummary").Text);
                                             ReplayRootsMatch(fittedBaseline, window.Candidate, model, rootNames);
-                                            foreach (int join in new[] { 0, 4, 34, 43 }) Check(ReplayKnotMatches(fittedBaseline, window.Candidate, join, new HashSet<string>(model.AllBones.Select(b => b.Name), StringComparer.Ordinal), model), keyMode + ": optimization retains fitting boundary/join " + join);
+                                            foreach (int join in new[] { 0, 4, exitStart - 1, expectedFrames - 1 }) Check(ReplayKnotMatches(fittedBaseline, window.Candidate, join, new HashSet<string>(model.AllBones.Select(b => b.Name), StringComparer.Ordinal), model), keyMode + ": optimization retains fitting boundary/join " + join);
                                             OptimizationWithheldGeometry(window.SourceView, window.TargetView, fittedBaseline, window.Candidate, Path.Combine(modeDirectory, tag + "-withheld.json"));
                                             File.WriteAllText(Path.Combine(modeDirectory, tag + "-report.txt"), SimpleControl<TextBox>(window, "optimizationReport").Text);
                                             await CaptureOptimization(window, Path.Combine(modeDirectory, tag + "-review.png"));
@@ -255,6 +265,8 @@ internal static partial class Program
                     finally { form.OptimizationReady = null; form.TransitionFitReady = null; form.RetargetKeyframeReviewReady = null; if (!form.IsDisposed) SimpleDisposeForm(form); }
                 }
             }
+            if (!fitOnly)
+            {
             string providedDirectory = Path.Combine(output, "ProvidedMario"); Directory.CreateDirectory(providedDirectory);
             using (var project = FighterProject.Create("Exact provided Mario animation optimization"))
             using (var form = new ModelForm())
@@ -299,7 +311,8 @@ internal static partial class Program
                 }
                 finally { form.OptimizationReady = null; if (!form.IsDisposed) SimpleDisposeForm(form); }
             }
-            Check(originals.All(pair => FighterProject.HashFile(pair.Key) == pair.Value), "Sonic pipeline preserves every provided original source/target file and source catalogue");
+            }
+            Check(originals.All(pair => FighterProject.HashFile(pair.Key) == pair.Value), sourceLabel + " pipeline preserves every provided original source/target file and source catalogue");
             WriteManifest();
         }
         finally { Environment.SetEnvironmentVariable("FIGHTERPORT_LIBRARY_ROOT", previousLibrary); }

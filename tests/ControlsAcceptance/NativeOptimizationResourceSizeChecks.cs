@@ -1,5 +1,7 @@
 using BrawlCrate.Studio;
 using BrawlLib.SSBB.ResourceNodes;
+using BrawlLib.Wii.Animations;
+using BrawlLib.Wii.Models;
 using System;
 using System.IO;
 using System.Linq;
@@ -12,8 +14,12 @@ internal static partial class Program
         using (var container = new BRRESNode { Name = "Independent compact native container" })
         {
             var fixture = OptimizationFixture(names[0], "Compact native resource fixture"); fixture.FrameCount = 17;
-            var entry = (CHR0EntryNode)fixture.Children[0]; entry.Keyframes.PreserveInterpolation = false;
+            var entry = (CHR0EntryNode)fixture.Children[0]; entry.Keyframes.PreserveInterpolation = true;
             OptimizationReplace(entry, 3, Enumerable.Range(0, 17).Select(i => OptimizationKey(i, i * .125f, .125f)).ToArray());
+            var storage = new IndexedCHR0CurveStorage[9];
+            storage[3] = IndexedCHR0CurveStorage.Create(AnimDataFormat.I4, Enumerable.Range(0, 17).ToArray(), Enumerable.Range(0, 17).ToArray(),
+                Enumerable.Repeat(4, 17).ToArray(), 0, .125f);
+            PreciseCHR0EntryNode.RestoreStorage(entry, new IndexedCHR0EntryStorage(storage));
             container.GetOrCreateFolder<CHR0Node>().AddChild(fixture); container.Export(containerPath);
         }
         string originalHash = FighterProject.HashFile(containerPath);
@@ -27,9 +33,22 @@ internal static partial class Program
                 ((long)containerBytes[header + 6] << 8) | containerBytes[header + 7];
             Check(!compact.IsDirty && !compact.IsBranch && offset >= 0 && offset + declared <= containerBytes.Length && declared == stored,
                 "Native size: clean embedded CHR0 block length independently matches its big-endian header size and BRRES byte range");
-            var track = OptimizationTrack((CHR0EntryNode)compact.Children[0]); track.Channels[3] = track.Channels[3].Where(k => k.Frame != 8).ToArray();
+            var compactEntry = (CHR0EntryNode)compact.Children[0];
+            Check(PreciseCHR0EntryNode.CaptureStorage(compactEntry)?[3]?.Format == AnimDataFormat.I4 &&
+                compactEntry.KeyArrays[3].Entries.Select(k => k._index).SequenceEqual(Enumerable.Range(0, 17)) &&
+                compactEntry.KeyArrays[3].Entries.Select((k, i) => ReplayFloatBits(k._value) == ReplayFloatBits(i * .125f) && ReplayFloatBits(k._tangent) == ReplayFloatBits(.125f)).All(v => v),
+                "Native size: independently reopened procedural I4 resource retains every exact authored time, value and tangent without a dense terminal context");
+            using (var working = NativeAnimationOptimization.Copy(compact))
+            {
+                foreach (var entry in working.Children.OfType<CHR0EntryNode>().ToArray()) PreciseCHR0EntryNode.RestoreStorage(entry, null);
+                working.ExportChecked(precisePath);
+            }
+            using (var preciseOwner = NodeFactory.FromFile(null, precisePath))
+            {
+            var precise = (CHR0Node)preciseOwner;
+            var track = OptimizationTrack((CHR0EntryNode)precise.Children[0]); track.Channels[3] = track.Channels[3].Where(k => k.Frame != 8).ToArray();
             var options = OptimizationQualityOptions(names, length, true);
-            using (var verified = NativeAnimationOptimization.Prepare(model, compact, new[] { track }, options, stage))
+            using (var verified = NativeAnimationOptimization.Prepare(model, precise, new[] { track }, options, stage))
             {
                 Check(verified.AfterKeys < verified.BeforeKeys && verified.AfterBytes < verified.BeforeBytes &&
                     verified.CandidateResourceBytes < verified.BeforeResourceBytes && verified.CandidateResourceBytes > stored && verified.CandidateResourceBytes < verified.AfterBytes,
@@ -40,7 +59,7 @@ internal static partial class Program
             }
             var budget = new NativeAnimationOptimizationBudget(); options.Budget = budget; options.OriginalStoredResourceBytes = stored;
             bool refused = false;
-            try { using (var result = NativeAnimationOptimization.Prepare(model, compact, new[] { track }, options, stage)) { } }
+            try { using (var result = NativeAnimationOptimization.Prepare(model, precise, new[] { track }, options, stage)) { } }
             catch (InvalidDataException error)
             {
                 refused = Equals(error.Data["OptimizationSize"], true) && !error.Data.Contains("OptimizationQuality") &&
@@ -49,10 +68,6 @@ internal static partial class Program
             }
             Check(refused, "Native size: actual compact embedded-block growth is refused before pose work even when the standalone candidate shrinks");
 
-            using (var copy = NativeAnimationOptimization.Copy(compact)) copy.ExportChecked(precisePath);
-            using (var preciseOwner = NodeFactory.FromFile(null, precisePath))
-            {
-                var precise = (CHR0Node)preciseOwner;
                 var preciseOptions = OptimizationQualityOptions(names, length, true);
                 preciseOptions.OriginalStoredResourceBytes = precise.WorkingUncompressed.Length;
                 preciseOptions.OriginalStoredBytes = new FileInfo(precisePath).Length;
@@ -60,12 +75,12 @@ internal static partial class Program
                     Check(verified.Candidate != null && verified.CandidateResourceBytes <= preciseOptions.OriginalStoredResourceBytes.Value &&
                         verified.AfterBytes > preciseOptions.OriginalStoredResourceBytes.Value && verified.OriginalInputResourceBytes == preciseOptions.OriginalStoredResourceBytes,
                         "Native size: matching resource-block caps accept smaller payloads despite larger standalone totals from external strings");
-            }
             options.OriginalStoredResourceBytes = 0; bool invalid = false;
-            try { using (var result = NativeAnimationOptimization.Prepare(model, compact, new[] { track }, options, stage)) { } }
+            try { using (var result = NativeAnimationOptimization.Prepare(model, precise, new[] { track }, options, stage)) { } }
             catch (InvalidDataException error) { invalid = !error.Data.Contains("OptimizationSize") && !error.Data.Contains("OptimizationQuality"); }
             Check(invalid && FighterProject.HashFile(containerPath) == originalHash,
                 "Native size: invalid block metadata is a terminal input error and compact original bytes remain unchanged");
+            }
         }
     }
 }

@@ -13,6 +13,9 @@ internal static partial class Program
         try
         {
             if(args.Length==4 && args[0]=="--motion-controls")return MotionControls(args[1],args[2],args[3]);
+            if(args.Length==2 && args[0]=="--coordinate-frames")return CoordinateFrameChecks(args[1]);
+            if(args.Length==4 && args[0]=="--coordinate-legacy")return CoordinateLegacyProjectChecks(args[1],args[2],args[3]);
+            if(args.Length==6 && args[0]=="--coordinate-export")return CoordinateNativeExports(args[1],args[2],args[3],args[4],args[5]);
             if(args.Length==6 && args[0]=="--bake-probe")
             {
                 if(System.IO.Directory.Exists(args[5]) && System.IO.Directory.EnumerateFileSystemEntries(args[5]).Any())throw new ArgumentException("Use a new or empty output directory.");

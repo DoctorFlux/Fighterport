@@ -106,6 +106,8 @@ namespace BrawlCrate.Studio.Retargeting
             return bones.Select(b=>new RigJoint(b.Name,b.Parent is MDL0BoneNode parent?names[parent.Name]:-1,Transform(b.BindState))).ToArray();
         }
         public static BrawlRig Capture(MDL0Node model,IDictionary<string,string> reviewedMap=null)
+            => Capture(model,reviewedMap,null,null);
+        public static BrawlRig Capture(MDL0Node model,IDictionary<string,string> reviewedMap,Vector3? coordinateUp=null,Quaternion? coordinateFrame=null)
         {
             Interlocked.Increment(ref _diagnosticCaptures);
             if(model==null)throw new InvalidDataException("Choose a loaded native model before creating a contact rig.");
@@ -118,7 +120,11 @@ namespace BrawlCrate.Studio.Retargeting
             SkeletonCharacterizer.Validate(joints,roles);
             float headRadius = model.BoxMax._y - bones[roles["head"]].BindMatrix.GetPoint()._y;
             if (headRadius < 0.1f) headRadius = (bones[roles["head"]].BindMatrix.GetPoint() - bones[roles["neck"]].BindMatrix.GetPoint()).TrueDistance(new NativeVector()) * 2;
-            var rig = new Rig(model.Name, model.Name, joints, roles, headRadius);
+            // Native Brawl coordinates use +Y up for every model. Declare that
+            // adapter evidence independently of head size, rest posture and the
+            // later mutable ground/support plane; preserve all imported binds.
+            var rig = new Rig(model.Name, model.Name, joints, roles, headRadius,
+                coordinateUp ?? (coordinateFrame.HasValue ? (Vector3?)null : Vector3.UnitY), coordinateFrame);
             CaptureSurfaces(model, rig, bones, names);
             for (int i = 0; i < bones.Length; i++)
                 if (Vector3.Distance(rig.Rest.Point(i), Vector(bones[i].BindMatrix.GetPoint())) > 0.01f)

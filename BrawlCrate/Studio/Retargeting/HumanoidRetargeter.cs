@@ -27,7 +27,7 @@ namespace BrawlCrate.Studio.Retargeting
 
     public sealed class HumanoidRetargeter
     {
-        public const string Algorithm = "bind-world-fk-body-contact-ik-v7";
+        public const string Algorithm = "bind-world-fk-body-contact-ik-v8";
         public const string MotionControlPolicy = "source-local-controls-v1";
         public int[] SourceMotionControls { get; }
         public int[] TargetMotionControls { get; }
@@ -38,6 +38,10 @@ namespace BrawlCrate.Studio.Retargeting
         public float ArmScale { get; }
         public float HeadScale { get; }
         public Quaternion Calibration { get; }
+        public string CalibrationEvidence => CoordinateEvidence(Source) == CoordinateEvidence(Target)
+            ? CoordinateEvidence(Source) : "source: " + CoordinateEvidence(Source) + "; target: " + CoordinateEvidence(Target);
+        private static string CoordinateEvidence(Rig rig) => rig.CoordinateFrame.HasValue ? "reviewed-coordinate-frame-v1" :
+            rig.CoordinateUp.HasValue ? "declared-coordinate-up/anatomical-heading-v1" : "legacy-anatomical-rest-fallback";
         public string[] UnmappedSource { get; }
         public string[] UnmappedTarget { get; }
         private readonly Dictionary<int, RetargetMap> _byTarget;

@@ -6,8 +6,8 @@ using BrawlLib.Wii.Models;
 using BrawlLib.Internal;
 using BrawlLib.Wii.Animations;
 
-// Own native data policy: use float I12 keys for derived curves so dense L1/L4 encoding
-// cannot regenerate different tangents on reopen. Pinned internal fields are audited.
+// Derived curves default to I12. Explicit immutable, independently qualified
+// storage plans retain their complete payload and decoded native coefficients.
 public sealed unsafe class PreciseCHR0EntryNode : CHR0EntryNode
 {
     public IndexedCHR0EntryStorage IndexedStorage { get; private set; }
@@ -69,7 +69,11 @@ public sealed unsafe class PreciseCHR0EntryNode : CHR0EntryNode
             AnimDataFormat format=packed?IndexedStorage.Format(group):AnimDataFormat.I12;
             for(int axis=0;axis<channels;axis++)
             {
-                int ch=group*3+axis;if(code.GetIsFixed(ch))continue;varying=true;int count=(int)KeyArrays[ch].GetType().GetField("_keyCount",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(KeyArrays[ch]);bytes+=packed?IndexedStorage[ch].ByteCount:8+count*12;
+                int ch=group*3+axis;
+                // A one-frame imported baked payload can still own a distinct
+                // encoded terminal sample. Preserve its variable table cell.
+                if(packed&&IndexedStorage[ch]!=null&&IndexedStorage[ch].IsDense)code.SetIsFixed(ch,false);
+                if(code.GetIsFixed(ch))continue;varying=true;int count=(int)KeyArrays[ch].GetType().GetField("_keyCount",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(KeyArrays[ch]);bytes+=packed?IndexedStorage[ch].ByteCount:8+count*12;
             }
             if(varying)code.SetFormat(group,format);
         }
@@ -77,6 +81,13 @@ public sealed unsafe class PreciseCHR0EntryNode : CHR0EntryNode
     }
     public override void OnRebuild(VoidPtr address,int length,bool force)
     {
+        // The historical baked writer advances by the native decoded sample
+        // count (N for non-loop clips). The format stores N+1 samples regardless
+        // of looping. Explicit baked plans therefore own this narrow layout;
+        // indexed/precise-only entries retain their original writer path.
+        if(IndexedStorage!=null&&IndexedStorage.MatchesGroup(Keyframes,1)&&
+            (IndexedStorage.Format(1)==AnimDataFormat.L1||IndexedStorage.Format(1)==AnimDataFormat.L2||IndexedStorage.Format(1)==AnimDataFormat.L4))
+        { RebuildExplicitDense(address);return; }
         base.OnRebuild(address,length,force);var code=(AnimationCode)Field("_code").GetValue(this);byte* table=(byte*)address+8;
         for(int group=0;group<3;group++)if(code.GetExists(group))
         {
@@ -94,6 +105,34 @@ public sealed unsafe class PreciseCHR0EntryNode : CHR0EntryNode
                 }
                 int span=root._prev._index-root._next._index;WriteFloat(data+4,span==0?0:.99999994f/span);byte* row=data+8;
                 for(var key=root._next;key!=root;key=key._next,row+=12){WriteFloat(row,key._index);WriteFloat(row+4,key._value);WriteFloat(row+8,key._tangent);}
+            }
+        }
+    }
+    private void RebuildExplicitDense(VoidPtr address)
+    {
+        RegenCode();var code=(AnimationCode)Field("_code").GetValue(this);
+        byte* table=(byte*)address+8;byte* data=(byte*)(VoidPtr)Field("_dataAddr").GetValue(this);
+        if(data==null)throw new InvalidOperationException("Explicit baked storage requires its owned native resource layout.");
+        *(buint*)address=0;*(buint*)((byte*)address+4)=(uint)code;
+        for(int group=0;group<3;group++)if(code.GetExists(group))
+        {
+            int columns=group==0&&code.GetIsIsotropic(group)?1:3;
+            for(int axis=0;axis<columns;axis++,table+=4)
+            {
+                int channel=group*3+axis;var array=KeyArrays[channel];
+                var root=(KeyframeEntry)array.GetType().GetField("_keyRoot",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(array);
+                if(code.GetIsFixed(channel)){WriteFloat(table,root._next._value);continue;}
+                *(bint*)table=(int)(data-(byte*)address);
+                if(code.GetFormat(group)!=AnimDataFormat.I12)
+                {
+                    if(!IndexedStorage.MatchesGroup(Keyframes,group)||IndexedStorage[channel]==null||IndexedStorage[channel].Format!=code.GetFormat(group))
+                        throw new InvalidOperationException("The explicit storage plan changed during serialization.");
+                    IndexedStorage[channel].Write(data);data+=IndexedStorage[channel].ByteCount;continue;
+                }
+                *(bushort*)data=(ushort)array.KeyCount;*(bushort*)(data+2)=0;
+                int span=root._prev._index-root._next._index;WriteFloat(data+4,span==0?0:.99999994f/span);byte* row=data+8;
+                for(var key=root._next;key!=root;key=key._next,row+=12){WriteFloat(row,key._index);WriteFloat(row+4,key._value);WriteFloat(row+8,key._tangent);}
+                data=row;
             }
         }
     }

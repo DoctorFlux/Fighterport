@@ -10,6 +10,39 @@ using System.Threading;
 
 namespace BrawlCrate.Studio
 {
+    // One operation-owned account is shared by every baked proposal and final
+    // verification. The UI callback reserves from the existing Core proof work
+    // counter; non-UI callers retain the same two-million-unit hard ceiling.
+    internal sealed class NativeDenseProofBudget
+    {
+        private const long MaximumWork = 2000000;
+        private readonly Func<long, bool> reserveSharedWork;
+        private readonly Dictionary<CHR0EntryNode, string> baselines = new Dictionary<CHR0EntryNode, string>();
+        private readonly HashSet<string> proofs = new HashSet<string>(StringComparer.Ordinal);
+        public long Work { get; private set; }
+        public bool Exhausted { get; private set; }
+        public NativeDenseProofBudget(Func<long, bool> reserveSharedWork = null) { this.reserveSharedWork = reserveSharedWork; }
+        internal bool Spend(long units, CancellationToken token)
+        {
+            token.ThrowIfCancellationRequested();
+            if (units < 0 || units > MaximumWork - Work || reserveSharedWork != null && !reserveSharedWork(units))
+            { Exhausted = true; return false; }
+            Work += units; return true;
+        }
+        internal string ProofKey(CHR0EntryNode baseline, int channel, IndexedCHR0CurveStorage curve, double valueLimit, double derivativeLimit, CancellationToken token)
+        {
+            if (!baselines.TryGetValue(baseline, out string original))
+            {
+                if (baselines.Count >= 4096 || !Spend(baseline.KeyArrays.Skip(3).Take(3).Sum(a => (long)a.KeyCount) + 1, token)) return null;
+                original = NativeCompactAnimationStorage.GroupKey(baseline, 1); baselines.Add(baseline, original);
+            }
+            return original + ":" + channel + ":" + curve.ContentKey + ":" +
+                valueLimit.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + ":" + derivativeLimit.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
+        }
+        internal bool HasProof(string key) => key != null && proofs.Contains(key);
+        internal void RetainProof(string key) { if (key != null && proofs.Count < 100000) proofs.Add(key); }
+    }
+
     // A proposal is not an accepted optimization. Its decoded coefficients must
     // pass the Core continuous certificate and the complete native pose/skin gate
     // against the operation's retained baseline before it can reach a document.
@@ -24,6 +57,7 @@ namespace BrawlCrate.Studio
         public int AfterBytes { get; internal set; }
         public int ChangedCoefficients { get; internal set; }
         public bool IsExact => ChangedCoefficients == 0;
+        public bool IsDense => Format == AnimDataFormat.L1 || Format == AnimDataFormat.L2;
     }
 
     internal static class NativeCompactAnimationStorage
@@ -96,6 +130,16 @@ namespace BrawlCrate.Studio
                 int channel = proposal.Group * 3 + axis; var curve = proposal.Curves[axis]; channels[channel] = curve;
                 if (curve == null) continue;
                 var keys = entry.KeyArrays[channel].Entries.ToArray(); var frames = curve.Frames; var values = curve.Values; var tangents = curve.Tangents;
+                if (curve.IsDense)
+                {
+                    // This is an operation-owned candidate, never the live
+                    // authoring collection. Its generated native tangents are
+                    // an explicit proposal and must pass both interpretations.
+                    var replacement = new KeyframeArray(entry.Keyframes.FrameLimit) { Loop = entry.Keyframes.Loop };
+                    for (int i = 0; i < frames.Length; i++) replacement.SetFrameValue(frames[i], values[i], true)._tangent = tangents[i];
+                    entry.Keyframes._keyArrays[channel] = replacement;
+                    continue;
+                }
                 if (keys.Length != frames.Length) throw new InvalidOperationException("The native storage key membership changed.");
                 for (int i = 0; i < keys.Length; i++)
                 {
@@ -105,6 +149,225 @@ namespace BrawlCrate.Studio
             }
             entry.Keyframes.PreserveInterpolation = true;
             PreciseCHR0EntryNode.RestoreStorage(entry, new IndexedCHR0EntryStorage(channels));
+        }
+
+        // Only the explicit Small file profile proposes baked rotation storage.
+        // The complete group remains indexed when a paired side, exact control,
+        // signed zero, mandatory boundary or either continuous interpretation
+        // cannot be retained. Values are sampled from the retained baseline,
+        // rather than accumulating error from a previously optimized candidate.
+        public static NativeCompactStorageGroup[] CreateDenseAlternatives(CHR0EntryNode entry, CHR0EntryNode retainedBaseline,
+            bool exactGroup, int[] mandatoryFrames, int remainingKeys, CancellationToken token = default(CancellationToken), NativeDenseProofBudget proofBudget = null)
+        {
+            proofBudget = proofBudget ?? new NativeDenseProofBudget();
+            token.ThrowIfCancellationRequested(); var clip = entry?.Parent as CHR0Node;
+            if (clip == null || retainedBaseline == null || exactGroup || clip.FrameCount < 1 || clip.FrameCount > ushort.MaxValue ||
+                entry.Name != retainedBaseline.Name) return new NativeCompactStorageGroup[0];
+            var imported = PreciseCHR0EntryNode.CaptureStorage(retainedBaseline);
+            if (imported != null && Enumerable.Range(3, 3).Any(c => imported[c] != null && imported[c].IsDense))
+                return new NativeCompactStorageGroup[0];
+            int nativeCount = clip.FrameCount + (clip.Loop ? 1 : 0), encodedCount = clip.FrameCount + 1;
+            if (!proofBudget.Spend(entry.KeyArrays.Skip(3).Take(3).Sum(a => (long)a.KeyCount) +
+                retainedBaseline.KeyArrays.Skip(3).Take(3).Sum(a => (long)a.KeyCount) + 1, token)) return new NativeCompactStorageGroup[0];
+            var arrays = Enumerable.Range(3, 3).Select(c => entry.KeyArrays[c].Entries.ToArray()).ToArray();
+            var originals = Enumerable.Range(3, 3).Select(c => retainedBaseline.KeyArrays[c].Entries.ToArray()).ToArray();
+            int varying = arrays.Count(a => a.Length > 1);
+            if (varying == 0 || nativeCount < 2 || (long)encodedCount * varying > Math.Min(MaximumKeys, remainingKeys) ||
+                originals.Any(a => a.GroupBy(k => k._index).Any(g => g.Count() != 1)) ||
+                originals.SelectMany(a => a).Any(k => !Finite(k._value) || !Finite(k._tangent))) return new NativeCompactStorageGroup[0];
+            var mandatory = new HashSet<int>(mandatoryFrames ?? new int[0]); var results = new List<NativeCompactStorageGroup>();
+            foreach (var format in new[] { AnimDataFormat.L1, AnimDataFormat.L2 })
+            {
+                var curves = new IndexedCHR0CurveStorage[3]; bool valid = true; int before = 0, after = 0;
+                for (int axis = 0; axis < 3; axis++)
+                {
+                    token.ThrowIfCancellationRequested(); if (arrays[axis].Length <= 1) continue;
+                    if (!proofBudget.Spend(encodedCount, token)) return results.ToArray();
+                    float[] samples = new float[encodedCount];
+                    for (int i = 0; i < encodedCount; i++) samples[i] = Sample(originals[axis], retainedBaseline.KeyArrays[3 + axis], i);
+                    curves[axis] = TryDenseCurve(originals[axis], retainedBaseline, 3 + axis, samples, nativeCount, format, mandatory, proofBudget, token);
+                    if (curves[axis] == null) { valid = false; break; }
+                    before += 8 + arrays[axis].Length * 12; after += curves[axis].ByteCount;
+                }
+                if (valid && after < before)
+                {
+                    if (!proofBudget.Spend(arrays.Sum(a => (long)a.Length) + 1, token)) return results.ToArray();
+                    results.Add(new NativeCompactStorageGroup { Bone = entry.Name, Group = 1, Format = format, Curves = curves,
+                        SourceKey = GroupKey(entry, 1), BeforeBytes = before, AfterBytes = after, ChangedCoefficients = 1 });
+                }
+            }
+            return results.OrderBy(p => p.AfterBytes).ToArray();
+        }
+
+        private static IndexedCHR0CurveStorage TryDenseCurve(KeyframeEntry[] original, CHR0EntryNode baselineEntry, int channel, float[] samples,
+            int nativeCount, AnimDataFormat format, HashSet<int> mandatory, NativeDenseProofBudget proofBudget, CancellationToken token)
+        {
+            var baseline = baselineEntry.KeyArrays[channel];
+            if (original.Length < 2) return null;
+            int maximum = format == AnimDataFormat.L1 ? 255 : 65535;
+            float minimum = samples.Min(), maximumValue = samples.Max(); double range = (double)maximumValue - minimum;
+            if (!Finite(range) || range < 0 || samples.Any(v => !Finite(v))) return null;
+            var steps = new List<float>();
+            if (range == 0) steps.Add(0);
+            else
+            {
+                float fine = (float)(range / maximum); if (fine > 0 && Finite(fine)) steps.Add(fine);
+                double power = Math.Pow(2, Math.Ceiling(Math.Log(range / maximum, 2)));
+                if (power > 0 && Finite(power) && power <= float.MaxValue) steps.Add((float)power);
+            }
+            foreach (float step in steps.Distinct())
+            {
+                var bases = new List<float> { minimum };
+                if (step > 0)
+                {
+                    double aligned = Math.Floor((double)minimum / step) * step;
+                    if (Finite(aligned) && aligned >= -float.MaxValue && aligned <= float.MaxValue) bases.Add((float)aligned);
+                }
+                foreach (float valueBase in bases.Distinct())
+                {
+                    token.ThrowIfCancellationRequested(); if (!proofBudget.Spend(samples.Length + original.Length, token)) return null;
+                    var quantized = new int[samples.Length]; bool valid = true;
+                    for (int i = 0; i < samples.Length; i++)
+                    {
+                        double q = step == 0 ? 0 : Math.Round(((double)samples[i] - valueBase) / step, MidpointRounding.ToEven);
+                        if (q < 0 || q > maximum) { valid = false; break; } quantized[i] = (int)q;
+                    }
+                    if (!valid) continue;
+                    IndexedCHR0CurveStorage curve;
+                    try { curve = IndexedCHR0CurveStorage.CreateDense(format, quantized, nativeCount, valueBase, step); }
+                    catch (ArgumentException) { continue; }
+                    var values = curve.Values; var tangents = curve.Tangents;
+                    foreach (var key in original)
+                    {
+                        if (key._index >= nativeCount || !Allowed(key._value, values[key._index], mandatory.Contains(key._index), .1, true) ||
+                            !Allowed(key._tangent, tangents[key._index], mandatory.Contains(key._index), .1, true)) { valid = false; break; }
+                    }
+                    if (valid)
+                    {
+                        string proofKey = proofBudget.ProofKey(baselineEntry, channel, curve, .1, .1, token);
+                        if (proofKey != null && DenseLinearWithinBounds(original, baseline, curve.EncodedValues, .1, .1, token, proofBudget, proofKey)) return curve;
+                    }
+                }
+            }
+            return null;
+        }
+
+        // A second continuous interpretation is mandatory: independent readers
+        // evaluate baked rotations linearly. Cubic Bernstein hulls compare that
+        // line against the original native Hermite polynomial throughout every
+        // integer interval (including the stored non-loop terminal sample).
+        internal static bool DenseLinearWithinBounds(KeyframeEntry[] original, KeyframeArray baseline, float[] values,
+            double valueLimit, double derivativeLimit, CancellationToken token, NativeDenseProofBudget proofBudget = null, string proofKey = null)
+        {
+            token.ThrowIfCancellationRequested();
+            proofBudget = proofBudget ?? new NativeDenseProofBudget();
+            if (proofBudget.HasProof(proofKey)) return true;
+            if (original == null || original.Length == 0 || baseline == null || values == null || values.Length < 2 ||
+                original.GroupBy(k => k._index).Any(g => g.Count() != 1)) return false;
+            if (!proofBudget.Spend((long)original.Length + values.Length, token)) return false;
+            for (int i = 0; i < values.Length - 1; i++)
+            {
+                token.ThrowIfCancellationRequested(); double delta = (double)values[i + 1] - values[i];
+                // Known independent baked readers use a periodic angular lerp.
+                // Below this strict threshold it equals the unwrapped line;
+                // larger intervals stay indexed instead of losing full turns.
+                if (!Finite(delta) || Math.Abs(delta) >= 90) return false;
+                Segment(original, baseline, i + .5, out KeyframeEntry left, out KeyframeEntry right, out double start, out double span);
+                double p0, p1, d0, d1;
+                if (right == null) { p0 = p1 = left._value; d0 = d1 = 0; }
+                else { Polynomial(left, right, start, span, i, out p0, out d0); Polynomial(left, right, start, span, i + 1d, out p1, out d1); }
+                double[] error = { values[i] - p0, values[i] + delta / 3 - (p0 + d0 / 3),
+                    values[i] + delta * 2 / 3 - (p1 - d1 / 3), values[i + 1] - p1 };
+                double magnitude = Math.Max(1, Math.Max(Math.Abs(p0), Math.Abs(p1)) + Math.Abs(d0) + Math.Abs(d1) + Math.Abs(delta));
+                // Endpoint evaluations can cancel much larger coefficients.
+                // Include the original normalized cubic's coefficient norm,
+                // so cancellation never makes the roundoff guard smaller.
+                magnitude += Math.Abs(values[i]) + Math.Abs(values[i + 1]) + Math.Abs(left._value);
+                if (right != null) magnitude += Math.Abs(right._value) + span * (Math.Abs((double)left._tangent) + Math.Abs((double)right._tangent));
+                // Uncertain floating-point hulls keep the indexed fallback.
+                double roundoff = magnitude * 1e-11;
+                if (!HullWithin(error, valueLimit, derivativeLimit, roundoff, 0, proofBudget, token)) return false;
+            }
+            proofBudget.RetainProof(proofKey);
+            return true;
+        }
+
+        private static bool HullWithin(double[] b, double valueLimit, double derivativeLimit, double roundoff, int depth, NativeDenseProofBudget proofBudget, CancellationToken token)
+        {
+            if (!proofBudget.Spend(1, token)) return false;
+            if (b.Any(v => !Finite(v))) return false;
+            double value = b.Max(v => Math.Abs(v)), derivative = 0;
+            for (int i = 0; i < 3; i++) derivative = Math.Max(derivative, Math.Abs(3 * (b[i + 1] - b[i])));
+            if (value + roundoff <= valueLimit && derivative + roundoff * 6 <= derivativeLimit) return true;
+            if (depth >= 8 || valueLimit <= roundoff || derivativeLimit <= roundoff * 6) return false;
+            double b01 = (b[0] + b[1]) * .5, b12 = (b[1] + b[2]) * .5, b23 = (b[2] + b[3]) * .5;
+            double a = (b01 + b12) * .5, c = (b12 + b23) * .5, m = (a + c) * .5;
+            return HullWithin(new[] { b[0], b01, a, m }, valueLimit, derivativeLimit * .5, roundoff * 2, depth + 1, proofBudget, token) &&
+                HullWithin(new[] { m, c, b23, b[3] }, valueLimit, derivativeLimit * .5, roundoff * 2, depth + 1, proofBudget, token);
+        }
+
+        private static void Polynomial(KeyframeEntry left, KeyframeEntry right, double start, double span, double time, out double value, out double derivative)
+        {
+            double t = (time - start) / span, p = left._value, q = right._value, a = left._tangent * span, b = right._tangent * span;
+            value = (2 * t * t * t - 3 * t * t + 1) * p + (t * t * t - 2 * t * t + t) * a +
+                (-2 * t * t * t + 3 * t * t) * q + (t * t * t - t * t) * b;
+            derivative = ((6 * t * t - 6 * t) * p + (3 * t * t - 4 * t + 1) * a +
+                (-6 * t * t + 6 * t) * q + (3 * t * t - 2 * t) * b) / span;
+        }
+
+        private static float Sample(KeyframeEntry[] keys, KeyframeArray array, int time)
+        {
+            if (keys.Length == 0) return array.GetFrameValue(time);
+            int low = 0, high = keys.Length;
+            while (low < high) { int middle = (low + high) / 2; if (keys[middle]._index < time) low = middle + 1; else high = middle; }
+            if (low < keys.Length && keys[low]._index == time) return keys[low]._value;
+            Segment(keys, array, time, out KeyframeEntry left, out KeyframeEntry right, out double start, out double span);
+            return right == null ? left._value : left.Interpolate((float)(time - start), (float)span, right);
+        }
+
+        private static void Segment(KeyframeEntry[] keys, KeyframeArray array, double time, out KeyframeEntry left,
+            out KeyframeEntry right, out double start, out double span)
+        {
+            left = keys[0]; right = null; start = 0; span = 1;
+            if (keys.Length == 1) return;
+            if (time < keys[0]._index || time > keys[keys.Length - 1]._index)
+            {
+                if (!array.Loop) { left = time < keys[0]._index ? keys[0] : keys[keys.Length - 1]; return; }
+                left = keys[keys.Length - 1]; right = keys[0]; span = array.FrameLimit - left._index + right._index;
+                start = time > left._index && time < array.FrameLimit ? left._index : left._index - array.FrameLimit;
+                return;
+            }
+            int low = 0, high = keys.Length;
+            while (low < high) { int middle = (low + high) / 2; if (keys[middle]._index <= time) low = middle + 1; else high = middle; }
+            int index = Math.Max(0, low - 1); left = keys[index];
+            if (index == keys.Length - 1) return;
+            right = keys[index + 1]; start = left._index; span = right._index - left._index;
+        }
+
+        internal static CHR0Node CreateLinearProjection(CHR0Node independentlyDecoded, HashSet<string> changedChannels)
+        {
+            // Caller supplies and disposes a separate snapshot; this projection
+            // is never serialized, applied or retained by document ownership.
+            foreach (var entry in independentlyDecoded.Children.OfType<CHR0EntryNode>().ToArray())
+            {
+                var storage = PreciseCHR0EntryNode.CaptureStorage(entry); if (storage == null) continue;
+                for (int channel = 3; channel < 6; channel++)
+                {
+                    var curve = storage[channel]; if (curve == null || !curve.IsDense) continue;
+                    if (changedChannels != null && !changedChannels.Contains(entry.Name + "\0" + channel)) continue;
+                    var values = curve.EncodedValues;
+                    var array = new KeyframeArray(values.Length) { Loop = false };
+                    for (int i = 0; i < values.Length; i++)
+                    {
+                        float incoming = i == 0 ? values[1] - values[0] : values[i] - values[i - 1];
+                        float outgoing = i == values.Length - 1 ? incoming : values[i + 1] - values[i];
+                        array.SetFrameValue(i, values[i], true)._tangent = incoming;
+                        if (i > 0 && i < values.Length - 1) array.SetFrameValue(i, values[i], true)._tangent = outgoing;
+                    }
+                    entry.Keyframes._keyArrays[channel] = array;
+                }
+            }
+            return independentlyDecoded;
         }
 
         private static IndexedCHR0CurveStorage TryCurve(KeyframeEntry[] keys, AnimDataFormat format, bool exact,
@@ -190,7 +453,7 @@ namespace BrawlCrate.Studio
                 if (Math.Sign(keys[i]._value) != Math.Sign(keys[i - 1]._value) || keys[i]._tangent != 0 || keys[i - 1]._tangent != 0) return true;
             return false;
         }
-        private static string GroupKey(CHR0EntryNode entry, int group)
+        internal static string GroupKey(CHR0EntryNode entry, int group)
         {
             using (var bytes = new MemoryStream())
             {
