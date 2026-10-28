@@ -192,6 +192,88 @@ internal static partial class Program
         string truncated = Path.Combine(stage, "reject-truncated.chr0"); File.WriteAllBytes(truncated, canonical.Take(39).ToArray());
         bool refused = false; try { NativeChr0SizeReport.Read(truncated); } catch (InvalidDataException) { refused = true; }
         Check(refused, "Byte receipt: bounded standalone input rejects truncated headers");
+        NativeChr0UnalignedDenseAccountingChecks(stage, canonical);
+    }
+
+    static void NativeChr0RetainedDenseAccountingChecks(string sourceFile)
+    {
+        byte[] bytes = File.ReadAllBytes(sourceFile);
+        var dense = DenseReadCompletePayloads(bytes).GroupBy(item => item.Offset).Select(group => group.First()).ToArray();
+        var report = NativeChr0SizeReport.Read(sourceFile);
+        Check(dense.Length > 0 && report.Streams.Where(item => item.Key == "L1" || item.Key == "L2" || item.Key == "L4").Sum(item => item.Value) == dense.Length &&
+            report.CurvePayloadBytes >= dense.Sum(item => item.EncodedValues.Length * (item.Format == 4 ? 1 : item.Format == 5 ? 2 : 4)) &&
+            report.FileBytes == bytes.Length && report.AccountedBytes == bytes.Length && File.ReadAllBytes(sourceFile).SequenceEqual(bytes),
+            "Byte receipt: authentic retained dense streams use every independently read N+1 sample without requiring writer-specific padding or rewriting source bytes");
+    }
+
+    static void NativeChr0UnalignedDenseAccountingChecks(string stage, byte[] template)
+    {
+        foreach (bool zeroNextHeader in new[] { false, true })
+        {
+            byte[] bytes = SizeReceiptUnalignedDense(template, zeroNextHeader);
+            string path = Path.Combine(stage, zeroNextHeader ? "dense-tight-zero-next-header.chr0" : "dense-tight-next-header.chr0");
+            File.WriteAllBytes(path, bytes); var report = NativeChr0SizeReport.Read(path);
+            int dictionary = SizeReceiptRead32(bytes, 16), entry = dictionary + SizeReceiptRead32(bytes, dictionary + 36);
+            int first = entry + SizeReceiptRead32(bytes, entry + 8), second = entry + SizeReceiptRead32(bytes, entry + 12);
+            Check(second == first + 13 && SizeReceiptRead32(bytes, 4) == second + 13 &&
+                report.CurvePayloadBytes == 10 && report.CurveHeaderBytes == 16 && report.Streams["L1"] == 2 &&
+                report.BoneEntryBytes == 20 && report.AccountedBytes == bytes.Length,
+                "Byte receipt: adjacent unpadded L1 streams retain their exact 13-byte extents, including an unaligned final resource boundary and " + (zeroNextHeader ? "zero" : "nonzero") + " next header");
+            var physical = DenseReadCompletePayloads(bytes);
+            using (var decoded = NodeFactory.FromFile(null, path) as CHR0Node)
+            {
+                var bone = (CHR0EntryNode)decoded.Children.Single();
+                Check(decoded.FrameCount == 4 && physical.Length == 2 && physical.All(item => item.EncodedValues.Length == 5) &&
+                    physical.All(item => Enumerable.Range(0, 4).All(frame => ReplayFloatBits(bone.GetFrameValue(item.Channel, frame)) == ReplayFloatBits(item.EncodedValues[frame]))),
+                    "Byte receipt: the independent complete-payload reader and fresh native decoder agree on all visible tight dense samples; both terminal values remain present");
+            }
+            SizeReceiptReject(stage, zeroNextHeader ? "dense-tight-zero-truncated-terminal" : "dense-tight-truncated-terminal", bytes,
+                bad => SizeReceiptWrite32(bad, 4, second + 12));
+            SizeReceiptReject(stage, zeroNextHeader ? "dense-tight-zero-truncated-header" : "dense-tight-truncated-header", bytes,
+                bad => SizeReceiptWrite32(bad, entry + 12, SizeReceiptRead32(bad, 4) - entry - 7));
+            // Point an entry slot into another curve's required payload. The
+            // actual header/payload overlap must still reject; deferred padding
+            // never grants permission for incompatible structures to overlap.
+            SizeReceiptReject(stage, zeroNextHeader ? "dense-tight-zero-overlap" : "dense-tight-overlap", bytes,
+                bad => SizeReceiptWrite32(bad, entry + 12, first + 8 - entry));
+        }
+
+        // Keep nonzero unreferenced bytes explicit. They are not proved padding
+        // and must not be swallowed merely because the next four-byte boundary
+        // would contain them.
+        byte[] unknown = SizeReceiptUnalignedDense(template, false, 2);
+        int group = SizeReceiptRead32(unknown, 16), boneEntry = group + SizeReceiptRead32(unknown, group + 36);
+        int end = boneEntry + SizeReceiptRead32(unknown, boneEntry + 12) + 13;
+        unknown[end] = 0xA5; unknown[end + 1] = 0x5A;
+        string unknownPath = Path.Combine(stage, "dense-tight-unknown-not-padding.chr0"); File.WriteAllBytes(unknownPath, unknown);
+        var unknownReport = NativeChr0SizeReport.Read(unknownPath);
+        Check(unknownReport.UnclassifiedBytes >= 2 && unknownReport.CurvePayloadBytes == 10 &&
+            unknownReport.AccountedBytes == unknown.Length && File.ReadAllBytes(unknownPath).SequenceEqual(unknown),
+            "Byte receipt: nonzero bytes following a tight dense payload remain explicit unknown data, never alignment or silently removable waste");
+    }
+
+    static byte[] SizeReceiptUnalignedDense(byte[] template, bool zeroNextHeader, int extra = 0)
+    {
+        int group = SizeReceiptRead32(template, 16), entry = group + SizeReceiptRead32(template, group + 36);
+        int data = entry + SizeReceiptRead32(template, entry + 8), oldResource = SizeReceiptRead32(template, 4);
+        int newResource = data + 26 + extra, delta = newResource - oldResource;
+        byte[] bytes = new byte[template.Length + delta];
+        Array.Copy(template, bytes, data); Array.Copy(template, oldResource, bytes, newResource, template.Length - oldResource);
+        SizeReceiptWrite32(bytes, 4, newResource); bytes[28] = 0; bytes[29] = 4;
+        uint code = unchecked((uint)SizeReceiptRead32(bytes, entry + 4));
+        code = (code & ~(7u << 27) & ~(1u << 17)) | (4u << 27);
+        SizeReceiptWrite32(bytes, entry + 4, unchecked((int)code));
+        SizeReceiptWrite32(bytes, entry + 8, data - entry); SizeReceiptWrite32(bytes, entry + 12, data + 13 - entry);
+        foreach (var pointer in new[] { new[] { 0, 20 }, new[] { 0, 24 }, new[] { group, group + 32 }, new[] { entry, entry } })
+            if (SizeReceiptRead32(template, pointer[1]) != 0) SizeReceiptWrite32(bytes, pointer[1], SizeReceiptRead32(template, pointer[1]) + delta);
+        for (int axis = 0; axis < 2; axis++)
+        {
+            int at = data + axis * 13;
+            float step = axis == 0 ? .5f : zeroNextHeader ? 0 : .25f, basis = axis == 0 ? -1 : 2;
+            SizeReceiptWrite32(bytes, at, ReplayFloatBits(step)); SizeReceiptWrite32(bytes, at + 4, ReplayFloatBits(basis));
+            for (int sample = 0; sample < 5; sample++) bytes[at + 8 + sample] = (byte)sample;
+        }
+        return bytes;
     }
 
     static int SizeReceiptRead32(byte[] data, int at) => unchecked((int)((uint)data[at] << 24 | (uint)data[at + 1] << 16 |

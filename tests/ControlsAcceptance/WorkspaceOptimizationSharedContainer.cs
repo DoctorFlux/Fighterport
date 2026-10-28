@@ -33,8 +33,10 @@ internal static partial class Program
         var originals = new[] { args[0], args[1] }.Distinct().ToDictionary(path => path, FighterProject.HashFile);
         string sharedFile = Path.Combine(output, "authentic-shared-fixture.brres");
         var expectedFixture = new Dictionary<string, string>();
-        // These are independent fixture owners. Exporting this newly composed
-        // BRRES cannot serialize or mutate any application-owned document.
+        // These are independent fixture owners. Compose the model BRRES and
+        // animations only; texture archives in sibling PAC entries are omitted.
+        // This case qualifies ownership/curves, not material appearance. Other
+        // full-PAC captures cover textures. Export cannot mutate the live document.
         using (var modelRoot = NodeFactory.FromFile(null, args[0]))
         using (var motionRoot = NodeFactory.FromFile(null, args[1]))
         {

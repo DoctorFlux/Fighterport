@@ -1,5 +1,21 @@
 ﻿# Native Next integration
 
+Preview.55 keeps the same finished-master/export-copy boundary. The standalone
+tool shows Optimize, Export optimized copy and Close; the shared Exact /
+Error-bounded policy stays visible while search effort and saved limits live
+under Advanced. Disclosure changes no settings or candidate dependencies. Busy
+preparation replaces Optimize with Cancel and recovers focus afterward. Single,
+set and standalone exports continue to use one backend.
+
+Thorough permits eight selective native repair attempts instead of Standard's
+two, sharing the existing proof/native work ceilings and cumulative quality
+limits. It does not implement unconstrained tangent refitting or guarantee a
+smaller result. Native byte accounting separates required stream extents from
+optional zero alignment: retained tightly packed dense streams need not adopt
+this writer's allocation padding. Deferred ownership checks still reject
+truncation and incompatible overlaps. See the [four-stage benchmark](CHR0_FOUR_STAGE_BENCHMARK_2026-10-28.md)
+and [increment acceptance](ANIMATION_STAGES_SIMPLE_CONTROLS_ACCEPTANCE_2026-10-28.md).
+
 28 October qualified preview.54 boundary (see the scoped acceptance): project editing and
 ordinary saves retain the finished full-quality native master, including fitting,
 contact and FK/IK results. Explicit CHR0 size optimization runs on independent

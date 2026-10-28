@@ -120,7 +120,10 @@ namespace BrawlCrate.UI
                             BindPoseCleanupBones = output.RemovedBindTracks, DeferSizeValidation = compact,
                             MandatoryFrames = approximate && smallFile && !exactFitJoins ? new int[0] : mandatory.ToArray(),
                             FitJoinFrames = approximate && smallFile && !exactFitJoins ? mandatory.ToArray() : new int[0], ProbeFrames = output.Report.ProbeFrames, Budget = budget, ReferenceSamples = referenceSamples,
-                            ReductionAttemptLimit=2 };
+                            // Thorough explores more selective repairs under
+                            // the SAME shared proof/native work budgets. It
+                            // does not increase any motion error allowance.
+                            ReductionAttemptLimit=exportSettings?.SearchEffort==NativeExportSearchEffort.Thorough?8:2 };
                         OptimizationNativeChecks++;
                         var verified = await Task.Run(() => approximate
                             ? NativeAnimationOptimization.PrepareReduction(validationModel, baseline, tracks, exactReductionTracks, options, stage, token)

@@ -30,6 +30,42 @@ internal static partial class Program
         return false;
     }
 
+    static WorkspaceExportOptimizationOptions ExportOptionsOf(Control host) => host as WorkspaceExportOptimizationOptions ??
+        SimpleDescendants(host).OfType<WorkspaceExportOptimizationOptions>().Single();
+
+    static void SetExportAdvanced(Control host, bool visible)
+    {
+        var fields = SimpleControl<TableLayoutPanel>(host, "exportOptimizationAdvancedFields");
+        if (fields.Visible == visible) return;
+        var link = SimpleControl<LinkLabel>(host, "exportOptimizationLimits");
+        Call(link, "OnLinkClicked", new LinkLabelLinkClickedEventArgs(link.Links[0]));
+        host.PerformLayout();
+    }
+
+    static void CheckCollapsedExportOptions(Control host, string phase)
+    {
+        var options = ExportOptionsOf(host);
+        var policy = SimpleControl<ComboBox>(host, "exportOptimizationPolicy");
+        var advanced = SimpleControl<LinkLabel>(host, "exportOptimizationLimits");
+        Check(policy.Visible && advanced.Visible && !SimpleControl<ComboBox>(host, "exportOptimizationEffort").Visible &&
+            !SimpleControl<TableLayoutPanel>(host, "exportOptimizationAdvancedFields").Visible &&
+            Enumerable.Range(0, 7).All(i => !SimpleControl<NumericUpDown>(host, "exportOptimizationLimit" + i).Visible),
+            phase + " presents only the explicit policy and Advanced disclosure, with search and all saved limits hidden");
+        policy.Focus(); options.SelectNextControl(policy, true, true, true, false);
+        Check(advanced.Focused, phase + " Tab moves from policy directly to Advanced without reaching concealed settings");
+        options.SelectNextControl(advanced, false, true, true, false);
+        Check(policy.Focused, phase + " Shift+Tab returns from Advanced to policy");
+    }
+
+    static void CheckExpandedExportOptions(Control host, string phase)
+    {
+        Check(StandaloneControlReachable(SimpleControl<ComboBox>(host, "exportOptimizationEffort")),
+            phase + " advanced search survives every ancestor clip and managed center hit test");
+        for (int i = 0; i < 7; i++)
+            Check(StandaloneControlReachable(SimpleControl<NumericUpDown>(host, "exportOptimizationLimit" + i)),
+                phase + " advanced saved limit survives every ancestor clip and managed center hit test: " + i);
+    }
+
     // Current standalone workflow: Analyze/preview/export an independent copy.
     // Historical live-Apply/cache fixtures remain separately named helpers.
     static async Task WorkspaceOptimizationExportCopy(string[] args, string output)
@@ -94,49 +130,71 @@ internal static partial class Program
                 foreach (int text in new[] { 100, 175 }) foreach (int width in new[] { 1050, 1700 })
                 {
                     Call(form, "SetWorkspaceTextSize", text); window.ApplyTextSize(); window.ClientSize = new Size(width, width == 1050 ? 850 : 1000); window.PerformLayout();
+                    SetExportAdvanced(window, false);
                     foreach (bool details in new[] { false, true })
                     {
                         var report = SimpleControl<TextBox>(window, "optimizationReport");
                         if (report.Visible != details) SimpleControl<Button>(window, "optimizationDetails").PerformClick();
                         window.PerformLayout(); window.SourceView.ShownFrame(); window.TargetView.ShownFrame();
-                        foreach (string name in new[] { "optimizationIdentity", "exportOptimizationPolicy", "exportOptimizationEffort", "optimizeAnalyze", "optimizeApply", "optimizationClose", "optimizationDetails", "optimizationFrame" })
+                        foreach (string name in new[] { "optimizationIdentity", "exportOptimizationPolicy", "exportOptimizationLimits", "optimizeAnalyze", "optimizeApply", "optimizationClose", "optimizationDetails", "optimizationFrame" })
                         {
                             var control = SimpleDescendants(window).Single(c => c.Name == name);
                             var bounds = window.RectangleToClient(control.RectangleToScreen(control.ClientRectangle));
                             Check(control.Visible && control.ClientSize.Width > 0 && control.ClientSize.Height > 0 && window.ClientRectangle.Contains(bounds),
                                 "Standalone control fits current export-copy layout: " + name + " / " + width + " / " + text + " / details=" + details);
                         }
-                        foreach (string name in new[] { "exportOptimizationPolicy", "exportOptimizationEffort", "exportOptimizationLimits" })
+                        foreach (string name in new[] { "exportOptimizationPolicy", "exportOptimizationLimits" })
                             Check(StandaloneControlReachable(SimpleDescendants(window).Single(c => c.Name == name)),
                                 "Standalone policy control survives every ancestor clip and managed center hit test: " + name + " / " + width + " / " + text + " / details=" + details);
                         Check(!details || report.Visible && report.ClientSize.Height > 0, "Standalone details remain available without replacing the native previews");
+                        CheckCollapsedExportOptions(window, "Standalone " + width + "/" + text + "/details=" + details);
+                        Check(SimpleControl<FlowLayoutPanel>(window, "optimizationActions").Controls.OfType<Button>().Where(b => b.Visible).Select(b => b.Name)
+                            .SequenceEqual(new[] { "optimizeAnalyze", "optimizeApply", "optimizationClose" }),
+                            "Standalone idle footer has only Optimize, Export optimized copy and Close at " + width + "/" + text);
                         string file = "standalone-" + width + "-" + text + (details ? "-details" : "") + ".png";
                         await CaptureOptimization(window, Path.Combine(output, file)); captures.Add(file);
                         if (!details)
                         {
-                            var link = SimpleControl<LinkLabel>(window, "exportOptimizationLimits");
-                            Call(link, "OnLinkClicked", new LinkLabelLinkClickedEventArgs(link.Links[0])); window.PerformLayout();
-                            for (int value = 0; value < 7; value++)
-                                Check(StandaloneControlReachable(SimpleControl<NumericUpDown>(window, "exportOptimizationLimit" + value)),
-                                    "Standalone expanded saved limit remains visible and reachable: " + value + " / " + width + " / " + text);
+                            string settings = window.ReadExportSettings().StableKey; var candidate = window.Candidate;
+                            SetExportAdvanced(window, true);
+                            CheckExpandedExportOptions(window, "Standalone " + width + "/" + text);
                             file = "standalone-" + width + "-" + text + "-limits.png";
                             await CaptureOptimization(window, Path.Combine(output, file)); captures.Add(file);
-                            Call(link, "OnLinkClicked", new LinkLabelLinkClickedEventArgs(link.Links[0])); window.PerformLayout();
+                            SimpleControl<ComboBox>(window, "exportOptimizationEffort").Focus(); SetExportAdvanced(window, false);
+                            Check(SimpleControl<LinkLabel>(window, "exportOptimizationLimits").Focused && window.ReadExportSettings().StableKey == settings &&
+                                ReferenceEquals(window.Candidate, candidate), "Collapsing advanced settings restores its disclosure focus and retains the prepared copy and exact saved settings");
                         }
                     }
                 }
             }
             void CheckOptionsNavigation(AnimationOptimizationDialog window)
             {
+                SetExportAdvanced(window, false); CheckCollapsedExportOptions(window, "Standalone navigation");
+                var options = ExportOptionsOf(window);
                 var policyControl = SimpleControl<ComboBox>(window, "exportOptimizationPolicy"); var effortControl = SimpleControl<ComboBox>(window, "exportOptimizationEffort");
-                policyControl.Focus(); policyControl.Parent.SelectNextControl(policyControl, true, true, false, false);
-                Check(effortControl.Focused, "Standalone ordinary Tab order moves from policy to search effort");
-                effortControl.Parent.SelectNextControl(effortControl, false, true, false, false);
-                Check(policyControl.Focused, "Standalone ordinary Shift+Tab returns from search effort to policy");
+                var advanced = SimpleControl<LinkLabel>(window, "exportOptimizationLimits"); string settings = window.ReadExportSettings().StableKey;
+                SetExportAdvanced(window, true); advanced.Focus(); options.SelectNextControl(advanced, true, true, true, false);
+                Check(effortControl.Focused, "Expanded Advanced Tab reaches search before the saved limits");
+                if (window.ReadExportSettings().Policy == NativeExportOptimizationPolicy.ErrorBounded)
+                {
+                    options.SelectNextControl(effortControl, true, true, true, false);
+                    var first = SimpleControl<NumericUpDown>(window, "exportOptimizationLimit0");
+                    Check(first.ContainsFocus, "Expanded bounded search Tab reaches the first editable limit");
+                    options.SelectNextControl(first, false, true, true, false);
+                    Check(effortControl.Focused, "Expanded bounded Shift+Tab returns from limits to search");
+                }
+                else Check(effortControl.Enabled && !SimpleControl<NumericUpDown>(window, "exportOptimizationLimit0").Enabled,
+                    "Exact retains its independently selectable search effort while bounded limits stay disabled");
                 effortControl.Focus();
                 Check((bool)Call(window, "ProcessCmdKey", default(Message), Keys.F6) && window.SourceView.Viewport.ContainsFocus &&
                     (bool)Call(window, "ProcessCmdKey", default(Message), Keys.Shift | Keys.F6) && effortControl.Focused,
                     "Standalone F6 reaches the native source viewport and reverse F6 restores the remembered options control without OS input");
+                Call(window, "ProcessCmdKey", default(Message), Keys.F6); SetExportAdvanced(window, false);
+                Check((bool)Call(window, "ProcessCmdKey", default(Message), Keys.Shift | Keys.F6) && (policyControl.Focused || advanced.Focused),
+                    "Reverse F6 recovers a visible policy action when its remembered advanced control is concealed");
+                SetExportAdvanced(window, true); effortControl.Focus(); SetExportAdvanced(window, false);
+                Check(advanced.Focused && window.ReadExportSettings().StableKey == settings,
+                    "Advanced expand/collapse returns focus and retains the complete policy, effort and cumulative limits");
             }
             if (Environment.GetEnvironmentVariable("FIGHTERPORT_STANDALONE_LAYOUT_PROBE") == "1")
             {
@@ -150,17 +208,23 @@ internal static partial class Program
             {
                 var policy = SimpleControl<ComboBox>(window, "exportOptimizationPolicy");
                 Check(policy.Items.Count == 2 && policy.SelectedIndex == 0 && !window.ReadHighQuality() && window.Candidate == null &&
-                    SimpleControl<Button>(window, "optimizeApply").Text.Contains("Export"),
+                    SimpleControl<Button>(window, "optimizeApply").Text.Contains("Export") && SimpleControl<Button>(window, "optimizeAnalyze").Text == "Optimize" &&
+                    SimpleControl<Button>(window, "optimizeAnalyze").Visible && !SimpleControl<Button>(window, "optimizationCancel").Visible,
                     "Standalone dialog starts with two explicit export policies, Exact selected and no live Apply action");
                 Check(!ReferenceEquals(window.SourceView.Model, model) && !ReferenceEquals(window.TargetView.Model, model) &&
                     !ReferenceEquals(window.SourceView.Model, window.TargetView.Model), "Standalone previews own independent native models");
                 var originalPrepare = window.Prepare;
                 var delayed = new TaskCompletionSource<CHR0Node>(); window.Prepare = quality => delayed.Task;
+                SimpleControl<Button>(window, "optimizeAnalyze").Focus();
                 var cancel = window.Analyze();
-                Check(window.Busy && SimpleControl<Button>(window, "optimizationCancel").Enabled, "Standalone pending analysis exposes cancellation");
+                Check(window.Busy && SimpleControl<Button>(window, "optimizationCancel").Visible && SimpleControl<Button>(window, "optimizationCancel").Enabled &&
+                    SimpleControl<Button>(window, "optimizationCancel").Focused && !SimpleControl<Button>(window, "optimizeAnalyze").Visible,
+                    "Standalone pending optimization replaces Optimize with focused cancellation");
                 SimpleControl<Button>(window, "optimizationCancel").PerformClick();
                 delayed.SetResult(NativeAnimationOptimization.CopySource(clip)); await cancel; window.Prepare = originalPrepare;
-                Check(!window.Busy && window.Candidate == null && !SimpleControl<Button>(window, "optimizeApply").Enabled,
+                Check(!window.Busy && window.Candidate == null && !SimpleControl<Button>(window, "optimizeApply").Enabled &&
+                    SimpleControl<Button>(window, "optimizeAnalyze").Visible && SimpleControl<Button>(window, "optimizeAnalyze").Focused &&
+                    !SimpleControl<Button>(window, "optimizationCancel").Visible,
                     "Standalone cancellation discards a late independent preparation without publishing it");
                 Unchanged("cancelled analysis");
 
@@ -220,6 +284,7 @@ internal static partial class Program
                 SimpleControl<ComboBox>(window, "exportOptimizationPolicy").SelectedIndex = 1;
                 var limits = window.ReadExportSettings(); limits.Validate();
                 Check(limits.Policy == NativeExportOptimizationPolicy.ErrorBounded && limits.IsApprovedProfile, "Standalone bounded attempt explicitly requests the unchanged approved ceilings");
+                CheckOptionsNavigation(window);
                 await window.Analyze();
                 Check(window.Candidate != null && window.PreparedCanApply && window.PreparedReport.Contains("Policy requested: ErrorBounded") &&
                     (window.PreparedReport.Contains("Published-copy policy: ErrorBounded") || window.PreparedReport.Contains("Published-copy policy: Exact")),

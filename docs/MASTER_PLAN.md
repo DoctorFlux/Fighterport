@@ -1,5 +1,24 @@
 # Fighterport master plan
 
+28 October 2026 **preview.55-animation-stages-simple-controls** completes its
+bounded source increment within the ONE incomplete G1/M2: 5,695 recorded checks,
+50 inspected native UI PNGs, 176 inspected GIF frames and independent byte
+accounting. Four exports measure 12,016 / 306,324 / 235,344 / 57,684 bytes.
+Optimization saves 75.49% against the finished fitted master, with unchanged
+limits, exact protected controls/boundaries and all skin weights. The main tool
+keeps policy and three actions visible; Advanced holds search/limits. Native
+dense-source allocation accounting and deeper selective repairs have dedicated
+regressions. Full previewer, original Next, native Undo and exact project Save
+remain. The launcher selects native4 (same product/runtime bytes as native3).
+See [acceptance](ANIMATION_STAGES_SIMPLE_CONTROLS_ACCEPTANCE_2026-10-28.md),
+[benchmark](CHR0_FOUR_STAGE_BENCHMARK_2026-10-28.md) and the sole
+[current plan](plans/current.md). Further generated-span Hermite refitting remains
+unimplemented; no new milestone or game adapter is promoted. Unknown constraints
+and reciprocal scale/compensation keep Exact fallback. Background-only testing,
+DoctorFlux attribution and source-only public main remain; physical input/DPI,
+human usability, universal contacts, shared-fixture materials, external-editor/
+plugin, Melee and game acceptance remain separate. Historical checkpoints follow.
+
 28 October 2026 **preview.54-native-chr0-export-optimization** completes its bounded
 source increment within the ONE incomplete G1/M2. Full-quality retarget/fitting/
 contact/native masters and exact ordinary Save remain separate from explicit

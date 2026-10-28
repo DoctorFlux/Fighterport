@@ -8,10 +8,11 @@ namespace BrawlCrate.Studio
     {
         internal event EventHandler SettingsChanged;
         private readonly ComboBox _policy, _effort;
-        private readonly TableLayoutPanel _limits;
+        private readonly TableLayoutPanel _advanced, _limits;
         private readonly NativeExportOptimizationSettings _initial;
         private readonly NumericUpDown[] _values = new NumericUpDown[7];
         private readonly Label _description;
+        private readonly ToolTip _hints = new ToolTip();
         internal WorkspaceExportOptimizationOptions(NativeExportOptimizationSettings settings)
         {
             _initial = settings.Clone(); Name = "exportOptimizationOptions"; AutoSize = true; Dock = DockStyle.Top; TabStop = false;
@@ -23,14 +24,21 @@ namespace BrawlCrate.Studio
             _policy = new ComboBox { Name = "exportOptimizationPolicy", DropDownStyle = ComboBoxStyle.DropDownList, Width = 145, AccessibleName = "Export policy", TabIndex = 0 };
             _policy.Items.AddRange(new object[] { "Exact", "Error-bounded" }); _policy.SelectedIndex = (int)settings.Policy;
             choices.Controls.Add(_policy);
-            choices.Controls.Add(new Label { Text = "Search", AutoSize = true, Margin = new Padding(12, 7, 6, 0) });
-            _effort = new ComboBox { Name = "exportOptimizationEffort", DropDownStyle = ComboBoxStyle.DropDownList, Width = 110, AccessibleName = "Search effort, independent of quality limits", TabIndex = 1 };
-            _effort.Items.AddRange(new object[] { "Standard", "Thorough" }); _effort.SelectedIndex = (int)settings.SearchEffort; choices.Controls.Add(_effort);
-            var details = new LinkLabel { Name = "exportOptimizationLimits", Text = "Limits…", AutoSize = true, Margin = new Padding(10, 7, 0, 0), TabIndex = 2, AccessibleDescription = "Show explicit saved error ceilings. Search effort never changes these limits." };
+            var details = new LinkLabel { Name = "exportOptimizationLimits", Text = "Advanced…", AutoSize = true, Margin = new Padding(10, 7, 0, 0), TabIndex = 1,
+                AccessibleDescription = "Show saved search effort and cumulative error ceilings. Collapsing this section changes no settings; search effort never changes quality limits." };
             choices.Controls.Add(details); layout.Controls.Add(choices);
             _description = new Label { Name = "exportOptimizationDescription", AutoSize = true, MaximumSize = new Size(720, 0), Dock = DockStyle.Fill, UseMnemonic = false, Margin = new Padding(0, 4, 0, 7) };
             layout.Controls.Add(_description);
-            _limits = new TableLayoutPanel { Name = "exportOptimizationLimitFields", AutoSize = true, Dock = DockStyle.Top, ColumnCount = 4, Visible = false, Margin = Padding.Empty, TabIndex = 1 };
+            _advanced = new TableLayoutPanel { Name = "exportOptimizationAdvancedFields", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Dock = DockStyle.Top, ColumnCount = 1, RowCount = 2, Visible = false, Margin = Padding.Empty, TabIndex = 2 };
+            _advanced.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            _advanced.RowStyles.Add(new RowStyle(SizeType.AutoSize)); _advanced.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            var search = new FlowLayoutPanel { Name = "exportOptimizationSearchFields", AutoSize = true, Dock = DockStyle.Fill, WrapContents = true, Margin = Padding.Empty, TabIndex = 0 };
+            search.Controls.Add(new Label { Text = "Search", AutoSize = true, Margin = new Padding(0, 7, 6, 0) });
+            _effort = new ComboBox { Name = "exportOptimizationEffort", DropDownStyle = ComboBoxStyle.DropDownList, Width = 110, AccessibleName = "Search effort, independent of quality limits", TabIndex = 1 };
+            _effort.Items.AddRange(new object[] { "Standard", "Thorough" }); _effort.SelectedIndex = (int)settings.SearchEffort; search.Controls.Add(_effort);
+            _advanced.Controls.Add(search, 0, 0);
+            _limits = new TableLayoutPanel { Name = "exportOptimizationLimitFields", AutoSize = true, Dock = DockStyle.Top, ColumnCount = 4, Margin = Padding.Empty, TabIndex = 1 };
             _limits.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); _limits.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
             _limits.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); _limits.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
             string[] names = { "Rotation (°)", "Translation", "Scale", "Full model × L", "Rotation / frame", "Translation / frame", "Scale / frame" };
@@ -45,8 +53,17 @@ namespace BrawlCrate.Studio
                 _limits.Controls.Add(_values[i], column + 1, row);
                 _values[i].ValueChanged += (s, e) => SettingsChanged?.Invoke(this, EventArgs.Empty);
             }
-            layout.Controls.Add(_limits); Controls.Add(layout);
-            details.LinkClicked += (s, e) => { _limits.Visible = !_limits.Visible; details.Text = _limits.Visible ? "Hide limits" : "Limits…"; FindForm()?.PerformLayout(); };
+            _advanced.Controls.Add(_limits, 0, 1); layout.Controls.Add(_advanced); Controls.Add(layout);
+            details.LinkClicked += (s, e) =>
+            {
+                if (_advanced.Visible && _advanced.ContainsFocus && details.CanFocus) details.Focus();
+                _advanced.Visible = !_advanced.Visible; details.Text = _advanced.Visible ? "Hide advanced" : "Advanced…";
+                FindForm()?.PerformLayout();
+            };
+            _policy.AccessibleDescription = "Exact preserves proved native curve behavior. Error-bounded permits verified changes within the saved cumulative limits, with exact protection overrides.";
+            _effort.AccessibleDescription = "Search harder using the same saved quality limits. Thorough does not allow worse motion.";
+            _hints.SetToolTip(_policy, _policy.AccessibleDescription); _hints.SetToolTip(_effort, _effort.AccessibleDescription); _hints.SetToolTip(details, details.AccessibleDescription);
+            Disposed += (s, e) => _hints.Dispose();
             _policy.SelectedIndexChanged += (s, e) => { UpdatePolicy(); SettingsChanged?.Invoke(this, EventArgs.Empty); };
             _effort.SelectedIndexChanged += (s, e) => SettingsChanged?.Invoke(this, EventArgs.Empty); UpdatePolicy();
             _policy.FontChanged += (s, e) => SizeChoices(); _effort.FontChanged += (s, e) => SizeChoices(); SizeChoices();
@@ -59,9 +76,10 @@ namespace BrawlCrate.Studio
         private void UpdatePolicy()
         {
             bool bounded = _policy.SelectedIndex == (int)NativeExportOptimizationPolicy.ErrorBounded; _limits.Enabled = bounded;
-            _description.Text = bounded ? "Optimize an independent copy against the finished target. Roots, pins and required boundaries stay exact. Unverified protection context uses Exact."
-                : "Proved exact cleanup and native storage only. The editable target animation and ordinary Save stay unchanged.";
-            _description.AccessibleDescription = _description.Text;
+            _description.Text = bounded ? "Smaller export within saved limits; protected motion stays exact. Unsupported cases use Exact."
+                : "Exact export copy; editable animation stays unchanged.";
+            _description.AccessibleDescription = _description.Text + " Advanced shows the saved cumulative limits and search effort. Only a separate export copy is optimized; ordinary Save preserves the editable master.";
+            _hints.SetToolTip(_description, _description.AccessibleDescription);
         }
         internal NativeExportOptimizationSettings Read()
         {

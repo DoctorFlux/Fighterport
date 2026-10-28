@@ -30,6 +30,15 @@ unclassified bytes are reported separately. Shared/isotropic streams count once.
 An unclassified byte is reported rather than silently attributed to curve data.
 No PAC, BRRES or compressed-container saving follows from this receipt alone.
 
+Preview.55 corrects a retained-source allocation assumption in this accounting
+reader. Required dense headers/samples may be adjacent without four-byte stream
+padding; optional alignment is assigned only after every referenced structure
+has established ownership. A following stream's zero-valued header remains data.
+Payload bounds, incompatible overlap and nonzero unknown bytes remain checked.
+The real Sonic source now re-exports byte-identically at 12,016 bytes; dedicated
+tight L1/terminal/truncation/overlap fixtures supplement the independent audit.
+This changes neither the codec nor ordinary native serialization.
+
 Writer-created generated-pair evidence is a separate bounded session registry,
 not inferred from names or imported equal-valued keys. The exact content, native
 rig, ordered tuple bits, flags and timebase must match. Fitting inherits only

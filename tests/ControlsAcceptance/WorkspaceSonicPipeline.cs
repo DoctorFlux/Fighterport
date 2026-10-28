@@ -81,7 +81,7 @@ internal static partial class Program
     }
 
     static async Task<object> SonicExportCopy(ModelForm form, CHR0Node clip, MDL0Node model, string modelFile,
-        string[] roots, int[] fitJoins, string referenceFile, string directory, string tag, bool bounded)
+        string[] roots, int[] fitJoins, string referenceFile, string directory, string tag, bool bounded, NativeExportSearchEffort effort = NativeExportSearchEffort.Standard)
     {
         var editor = form.FighterEditor;
         string content = NativeAnimationOptimization.SourceContentKey(clip), storage = NativeAnimationOptimization.StorageKey(clip);
@@ -96,13 +96,18 @@ internal static partial class Program
             var master = (CHR0Node)Field(frozen, "Master");
             Check(NativeAnimationOptimization.SourceContentKey(master) == content && NativeAnimationOptimization.StorageKey(master) == storage,
                 tag + ": export freezes the same finished target master including native storage; a donor or previous export is never its compression reference");
-            var settings = new NativeExportOptimizationSettings { Policy = bounded ? NativeExportOptimizationPolicy.ErrorBounded : NativeExportOptimizationPolicy.Exact };
+            var settings = new NativeExportOptimizationSettings { Policy = bounded ? NativeExportOptimizationPolicy.ErrorBounded : NativeExportOptimizationPolicy.Exact, SearchEffort = effort };
             var preparationTime = System.Diagnostics.Stopwatch.StartNew();
             await (Task)Call(form, "PrepareOptimizedExportSnapshot", frozen, settings, CancellationToken.None, null);
             preparationTime.Stop();
             var candidate = (CHR0Node)Field(frozen, "Candidate");
             string report = (string)Field(frozen, "OptimizationReport"), effective = (string)Field(frozen, "EffectiveExportPolicy");
             var context = Field(frozen, "Optimization"); string unavailable = (string)Field(context, "BoundedUnavailable");
+            File.WriteAllText(Path.Combine(directory, tag + "-context.json"), new JavaScriptSerializer { MaxJsonLength = 256 * 1024 * 1024 }.Serialize(new {
+                GeneratedPairSites = Field(context, "GeneratedPairSites"), ExactBones = Field(context, "ExactBones"),
+                ProtectedBones = Field(context, "ProtectedBones"), MandatoryFrames = Field(context, "MandatoryFrames"),
+                ProtectedRanges = Field(context, "ProtectedRanges"), GeneratedPairReport = Field(context, "GeneratedPairReport"),
+                BoundedUnavailable = unavailable, FinishedMasterContent = content, FinishedMasterStorage = storage, Settings = settings }));
             Check(candidate != null && (string)Field(frozen, "PreparedPolicyKey") == settings.StableKey && !string.IsNullOrWhiteSpace(report),
                 tag + ": explicit export preparation records the requested policy, independent candidate and complete qualification/fallback report");
             if (bounded && !string.IsNullOrWhiteSpace(unavailable))

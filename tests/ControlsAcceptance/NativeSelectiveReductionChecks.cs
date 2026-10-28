@@ -125,6 +125,106 @@ internal static partial class Program
                     SelectiveReductionWireFingerprint(exact) == exactBefore && SelectiveReductionWireFingerprint(proposed) == proposalBefore,
                     "Selective reduction success, rejection, fallback, cancellation and exhaustion preserve the original native data and both immutable scalar-certified wires");
             }
+            NativeSelectiveReductionEffortChecks(model, Path.Combine(stage, "search-effort"));
+        }
+    }
+
+    static void NativeSelectiveReductionEffortChecks(MDL0Node model, string stage)
+    {
+        model.ApplyCHR(null, 0); var bones = model.AllBones.ToArray();
+        var root = bones.First(b => !(b.Parent is MDL0BoneNode));
+        var leaves = bones.Where(b => !b.Children.OfType<MDL0BoneNode>().Any() && !ReferenceEquals(b, root) &&
+            Enumerable.Range(0, 9).All(c => ReplayFloatBits(b.BindState[c]) != int.MinValue) &&
+            Enumerable.Range(1, 2).All(c => {
+                double norm = Math.Sqrt(Enumerable.Range(0, 3).Sum(r => Math.Pow(b.BindMatrix[c * 4 + r], 2)));
+                return norm >= .9 && norm <= 1.1;
+            })).Take(4).ToArray();
+        Check(leaves.Length == 4, "Search-effort fixture uses four independent native leaves with bounded bind basis lengths; no character or bone-name exception");
+        var bad = leaves.Take(3).Select(b => b.Name).ToArray(); string good = leaves[3].Name;
+        double length = NativeAnimationOptimization.GetBindBoundsDiagonal(model);
+        using (var baseline = new CHR0Node { Name = "Independent four-branch search effort", Version = 4, FrameCount = 5,
+            Loop = true, OriginalPath = "independent-search-effort-fixture" })
+        {
+            foreach (var bone in new[] { root }.Concat(leaves))
+            {
+                var entry = baseline.CreateEntry(bone.Name);
+                entry.ScaleCompensateApply = bone.SegScaleCompApply; entry.ScaleCompensateParent = bone.SegScaleCompParent;
+                entry.ClassicScaleOff = !bone.ClassicScale; entry.Keyframes.PreserveInterpolation = true;
+                for (int c = 0; c < 9; c++) for (int frame = 0; frame < 5; frame++)
+                    entry.Keyframes.SetFrameValue(c, frame, bone.BindState[c], true)._tangent = 0;
+                if (ReferenceEquals(bone, root))
+                    for (int frame = 0; frame < 5; frame++)
+                    {
+                        entry.KeyArrays[6].GetKeyframe(frame)._value += frame * .00002f;
+                        entry.KeyArrays[6].GetKeyframe(frame)._tangent = .00002f;
+                    }
+                else foreach (int frame in new[] { 1, 3 })
+                    entry.KeyArrays[3].GetKeyframe(frame)._value += bone.Name == good ? .00025f : .009f;
+            }
+            PreciseCHR0EntryNode.Promote(baseline);
+            var exact = baseline.Children.OfType<CHR0EntryNode>().Select(OptimizationTrack).ToArray();
+            foreach (var track in exact.Where(t => t.Bone != root.Name))
+                for (int c = 0; c < 9; c++) if (c != 3) track.Channels[c] = new[] { OptimizationKey(0, track.Channels[c][0].Value, 0) };
+            var proposed = SelectiveReductionClone(exact);
+            foreach (var track in proposed.Where(t => t.Bone != root.Name))
+                track.Channels[3] = new[] { OptimizationKey(0, track.Channels[3][0].Value, 0), OptimizationKey(4, track.Channels[3][0].Value, 0) };
+            string content = NativeAnimationOptimization.ContentKey(baseline), storage = NativeAnimationOptimization.StorageKey(baseline);
+            string exactBefore = SelectiveReductionWireFingerprint(exact), proposalBefore = SelectiveReductionWireFingerprint(proposed);
+            NativeAnimationOptimizationOptions Options(int attempts, bool exactOnly = false) => new NativeAnimationOptimizationOptions {
+                ExactOnly = exactOnly, ReductionAttemptLimit = attempts, LengthScale = length, TargetBones = bones.Select(b => b.Name).ToArray(),
+                ProtectedBones = new[] { root.Name }, ExactBones = new[] { root.Name }, MandatoryFrames = new[] { 0, 4 },
+                ProbeFrames = new[] { .1732051, .4142136, 1.7320508, 3.6190339, 4.9999 }, Budget = new NativeAnimationOptimizationBudget() };
+            using (var exactVerified = NativeAnimationOptimization.Prepare(model, baseline, exact, Options(2, true), stage))
+            {
+                Check(exactVerified.Candidate != null && exactVerified.AfterKeys == 97 && exactVerified.MaximumEulerError == 0,
+                    "Four-branch same-master Exact control verifies 97 keys without changing any pulse, root tuple or native loop metadata");
+                var standard = Options(2); bool rejected = false;
+                try { using (var ignored = NativeAnimationOptimization.PrepareReduction(model, baseline, proposed, exact, standard, stage)) { } }
+                catch (InvalidDataException error)
+                {
+                    rejected = error.Data.Contains("OptimizationQuality") && bad.Contains(Convert.ToString(error.Data["Bone"]));
+                }
+                Check(rejected && standard.Budget.Samples > 0,
+                    "Two-attempt search rejects a real remaining bad branch instead of returning a partially validated candidate or relaxing quality");
+                var thorough = Options(8);
+                using (var selected = NativeAnimationOptimization.PrepareReduction(model, baseline, proposed, exact, thorough, stage))
+                {
+                    Check(selected.Candidate != null && selected.AfterKeys == 94 && selected.AfterBytes < exactVerified.AfterBytes &&
+                        bad.All(name => ((CHR0EntryNode)selected.Candidate.FindChild(name, false)).KeyArrays[3].KeyCount == 5) &&
+                        ((CHR0EntryNode)selected.Candidate.FindChild(good, false)).KeyArrays[3].KeyCount == 2 &&
+                        selected.Report.Contains("Selective High quality reduction: 4 complete native attempts"),
+                        "Eight-attempt search repairs three independent real native failures and retains the eligible branch's verified smaller curve after four complete attempts");
+                    Check(selected.MaximumEulerError > 0 && selected.MaximumEulerError <= .01 && selected.MaximumOrientationError <= .01 &&
+                        selected.MaximumEulerDerivativeError <= .05 && selected.MaximumLocalTranslationError <= Math.Min(.0002, .0001 * length) &&
+                        selected.MaximumScaleError <= .00001 && selected.MaximumWorldBoneError <= .0001 * length && selected.MaximumSkinError <= .0001 * length,
+                        "More search effort obeys unchanged combined native value, derivative, hierarchy and full-skin error limits");
+                    Check(selected.Candidate.Name == baseline.Name && selected.Candidate.Version == baseline.Version &&
+                        selected.Candidate.FrameCount == baseline.FrameCount && selected.Candidate.Loop == baseline.Loop &&
+                        selected.Candidate.OriginalPath == baseline.OriginalPath && selected.Candidate.Children.OfType<CHR0EntryNode>().Select(e => e.Name)
+                            .SequenceEqual(baseline.Children.OfType<CHR0EntryNode>().Select(e => e.Name)),
+                        "More search effort preserves CHR0 v4 duration, stored loop, metadata and exact native track order after real serialization/reopen");
+                    SourceKeysSameTrack((CHR0EntryNode)baseline.FindChild(root.Name, false), (CHR0EntryNode)selected.Candidate.FindChild(root.Name, false),
+                        "Four-branch search retains every authored protected root tuple including its moving translation");
+                    var measured = SourceKeyQualityMeasure(model, baseline, selected.Candidate);
+                    Check(measured.Euler > 0 && measured.Euler <= .01 && measured.Orientation <= .01 && measured.EulerDerivative <= .05 &&
+                        measured.Translation <= Math.Min(.0002, .0001 * measured.Length) && measured.Scale <= .00001 &&
+                        measured.World <= .0001 * measured.Length && measured.Skin <= .0001 * measured.Length,
+                        "Independent withheld subframes verify the four-branch composed result across every native bone and skin vertex");
+                    Check(thorough.Budget.Samples > selected.Samples && thorough.Budget.Samples > standard.Budget.Samples &&
+                        selected.BudgetSamples == thorough.Budget.Samples && selected.BudgetBoneVisits == thorough.Budget.BoneVisits &&
+                        selected.BudgetVertexVisits == thorough.Budget.VertexVisits,
+                        "Extra attempts consume one aggregate native budget, including all rejected complete candidates, rather than resetting work per repair");
+                    File.WriteAllText(Path.Combine(stage, "four-branch-search-effort-report.txt"), selected.Report);
+                    File.WriteAllText(Path.Combine(stage, "four-branch-search-effort-witnesses.json"),
+                        new JavaScriptSerializer().Serialize(new { Passed = true, BadBranches = bad, EligibleBranch = good,
+                            ExactKeys = exactVerified.AfterKeys, ExactBytes = exactVerified.AfterBytes, selected.AfterKeys, selected.AfterBytes,
+                            NativeMeasured = measured, StandardBudgetSamples = standard.Budget.Samples,
+                            selected.BudgetSamples, selected.BudgetBoneVisits, selected.BudgetVertexVisits }));
+                }
+            }
+            Check(NativeAnimationOptimization.ContentKey(baseline) == content && NativeAnimationOptimization.StorageKey(baseline) == storage &&
+                SelectiveReductionWireFingerprint(exact) == exactBefore && SelectiveReductionWireFingerprint(proposed) == proposalBefore,
+                "Two-attempt rejection and eight-attempt acceptance retain the identical original native master and immutable exact/proposed wires");
         }
     }
 

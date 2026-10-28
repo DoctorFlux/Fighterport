@@ -1,5 +1,23 @@
 # Fighterport
 
+28 October 2026 **preview.55-animation-stages-simple-controls** has bounded source
+acceptance: 5,695 checks in 13 admitted runs, 50 inspected native UI PNGs, 176
+inspected GIF frames and a six-file independent byte audit. The four exports
+measure 12,016 / 306,324 / 235,344 / 57,684 bytes; compare optimization against
+the same finished target master. Simple policy/actions, Advanced search/limits,
+correct retained dense-byte accounting and eight-versus-two bounded repairs keep
+the full native previewer, original Next, all weights, root contracts and Undo.
+Ordinary Save remains exact. Both export-test segments pass; the old combined
+timeout is excluded. Shared fixture materials remain unqualified because its
+texture archives are absent. See [acceptance](docs/ANIMATION_STAGES_SIMPLE_CONTROLS_ACCEPTANCE_2026-10-28.md)
+and [benchmark](docs/CHR0_FOUR_STAGE_BENCHMARK_2026-10-28.md).
+The launcher selects `Fighterport-stages55/native4`. ONE G1/M2 remains incomplete;
+constrained Hermite refitting is not implemented and no new increment is promoted.
+Background-only tests and source-only public DoctorFlux/Fighterport/main delivery
+with DoctorFlux attribution remain. Broader contacts, Melee, external-editor/
+plugin, physical input/DPI, human usability and game acceptance stay unverified.
+Earlier checkpoints below are historical.
+
 28 October 2026 **preview.54-native-chr0-export-optimization** has bounded source
 acceptance. Retargeting, fitting, contacts and native edits keep their full-quality
 editable master; ordinary Save stays exact. Explicit Exact / Error-bounded CHR0

@@ -29,9 +29,9 @@ namespace BrawlCrate.Studio
         readonly TableLayoutPanel layout, views, transport;
         readonly FlowLayoutPanel footer;
         readonly Label identity, modeHint, summary;
-        readonly Button analyze = new Button { Name = "optimizeAnalyze", Text = "Analyze", AutoSize = true };
+        readonly Button analyze = new Button { Name = "optimizeAnalyze", Text = "Optimize", AutoSize = true };
         readonly Button apply = new Button { Name = "optimizeApply", Text = "Export optimized copy…", AutoSize = true, Enabled = false };
-        readonly Button cancel = new Button { Name = "optimizationCancel", Text = "Cancel analysis", AutoSize = true, Enabled = false };
+        readonly Button cancel = new Button { Name = "optimizationCancel", Text = "Cancel optimization", AutoSize = true, Enabled = false, Visible = false };
         readonly Button close = new Button { Name = "optimizationClose", Text = "Close", AutoSize = true };
         readonly Button details = new Button { Name = "optimizationDetails", Text = "Show details", AutoSize = true };
         readonly TextBox report = new TextBox { Name = "optimizationReport", ReadOnly = true, Multiline = true, WordWrap = false, ScrollBars = ScrollBars.Both, Dock = DockStyle.Fill, Visible = false };
@@ -65,7 +65,7 @@ namespace BrawlCrate.Studio
                 AutoSize = true, Margin = new Padding(0, 0, 0, 6), Font = WorkspaceAppearance.BoldFont };
             modeHint = new Label { Name = "optimizationModeHint", AutoSize = true, Margin = new Padding(0, 0, 0, 6) };
             summary = new Label { Name = "optimizationSummary", AutoSize = true, Margin = new Padding(0, 6, 0, 2),
-                Text = "Analyze the finished current animation, preview the decoded result, then export an optimized copy. The editable master stays unchanged." };
+                Text = "Optimize to compare native file sizes." };
 
             exportOptions = new WorkspaceExportOptimizationOptions(new NativeExportOptimizationPreferences().Read())
             { Dock = DockStyle.Fill, Margin = Padding.Empty, TabIndex = 0 };
@@ -94,6 +94,7 @@ namespace BrawlCrate.Studio
                 AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = true, Margin = Padding.Empty };
             footer.Controls.AddRange(new Control[] { analyze, cancel, apply, close });
             analyze.AccessibleDescription = "Prepare an independent result for this exact current target animation. The authoring animation remains unchanged; only a separately verified export copy is published.";
+            cancel.AccessibleDescription = "Cancel the pending optimization and keep the editable animation unchanged.";
             apply.AccessibleDescription = "Export the prepared independent CHR0 copy. The current animation and native Undo remain unchanged.";
             details.AccessibleDescription = "Show measured key counts, native byte sizes, errors, protections and tracks absent from the target that will be omitted from the export copy.";
 
@@ -143,7 +144,7 @@ namespace BrawlCrate.Studio
             Shown += (s, e) => { ShowFrame(); SourceView.ShownFrame(); TargetView.ShownFrame(); analyze.Focus(); };
             UpdateModeHint();
             ShowFrame();
-            report.Text = "Analyze to see key and native byte counts, independently measured errors, retained protections and any tracks absent from this exact target skeleton.";
+            report.Text = "Optimize to see key and native byte counts, independently measured errors, retained protections and any tracks absent from this exact target skeleton.";
             DarkTheme.Apply(this);
             ApplyTextSize();
         }
@@ -253,11 +254,14 @@ namespace BrawlCrate.Studio
         void SetBusy(bool value)
         {
             bool restoreFocus = cancel.ContainsFocus;
+            bool startFocus = analyze.ContainsFocus;
             Busy = value;
+            cancel.Visible = value;
             cancel.Enabled = value;
-            if (value && analyze.ContainsFocus) cancel.Focus();
+            analyze.Visible = !value;
             analyze.Enabled = play.Enabled = frame.Enabled = exportOptions.Enabled = !value;
             apply.Enabled = !value && Candidate != null && PreparedCanApply;
+            if (value && startFocus) cancel.Focus();
             if (!value && restoreFocus) analyze.Focus();
         }
 
@@ -275,8 +279,11 @@ namespace BrawlCrate.Studio
 
         void UpdateModeHint()
         {
-            modeHint.Text = "Optimize a separate native export copy. Exact is the default; Error-bounded requires verified protections. " +
+            modeHint.Visible = false;
+            modeHint.Text = string.Empty;
+            modeHint.AccessibleDescription = "Optimize a separate native export copy. Exact is the default; Error-bounded requires verified protections. " +
                 "Up to 0.1° rotation, 0.002 translation and 0.0001 scale; root motion and pin/contact protections stay exact. Details report the actual result.";
+            AccessibleDescription = modeHint.AccessibleDescription + " Advanced shows the saved limits and search effort. F6 and Shift+F6 move between settings, native previews, playback, report and export actions.";
         }
 
         void ShowFrame()

@@ -46,6 +46,7 @@ namespace BrawlCrate.Studio
             readonly NativeChr0SizeReport report = new NativeChr0SizeReport();
             readonly HashSet<int> strings = new HashSet<int>();
             readonly Dictionary<int, Tuple<int, int>> streams = new Dictionary<int, Tuple<int, int>>();
+            readonly List<Tuple<int, int>> alignment = new List<Tuple<int, int>>();
             long keys;
             int resource;
             internal Reader(byte[] data) { bytes = data; categories = new byte[data.Length]; }
@@ -66,12 +67,14 @@ namespace BrawlCrate.Studio
                     categories[i] = kind;
                 }
             }
-            void Padding(int start, int end)
+            void Padding(int start, int end, bool insideResource = false)
             {
-                Need(start, end - start);
-                for (int i = start; i < end; i++)
-                    if (bytes[i] != 0 || categories[i] != 0) throw new InvalidDataException("CHR0 alignment contains data or overlaps a structure.");
-                Mark(start, end - start, 8);
+                // Imported streams need not use this writer's four-byte
+                // allocation. A following stream may start immediately, even
+                // with zero header bytes. Resolve optional padding only after
+                // every referenced structure has established its ownership.
+                end = Math.Min(end, insideResource ? resource : bytes.Length);
+                if (end > start) { Need(start, end - start); alignment.Add(Tuple.Create(start, end)); }
             }
             void Name(int origin, int cell)
             {
@@ -120,15 +123,17 @@ namespace BrawlCrate.Studio
                 }
                 else throw new InvalidDataException("Unsupported CHR0 stream format in byte accounting.");
                 int size = checked(header + payload), aligned = checked((size + 3) & ~3);
-                Need(at, aligned, true);
+                // Required payload and optional allocation padding are distinct.
+                // Retained L1/L2 resources can pack streams without rounding.
+                Need(at, size, true);
                 if (streams.TryGetValue(at, out var previous))
                 {
-                    if (previous.Item1 != format || previous.Item2 != aligned) throw new InvalidDataException("Shared CHR0 stream has inconsistent format/size.");
+                    if (previous.Item1 != format || previous.Item2 != size) throw new InvalidDataException("Shared CHR0 stream has inconsistent format/size.");
                     return;
                 }
-                streams.Add(at, Tuple.Create(format, aligned)); keys += count;
+                streams.Add(at, Tuple.Create(format, size)); keys += count;
                 if (keys > 2000000) throw new InvalidDataException("CHR0 byte accounting exceeds the stored-key budget.");
-                Mark(at, header, 4); Mark(at + header, payload, 5); Padding(at + size, at + aligned);
+                Mark(at, header, 4); Mark(at + header, payload, 5); Padding(at + size, at + aligned, true);
                 string label = format <= 3 ? new[] { "", "I4", "I6", "I12" }[format] : "L" + (format == 4 ? "1" : format == 5 ? "2" : "4");
                 report.Streams[label] = report.Streams.TryGetValue(label, out int n) ? n + 1 : 1;
             }
@@ -175,6 +180,9 @@ namespace BrawlCrate.Studio
                         if (type == 2 && values > 0) Name(entry, entry + 4);
                     }
                 }
+                foreach (var padding in alignment)
+                    if (Enumerable.Range(padding.Item1, padding.Item2 - padding.Item1).All(i => bytes[i] == 0 && categories[i] == 0))
+                        Mark(padding.Item1, padding.Item2 - padding.Item1, 8);
                 report.HeaderBytes = categories.LongCount(c => c == 1); report.DictionaryBytes = categories.LongCount(c => c == 2);
                 report.BoneEntryBytes = categories.LongCount(c => c == 3); report.CurveHeaderBytes = categories.LongCount(c => c == 4);
                 report.CurvePayloadBytes = categories.LongCount(c => c == 5); report.NameBytes = categories.LongCount(c => c == 6);

@@ -18,6 +18,17 @@ internal static partial class Program
     static async Task WorkspaceExportOptimization(string[] args, string output)
     {
         if (!PrivateDesktop) throw new InvalidOperationException("Export-copy qualification requires the private desktop.");
+        bool currentOnly = args.Contains("--workspace-export-current"), nonselectedOnly = args.Contains("--workspace-export-nonselected");
+        if (currentOnly && nonselectedOnly) throw new ArgumentException("Choose one explicit export segment, or neither to run the complete case.");
+        bool runCurrent = !nonselectedOnly, runNonselected = !currentOnly;
+        string segment = currentOnly ? "Current" : nonselectedOnly ? "Nonselected" : "Complete";
+        Console.WriteLine("TRACE export qualification segment: " + segment + (currentOnly || nonselectedOnly ? "; counterpart segment is required for complete export acceptance." : "; all original assertions run."));
+        void SegmentEvidence(bool complete) => File.WriteAllText(Path.Combine(output, "export-segment-evidence.json"),
+            new JavaScriptSerializer().Serialize(new { Segment = segment, IncludesCurrent = runCurrent, IncludesNonselected = runNonselected,
+                Complete = complete, CompleteCase = !currentOnly && !nonselectedOnly,
+                RequiredOtherSegment = currentOnly ? "Nonselected" : nonselectedOnly ? "Current" : null,
+                Claim = currentOnly || nonselectedOnly ? "Explicit partial case; both segments must pass for complete export qualification." : "Original complete export case." }));
+        SegmentEvidence(false);
         string previousPreferences = Environment.GetEnvironmentVariable("FIGHTERPORT_EXPORT_PREFERENCES_ROOT");
         string previousLibrary = Environment.GetEnvironmentVariable("FIGHTERPORT_LIBRARY_ROOT");
         Environment.SetEnvironmentVariable("FIGHTERPORT_EXPORT_PREFERENCES_ROOT", Path.Combine(output, "isolated-export-settings"));
@@ -48,6 +59,10 @@ internal static partial class Program
                 var read = controls.Read();
                 Check(changes == 3 && read.Policy == NativeExportOptimizationPolicy.ErrorBounded && read.SearchEffort == NativeExportSearchEffort.Thorough && read.RotationDegrees == .05,
                     "Policy, effort and explicit-limit changes each invalidate a prepared preview");
+                string saved = read.StableKey;
+                SetExportAdvanced(controls, true); SetExportAdvanced(controls, false);
+                Check(changes == 3 && controls.Read().StableKey == saved && !SimpleControl<ComboBox>(controls, "exportOptimizationEffort").Visible,
+                    "Advanced disclosure leaves the exact selected policy, search effort and seven saved cumulative limits unchanged");
             }
             using (var startup = MainForm.StartViewerApplication())
             {
@@ -88,6 +103,8 @@ internal static partial class Program
                             "DIAGNOSTIC ONLY: explicit native clip selection/setup retains the initial state without any export analysis");
                         return;
                     }
+                    if (runCurrent)
+                    {
                     NativeExportFitAcceptanceChecks(args[0], Path.Combine(output, "plain-fit-acceptance"));
                     NativeMotionPacVerificationChecks(args[0], args[1], Path.Combine(output, "motion-pac"));
                     using (var flagged = NativeAnimationOptimization.CopySource(clip))
@@ -255,7 +272,11 @@ internal static partial class Program
                         finally { ((IDisposable)protectedExport).Dispose(); }
                     }
                     finally { savedState.Json = savedStateJson; Phase("contact-state-restored"); }
-                    var siblingClip = Walk(clip.RootNode).OfType<CHR0Node>().First(c => !ReferenceEquals(c, clip) && c.Name == "Fall");
+                    }
+                    CHR0Node siblingClip = null;
+                    if (runNonselected)
+                    {
+                    siblingClip = Walk(clip.RootNode).OfType<CHR0Node>().First(c => !ReferenceEquals(c, clip) && c.Name == "Fall");
                     Phase("before-explicit-sibling-selection");
                     editor.SelectedCHR0 = siblingClip; await SimpleControlsReady(form); await Await<ControlReply>(Call(form, "LoadControls"));
                     Phase("after-explicit-sibling-setup");
@@ -306,6 +327,9 @@ internal static partial class Program
                         Check(corruptReference && FighterProject.HashFile(ordinaryReference) == prior, "Corrupt nonselected reference candidate cannot replace an existing destination");
                     }
                     finally { ((IDisposable)ordinaryFrozen).Dispose(); }
+                    }
+                    if (runCurrent)
+                    {
                     object raced = Call(form, "FreezeWorkspaceExport");
                     try
                     {
@@ -329,9 +353,12 @@ internal static partial class Program
                         finally { ((IDisposable)cancelled).Dispose(); }
                     }
                     Phase("after-destination-race-and-cancel");
+                    }
                     Check(SetNativeContent(clip) == master && NativeAnimationOptimization.StorageKey(clip) == masterStorage && ReferenceEquals(editor.TargetModel, target) &&
                         ReferenceEquals(editor.SelectedCHR0, clip) && ReferenceEquals(editor.SelectedBone, bone) && editor.CurrentFrame == frame && editor._undoSaves.Count == undo && clip.IsDirty == expectedDirty,
                         "All export analysis/publication/cancellation retains exact master, storage, target, clip, bone, frame and native Undo");
+                    if (runNonselected)
+                    {
                     editor.TargetModel = null; await Wait(() => !(bool)Field(form, "_controlBusy"));
                     try
                     {
@@ -341,35 +368,50 @@ internal static partial class Program
                             Check(NativeAnimationOptimization.SourceContentKey(decoded) == NativeAnimationOptimization.SourceContentKey(siblingClip), "Target-free reference export retains exact native metadata and coefficients without model inference");
                     }
                     finally { editor.TargetModel = target; editor.SelectedCHR0 = clip; await SimpleControlsReady(form); editor.SetFrame(frame); editor.SelectedBone = bone; }
+                    Phase("after-target-free-reference-and-restoration");
+                    }
                     // The temporary stale-loop exercise legitimately touched dirty
                     // state; establish and check a fresh unchanged export boundary.
+                    if (runCurrent)
+                    {
                     bool currentDirty = clip.IsDirty; form.ExportSimpleWorkspaceResult(Path.Combine(output, "ordinary-reference-save.chr0"));
                     Check(clip.IsDirty == currentDirty && SetNativeContent(clip) == master, "Ordinary native reference save retains full-quality master and dirty state");
+                    }
                     OptimizationCheckUntouchedBytes(form, clip, siblings, "export-copy qualification", Path.Combine(output, "unchanged-siblings.json"));
                     bool protectedOriginal = false; try { Call(form, "ProtectVerifiedExport", Path.GetFullPath(args[1])); } catch (TargetInvocationException error) { protectedOriginal = error.InnerException is InvalidOperationException; }
                     Check(protectedOriginal, "Original motion input remains protected across export-copy routes");
+                    if (runCurrent)
+                    {
                     foreach (int text in new[] { 100, 125, 150, 175 }) foreach (int width in new[] { 1050, 1700 })
                     {
                         form.ClientSize = new Size(width, 950); Call(form, "SetWorkspaceTextSize", text);
                         using (FlowModal("workspaceFilePath", dialog => {
                             Check(SimpleControl<ComboBox>(dialog, "exportOptimizationPolicy").Items.Count == 2, "Export has exactly two explicit policies at " + width + "/" + text);
+                            CheckCollapsedExportOptions(dialog, "Single export " + width + "/" + text);
                             var policy = SimpleControl<ComboBox>(dialog, "exportOptimizationPolicy");
                             Check(policy.ClientSize.Width >= TextRenderer.MeasureText("Error-bounded", policy.Font).Width + SystemInformation.VerticalScrollBarWidth + 8,
                                 "The complete bounded policy caption fits its measured text size at " + width + "/" + text);
                             CaptureDialog(dialog, output, "export-copy-" + width + "-" + text + ".png");
                             SimpleControl<ComboBox>(dialog, "exportOptimizationPolicy").SelectedIndex = 1;
-                            var link = SimpleControl<LinkLabel>(dialog, "exportOptimizationLimits"); Call(link, "OnLinkClicked", new LinkLabelLinkClickedEventArgs(link.Links[0]));
-                            Check(SimpleControl<NumericUpDown>(dialog, "exportOptimizationLimit6").Visible, "Expanded explicit value/derivative limits remain available at " + width + "/" + text);
+                            string settings = ExportOptionsOf(dialog).Read().StableKey;
+                            SetExportAdvanced(dialog, true); CheckExpandedExportOptions(dialog, "Single export " + width + "/" + text);
                             CaptureDialog(dialog, output, "export-copy-expanded-" + width + "-" + text + ".png");
+                            SimpleControl<ComboBox>(dialog, "exportOptimizationEffort").Focus(); SetExportAdvanced(dialog, false);
+                            Check(SimpleControl<LinkLabel>(dialog, "exportOptimizationLimits").Focused && ExportOptionsOf(dialog).Read().StableKey == settings,
+                                "Single export Advanced collapse restores focus and preserves its full selected settings at " + width + "/" + text);
                             SimpleControl<Button>(dialog, "workspaceFileCancel").PerformClick();
                         })) Call(form, "ChooseSimpleWorkspaceExport");
                         using (var dialog = new WorkspaceSetExportDialog(form.FighterProject.Name, ((MDL0Node)target).Name, "current reviewed native target", "verified local target content",
                             new[] { clip.Name + " · " + clip.FrameCount + " frames → current-clip.chr0" }))
                         using (FlowModal("setExportPath", window => {
+                            CheckCollapsedExportOptions(window, "Set export " + width + "/" + text);
                             SimpleControl<ComboBox>(window, "exportOptimizationPolicy").SelectedIndex = 1;
-                            var link = SimpleControl<LinkLabel>(window, "exportOptimizationLimits"); Call(link, "OnLinkClicked", new LinkLabelLinkClickedEventArgs(link.Links[0]));
-                            Check(SimpleControl<NumericUpDown>(window, "exportOptimizationLimit6").Visible, "Set export exposes the same explicit limits at " + width + "/" + text);
+                            string settings = ExportOptionsOf(window).Read().StableKey;
+                            SetExportAdvanced(window, true); CheckExpandedExportOptions(window, "Set export " + width + "/" + text);
                             CaptureDialog(window, output, "set-export-expanded-" + width + "-" + text + ".png");
+                            SimpleControl<ComboBox>(window, "exportOptimizationEffort").Focus(); SetExportAdvanced(window, false);
+                            Check(SimpleControl<LinkLabel>(window, "exportOptimizationLimits").Focused && ExportOptionsOf(window).Read().StableKey == settings,
+                                "Set export Advanced collapse restores focus and preserves its full selected settings at " + width + "/" + text);
                             SimpleControl<Button>(window, "setExportCancel").PerformClick();
                         })) dialog.ShowDialog(form);
                     }
@@ -387,9 +429,18 @@ internal static partial class Program
                     await Wait(() => form.FighterEditor.TargetModel != null && form.FighterEditor.SelectedCHR0 != null); await SimpleControlsReady(form);
                     Check(SetNativeContent(form.FighterEditor.SelectedCHR0) == master && form.FighterEditor.CurrentFrame == frame,
                         "Reopen restores the full-quality master and playhead rather than an optimized delivery copy");
+                    }
+                    else
+                    {
+                        Check(SetNativeContent(clip) == master && NativeAnimationOptimization.StorageKey(clip) == masterStorage &&
+                            ReferenceEquals(editor.TargetModel, target) && ReferenceEquals(editor.SelectedCHR0, clip) && ReferenceEquals(editor.SelectedBone, bone) &&
+                            editor.CurrentFrame == frame && editor._undoSaves.Count == undo && clip.IsDirty == expectedDirty,
+                            "Explicit nonselected segment restores the selected full-quality master, target/bone, frame, native Undo and dirty state after target-free export");
+                    }
                 }
                 finally { SimpleDisposeForm(form); }
             }
+            SegmentEvidence(true);
         }
         finally
         {

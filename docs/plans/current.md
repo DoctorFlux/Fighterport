@@ -1,5 +1,39 @@
 ﻿# Current milestone M2 — simpler native workspace
 
+28 October **preview.55-animation-stages-simple-controls** has bounded source
+acceptance from starting commit `11d6c1d708e3254d1c68101dfcee70b0c9970214`.
+The explicit Sonic original → default Next/Mario → Fall-first fitted master →
+optimized export sequence measures **12,016 / 306,324 / 235,344 / 57,684 bytes**.
+The last copy saves 75.49% against its same finished master; the donor is not its
+compression reference. Standard/Thorough produce the same bytes in this fixture.
+Thorough's eight selective repairs instead of two pass a separate multi-branch
+fixture under unchanged quality/work ceilings. Actual source dense-stream byte
+accounting is corrected; the Sonic original re-exports byte-identically.
+
+There are **5,695 recorded checks / 13 admitted runs**, 50 inspected native UI
+PNGs, 176 inspected GIF frames and an independent six-file byte audit. The
+combined export timeout is excluded; both explicit assertion-preserving segments
+pass under their original per-case watchdogs. The launcher selects native4,
+whose application/runtime files are byte-identical to tested native3. See
+[acceptance](../ANIMATION_STAGES_SIMPLE_CONTROLS_ACCEPTANCE_2026-10-28.md) and
+[benchmark](../CHR0_FOUR_STAGE_BENCHMARK_2026-10-28.md).
+
+The main tool shows Optimize, Export optimized copy and Close; policy stays
+visible and search/limits are under Advanced. Full previewer, original Next,
+all weights, own-source root contracts, native Undo and exact ordinary Save stay.
+Reciprocal scale/compensation and unknown contact contexts retain Exact fallback.
+The texture-free shared fixture qualifies geometry/ownership, not materials.
+
+This bounded increment is complete within the ONE incomplete G1/M2. Further
+constrained fitting of generated, unprotected Hermite spans is queued research,
+not an implemented rewrite or a promise of donor-sized output. Existing numeric,
+pin/contact/root/join and failure gates remain binding. No new increment or game
+adapter is promoted. Background-only testing, DoctorFlux source attribution and
+public Fighterport/main remain. Physical input/DPI, human usability, universal
+contacts, external-editor/plugin round trips, Melee and games stay unverified.
+
+The preceding accepted increment and earlier checkpoints are historical.
+
 28 October latest authorized scope: **native CHR0 export optimization across the
 current Fighterport application**. Starting commit
 `37ec23c8aaa7de502d0a1efe661d673015d996e0`; public `DoctorFlux/Fighterport/main`.
