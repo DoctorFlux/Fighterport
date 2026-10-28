@@ -1,7 +1,8 @@
-using BrawlCrate.Studio.Retargeting;
+﻿using BrawlCrate.Studio.Retargeting;
 using BrawlCrate.Studio;
 using BrawlLib.SSBB.ResourceNodes;
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -39,19 +40,15 @@ namespace BrawlCrate.UI
             string previewPath=null;var keyMode=forcedMode??_retargetKeyframeMode;
             try
             {
-            string sourceClipContent=keyMode==RetargetKeyframeMode.Dense?null:NativeAnimationOptimization.SourceContentKey(clip);
+            string sourceClipContent=NativeAnimationOptimization.SourceContentKey(clip);
             source.Export(sourcePath);target.Export(targetPath);
-            if(keyMode==RetargetKeyframeMode.Dense)clip.Export(clipPath);
-            else
-            {
-                // Preserve the live authored knots before the legacy native
-                // writer can choose a quantized or per-frame codec. Only the
-                // independently owned precise copy is rebuilt for this mode.
-                using(var frozen=NativeAnimationOptimization.CopySource(clip))frozen.ExportChecked(clipPath);
-                using(var decoded=NodeFactory.FromFile(null,clipPath) as CHR0Node)
-                    if(decoded==null||NativeAnimationOptimization.SourceContentKey(decoded)!=sourceClipContent)
-                        throw new InvalidDataException("The independent source-key snapshot did not preserve the live authored channels exactly.");
-            }
+            // Freeze the authored native coefficients in every representation.
+            // A legacy source recompression must not perturb fractional motion
+            // or source-owned controls before the original Next solver sees it.
+            using(var frozen=NativeAnimationOptimization.CopySource(clip))frozen.ExportChecked(clipPath);
+            using(var decoded=NodeFactory.FromFile(null,clipPath) as CHR0Node)
+                if(decoded==null||NativeAnimationOptimization.SourceContentKey(decoded)!=sourceClipContent)
+                    throw new InvalidDataException("The independent source snapshot did not preserve the live authored channels exactly.");
             string sourceHash=FighterProject.HashFile(sourcePath),targetHash=FighterProject.HashFile(targetPath),clipHash=FighterProject.HashFile(clipPath);
             var project=_fighterProject;var selected=modelEditControl1.TargetAnimation;var groundMode=project.GroundMode;
             if(keyMode!=RetargetKeyframeMode.Dense)
@@ -93,8 +90,15 @@ namespace BrawlCrate.UI
                     RetargetDialogReady?.Invoke(dialog);
                     elapsedTimer.Start();
                     var scheduler=TaskScheduler.FromCurrentSynchronizationContext();
-                    Task.Run(()=>BrawlRetargeter.Bake(sourceRig,targetRig,clipCopy,true,cancellation.Token,
-                        (percent,message)=>((IProgress<Tuple<int,string>>)progress).Report(Tuple.Create(percent,message)),groundMode,keyMode),cancellation.Token)
+                    Task.Run(()=>
+                    {
+                        var generated=BrawlRetargeter.Bake(sourceRig,targetRig,clipCopy,true,cancellation.Token,
+                            (percent,message)=>((IProgress<Tuple<int,string>>)progress).Report(Tuple.Create(percent,message)),groundMode,keyMode);
+                        // Keep the full-quality editable target master. Size
+                        // optimization belongs to an explicit export copy.
+                        // Bake carries the full-quality representation receipt.
+                        return generated;
+                    },cancellation.Token)
                     .ContinueWith(task=>
                     {
                         completed=true;
@@ -114,7 +118,7 @@ namespace BrawlCrate.UI
                 {
                     if(IsDisposed||_fighterProject!=project||modelEditControl1.TargetModel!=target||modelEditControl1.TargetAnimation!=selected||project.GroundMode!=groundMode||
                         !forcedMode.HasValue&&_retargetKeyframeMode!=keyMode||ReviewedFighterCoordinateKey(source)!=sourceCoordinates||ReviewedFighterCoordinateKey(target)!=targetCoordinates||NativeControlHash(source,".mdl0")!=sourceHash||NativeControlHash(target,".mdl0")!=targetHash||
-                        (keyMode==RetargetKeyframeMode.Dense?NativeControlHash(clip,".chr0")!=clipHash:NativeAnimationOptimization.SourceContentKey(clip)!=sourceClipContent))
+                        NativeAnimationOptimization.SourceContentKey(clip)!=sourceClipContent)
                         throw new InvalidOperationException("Retarget inputs or key options changed. The stale result was discarded; retarget the current source and target again.");
                 }
                 Current();

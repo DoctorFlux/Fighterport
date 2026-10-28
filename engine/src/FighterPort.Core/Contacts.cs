@@ -165,7 +165,7 @@ public static class ContactSolver
                 SupportTorso();
                 foreach(int bone in setup.BoneRoles.Where(r=>r.SemanticRole is "Head" or "Neck").OrderBy(r=>r.SemanticRole=="Head"?0:1).Select(r=>r.Bone).Distinct().Where(b=>!edits.ContainsKey(b)&&!setup.PreservedHelperBones.Contains(b)))
                 {
-                    var head=bodyFloor.Points.Where(p=>Enumerable.Range(0,4).Any(j=>p.Weights[j]>0&&PoseGeometry.Ancestor(scene,bone,(int)p.Joints[j]))).ToArray();
+                    var head=bodyFloor.Points.Where(p=>Enumerable.Range(0,p.InfluenceCount).Any(j=>p.WeightAt(j)>0&&PoseGeometry.Ancestor(scene,bone,(int)p.JointAt(j)))).ToArray();
                     if(head.Length==0||head.All(p=>Vector3.Dot(ContactGeometry.Point(p,pose),bodyFloor.Normal)>=bodyFloor.Height-tolerance))continue;
                     var centre=head.Aggregate(Vector3.Zero,(s,p)=>s+ContactGeometry.Point(p,pose))/head.Length;
                     var axis=Vector3.Cross(centre-pose.World[bone].Translation,bodyFloor.Normal);if(axis.LengthSquared()<1e-10f)axis=setup.Axes?.Right??Vector3.UnitX;axis=Vector3.Normalize(axis);
@@ -201,9 +201,9 @@ public static class ContactSolver
             // Allow reviewed existing anatomical joints to avoid these collisions during baking.
             var mapped=setup.Chains.SelectMany(c=>new[]{c.Root,c.Middle,c.Effector}).Concat(setup.BoneRoles.Where(r=>r.SemanticRole is "Hips" or "Spine" or "Chest" or "Neck" or "Head"||r.SemanticRole.StartsWith("Clavicle.",StringComparison.Ordinal)).Select(r=>r.Bone)).Append(body).Where(i=>i>=0).ToHashSet();
             if(broadJoints)joints.UnionWith(mapped);
-            else foreach(var floor in clearances)foreach(var point in floor.Points.Where(p=>Vector3.Dot(ContactGeometry.Point(p,pose),floor.Normal)<floor.Height-tolerance))for(int j=0;j<4;j++)if(point.Weights[j]>0)
+            else foreach(var floor in clearances)foreach(var point in floor.Points.Where(p=>Vector3.Dot(ContactGeometry.Point(p,pose),floor.Normal)<floor.Height-tolerance))for(int j=0;j<point.InfluenceCount;j++)if(point.WeightAt(j)>0)
             {
-                for(int bone=(int)point.Joints[j];bone>=0&&bone!=body;bone=scene.Bones[bone].Parent)if(mapped.Contains(bone))joints.Add(bone);
+                for(int bone=(int)point.JointAt(j);bone>=0&&bone!=body;bone=scene.Bones[bone].Parent)if(mapped.Contains(bone))joints.Add(bone);
             }
             joints.ExceptWith(setup.PreservedHelperBones);
         }

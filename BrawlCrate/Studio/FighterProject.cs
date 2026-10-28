@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -346,7 +346,7 @@ namespace BrawlCrate.Studio
                     if(p.MotionControlPolicy!=null && p.MotionControlPolicy!=Retargeting.HumanoidRetargeter.MotionControlPolicy)throw new InvalidDataException("Unknown saved motion-control policy.");
                     if(p.IgnoredSourceBones==null||p.IgnoredSourceBones.Length>65536||p.IgnoredSourceBones.Any(n=>string.IsNullOrEmpty(n)||n.Length>256))throw new InvalidDataException("Invalid untransferred source-track report.");
                     if(engine&&(!p.ReviewDraft||string.IsNullOrEmpty(p.EngineReceipt)||p.EngineReceipt.Length>8*1024*1024))throw new InvalidDataException("Owned-engine drafts require their unresolved validation receipt.");
-                    if (!Enum.IsDefined(typeof(Retargeting.GroundContactMode),p.GroundMode) || !asset.Generated || (!engine && p.Algorithm != Retargeting.HumanoidRetargeter.Algorithm && p.Algorithm != "bind-world-fk-body-contact-ik-v7" && p.Algorithm != "bind-world-fk-body-contact-ik-v6" && p.Algorithm != "bind-world-fk-body-contact-ik-v5" && p.Algorithm != "bind-world-fk-body-contact-ik-v4" && p.Algorithm != "bind-world-fk-body-contact-ik-v3" && p.Algorithm != "bind-world-fk-contact-ik-v2" && p.Algorithm != "bind-world-fk-two-bone-ik-v1") ||
+                    if (!Enum.IsDefined(typeof(Retargeting.GroundContactMode),p.GroundMode) || !asset.Generated || (!engine && p.Algorithm != Retargeting.HumanoidRetargeter.Algorithm && p.Algorithm != "bind-world-fk-body-contact-ik-v9" && p.Algorithm != "bind-world-fk-body-contact-ik-v8" && p.Algorithm != "bind-world-fk-body-contact-ik-v7" && p.Algorithm != "bind-world-fk-body-contact-ik-v6" && p.Algorithm != "bind-world-fk-body-contact-ik-v5" && p.Algorithm != "bind-world-fk-body-contact-ik-v4" && p.Algorithm != "bind-world-fk-body-contact-ik-v3" && p.Algorithm != "bind-world-fk-contact-ik-v2" && p.Algorithm != "bind-world-fk-two-bone-ik-v1") ||
                         !ValidHash(p.SourceModelSha256) || !ValidHash(p.SourceRig) || !ValidHash(asset.RigIdentity) ||
                         p.Mapping == null || p.Mapping.Count < (engine?1:17) || p.Mapping.Count > (engine?65536:128) ||
                         p.Mapping.Any(m => m == null || string.IsNullOrEmpty(m.Role) || string.IsNullOrEmpty(m.Source) || string.IsNullOrEmpty(m.Target) ||

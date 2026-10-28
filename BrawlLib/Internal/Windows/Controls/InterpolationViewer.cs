@@ -35,7 +35,7 @@ namespace BrawlLib.Internal.Windows.Controls
         private const float _lineWidth = 1.5f;  //The size of lines
         private const float _pointWidth = 5.0f; //The size of points
 
-        private int _frame;      //The current frame index
+        private float _frame;    //The exact graph cursor time; the native playback clock remains integral.
         private int _frameLimit; //The overall number of frames
 
         private float _xScale;                  //Width/Frames ratio
@@ -165,9 +165,23 @@ namespace BrawlLib.Internal.Windows.Controls
         [Browsable(false)]
         public int FrameIndex
         {
+            // Legacy playback uses whole display frames. Never write this
+            // rounded display position back into an authored knot.
+            get => (int) Math.Round(_frame, MidpointRounding.AwayFromZero);
+            set => FrameTime = value;
+        }
+
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        [Browsable(false)]
+        public float FrameTime
+        {
             get => _frame;
             set
             {
+                if (float.IsNaN(value) || float.IsInfinity(value))
+                {
+                    throw new ArgumentOutOfRangeException(nameof(value));
+                }
                 _frame = value.Clamp(0, _frameLimit);
 
                 Invalidate();
@@ -189,7 +203,7 @@ namespace BrawlLib.Internal.Windows.Controls
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         [Browsable(false)]
-        private int DisplayedFrameLimit
+        private float DisplayedFrameLimit
         {
             get
             {
@@ -263,7 +277,7 @@ namespace BrawlLib.Internal.Windows.Controls
             //return false;
         }
 
-        private int GetKeyframeMaxIndex()
+        private float GetKeyframeMaxIndex()
         {
             if (!DisplayAllKeyframes)
             {
@@ -285,7 +299,7 @@ namespace BrawlLib.Internal.Windows.Controls
             return 0;
         }
 
-        private int GetKeyframeMinIndex()
+        private float GetKeyframeMinIndex()
         {
             if (!DisplayAllKeyframes)
             {
@@ -380,8 +394,8 @@ namespace BrawlLib.Internal.Windows.Controls
             _minVal = float.MaxValue;
             _maxVal = float.MinValue;
 
-            int start = GetKeyframeMinIndex();
-            int end = GetKeyframeMaxIndex();
+            float start = GetKeyframeMinIndex();
+            float end = GetKeyframeMaxIndex();
 
             for (float i = start; i <= end; i += 1 / _precision)
             {
@@ -424,7 +438,7 @@ namespace BrawlLib.Internal.Windows.Controls
                 return;
             }
 
-            int i = DisplayedFrameLimit;
+            float i = DisplayedFrameLimit;
             if (i == 0)
             {
                 return;
@@ -465,7 +479,7 @@ namespace BrawlLib.Internal.Windows.Controls
             //Get nearest frame value
             int frameVal = (int) (mouseX / _xScale + 0.5f);
 
-            int min = GetKeyframeMinIndex();
+            float min = GetKeyframeMinIndex();
             if (!_dragging)
             {
                 if (_hiKey != null)
@@ -546,7 +560,7 @@ namespace BrawlLib.Internal.Windows.Controls
                     float i1 = -(_tanLen / 2);
                     float i2 = -i1;
 
-                    int xVal2 = _selKey._index;
+                    float xVal2 = _selKey._index;
                     float yVal = _selKey._value;
                     float tan = _selKey._tangent;
 
@@ -593,7 +607,7 @@ namespace BrawlLib.Internal.Windows.Controls
             {
                 if (_slopePoint != null)
                 {
-                    int xVal2 = _selKey._index;
+                    float xVal2 = _selKey._index;
                     float yVal = _selKey._value;
 
                     float xDiff = mouseX - ((Vector2) _slopePoint)._x;
@@ -641,7 +655,8 @@ namespace BrawlLib.Internal.Windows.Controls
                     int xDiff = xv - (int) (_prevX + 0.5f);
                     float yDiff = yVal - _prevY;
 
-                    int newFrameIndex = _selKey._index + xDiff;
+                    // Whole-frame dragging preserves an existing fractional offset.
+                    float newFrameIndex = _selKey._index + xDiff;
                     bool frameSet =
                         newFrameIndex >= 0 &&
                         newFrameIndex < FrameLimit &&
@@ -667,7 +682,7 @@ namespace BrawlLib.Internal.Windows.Controls
 
                     if (frameSet)
                     {
-                        FrameIndex = _selKey._index = newFrameIndex;
+                        FrameTime = _selKey._index = newFrameIndex;
                     }
 
                     _prevX = xv;
@@ -733,7 +748,7 @@ namespace BrawlLib.Internal.Windows.Controls
             {
                 if (_slopePoint == null)
                 {
-                    int min = GetKeyframeMinIndex();
+                    float min = GetKeyframeMinIndex();
                     _prevX = _selKey._index - min;
                     _prevY = _selKey._value;
                 }
@@ -769,7 +784,7 @@ namespace BrawlLib.Internal.Windows.Controls
 
                 if (entry != _keyRoot)
                 {
-                    int min = GetKeyframeMinIndex();
+                    float min = GetKeyframeMinIndex();
                     KeyframeEntry r = new KeyframeEntry(frameVal + min, ((float) Height - e.Y) / _yScale + _minVal);
                     entry.InsertAfter(r);
                     r.GenerateTangent();
@@ -835,7 +850,7 @@ namespace BrawlLib.Internal.Windows.Controls
 
         private void DrawTangent(KeyframeEntry e, float xMin)
         {
-            int xVal = e._index;
+            float xVal = e._index;
             float yVal = e._value;
             float tan = e._tangent;
 
@@ -1045,8 +1060,8 @@ namespace BrawlLib.Internal.Windows.Controls
                 GL.Color4(ForeColor);
                 GL.Begin(BeginMode.Lines);
 
-                int min = GetKeyframeMinIndex();
-                int max = GetKeyframeMaxIndex();
+                float min = GetKeyframeMinIndex();
+                float max = GetKeyframeMaxIndex();
 
                 float xv = (SelectedKeyframe._index - min) * _xScale;
                 GL.Vertex2(xv, 0.0f);

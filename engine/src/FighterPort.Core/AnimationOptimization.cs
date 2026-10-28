@@ -16,6 +16,8 @@ public sealed record AnimationOptimizationChannelRule(string Bone, int Channel =
     public ProtectedInterval[] ProtectedRanges { get; init; } = [];
 }
 
+public sealed record AnimationOptimizationPairSite(string Bone, int Channel, double Frame);
+
 public sealed record AnimationOptimizationSettings
 {
     public AnimationOptimizationMode Mode { get; init; } = AnimationOptimizationMode.Exact;
@@ -36,6 +38,9 @@ public sealed record AnimationOptimizationSettings
     // SmallFile keeps authored knot times/sides but permits bounded numeric
     // changes. Explicit MandatoryFrames and protected ranges remain exact.
     public double[] FitJoinFrames { get; init; } = [];
+    // Explicit operation-owned provenance. Empty for imported/authored curves.
+    public double[] GeneratedPairFrames { get; init; } = [];
+    public AnimationOptimizationPairSite[] GeneratedPairSites { get; init; } = [];
     public ProtectedInterval[] ProtectedRanges { get; init; } = [];
     public AnimationOptimizationChannelRule[] ChannelRules { get; init; } = [];
     public AnimationOptimizationBindPose[] BindPoses { get; init; } = [];
@@ -91,6 +96,8 @@ public static partial class AnimationOptimization
             throw new ArgumentException("Optimization needs unique nonempty exact target bone identities.", nameof(targetBoneNames));
         if (settings.BindPoses.Any(bind => !targets.Contains(bind.Bone)))
             throw new ArgumentException("Bind cleanup data must belong to the exact target skeleton.", nameof(settings));
+        var generatedSites = settings.GeneratedPairSites.GroupBy(site => (site.Bone, site.Channel))
+            .ToDictionary(group => group.Key, group => group.Select(site => site.Frame).Distinct().ToArray());
         long inputKeys = 0;
         foreach (var track in baseline.Tracks)
         {
@@ -130,11 +137,13 @@ public static partial class AnimationOptimization
                     : TranslationBound(settings,true);
                 if (!exact && (valueBound <= 0 || speedBound <= 0))
                     throw new ArgumentException("The declared authentic bind scale is too small to represent a positive translation tolerance.");
-                var state = new ChannelState(track.Bone, channel, curve, exact, valueBound, speedBound, mandatory, ranges);
+                var state = new ChannelState(track.Bone, channel, curve, exact, valueBound, speedBound, mandatory, ranges,
+                    settings.Mode == AnimationOptimizationMode.SmallFile && !exact ? settings.GeneratedPairFrames.Concat(
+                        generatedSites.GetValueOrDefault((track.Bone, channel), [])).Distinct().ToArray() : []);
                 if (preserve) state.Reason = "Protected native curve structure.";
                 else if (track.Rotation is not null) state.Reason = "Quaternion-owned track retained without native conversion.";
                 else if (curve.Interpolation != Interpolation.Hermite) state.Reason = "Non-Hermite interpolation retained without conversion.";
-                else if (curve.Keys.Any(k => k.Frame < 0 || k.Frame > int.MaxValue || k.Frame != Math.Truncate(k.Frame))) state.Reason = "Nonintegral or out-of-range native knots retained without rounding.";
+                else if (curve.Keys.Any(k => k.Frame < 0 || k.Frame > int.MaxValue || (double)(float)k.Frame != k.Frame)) state.Reason = "Out-of-range or non-native knot times retained without rounding.";
                 else if (curve.Keys.Length < 2 && curve.Keys[0].Frame == 0) state.Reason = "Single native key retained.";
                 states.Add(state);
             }
@@ -240,7 +249,9 @@ public static partial class AnimationOptimization
             if (ranges.Any(r => !double.IsFinite(r.Start) || !double.IsFinite(r.End) || r.Start < 0 || r.End < r.Start))
                 throw new ArgumentException("Protected ranges must be finite ordered intervals.");
         }
-        Frames(settings.MandatoryFrames); Frames(settings.FitJoinFrames); Ranges(settings.ProtectedRanges);
+        Frames(settings.MandatoryFrames); Frames(settings.FitJoinFrames); Frames(settings.GeneratedPairFrames); Ranges(settings.ProtectedRanges);
+        if (settings.GeneratedPairSites.Any(site => string.IsNullOrEmpty(site.Bone) || site.Channel < 0 || site.Channel > 8 || !double.IsFinite(site.Frame) || site.Frame < 0))
+            throw new ArgumentException("Generated pair provenance requires exact bone/channel identities and finite frame times.");
         foreach (var rule in settings.ChannelRules)
         {
             if (string.IsNullOrEmpty(rule.Bone) || rule.Channel < -1 || rule.Channel > 8) throw new ArgumentException("A channel rule needs an exact bone identity and channel -1..8.");
@@ -284,20 +295,24 @@ public static partial class AnimationOptimization
         public readonly int[] Previous, Next;
         public readonly double[] Frames;
         public readonly ProtectedInterval[] Ranges;
+        public readonly HashSet<double> GeneratedPairs;
         public int Candidates, Merges, Intervals;
         public double ValueError, SpeedError;
         public string? Reason;
         bool constant;
-        public ChannelState(string bone, int channel, Curve curve, bool exact, double valueBound, double speedBound, double[] frames, ProtectedInterval[] ranges)
+        public ChannelState(string bone, int channel, Curve curve, bool exact, double valueBound, double speedBound, double[] frames, ProtectedInterval[] ranges, double[] generatedPairs)
         {
             Bone = bone; Channel = channel; Original = curve; Exact = exact; ValueBound = valueBound; SpeedBound = speedBound;
             Frames = frames; Ranges = ranges;
+            GeneratedPairs = generatedPairs.ToHashSet();
+            var protectedPairs = Keys.GroupBy(k => k.Frame).Where(g => g.Count() > 1 &&
+                (!GeneratedPairs.Contains(g.Key) || g.Any(HasSignedZero) || g.Select(k => Bits(k.Value)).Distinct().Count() > 1)).Select(g => g.Key).ToHashSet();
             Alive = Enumerable.Repeat(true, Keys.Length).ToArray();
             Previous = Enumerable.Range(-1, Keys.Length).ToArray();
             Next = Enumerable.Range(1, Keys.Length).ToArray(); Next[^1] = -1;
             Mandatory = Keys.Select((k, i) => i == 0 || i == Keys.Length - 1 || HasSignedZero(k)
                 || Bits(k.InTangent) != Bits(k.OutTangent)
-                || i > 0 && Keys[i - 1].Frame == k.Frame || i < Keys.Length - 1 && Keys[i + 1].Frame == k.Frame
+                || protectedPairs.Contains(k.Frame)
                 || frames.Contains(k.Frame) || ranges.Any(r => k.Frame >= r.Start && k.Frame <= r.End)).ToArray();
         }
         public bool CanCollapseConstant()
@@ -334,19 +349,18 @@ public static partial class AnimationOptimization
     }
 
     static int Bits(float value) => BitConverter.SingleToInt32Bits(value);
-    static bool HasSignedZero(Key key) => Bits(key.Value) == int.MinValue || Bits(key.InTangent) == int.MinValue || Bits(key.OutTangent) == int.MinValue;
+    static bool HasSignedZero(Key key) => BitConverter.DoubleToInt64Bits(key.Frame) == long.MinValue ||
+        Bits(key.Value) == int.MinValue || Bits(key.InTangent) == int.MinValue || Bits(key.OutTangent) == int.MinValue;
     static bool IsExactConstant(Curve curve) => curve.Interpolation == Interpolation.Hermite
         && !curve.Keys.Any(HasSignedZero)
-        && curve.Keys.All(k => Bits(k.Value) == Bits(curve.Keys[0].Value) && Bits(k.InTangent) == 0 && Bits(k.OutTangent) == 0)
-        && curve.Keys.Select(k => k.Frame).Distinct().Count() == curve.Keys.Length;
+        && curve.Keys.All(k => Bits(k.Value) == Bits(curve.Keys[0].Value) && Bits(k.InTangent) == 0 && Bits(k.OutTangent) == 0);
     static bool IsExactFixedRepresentation(Curve original, Curve candidate) => IsExactConstant(original)
         && candidate.Keys.Length == 1 && candidate.Keys[0].Frame == 0
         && Bits(candidate.Keys[0].Value) == Bits(original.Keys[0].Value)
         && Bits(candidate.Keys[0].InTangent) == 0 && Bits(candidate.Keys[0].OutTangent) == 0;
     static bool IsBindConstant(Curve curve, float bind) => curve.Interpolation == Interpolation.Hermite
         && !curve.Keys.Any(HasSignedZero) && Bits(bind) != int.MinValue
-        && curve.Keys.All(k => Bits(k.Value) == Bits(bind) && Bits(k.InTangent) == 0 && Bits(k.OutTangent) == 0)
-        && curve.Keys.Select(k => k.Frame).Distinct().Count() == curve.Keys.Length;
+        && curve.Keys.All(k => Bits(k.Value) == Bits(bind) && Bits(k.InTangent) == 0 && Bits(k.OutTangent) == 0);
     sealed record Candidate(ChannelState State, int Middle, int Left, int Right, double ValueError, double SpeedError);
     readonly record struct Priority(double Score, string Bone, int Channel, double Frame) : IComparable<Priority>
     {
@@ -398,7 +412,11 @@ public static partial class AnimationOptimization
         {
             budget.Charge(1); state.Intervals++;
             var p = state.Keys[i]; var q = state.Keys[i + 1];
-            if (p.Frame == q.Frame) return false; // Authored paired sides are never spanned.
+            if (p.Frame == q.Frame)
+            {
+                if (!state.GeneratedPairs.Contains(p.Frame) || Bits(p.Value) != Bits(q.Value) || HasSignedZero(p) || HasSignedZero(q)) return false;
+                continue; // Zero-length continuous generated corner; both adjacent polynomials are still compared to the original.
+            }
             var source = Bernstein(p, q, p.Frame, q.Frame);
             var candidate = Bernstein(a, b, p.Frame, q.Frame);
             var difference = source.Zip(candidate, (x, y) => x - y).ToArray();

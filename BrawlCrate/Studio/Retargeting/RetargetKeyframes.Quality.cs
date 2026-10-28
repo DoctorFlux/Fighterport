@@ -41,7 +41,7 @@ namespace BrawlCrate.Studio.Retargeting
             internal ControlTrack[] Tracks;
             internal string[] BindOmissions;
             internal int SeedKeys;
-            internal readonly Dictionary<string, int[][]> SeedFrames = new Dictionary<string, int[][]>(StringComparer.Ordinal);
+            internal readonly Dictionary<string, float[][]> SeedFrames = new Dictionary<string, float[][]>(StringComparer.Ordinal);
             internal double[] Value = new double[3], Derivative = new double[3];
             internal readonly List<string> RestoredTracks = new List<string>();
             internal readonly List<string> RestoredChannels = new List<string>();
@@ -62,12 +62,12 @@ namespace BrawlCrate.Studio.Retargeting
                     throw new InvalidDataException("The dense reference requires complete native bone channels.");
                 foreach(var array in entry.KeyArrays)
                 {
-                    int previous=-1,sides=0;
+                    float previous=-1; int sides=0;
                     foreach(var key in array.Entries)
                     {
                         if((++count&255)==0)token.ThrowIfCancellationRequested();
                         if(count>2000000)throw new InvalidDataException("The dense reference exceeds the two-million-key operation limit.");
-                        if(key._index<0||key._index>maximum||key._index<previous)
+                        if(float.IsNaN(key._index)||float.IsInfinity(key._index)||key._index<0||key._index>maximum||key._index<previous)
                             throw new InvalidDataException("The dense reference has invalid native key timing.");
                         sides=key._index==previous?sides+1:1;previous=key._index;
                         if(sides>2)throw new InvalidDataException("The dense reference has more than two native paired-key sides.");
@@ -165,7 +165,7 @@ namespace BrawlCrate.Studio.Retargeting
             if(wire==null)return 0;
             int count=0;
             foreach(var entry in dense.Children.OfType<CHR0EntryNode>())
-                if(wire.SeedFrames.TryGetValue(entry.Name,out int[][] channels))
+                if(wire.SeedFrames.TryGetValue(entry.Name,out float[][] channels))
                     for(int c=0;c<9;c++)
                     {
                         var existing=entry.KeyArrays[c].Entries.GroupBy(k=>k._index).ToDictionary(g=>g.Key,g=>g.Count());
@@ -191,18 +191,18 @@ namespace BrawlCrate.Studio.Retargeting
                 CHR0EntryNode source = null;
                 if (mapping != null) sourceTracks.TryGetValue(mapping.Source, out source);
                 if (!exact && source == null) wire.RestoredTracks.Add(entry.Name);
-                int[] union = source == null ? new int[0] : source.KeyArrays.SelectMany(a => a.Entries.GroupBy(k => k._index)
+                float[] union = source == null ? new float[0] : source.KeyArrays.SelectMany(a => a.Entries.GroupBy(k => k._index)
                     .Select(g => new { Frame = g.Key, Count = g.Count() })).GroupBy(k => k.Frame).OrderBy(g => g.Key)
                     .SelectMany(g => Enumerable.Repeat(g.Key, g.Max(k => k.Count))).ToArray();
-                var channels = new ControlKey[9][];var seedFrames=new int[9][];
+                var channels = new ControlKey[9][];var seedFrames=new float[9][];
                 for (int channel = 0; channel < 9; channel++)
                 {
-                    int[] seeds = exact || source == null ? new int[0] : mode == RetargetKeyframeMode.SourceBoneTimes ? union :
+                    float[] seeds = exact || source == null ? new float[0] : mode == RetargetKeyframeMode.SourceBoneTimes ? union :
                         source.KeyArrays[channel].Entries.Select(k => k._index).ToArray();
                     if (!exact && seeds.Length == 0 && entry.KeyArrays[channel].KeyCount > 0)
                         wire.RestoredChannels.Add(entry.Name + " " + Channels[channel]);
                     channels[channel] = QualityCurve(entry.KeyArrays[channel], seeds, channel, exact, precision, length, proof,
-                        out int[] actualSeeds, out double value, out double derivative);
+                        out float[] actualSeeds, out double value, out double derivative);
                     seedFrames[channel]=actualSeeds;
                     wire.SeedKeys = checked(wire.SeedKeys + actualSeeds.Length);
                     wire.Value[channel / 3] = Math.Max(wire.Value[channel / 3], value);
@@ -220,20 +220,20 @@ namespace BrawlCrate.Studio.Retargeting
         static bool PositiveZero(float value) => BitConverter.ToInt32(BitConverter.GetBytes(value), 0) == 0;
         static bool NegativeZero(float value) => BitConverter.ToInt32(BitConverter.GetBytes(value), 0) == int.MinValue;
 
-        static ControlKey[] QualityCurve(KeyframeArray original, int[] sourceTimes, int channel, bool exact,
-            double precision, double length, QualityProofBudget proof, out int[] seedFrames, out double valueError, out double derivativeError)
+        static ControlKey[] QualityCurve(KeyframeArray original, float[] sourceTimes, int channel, bool exact,
+            double precision, double length, QualityProofBudget proof, out float[] seedFrames, out double valueError, out double derivativeError)
         {
-            var keys = original.Entries.ToArray(); seedFrames = new int[0]; valueError = derivativeError = 0;
+            var keys = original.Entries.ToArray(); seedFrames = new float[0]; valueError = derivativeError = 0;
             if (keys.Length == 0) return new ControlKey[0];
             if (exact) { seedFrames = keys.Select(k=>k._index).ToArray(); return keys.Select(CopyQualityKey).ToArray(); }
             var sourceGroups = sourceTimes.GroupBy(t => t).ToDictionary(g => g.Key, g => g.Count());
-            if (sourceGroups.Any(g => g.Key < 0 || g.Value > 2)) throw new InvalidDataException("Source seed times or paired sides are invalid.");
+            if (sourceGroups.Any(g => float.IsNaN(g.Key) || float.IsInfinity(g.Key) || g.Key < 0 || g.Value > 2)) throw new InvalidDataException("Source seed times or paired sides are invalid.");
             bool paired = keys.Select(k => k._index).Distinct().Count() != keys.Length || sourceGroups.Any(g => g.Value == 2);
-            bool signedZero = keys.Any(k => NegativeZero(k._value) || NegativeZero(k._tangent));
+            bool signedZero = keys.Any(k => NegativeZero(k._index) || NegativeZero(k._value) || NegativeZero(k._tangent));
             if (!paired && !signedZero && keys.All(k => SameBits(k._value, keys[0]._value) && PositiveZero(k._tangent)))
-            { seedFrames = new[]{0}; return new[] { new ControlKey { Frame = 0, Value = keys[0]._value, Tangent = 0 } }; }
+            { seedFrames = new[]{0f}; return new[] { new ControlKey { Frame = 0, Value = keys[0]._value, Tangent = 0 } }; }
             var byTime = keys.GroupBy(k => k._index).ToDictionary(g => g.Key, g => g.ToArray());
-            foreach (int time in sourceGroups.Keys)
+            foreach (float time in sourceGroups.Keys)
                 if (!byTime.ContainsKey(time)) throw new InvalidDataException("The immutable dense reference lacks a source seed knot at " + time + ".");
             if (paired || signedZero)
             {

@@ -20,14 +20,15 @@ namespace BrawlCrate.Studio
     internal static class NativeAnimationOptimizationPreparation
     {
         internal static async Task<NativeAnimationOptimizationChoice> Prepare(bool highQuality, long currentBytes,
-            Func<bool, double, Task<NativeAnimationOptimizationResult>> attempt, CancellationToken cancellation)
+            Func<bool, double, Task<NativeAnimationOptimizationResult>> attempt, CancellationToken cancellation,
+            bool exploreSelectiveFallbacks=false, bool preferTightPrecision=false)
         {
             if (currentBytes < 0 || attempt == null) throw new ArgumentException("Invalid native optimization preparation.");
             var choice = new NativeAnimationOptimizationChoice();
             var notes = new List<string>();
             try
             {
-                foreach (double scale in highQuality ? new[] { 0d, 1d, .5, .25, .125 } : new[] { 0d })
+                foreach (double scale in highQuality ? (preferTightPrecision ? new[] { 0d, .125, .25, .5, 1d } : new[] { 0d, 1d, .5, .25, .125 }) : new[] { 0d })
                 {
                     cancellation.ThrowIfCancellationRequested();
                     bool approximate = scale > 0;
@@ -45,6 +46,7 @@ namespace BrawlCrate.Studio
                             continue;
                         }
                         bool useful = verified.Candidate != null && verified.HasChanges;
+                        bool selective=!string.IsNullOrEmpty(verified.ReductionSelectionReport);
                         notes.Add(label + (verified.UsedApproximateStorage ? " + bounded storage" : "") + ": fully verified, " + verified.AfterKeys + " keys / " + verified.AfterBytes + " bytes" + (useful ? "." : "; unchanged.") );
                         if (useful && (choice.Result == null || verified.AfterBytes < choice.Result.AfterBytes ||
                             verified.AfterBytes == choice.Result.AfterBytes && verified.AfterKeys < choice.Result.AfterKeys))
@@ -52,7 +54,11 @@ namespace BrawlCrate.Studio
                             choice.Result?.Dispose(); choice.Result = verified; verified = null;
                             choice.HighQuality = approximate || choice.Result.UsedApproximateStorage; choice.PrecisionScale = approximate ? scale : 1;
                         }
-                        if (approximate) break;
+                        // A tight-first generated search establishes a safe
+                        // fallback, then uses its remaining SHARED budget to
+                        // seek a smaller verified candidate. First success is
+                        // not proof that the file cannot be reduced further.
+                        if (approximate && !preferTightPrecision && (!exploreSelectiveFallbacks || !selective)) break;
                     }
                     catch (InvalidDataException error) when (highQuality &&
                         (error.Data.Contains("OptimizationQuality") || error.Data.Contains("OptimizationSize") || error.Data.Contains("OptimizationBudget")))

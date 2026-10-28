@@ -27,7 +27,7 @@ internal static class FreeChannelRecovery
         bool Related(int bone,ContactPin pin)
         {
             bool Affects(int other)=>PoseGeometry.Ancestor(scene,bone,other);
-            bool Skin(SkinSurfacePoint p)=>Enumerable.Range(0,4).Any(i=>p.Weights[i]>0&&Affects((int)p.Joints[i]));
+            bool Skin(SkinSurfacePoint p)=>Enumerable.Range(0,p.InfluenceCount).Any(i=>p.WeightAt(i)>0&&Affects((int)p.JointAt(i)));
             return Affects(pin.Bone)||pin.SurfacePoints.Any(Skin)||pin.SurfaceRegion.Any(Skin)||
                 pin.Reference?.Bone is {} attachment&&Affects(attachment)||(pin.Reference?.SurfaceTripod??[]).Any(Skin);
         }

@@ -1,4 +1,5 @@
-﻿using BrawlLib.Internal;
+using BrawlLib.Internal;
+using System;
 using System.Runtime.InteropServices;
 
 namespace BrawlLib.Wii.Animations
@@ -138,9 +139,15 @@ namespace BrawlLib.Wii.Animations
         public bushort _step;
         public bshort _exp;
 
-        public I6Entry(int index, int step, float tangent)
+        public I6Entry(int index, int step, float tangent) : this((float)index, step, tangent) { }
+
+        public I6Entry(float index, int step, float tangent)
         {
-            _data = (ushort) (index << 5);
+            float encoded = index * 32;
+            if (float.IsNaN(encoded) || float.IsInfinity(encoded) || encoded != Math.Truncate(encoded) ||
+                encoded < short.MinValue || encoded > short.MaxValue)
+                throw new ArgumentOutOfRangeException(nameof(index), "I6 native knot times require signed S10.5 values.");
+            _data = unchecked((ushort)(short)encoded);
             _step = (ushort) step;
 
             tangent *= 256.0f;
@@ -156,10 +163,17 @@ namespace BrawlLib.Wii.Animations
             _exp = (short) ((int) tangent).Clamp(-32768, 32767);
         }
 
-        public int FrameIndex
+        public float FrameIndex
         {
-            get => _data >> 5;
-            set => _data = (ushort) (value << 5);
+            get => unchecked((short)(ushort)_data) / 32f;
+            set
+            {
+                float encoded = value * 32;
+                if (float.IsNaN(encoded) || float.IsInfinity(encoded) || encoded != Math.Truncate(encoded) ||
+                    encoded < short.MinValue || encoded > short.MaxValue)
+                    throw new ArgumentOutOfRangeException(nameof(value), "I6 native knot times require signed S10.5 values.");
+                _data = unchecked((ushort)(short)encoded);
+            }
         }
 
         public int Step

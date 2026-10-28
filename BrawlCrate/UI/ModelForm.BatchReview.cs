@@ -108,7 +108,7 @@ namespace BrawlCrate.UI
             if (modelEditControl1.TargetModel is ResourceNode target) WatchBatchReviewNode(target);
             _batchReviewDirty = true; SyncBatchReview();
         }
-        private void AddSelectedBatchReviewClip() => AddBatchReviewClip(SelectedFighterAsset(), modelEditControl1.SelectedCHR0);
+        private void AddSelectedBatchReviewClip() => AddBatchReviewClip(RegisteredAnimationOwner(modelEditControl1.SelectedCHR0), modelEditControl1.SelectedCHR0);
 
         private void WatchBatchReviewNode(ResourceNode node)
         {
@@ -170,7 +170,8 @@ namespace BrawlCrate.UI
         private void SyncBatchReview()
         {
             if (_batchReviewUpdating || _fighterProject == null || _fighterRestoring) return;
-            if (!_batchReviewDirty && ReferenceEquals(_batchReviewProject, _fighterProject) && ReferenceEquals(_batchReviewSelected, modelEditControl1.SelectedCHR0) &&
+            bool pendingTarget = modelEditControl1.TargetModel is MDL0Node pendingModel && pendingModel.IsDirty;
+            if (!pendingTarget && !_batchReviewDirty && ReferenceEquals(_batchReviewProject, _fighterProject) && ReferenceEquals(_batchReviewSelected, modelEditControl1.SelectedCHR0) &&
                 ReferenceEquals(_batchReviewLastTarget, modelEditControl1.TargetModel) && _batchReviewLastBusy == SimpleWorkspaceBusy) return;
             _batchReviewUpdating = true;
             try
@@ -179,7 +180,7 @@ namespace BrawlCrate.UI
                 int removed = _batchReviewRows.RemoveAll(r => !ReviewRowPresent(r));
                 if (removed > 0 || !ReferenceEquals(_batchReviewLastTarget, modelEditControl1.TargetModel)) RefreshBatchReviewWatches();
                 foreach (var row in _batchReviewRows)
-                    if (row.Approved && (!ReferenceEquals(row.Target, modelEditControl1.TargetModel) || row.Recipe != ReviewClipRecipe(ReviewAsset(row),row.Clip))) row.Approved = false;
+                    if (row.Approved && (pendingTarget || !ReferenceEquals(row.Target, modelEditControl1.TargetModel) || row.Recipe != ReviewClipRecipe(ReviewAsset(row),row.Clip))) row.Approved = false;
                 _batchReviewDirty = false; _batchReviewSelected = modelEditControl1.SelectedCHR0;
                 _batchReviewLastTarget = modelEditControl1.TargetModel; _batchReviewLastBusy = SimpleWorkspaceBusy;
                 if (_batchReviewList == null) return;
@@ -190,11 +191,13 @@ namespace BrawlCrate.UI
                 _batchReviewDetails.Text = selected == null ? "Select a native CHR0 animation and choose Add selected. Review approval is session-only." :
                     selected.Clip.Name + " · " + selected.Clip.FrameCount + " frames · " + (selected.Clip.Loop ? "Loop" : "No loop") + Environment.NewLine +
                     "Exact result: " + selected.Key + Environment.NewLine + ReviewDescription(ReviewAsset(selected)) + Environment.NewLine +
-                    (selected.Approved ? "Reviewed for this exact content, target and recipe." : "Review needed. Inspect the motion and listed losses before marking reviewed.");
+                    (pendingTarget ? "Save target model changes before reviewing/exporting animation; animation edits may remain unsaved." :
+                        selected.Approved ? "Reviewed for this exact content, target and recipe." : "Review needed. Inspect the motion and listed losses before marking reviewed.");
                 foreach (Control control in _batchReviewActions.Controls) control.Enabled = !SimpleWorkspaceBusy;
                 foreach (string name in new[] { "reviewPrevious", "reviewNext", "reviewMark", "reviewRemove", "reviewCompare" })
                     _batchReviewActions.Controls[name].Enabled = !SimpleWorkspaceBusy && selected != null;
                 _batchReviewActions.Controls["reviewAdd"].Enabled = !SimpleWorkspaceBusy && modelEditControl1.SelectedCHR0 != null;
+                _batchReviewActions.Controls["reviewMark"].Enabled = !SimpleWorkspaceBusy && selected != null && !pendingTarget;
             }
             finally { _batchReviewUpdating = false; }
         }
@@ -211,6 +214,7 @@ namespace BrawlCrate.UI
         }
         private void MarkBatchReview()
         {
+            RequireSavedAnimationExportTarget(modelEditControl1.TargetModel as MDL0Node);
             if (SimpleWorkspaceBusy) throw new InvalidOperationException("Finish the current operation before reviewing.");
             modelEditControl1.StopAnim(); FinishControlCurveEdit(); SyncBatchReview();
             var row = _batchReviewRows.SingleOrDefault(r => ReferenceEquals(r.Clip, modelEditControl1.SelectedCHR0));
@@ -231,6 +235,7 @@ namespace BrawlCrate.UI
         }
         private BatchReviewRow[] ValidateBatchReviewRows()
         {
+            RequireSavedAnimationExportTarget(modelEditControl1.TargetModel as MDL0Node);
             if (SimpleWorkspaceBusy) throw new InvalidOperationException("Finish the current operation before exporting.");
             modelEditControl1.StopAnim(); FinishControlCurveEdit(); _batchReviewDirty = true; SyncBatchReview();
             var rows = _batchReviewRows.ToArray();
@@ -253,6 +258,11 @@ namespace BrawlCrate.UI
             _batchReviewCapturing = true;
             try
             {
+                if (modelEditControl1.TargetModel is MDL0Node pendingTarget && pendingTarget.IsDirty)
+                {
+                    foreach (var row in prior) row.Approved = false;
+                    return;
+                }
                 string targetContent = modelEditControl1.TargetModel is MDL0Node target ? NativeControlHash(target, ".mdl0") : null;
                 foreach (var row in prior)
                     row.Approved = ReviewRowPresent(row) && ReferenceEquals(row.Target, modelEditControl1.TargetModel) &&

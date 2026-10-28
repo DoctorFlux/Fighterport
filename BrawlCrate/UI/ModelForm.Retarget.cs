@@ -1,4 +1,4 @@
-using BrawlCrate.Studio;
+﻿using BrawlCrate.Studio;
 using BrawlCrate.Studio.Retargeting;
 using BrawlLib.Internal;
 using BrawlLib.Internal.Windows.Controls.Model_Panel;
@@ -260,17 +260,33 @@ namespace BrawlCrate.UI
             FighterAsset asset = _fighterProject.Animations.FirstOrDefault(a =>
                 _fighterRoots.TryGetValue(a.Id, out ResourceNode root) && ReferenceEquals(root, node?.RootNode));
             if (!(node is CHR0Node clip) || asset?.Retarget == null || !string.Equals(Path.GetExtension(destination), ".pac", StringComparison.OrdinalIgnoreCase)) return false;
-            _fighterProject.ProtectOutputPath(destination);
-            if (!(modelEditControl1.TargetModel is MDL0Node target) || BrawlRetargeter.Capture(target).Fingerprint != asset.RigIdentity)
+            RequireSavedAnimationExportTarget(modelEditControl1.TargetModel as MDL0Node);
+            destination = Path.GetFullPath(destination);
+            ProtectVerifiedExport(destination);
+            if (File.Exists(destination) || Directory.Exists(destination)) throw new IOException("Choose a new PAC filename. Existing destinations are protected.");
+            if (!(modelEditControl1.TargetModel is MDL0Node target) || BrawlRetargeter.SkeletonFingerprint(target) != asset.RigIdentity)
                 throw new InvalidOperationException("Open the target model this motion was made for before exporting a game PAC.");
             using (var dialog = new OpenFileDialog {Title = "Choose Target Motion PAC Template", Filter = "Brawl motion PAC (*.pac)|*.pac"})
             {
                 if (dialog.ShowDialog(this) != DialogResult.OK) return true;
-                FighterAsset template = _fighterProject.StageAsset(dialog.FileName, "animation");
-                BrawlRetargeter.ExportMotionPac(template.WorkingPath, destination, target, clip);
+                string template = Path.GetFullPath(dialog.FileName), templateHash = FighterProject.HashFile(template);
+                modelEditControl1.StopAnim(); FinishControlCurveEdit();
+                using (var frozen = FreezeOwnedWorkspaceExport(asset, clip, false))
+                {
+                    var settings = new NativeExportOptimizationPreferences().Read();
+                    PrepareWorkspaceExportWithProgress(frozen, settings, this);
+                    void Validate()
+                    {
+                        frozen.Validate(); ProtectVerifiedExport(destination);
+                        if (FighterProject.HashFile(template) != templateHash) throw new IOException("The target motion template changed. Export again from its current contents.");
+                    }
+                    Validate();
+                    BrawlRetargeter.ExportMotionPac(template, destination, target, frozen.Candidate, Validate, frozen.PreparedEncodedSha256, null);
+                    RecordLibraryExport(node, destination);
+                    _fighterStatus.Text = "Exported verified " + Path.GetFileName(destination) + " · " + new FileInfo(destination).Length +
+                        " container bytes · CHR0 " + frozen.MasterBytes + " → " + frozen.ExportBytes + " bytes · " + frozen.EffectiveExportPolicy + " · master and template preserved";
+                }
             }
-            RecordLibraryExport(node, destination);
-            _fighterStatus.Text = "Exported and reopened " + Path.GetFileName(destination) + " · Target slot: " + clip.Name + " · Original PAC preserved";
             return true;
         }
 

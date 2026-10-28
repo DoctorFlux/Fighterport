@@ -138,7 +138,7 @@ internal static partial class Program
             SourceKeyQualityRun(model, rig, plan, dense, source, output, label + "-singular-mirrored-scale", result =>
             {
                 var repaired = (CHR0EntryNode)result.Animation.FindChild(body, false);
-                Check(repaired != null && repaired.KeyArrays[0].Entries.Select(k => k._index).SequenceEqual(new[] { 0, 1, 2 }) &&
+                Check(repaired != null && repaired.KeyArrays[0].Entries.Select(k => k._index).SequenceEqual(new[] { 0f, 1f, 2f }) &&
                     repaired.KeyArrays[0].Entries.Select(k => ReplayFloatBits(k._value)).SequenceEqual(track.KeyArrays[0].Entries.Select(k => ReplayFloatBits(k._value))),
                     label + ": missing source scale cannot normalize, smooth or approximate the authored zero crossing and mirrored scale");
             });

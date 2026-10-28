@@ -409,6 +409,7 @@ namespace BrawlCrate.UI
 
         private void ChooseSimpleWorkspaceExport()
         {
+            RequireSavedAnimationExportTarget(modelEditControl1.TargetModel as MDL0Node);
             if (SimpleWorkspaceBusy) throw new InvalidOperationException("Finish the current edit before exporting.");
             modelEditControl1.StopAnim();
             FinishControlCurveEdit();
@@ -419,6 +420,7 @@ namespace BrawlCrate.UI
                 "\nResource: " + Path.GetFileName(SelectedFighterAsset()?.SourcePath) + " | " + frozen.Clip.TreePath + "\nVerified native Brawl CHR0 export",
                 "Native Brawl animation (*.chr0)|*.chr0", "Export", frozen.Clip.Name + ".chr0", true, extension: "chr0"))
             {
+                var optimization = AttachExportOptimizationOptions(dialog);
                 dialog.CommitSelection = path =>
                 {
                     frozen.Validate();
@@ -427,6 +429,8 @@ namespace BrawlCrate.UI
                         using (var confirm = new WorkspaceOverwriteDialog(path))
                             if (confirm.ShowDialog(dialog) != DialogResult.Yes) throw new OperationCanceledException("Export cancelled. Existing destination was kept.");
                     }
+                    CaptureWorkspaceExportDestination(frozen, path);
+                    PrepareWorkspaceExportWithProgress(frozen, optimization.Read(), dialog);
                     ExportWorkspaceSnapshot(frozen, path);
                 };
                 dialog.ShowDialog(this);
@@ -435,6 +439,7 @@ namespace BrawlCrate.UI
 
         internal void ExportSimpleWorkspaceResult(string destination)
         {
+            RequireSavedAnimationExportTarget(modelEditControl1.TargetModel as MDL0Node);
             if (SimpleWorkspaceBusy) throw new InvalidOperationException("Finish the current edit before exporting.");
             modelEditControl1.StopAnim();
             FinishControlCurveEdit();

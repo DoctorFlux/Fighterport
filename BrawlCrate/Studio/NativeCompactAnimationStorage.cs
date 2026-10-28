@@ -1,4 +1,4 @@
-using BrawlLib.SSBB.ResourceNodes;
+﻿using BrawlLib.SSBB.ResourceNodes;
 using BrawlLib.Wii.Animations;
 using BrawlLib.Wii.Models;
 using System;
@@ -81,6 +81,9 @@ namespace BrawlCrate.Studio
             token.ThrowIfCancellationRequested();
             var arrays = Enumerable.Range(group * 3, 3).Select(c => entry.KeyArrays[c].Entries.ToArray()).ToArray();
             if (arrays.Sum(a => (long)a.Length) > MaximumKeys) throw new InvalidDataException("Native storage proposal exceeds the key budget.");
+            // Indexed/dense times cannot retain an authored IEEE negative zero.
+            // Keep this exact native time metadata in the precise I12 group.
+            if (arrays.SelectMany(a => a).Any(k => Bits(k._index) == int.MinValue)) return new NativeCompactStorageGroup[0];
             if (!arrays.Any(a => a.Length > 1)) return new NativeCompactStorageGroup[0];
             if (!exactOnly && (!Finite(lengthScale) || lengthScale <= 0))
                 throw new InvalidDataException("High-quality storage requires the verified finite positive target bind-geometry scale.");
@@ -129,7 +132,7 @@ namespace BrawlCrate.Studio
             {
                 int channel = proposal.Group * 3 + axis; var curve = proposal.Curves[axis]; channels[channel] = curve;
                 if (curve == null) continue;
-                var keys = entry.KeyArrays[channel].Entries.ToArray(); var frames = curve.Frames; var values = curve.Values; var tangents = curve.Tangents;
+                var keys = entry.KeyArrays[channel].Entries.ToArray(); var frames = curve.Times; var values = curve.Values; var tangents = curve.Tangents;
                 if (curve.IsDense)
                 {
                     // This is an operation-owned candidate, never the live
@@ -143,7 +146,7 @@ namespace BrawlCrate.Studio
                 if (keys.Length != frames.Length) throw new InvalidOperationException("The native storage key membership changed.");
                 for (int i = 0; i < keys.Length; i++)
                 {
-                    if (keys[i]._index != frames[i]) throw new InvalidOperationException("Native indexed storage cannot move authored knot times.");
+                    if (Bits(keys[i]._index) != Bits(frames[i])) throw new InvalidOperationException("Native indexed storage cannot move authored knot times.");
                     keys[i]._value = values[i]; keys[i]._tangent = tangents[i];
                 }
             }
@@ -173,7 +176,7 @@ namespace BrawlCrate.Studio
             var originals = Enumerable.Range(3, 3).Select(c => retainedBaseline.KeyArrays[c].Entries.ToArray()).ToArray();
             int varying = arrays.Count(a => a.Length > 1);
             if (varying == 0 || nativeCount < 2 || (long)encodedCount * varying > Math.Min(MaximumKeys, remainingKeys) ||
-                originals.Any(a => a.GroupBy(k => k._index).Any(g => g.Count() != 1)) ||
+                originals.Any(a => a.GroupBy(k => k._index).Any(g => g.Count() > 2 || g.Select(k => Bits(k._value)).Distinct().Count() != 1)) ||
                 originals.SelectMany(a => a).Any(k => !Finite(k._value) || !Finite(k._tangent))) return new NativeCompactStorageGroup[0];
             var mandatory = new HashSet<int>(mandatoryFrames ?? new int[0]); var results = new List<NativeCompactStorageGroup>();
             foreach (var format in new[] { AnimDataFormat.L1, AnimDataFormat.L2 })
@@ -203,7 +206,8 @@ namespace BrawlCrate.Studio
             int nativeCount, AnimDataFormat format, HashSet<int> mandatory, NativeDenseProofBudget proofBudget, CancellationToken token)
         {
             var baseline = baselineEntry.KeyArrays[channel];
-            if (original.Length < 2) return null;
+            if (original.Length < 2 || original.Any(k => k._index != Math.Floor(k._index))) return null;
+            if (original.Any(k => Bits(k._value) == int.MinValue || Bits(k._tangent) == int.MinValue)) return null;
             int maximum = format == AnimDataFormat.L1 ? 255 : 65535;
             float minimum = samples.Min(), maximumValue = samples.Max(); double range = (double)maximumValue - minimum;
             if (!Finite(range) || range < 0 || samples.Any(v => !Finite(v))) return null;
@@ -236,11 +240,14 @@ namespace BrawlCrate.Studio
                     IndexedCHR0CurveStorage curve;
                     try { curve = IndexedCHR0CurveStorage.CreateDense(format, quantized, nativeCount, valueBase, step); }
                     catch (ArgumentException) { continue; }
-                    var values = curve.Values; var tangents = curve.Tangents;
+                    var values = curve.EncodedValues;
+                    var projectedTangents = curve.Tangents;
+                    var sides = curve.Frames.Select((frame, i) => new { frame, tangent = projectedTangents[i] }).GroupBy(k => k.frame).ToDictionary(g => g.Key, g => g.Select(k => k.tangent).ToArray());
                     foreach (var key in original)
                     {
-                        if (key._index >= nativeCount || !Allowed(key._value, values[key._index], mandatory.Contains(key._index), .1, true) ||
-                            !Allowed(key._tangent, tangents[key._index], mandatory.Contains(key._index), .1, true)) { valid = false; break; }
+                        if (key._index >= nativeCount || !Allowed(key._value, values[checked((int)key._index)], mandatory.Contains(checked((int)key._index)), .1, true) ||
+                            mandatory.Contains(checked((int)key._index)) && (!sides.TryGetValue(checked((int)key._index), out var tangents) ||
+                            !tangents.Any(t => Bits(t) == Bits(key._tangent)))) { valid = false; break; }
                     }
                     if (valid)
                     {
@@ -263,15 +270,14 @@ namespace BrawlCrate.Studio
             proofBudget = proofBudget ?? new NativeDenseProofBudget();
             if (proofBudget.HasProof(proofKey)) return true;
             if (original == null || original.Length == 0 || baseline == null || values == null || values.Length < 2 ||
-                original.GroupBy(k => k._index).Any(g => g.Count() != 1)) return false;
+                original.GroupBy(k => k._index).Any(g => g.Count() > 2 || g.Select(k => Bits(k._value)).Distinct().Count() != 1)) return false;
             if (!proofBudget.Spend((long)original.Length + values.Length, token)) return false;
             for (int i = 0; i < values.Length - 1; i++)
             {
                 token.ThrowIfCancellationRequested(); double delta = (double)values[i + 1] - values[i];
-                // Known independent baked readers use a periodic angular lerp.
-                // Below this strict threshold it equals the unwrapped line;
-                // larger intervals stay indexed instead of losing full turns.
-                if (!Finite(delta) || Math.Abs(delta) >= 90) return false;
+                // CV evaluation is an unwrapped scalar line. Preserve full
+                // turns instead of introducing shortest-path angular wrapping.
+                if (!Finite(delta)) return false;
                 Segment(original, baseline, i + .5, out KeyframeEntry left, out KeyframeEntry right, out double start, out double span);
                 double p0, p1, d0, d1;
                 if (right == null) { p0 = p1 = left._value; d0 = d1 = 0; }
@@ -373,11 +379,12 @@ namespace BrawlCrate.Studio
         private static IndexedCHR0CurveStorage TryCurve(KeyframeEntry[] keys, AnimDataFormat format, bool exact,
             HashSet<int> mandatory, double valueLimit, double derivativeLimit, bool zeroAlignedGrid, bool allowPositiveZero, CancellationToken token)
         {
-            int frameLimit = format == AnimDataFormat.I4 ? 255 : 2047, valueMaximum = format == AnimDataFormat.I4 ? 4095 : 65535;
+            double frameLimit = format == AnimDataFormat.I4 ? 255 : 1023.96875; int valueMaximum = format == AnimDataFormat.I4 ? 4095 : 65535;
             int tangentMinimum = format == AnimDataFormat.I4 ? -2048 : -32768, tangentMaximum = format == AnimDataFormat.I4 ? 2047 : 32767;
             double tangentScale = format == AnimDataFormat.I4 ? 32 : 256;
-            if (keys.Length > ushort.MaxValue || keys.Any(k => k._index < 0 || k._index > frameLimit || !Finite(k._value) || !Finite(k._tangent))) return null;
-            var duplicateFrames = new HashSet<int>(keys.GroupBy(k => k._index).Where(g => g.Count() > 1).Select(g => g.Key));
+            if (keys.Length > ushort.MaxValue || keys.Any(k => k._index < 0 || k._index > frameLimit || !Finite(k._index) || k._index * (format == AnimDataFormat.I4 ? 1 : 32) != Math.Floor(k._index * (format == AnimDataFormat.I4 ? 1 : 32)) || !Finite(k._value) || !Finite(k._tangent))) return null;
+            var discontinuities = new HashSet<float>(keys.GroupBy(k => k._index).Where(g => g.Select(k => Bits(k._value)).Distinct().Count() > 1).Select(g => g.Key));
+            var pairedFrames = new HashSet<float>(keys.GroupBy(k => k._index).Where(g => g.Count() > 1).Select(g => g.Key));
             if (keys.GroupBy(k => k._index).Any(g => g.Count() > 2)) return null;
             float minimum = keys.Min(k => k._value), maximum = keys.Max(k => k._value);
             double range = (double)maximum - minimum;
@@ -423,7 +430,11 @@ namespace BrawlCrate.Studio
                     var decodedValues = curve.Values; var decodedTangents = curve.Tangents; double error = 0;
                     for (int i = 0; i < keys.Length; i++)
                     {
-                        bool strict = exact || mandatory.Contains(keys[i]._index) || duplicateFrames.Contains(keys[i]._index);
+                        // Both sides and their order remain. Continuous body
+                        // slopes may use bounded compact coefficients; jumps,
+                        // protected controls and mandatory knots stay exact.
+                        bool strict = exact || mandatory.Any(frame => frame == keys[i]._index) || discontinuities.Contains(keys[i]._index)
+                            || !allowPositiveZero && pairedFrames.Contains(keys[i]._index);
                         if (!Allowed(keys[i]._value, decodedValues[i], strict, valueLimit, allowPositiveZero) || !Allowed(keys[i]._tangent, decodedTangents[i], strict, derivativeLimit, allowPositiveZero)) { valid = false; break; }
                         error = Math.Max(error, Math.Abs((double)keys[i]._value - decodedValues[i]) / Math.Max(valueLimit, double.Epsilon));
                         error = Math.Max(error, Math.Abs((double)keys[i]._tangent - decodedTangents[i]) / Math.Max(derivativeLimit, double.Epsilon));
@@ -459,6 +470,8 @@ namespace BrawlCrate.Studio
             {
                 using (var writer = new BinaryWriter(bytes, System.Text.Encoding.UTF8, true))
                 {
+                    bool fractional = entry.KeyArrays.Skip(group * 3).Take(3).SelectMany(a => a.Entries).Any(k => k._index != Math.Floor(k._index) || Bits(k._index)==int.MinValue);
+                    if (fractional) writer.Write("CHR0-fractional-group-v1");
                     writer.Write(entry.Name); writer.Write(group); writer.Write(entry.Keyframes.FrameLimit); writer.Write(entry.Keyframes.Loop);
                     writer.Write(entry.UseModelScale); writer.Write(entry.UseModelRotate); writer.Write(entry.UseModelTranslate);
                     writer.Write(entry.ScaleCompensateApply); writer.Write(entry.ScaleCompensateParent); writer.Write(entry.ClassicScaleOff);
@@ -466,7 +479,7 @@ namespace BrawlCrate.Studio
                     {
                         writer.Write(entry.KeyArrays[channel].KeyCount);
                         foreach (var key in entry.KeyArrays[channel].Entries)
-                        { writer.Write(key._index); writer.Write(Bits(key._value)); writer.Write(Bits(key._tangent)); }
+                        { if (fractional) writer.Write(key._index); else writer.Write(checked((int)key._index)); writer.Write(Bits(key._value)); writer.Write(Bits(key._tangent)); }
                     }
                 }
                 using (var hash = SHA256.Create()) return BitConverter.ToString(hash.ComputeHash(bytes.ToArray())).Replace("-", "");

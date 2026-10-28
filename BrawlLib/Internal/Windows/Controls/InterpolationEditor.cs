@@ -712,27 +712,7 @@ namespace BrawlLib.Internal.Windows.Controls
                 kf = kf._prev;
             }
 
-            int prev = kf._prev._index + 1;
-            int next = kf._next._index - 1;
-
-            if (next < 0)
-            {
-                if (_mainWindow != null)
-                {
-                    next = (int) _mainWindow.PlaybackPanel.numTotalFrames.Value - 1;
-                }
-                else
-                {
-                    next = _targetNode.FrameCount - 1;
-                }
-            }
-
-            int index = ((int) numFrameVal.Value - 1).Clamp(prev, next);
-
-            kf._index = index;
-
-            interpolationViewer.Invalidate();
-            SignalCurveChange();
+            MoveKeyframe(kf, numInFrame);
         }
 
         private void numOutFrame_ValueChanged(object sender, EventArgs e)
@@ -748,27 +728,37 @@ namespace BrawlLib.Internal.Windows.Controls
                 kf = kf._next;
             }
 
-            int prev = kf._prev._index + 1;
-            int next = kf._next._index - 1;
+            MoveKeyframe(kf, numOutFrame);
+        }
 
-            if (next < 0)
+        private void MoveKeyframe(KeyframeEntry key, NumericInputBox input)
+        {
+            float time = input.Value - 1;
+            float limit = _targetNode != null ? _targetNode.FrameCount - 1
+                : (float) _mainWindow.PlaybackPanel.numTotalFrames.Value - 1;
+            bool valid = !float.IsNaN(time) && !float.IsInfinity(time) && time >= 0 && time <= limit &&
+                (key._prev._index < 0 || time >= key._prev._index) &&
+                (key._next._index < 0 || time <= key._next._index) &&
+                !(time == key._prev._index && time == key._prev._prev._index) &&
+                !(time == key._next._index && time == key._next._next._index);
+            if (!valid)
             {
-                if (_mainWindow != null)
-                {
-                    next = (int) _mainWindow.PlaybackPanel.numTotalFrames.Value - 1;
-                }
-                else
-                {
-                    next = _targetNode.FrameCount - 1;
-                }
+                _updating = true;
+                input.Value = key._index + 1;
+                _updating = false;
+                return;
             }
 
-            int index = ((int) numFrameVal.Value - 1).Clamp(prev, next);
+            if (time == key._index)
+            {
+                return;
+            }
 
-            kf._index = index;
-
+            key._index = time;
+            interpolationViewer.FrameTime = time;
             interpolationViewer.Invalidate();
             SignalCurveChange();
+            _mainWindow?.KeyframePanel.UpdateKeyframes();
         }
     }
 }

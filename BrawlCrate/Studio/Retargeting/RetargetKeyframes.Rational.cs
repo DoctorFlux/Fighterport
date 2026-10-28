@@ -9,16 +9,17 @@ namespace BrawlCrate.Studio.Retargeting
     internal static partial class RetargetKeyframes
     {
         // Same normalized Hermite/Bernstein construction as the owned Core
-        // reducer. Exact binary input coefficients and integer native times are
+        // reducer. Exact binary input coefficients and native float times are
         // rational; an uncertain/budget-limited hull retains dense keys.
-        static SourceRational[] QualityBernstein(KeyframeEntry a, KeyframeEntry b, int first, int last)
+        static SourceRational[] QualityBernstein(KeyframeEntry a, KeyframeEntry b, float first, float last)
         {
-            SourceRational dt = b._index - a._index;
+            SourceRational start = SourceRational.FromFloat(a._index);
+            SourceRational dt = SourceRational.FromFloat(b._index) - start;
             var av = SourceRational.FromFloat(a._value); var bv = SourceRational.FromFloat(b._value);
             var am = dt * SourceRational.FromFloat(a._tangent); var bm = dt * SourceRational.FromFloat(b._tangent);
             var c0 = av; var c1 = am; var c2 = -3 * av + 3 * bv - 2 * am - bm; var c3 = 2 * av - 2 * bv + am + bm;
-            SourceRational alpha = (SourceRational)(first - a._index) / dt;
-            SourceRational beta = (SourceRational)(last - first) / dt;
+            SourceRational alpha = (SourceRational.FromFloat(first) - start) / dt;
+            SourceRational beta = (SourceRational.FromFloat(last) - SourceRational.FromFloat(first)) / dt;
             var d0 = c0 + alpha * (c1 + alpha * (c2 + alpha * c3));
             var d1 = beta * (c1 + alpha * (2 * c2 + 3 * alpha * c3));
             var d2 = beta * beta * (c2 + 3 * alpha * c3); var d3 = beta * beta * beta * c3;
@@ -57,15 +58,15 @@ namespace BrawlCrate.Studio.Retargeting
                 if (proof.Probes.Count < 10000)
                 {
                     proof.Probe(a._index);
-                    proof.Probe(a._index + (b._index - a._index) * .381966011250105);
-                    proof.Probe(a._index + (b._index - a._index) * .618033988749895);
+                    proof.Probe(a._index + ((double)b._index - a._index) * .381966011250105);
+                    proof.Probe(a._index + ((double)b._index - a._index) * .618033988749895);
                     proof.Probe(b._index);
                 }
                 var baseline = QualityBernstein(a, b, a._index, b._index);
                 var candidate = QualityBernstein(keys[left], keys[right], a._index, b._index);
                 var difference = baseline.Zip(candidate, (x, y) => x - y).ToArray();
                 if (!QualityBound(difference, SourceRational.FromDouble(valueLimit), proof, out double value)) return false;
-                SourceRational dt = b._index - a._index;
+                SourceRational dt = SourceRational.FromFloat(b._index) - SourceRational.FromFloat(a._index);
                 var derivative = Enumerable.Range(0, 3).Select(c => 3 * (difference[c + 1] - difference[c]) / dt).ToArray();
                 if (!QualityBound(derivative, SourceRational.FromDouble(speedLimit), proof, out double speed)) return false;
                 valueError = Math.Max(valueError, value); speedError = Math.Max(speedError, speed);

@@ -145,7 +145,7 @@ namespace BrawlLib.Internal.Windows.Controls
             // numOutFrame
             // 
             this.numOutFrame.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.numOutFrame.Integral = true;
+            this.numOutFrame.Integral = false;
             this.numOutFrame.Location = new System.Drawing.Point(407, 17);
             this.numOutFrame.MaximumValue = 3.402823E+38F;
             this.numOutFrame.MinimumValue = -3.402823E+38F;
@@ -168,7 +168,7 @@ namespace BrawlLib.Internal.Windows.Controls
             // numInFrame
             // 
             this.numInFrame.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.numInFrame.Integral = true;
+            this.numInFrame.Integral = false;
             this.numInFrame.Location = new System.Drawing.Point(177, 17);
             this.numInFrame.MaximumValue = 3.402823E+38F;
             this.numInFrame.MinimumValue = -3.402823E+38F;

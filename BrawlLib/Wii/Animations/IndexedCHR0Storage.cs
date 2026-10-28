@@ -8,6 +8,27 @@ using System.Security.Cryptography;
 
 namespace BrawlLib.Wii.Animations
 {
+    // Dense CV curves interpolate linearly, not with invented smooth tangents.
+    // Express their two segment slopes using the editor's existing paired keys.
+    public static class DenseCHR0Projection
+    {
+        public static KeyframeArray Create(float[] samples, int frameLimit, bool loop = false)
+        {
+            if (samples == null || samples.Length == 0 || frameLimit < 1)
+                throw new ArgumentException("Dense CHR0 requires bounded native samples.");
+            var result = new KeyframeArray(frameLimit) { Loop = loop };
+            for (int i = 0; i < samples.Length; i++)
+            {
+                float incoming = i == 0 ? samples.Length == 1 ? 0 : samples[1] - samples[0] : samples[i] - samples[i - 1];
+                float outgoing = i == samples.Length - 1 ? incoming : samples[i + 1] - samples[i];
+                result.SetFrameValue(i, samples[i], true)._tangent = incoming;
+                if (BitConverter.ToInt32(BitConverter.GetBytes(incoming), 0) != BitConverter.ToInt32(BitConverter.GetBytes(outgoing), 0))
+                    result.SetFrameValue(i, samples[i], true)._tangent = outgoing;
+            }
+            return result;
+        }
+    }
+
     // An immutable native indexed curve. Its encoded payload is reused only when
     // every decoded knot still matches the current authoring data exactly.
     // Editing a coefficient therefore falls back to I12, never re-quantizes it.
@@ -16,6 +37,7 @@ namespace BrawlLib.Wii.Animations
         private readonly byte[] data;
         public AnimDataFormat Format { get; }
         public int KeyCount { get; }
+        public int NativeSampleCount { get; }
         public int ByteCount => data.Length;
         public string ContentKey { get; }
         public bool IsDense => Format == AnimDataFormat.L1 || Format == AnimDataFormat.L2 || Format == AnimDataFormat.L4;
@@ -25,29 +47,34 @@ namespace BrawlLib.Wii.Animations
         public float Base => Format == AnimDataFormat.L4 ? 0 : ReadFloat(data, IsDense ? 4 : 12);
         public float Step => Format == AnimDataFormat.L4 ? 1 : ReadFloat(data, IsDense ? 0 : 8);
         public float FrameScale => IsDense ? 0 : ReadFloat(data, 4);
-        public int[] Frames => Enumerable.Range(0, KeyCount).Select(Frame).ToArray();
+        // Integer callers keep their original contract. Fractional curves must
+        // use Times explicitly; never truncate their native knot positions.
+        public int[] Frames
+        {
+            get
+            {
+                var times = Times;
+                if (times.Any(t => t != Math.Truncate(t)))
+                    throw new NotSupportedException("This native curve has fractional knot times; use Times.");
+                return times.Select(t => checked((int)t)).ToArray();
+            }
+        }
+        public float[] Times => Enumerable.Range(0, KeyCount).Select(Frame).ToArray();
         public float[] Values => Enumerable.Range(0, KeyCount).Select(Value).ToArray();
         public float[] Tangents => Enumerable.Range(0, KeyCount).Select(Tangent).ToArray();
-        public float[] EncodedValues => Enumerable.Range(0, IsDense ? EncodedSampleCount : KeyCount).Select(Value).ToArray();
-        private readonly float[] denseTangents;
+        public float[] EncodedValues => IsDense ? Enumerable.Range(0, EncodedSampleCount).Select(SampleValue).ToArray() : Values;
+        private readonly KeyframeEntry[] denseKeys;
 
         private IndexedCHR0CurveStorage(AnimDataFormat format, byte[] bytes, int nativeKeyCount = 0, int encodedSampleCount = 0)
         {
-            Format = format; data = bytes; KeyCount = IsDense ? nativeKeyCount : Read16(data, 0);
+            Format = format; data = bytes; NativeSampleCount = IsDense ? nativeKeyCount : 0;
+            KeyCount = IsDense ? 0 : Read16(data, 0);
             EncodedSampleCount = IsDense ? encodedSampleCount : 0;
             if (IsDense)
             {
-                denseTangents = new float[KeyCount];
-                // DecodeFrames inserts samples in ascending order and calls
-                // GenerateTangent before the next sample exists. Reproduce its
-                // float addition/division and rounded signed-zero behavior.
-                for (int i = 1; i < KeyCount; i++)
-                {
-                    float tangent = 0f;
-                    tangent += Value(i) - Value(i - 1);
-                    tangent /= 1f;
-                    denseTangents[i] = (float)Math.Round(tangent, 3);
-                }
+                var samples = Enumerable.Range(0, nativeKeyCount).Select(SampleValue).ToArray();
+                denseKeys = DenseCHR0Projection.Create(samples, nativeKeyCount).Entries.ToArray();
+                KeyCount = denseKeys.Length;
             }
             using (var hash = SHA256.Create()) ContentKey = ((int)format).ToString() + ":" +
                 (IsDense ? KeyCount + ":" + EncodedSampleCount + ":" : "") + BitConverter.ToString(hash.ComputeHash(data)).Replace("-", "");
@@ -81,12 +108,16 @@ namespace BrawlLib.Wii.Animations
                 bytes.Length != header + encodedSampleCount * stride && bytes.Length != ((header + encodedSampleCount * stride + 3) & ~3) ||
                 format != AnimDataFormat.L4 && (!Finite(ReadFloat(bytes, 0)) || !Finite(ReadFloat(bytes, 4)))) return null;
             var result = new IndexedCHR0CurveStorage(format, (byte[])bytes.Clone(), nativeKeyCount, encodedSampleCount);
-            for (int i = 0; i < encodedSampleCount; i++) if (!Finite(result.Value(i))) return null;
-            for (int i = 0; i < nativeKeyCount; i++) if (!Finite(result.Tangent(i))) return null;
+            for (int i = 0; i < encodedSampleCount; i++) if (!Finite(result.SampleValue(i))) return null;
+            for (int i = 0; i < result.KeyCount; i++) if (!Finite(result.Tangent(i))) return null;
             return result;
         }
 
         public static IndexedCHR0CurveStorage Create(AnimDataFormat format, int[] frames,
+            int[] values, int[] tangents, float valueBase, float valueStep)
+            => Create(format, frames?.Select(frame => (float)frame).ToArray(), values, tangents, valueBase, valueStep);
+
+        public static IndexedCHR0CurveStorage Create(AnimDataFormat format, float[] frames,
             int[] values, int[] tangents, float valueBase, float valueStep)
         {
             if (format != AnimDataFormat.I4 && format != AnimDataFormat.I6 || frames == null || values == null || tangents == null ||
@@ -95,23 +126,25 @@ namespace BrawlLib.Wii.Animations
             int stride = format == AnimDataFormat.I4 ? 4 : 6;
             var bytes = new byte[(16 + frames.Length * stride + 3) & ~3];
             Write16(bytes, 0, frames.Length);
-            int span = frames[frames.Length - 1] - frames[0];
+            float span = frames[frames.Length - 1] - frames[0];
             WriteFloat(bytes, 4, span == 0 ? 0 : .99999994f / span);
             WriteFloat(bytes, 8, valueStep); WriteFloat(bytes, 12, valueBase);
-            int previous = -1, duplicates = 0;
+            float previous = -1; int duplicates = 0;
             for (int i = 0; i < frames.Length; i++)
             {
-                int frameLimit = format == AnimDataFormat.I4 ? 255 : 2047;
+                float frameLimit = format == AnimDataFormat.I4 ? 255 : short.MaxValue / 32f;
                 int valueLimit = format == AnimDataFormat.I4 ? 4095 : 65535;
                 int tangentMin = format == AnimDataFormat.I4 ? -2048 : -32768;
                 int tangentMax = format == AnimDataFormat.I4 ? 2047 : 32767;
-                if (frames[i] < 0 || frames[i] > frameLimit || frames[i] < previous || values[i] < 0 || values[i] > valueLimit || tangents[i] < tangentMin || tangents[i] > tangentMax)
+                if (!Finite(frames[i]) || frames[i] < 0 || frames[i] > frameLimit || frames[i] < previous ||
+                    frames[i] * (format == AnimDataFormat.I4 ? 1 : 32) != Math.Truncate(frames[i] * (format == AnimDataFormat.I4 ? 1 : 32)) ||
+                    Bits(frames[i]) == int.MinValue || values[i] < 0 || values[i] > valueLimit || tangents[i] < tangentMin || tangents[i] > tangentMax)
                     throw new ArgumentException("An indexed CHR0 knot exceeds its native representation.");
                 duplicates = previous == frames[i] ? duplicates + 1 : 1;
                 if (duplicates > 2) throw new ArgumentException("A native CHR0 curve has at most two knot sides.");
                 int at = 16 + i * stride;
-                if (format == AnimDataFormat.I4) Write32(bytes, at, (uint)((frames[i] << 24) | (values[i] << 12) | (tangents[i] & 4095)));
-                else { Write16(bytes, at, frames[i] << 5); Write16(bytes, at + 2, values[i]); Write16(bytes, at + 4, tangents[i] & 65535); }
+                if (format == AnimDataFormat.I4) Write32(bytes, at, (uint)(((int)frames[i] << 24) | (values[i] << 12) | (tangents[i] & 4095)));
+                else { Write16(bytes, at, (int)(frames[i] * 32)); Write16(bytes, at + 2, values[i]); Write16(bytes, at + 4, tangents[i] & 65535); }
                 previous = frames[i];
             }
             var result = new IndexedCHR0CurveStorage(format, bytes);
@@ -125,13 +158,12 @@ namespace BrawlLib.Wii.Animations
             int count = Read16(bytes, 0), stride = format == AnimDataFormat.I4 ? 4 : 6;
             if (count < 2 || bytes.Length != ((16 + count * stride + 3) & ~3) || !Finite(ReadFloat(bytes, 4)) || !Finite(ReadFloat(bytes, 8)) || !Finite(ReadFloat(bytes, 12))) return null;
             var result = new IndexedCHR0CurveStorage(format, (byte[])bytes.Clone());
-            int previous = -1, duplicates = 0;
+            float previous = -1; int duplicates = 0;
             for (int i = 0; i < count; i++)
             {
-                if (format == AnimDataFormat.I6 && (Read16(bytes, 16 + i * 6) & 31) != 0) return null;
-                int frame = result.Frame(i);
+                float frame = result.Frame(i);
                 duplicates = frame == previous ? duplicates + 1 : 1;
-                if (frame < previous || duplicates > 2 || !Finite(result.Value(i))) return null;
+                if (frame < 0 || frame < previous || duplicates > 2 || !Finite(result.Value(i))) return null;
                 previous = frame;
             }
             return result;
@@ -140,11 +172,11 @@ namespace BrawlLib.Wii.Animations
         public bool Matches(KeyframeArray array)
         {
             if (array == null || array.KeyCount != KeyCount) return false;
-            if (IsDense && (KeyCount != array.FrameLimit || EncodedSampleCount != array.FrameLimit + (array.Loop ? 0 : 1))) return false;
+            if (IsDense && (NativeSampleCount != array.FrameLimit || EncodedSampleCount != array.FrameLimit + (array.Loop ? 0 : 1))) return false;
             int index = 0;
             foreach (var key in array.Entries)
             {
-                if (key._index != Frame(index) || Bits(key._value) != Bits(Value(index)) || Bits(key._tangent) != Bits(Tangent(index))) return false;
+                if (Bits(key._index) != Bits(Frame(index)) || Bits(key._value) != Bits(Value(index)) || Bits(key._tangent) != Bits(Tangent(index))) return false;
                 index++;
             }
             return true;
@@ -155,11 +187,12 @@ namespace BrawlLib.Wii.Animations
             byte* output = (byte*)destination;
             for (int i = 0; i < data.Length; i++) output[i] = data[i];
         }
-        private int Frame(int index) => IsDense ? index : Format == AnimDataFormat.I4 ? data[16 + index * 4] : Read16(data, 16 + index * 6) >> 5;
+        private float Frame(int index) => IsDense ? denseKeys[index]._index : Format == AnimDataFormat.I4 ? data[16 + index * 4] : unchecked((short)Read16(data, 16 + index * 6)) / 32f;
         private int QuantizedValue(int index) => IsDense ? Format == AnimDataFormat.L1 ? data[8 + index] : Read16(data, 8 + index * 2) :
             Format == AnimDataFormat.I4 ? (int)(Read32(data, 16 + index * 4) >> 12) & 4095 : Read16(data, 18 + index * 6);
-        private float Value(int index) => Format == AnimDataFormat.L4 ? ReadFloat(data, index * 4) : Base + QuantizedValue(index) * Step;
-        private float Tangent(int index) => IsDense ? denseTangents[index] : Format == AnimDataFormat.I4 ? ((int)(Read32(data, 16 + index * 4) << 20) >> 20) / 32f : unchecked((short)Read16(data, 20 + index * 6)) / 256f;
+        private float SampleValue(int index) => Format == AnimDataFormat.L4 ? ReadFloat(data, index * 4) : Base + QuantizedValue(index) * Step;
+        private float Value(int index) => IsDense ? denseKeys[index]._value : SampleValue(index);
+        private float Tangent(int index) => IsDense ? denseKeys[index]._tangent : Format == AnimDataFormat.I4 ? ((int)(Read32(data, 16 + index * 4) << 20) >> 20) / 32f : unchecked((short)Read16(data, 20 + index * 6)) / 256f;
         internal static int Bits(float value) => BitConverter.ToInt32(BitConverter.GetBytes(value), 0);
         private static bool Finite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
         private static int Read16(byte[] bytes, int at) => bytes[at] << 8 | bytes[at + 1];
@@ -196,14 +229,28 @@ namespace BrawlLib.Wii.Animations
             for (int axis = 0; axis < 3; axis++)
             {
                 int channel = group * 3 + axis;
-                if (curves[channel] != null && curves[channel].IsDense)
+                var curve = curves[channel];
+                var array = keys[channel];
+                // Retained payloads must match even after an authored axis is
+                // reduced to zero or one knots. Otherwise an old multi-key
+                // payload can silently overwrite a newly edited singleton.
+                // A matching one-frame dense curve still owns its terminal
+                // encoded sample and therefore remains a variable payload.
+                if (curve != null)
                 {
-                    if (!curves[channel].Matches(keys[channel])) return false;
+                    if (!curve.Matches(array)) return false;
                     any = true; continue;
                 }
-                if (keys[channel].KeyCount <= 1) continue;
-                if (curves[channel] == null || !curves[channel].Matches(keys[channel])) return false;
-                any = true;
+                // Fixed cells have no time or tangent storage. A deliberately
+                // timed, signed-zero-time or nonzero-slope singleton needs I12
+                // when no matching retained payload exists for this axis.
+                if (array.KeyCount > 1) return false;
+                if (array.KeyCount == 1)
+                {
+                    var key = array.Entries.First();
+                    if (IndexedCHR0CurveStorage.Bits(key._index) != 0 ||
+                        IndexedCHR0CurveStorage.Bits(key._tangent) != 0) return false;
+                }
             }
             return any;
         }

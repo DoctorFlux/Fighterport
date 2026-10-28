@@ -43,7 +43,7 @@ public static class BodySceneRegions
             {
                 if((vertex&255)==0)cancellation.ThrowIfCancellationRequested();
                 var v=mesh.Vertices[vertex];
-                points[vertex]=new(v.Position,v.Joints,v.Weights){Mesh=meshIndex,Vertex=vertex};
+                points[vertex]=new(v.Position,v.Joints,v.Weights){Influences=v.Influences,Mesh=meshIndex,Vertex=vertex};
                 rest[vertex]=ContactGeometry.Point(points[vertex],rig.Rest);
                 if(!PoseGeometry.Finite(rest[vertex]))throw new InvalidDataException("Body-scene area preparation encountered nonfinite native rest skin.");
             }
@@ -58,9 +58,9 @@ public static class BodySceneRegions
             {
                 if((vertex&255)==0)cancellation.ThrowIfCancellationRequested();
                 var point=points[vertex];var weights=new Dictionary<int,double>();double alpha=0;
-                for(int slot=0;slot<4;slot++)if(point.Weights[slot]>0)
+                for(int slot=0;slot<point.InfluenceCount;slot++)if(point.WeightAt(slot)>0)
                 {
-                    int bone=(int)point.Joints[slot];double weight=point.Weights[slot];
+                    int bone=(int)point.JointAt(slot);double weight=point.WeightAt(slot);
                     weights[bone]=weights.GetValueOrDefault(bone)+weight;
                     if(descendants[bone])alpha+=weight;
                 }

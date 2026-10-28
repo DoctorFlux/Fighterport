@@ -1,4 +1,84 @@
-# Current milestone M2 — simpler native workspace
+﻿# Current milestone M2 — simpler native workspace
+
+28 October latest authorized scope: **native CHR0 export optimization across the
+current Fighterport application**. Starting commit
+`37ec23c8aaa7de502d0a1efe661d673015d996e0`; public `DoctorFlux/Fighterport/main`.
+Follow [the current export scope](../NATIVE_CHR0_EXPORT_OPTIMIZATION_SCOPE_2026-10-28.md)
+and [write-path audit](../CHR0_WRITE_PATH_AUDIT_2026-10-28.md). This supersedes the
+older automatic-authoring optimization default below. Retargeting, fitting and
+contact/FK/IK edits retain their full-quality editable target master. Ordinary
+Save stays exact. Explicit Exact / Error-bounded export copies share one backend,
+immutable encoding plans, actual-byte accounting and fresh native validation.
+Search effort never changes saved quality limits. Unverified absolute contact
+context uses Exact/reference output. Native slots share the qualified context
+route and reseal converted metadata against a same-slot reference. The existing
+retarget motion-PAC route stages that same prepared copy and verifies complete
+inserted data and untouched native siblings. Arbitrary container exports remain
+separately qualified reference writes. Bounded session-only writer evidence may
+identify generated paired keys; unknown authored pairs stay protected.
+
+Preview.54 has **bounded source acceptance** within the ONE incomplete G1/M2.
+The selected launcher is `Fighterport-fractional54/export-boundary19/native`.
+Fractional I6/I12 time retention, complete influences, current/master separation,
+same-finished-animation benchmarks and fresh independent decoded validation have
+their recorded numerical/workflow evidence. Final19 additionally passes the
+shared-container, dirty-model and standalone state/UI checks; exact backend and
+unchanged-method proofs retain the earlier run boundaries. See
+[acceptance](../NATIVE_CHR0_EXPORT_OPTIMIZATION_ACCEPTANCE_2026-10-28.md) and
+[benchmark](../NATIVE_CHR0_OPTIMIZATION_BENCHMARK_2026-10-28.md).
+This increment is complete; no broader milestone or queued contact/game adapter
+is promoted. Universal contact, Melee, physical-input/DPI, external-editor/plugin
+and game acceptance remain unverified. Generated cleanup is confined to reviewed
+old outputs; source assets, final evidence and reopen dependencies stay protected.
+
+Earlier checkpoints below are historical evidence, not additional active work.
+
+27 October 2026 authorized preview.54: preserve complete variable-length skin
+influences, correct fractional native rotation baking, simplify optimization to
+one action and include whole-animation optimization in retargeting/fitting.
+Use the [frozen scope](../LOSSLESS_SKIN_FRACTIONAL_AND_UNIFIED_OPTIMIZATION_SCOPE_2026-10-27.md).
+Preview.53 remains the qualified launcher until the combined background-only
+workflow, all-weight/subframe numeric checks, native sizes and inspected GIFs
+qualify. This is the sole active increment of ONE incomplete G1/M2.
+
+28 October continuation: codec correction now retains all 84 original Sonic
+dense channels and its byte-identical 12,016-byte source snapshot. The user
+rejected trial fitted outputs of 38,996 / 34,688 bytes as still too large.
+Continue this same increment with provenance-scoped generated-pair span
+reduction, preserving unknown authored pairs and all existing root, pin, signed
+zero, discontinuity and quality/budget protections. The additional frozen scope
+is recorded in the linked scope above. Candidate36 completed all four background
+workflows and relevant workspace regressions. Its four primary side GIFs have
+162 inspected decoded frames; the size/fractional gates remain open.
+Candidate37/38 forward-channel trials measure 37,932 bytes raw / 31,212 fitted.
+Candidate38's bounded frozen-reference cache reduces repeated native evaluation
+work without changing those verified files. Candidate39 adds typed failing-group
+recovery before broad storage partitioning: 168 scalar / 519 native checks pass.
+All four authentic workflows pass (668 checks), with fitted files of 31,032 bytes
+forward and 39,204 reciprocal for both schedules. All 29 byte audits pass; 162
+decoded primary GIF frames have been inspected. Candidate40 continues the same
+bounded generated search after its first tight success, retaining the smallest
+fully verified result. Final Candidate40 passes 520 native, 168 scalar, 668
+workflow and 1,493 workspace regression checks, plus all 29 byte audits. Its
+four outputs retain Candidate39's measured sizes; all four fresh GIFs are
+byte-identical to the 162 directly inspected Candidate39 frames, with fresh
+representative contact sheets and all eight optimizer layout PNGs inspected.
+The forward fitted file is still 2.58 times Sonic's original. Continue the
+source-relative fractional bake/curve-complexity investigation inside this same
+increment; do not relax the frozen limits to hide that gap. Preview.53 remains
+selected. No milestone completion or publication is claimed.
+
+28 October research checkpoint: all-weight / unified-optimization candidate28
+has completed both directions and both source schedules, relevant background
+regressions and inspected side GIFs, but is **not qualified or promoted**.
+Forward fitted files are 46,948 / 44,768 bytes, larger than preview.53, and
+source-relative fractional fidelity still exceeds 0.1°. A 30-file byte audit
+isolates codec payload growth and generated paired tangents; a full 84-channel
+read-only probe exposes native-editor versus reference-runtime dense
+interpolation differences. Next work inside this same increment is codec-aware
+evaluation and explicit original-storage rejection diagnostics before further
+curve tuning. Do not relax quality caps, truncate weights or substitute root
+motion. See the [research and acceptance checkpoint](../COMPLETE_SKIN_UNIFIED_OPTIMIZATION_ACCEPTANCE_2026-10-28.md).
 
 27 October 2026 preview.53-dense-storage-source-orientation is the bounded current
 source acceptance: **4,564 application checks**, 1,303 separate renderer assertions,

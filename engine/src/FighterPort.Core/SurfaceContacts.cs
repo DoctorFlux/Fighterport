@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Text.Json.Serialization;
 
 namespace FighterPort.Core;
 
@@ -6,6 +7,12 @@ namespace FighterPort.Core;
 // weighted surface as the viewport, including blended pelvis/torso/palm vertices.
 public record SkinSurfacePoint(Vector3 Position,Vector4 Joints,Vector4 Weights)
 {
+    [JsonIgnore] public SkinInfluence[] Influences {get;init;}=[];
+    [JsonPropertyName("Influences"),JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
+    public SkinInfluence[]? InfluenceData {get=>Influences.Length==0?null:Influences;init=>Influences=value??[];}
+    [System.Text.Json.Serialization.JsonIgnore] public int InfluenceCount => SkinInfluences.Count(Influences);
+    public float JointAt(int slot) => SkinInfluences.Joint(Joints,Influences,slot);
+    public float WeightAt(int slot) => SkinInfluences.Weight(Weights,Influences,slot);
     public int Mesh {get;init;}=-1;
     public int Vertex {get;init;}=-1;
 }
@@ -74,7 +81,7 @@ public static class ContactGeometry
     public static Vector3 Point(SkinSurfacePoint point,EvaluatedPose pose)
     {
         var position=pose.GeometryPositions is {} geometry&&point.Mesh>=0&&point.Mesh<geometry.Length&&point.Vertex>=0&&point.Vertex<geometry[point.Mesh].Length?geometry[point.Mesh][point.Vertex]:point.Position;
-        var value=Vector3.Zero;for(int j=0;j<4;j++)if(point.Weights[j]>0)value+=Vector3.Transform(position,pose.Skin[(int)point.Joints[j]])*point.Weights[j];return value;
+        var value=Vector3.Zero;for(int j=0;j<point.InfluenceCount;j++)if(point.WeightAt(j)>0)value+=Vector3.Transform(position,pose.Skin[(int)point.JointAt(j)])*point.WeightAt(j);return value;
     }
     public static Vector3 Point(ContactPin pin,EvaluatedPose pose)
     {
@@ -138,7 +145,7 @@ public static class ContactGeometry
     public static float SupportHeight(ContactClearance plane,EvaluatedPose pose)=>(plane.SupportPoints.Length>0?plane.SupportPoints:plane.Points).Min(p=>Vector3.Dot(Point(p,pose),plane.Normal))-plane.Height;
     public static bool Valid(ContactPin pin,int bones)=>pin.SurfacePoints.Length<=8&&pin.SurfacePoints.All(s=>Valid(s,bones))&&pin.SurfaceRegion.Length<=512&&pin.SurfaceRegion.All(s=>Valid(s,bones))&&(pin.SurfaceRegion.Length==0||pin.PlaneNormal is not null)&&(pin.PlaneNormal is not {} n||PoseGeometry.Finite(n)&&Math.Abs(n.LengthSquared()-1)<.001f)&&(pin.EdgeInward is not {} edge||pin.EdgeSupport&&pin.Reference is null&&pin.PlaneNormal is {} normal&&PoseGeometry.Finite(edge)&&Math.Abs(edge.LengthSquared()-1)<.001f&&Math.Abs(Vector3.Dot(edge,normal))<.001f)&&(pin.AllowedSurface is not {} surface||Valid(surface)&&pin.EdgeInward is null&&(pin.PlaneNormal is not {} planeNormal||Vector3.Dot(planeNormal,surface.Normal)>.9999f))&&(pin.Clearance is not {} c||PoseGeometry.Finite(c.Normal)&&Math.Abs(c.Normal.LengthSquared()-1)<.001f&&float.IsFinite(c.Height)&&c.Points.Length<=512&&c.Points.All(p=>Valid(p,bones))&&c.SupportPoints.Length<=512&&c.SupportPoints.All(p=>Valid(p,bones)));
     public static bool Valid(SupportSurface surface)=>PoseGeometry.Finite(surface.Normal)&&Math.Abs(surface.Normal.LengthSquared()-1)<.0001f&&float.IsFinite(surface.Height)&&(surface.Edge is not {} e||PoseGeometry.Finite(e.Inward)&&float.IsFinite(e.Offset)&&Math.Abs(e.Inward.LengthSquared()-1)<.0001f&&Math.Abs(Vector3.Dot(e.Inward,surface.Normal))<.0001f);
-    public static bool Valid(SkinSurfacePoint point,int bones)=>PoseGeometry.Finite(point.Position)&&Enumerable.Range(0,4).All(i=>float.IsFinite(point.Weights[i])&&point.Weights[i]>=0&&float.IsFinite(point.Joints[i])&&point.Joints[i]==MathF.Truncate(point.Joints[i])&&point.Joints[i]>=0&&point.Joints[i]<bones)&&Math.Abs(point.Weights.X+point.Weights.Y+point.Weights.Z+point.Weights.W-1)<.002f;
+    public static bool Valid(SkinSurfacePoint point,int bones)=>PoseGeometry.Finite(point.Position)&&SkinInfluences.Valid(point.Joints,point.Weights,point.Influences,bones)&&Math.Abs(Enumerable.Range(0,point.InfluenceCount).Sum(i=>(double)point.WeightAt(i))-1)<.002;
 }
 
 public static class SurfaceContacts
@@ -171,13 +178,13 @@ public static class SurfaceContacts
         var groups=owners.Keys.ToDictionary(i=>i,_=>new HashSet<SkinSurfacePoint>());
         foreach(var (mesh,meshIndex) in scene.Meshes.Select((m,i)=>(m,i)))foreach(var (vertex,vertexIndex) in mesh.Vertices.Select((v,i)=>(v,i)))
         {
-            var weights=new Dictionary<int,float>();for(int j=0;j<4;j++)if(vertex.Weights[j]>0)
+            var weights=new Dictionary<int,float>();for(int j=0;j<vertex.InfluenceCount;j++)if(vertex.WeightAt(j)>0)
             {
-                int bone=(int)vertex.Joints[j];while(bone>=0&&!owners.ContainsKey(bone))bone=scene.Bones[bone].Parent;
-                if(bone>=0)weights[bone]=weights.GetValueOrDefault(bone)+vertex.Weights[j];
+                int bone=(int)vertex.JointAt(j);while(bone>=0&&!owners.ContainsKey(bone))bone=scene.Bones[bone].Parent;
+                if(bone>=0)weights[bone]=weights.GetValueOrDefault(bone)+vertex.WeightAt(j);
             }
             if(weights.Count==0)continue;var owner=weights.MaxBy(p=>p.Value);if(owner.Value<.5f)continue;
-            var point=new SkinSurfacePoint(vertex.Position,vertex.Joints,vertex.Weights){Mesh=meshIndex,Vertex=vertexIndex};if(ContactGeometry.Valid(point,scene.Bones.Length))groups[owner.Key].Add(point);
+            var point=new SkinSurfacePoint(vertex.Position,vertex.Joints,vertex.Weights){Influences=vertex.Influences,Mesh=meshIndex,Vertex=vertexIndex};if(ContactGeometry.Valid(point,scene.Bones.Length))groups[owner.Key].Add(point);
         }
         // Preserve spatial extrema when bounding a dense region; never select by bone name.
         SkinSurfacePoint[] Bound(HashSet<SkinSurfacePoint> points)

@@ -1,4 +1,4 @@
-using BrawlLib.Internal;
+﻿using BrawlLib.Internal;
 using BrawlLib.Modeling;
 using BrawlLib.SSBB;
 using BrawlLib.SSBB.ResourceNodes;
@@ -14,12 +14,21 @@ using System.Threading;
 
 namespace BrawlCrate.Studio
 {
+    public sealed class NativeGeneratedPairSite
+    {
+        public string Bone { get; set; }
+        public int Channel { get; set; }
+        public float Frame { get; set; }
+    }
     // These inputs belong to one frozen operation. In particular, LengthScale is
     // reviewed target geometry, never a guessed one-unit fallback.
     internal sealed class NativeAnimationOptimizationOptions
     {
         public bool ExactOnly { get; set; }
         public bool SmallFile { get; set; }
+        public NativeExportOptimizationSettings ExportSettings { get; set; }
+        public float[] GeneratedPairFrames { get; set; } = new float[0];
+        public NativeGeneratedPairSite[] GeneratedPairSites { get; set; } = new NativeGeneratedPairSite[0];
         public double LengthScale { get; set; }
         public long? OriginalStoredBytes { get; set; }
         public long? OriginalStoredResourceBytes { get; set; }
@@ -34,6 +43,10 @@ namespace BrawlCrate.Studio
         // pass current/original byte caps before it can be returned to the UI.
         public bool DeferSizeValidation { get; set; }
         public NativeAnimationOptimizationBudget Budget { get; set; }
+        public NativeOptimizationReferenceSamples ReferenceSamples { get; set; }
+        // Spread the existing native work budget across tighter scalar
+        // proposals instead of restoring most of the rig on the first one.
+        public int ReductionAttemptLimit { get; set; } = 8;
     }
 
     // Operation-owned aggregate for sequential quality attempts. These are the
@@ -47,26 +60,28 @@ namespace BrawlCrate.Studio
         public long Samples { get; set; }
         public long BoneVisits { get; set; }
         public long VertexVisits { get; set; }
-        public long PoseEvaluations => checked(Samples * 2);
+        public long PoseEvaluations { get; private set; }
         private readonly object sync = new object();
 
-        internal void Require(long witnesses, int bones, int vertices, string phase)
+        internal void Require(long witnesses, int bones, int vertices, string phase, int evaluationsPerWitness = 2)
         {
             lock (sync)
             {
                 if (witnesses < 0 || bones < 0 || vertices < 0 || Samples < 0 || BoneVisits < 0 || VertexVisits < 0)
                     throw new InvalidDataException("Native optimization resource counters must be nonnegative.");
                 Check("Samples", Samples, witnesses, MaximumSamples, phase);
-                Check("BoneVisits", BoneVisits, checked(witnesses * bones * 2), MaximumBoneVisits, phase);
-                Check("VertexVisits", VertexVisits, checked(witnesses * vertices * 2), MaximumVertexVisits, phase);
+                if (evaluationsPerWitness < 1 || evaluationsPerWitness > 2) throw new ArgumentOutOfRangeException(nameof(evaluationsPerWitness));
+                Check("BoneVisits", BoneVisits, checked(witnesses * bones * evaluationsPerWitness), MaximumBoneVisits, phase);
+                Check("VertexVisits", VertexVisits, checked(witnesses * vertices * evaluationsPerWitness), MaximumVertexVisits, phase);
             }
         }
-        internal void Consume(int bones, int vertices)
+        internal void Consume(int bones, int vertices, bool cachedBaseline = false)
         {
             lock (sync)
             {
-                Require(1, bones, vertices, "next complete native witness");
-                Samples++; BoneVisits += 2L * bones; VertexVisits += 2L * vertices;
+                int evaluations = cachedBaseline ? 1 : 2;
+                Require(1, bones, vertices, "next complete native witness", evaluations);
+                Samples++; PoseEvaluations += evaluations; BoneVisits += (long)evaluations * bones; VertexVisits += (long)evaluations * vertices;
             }
         }
         private static void Check(string name, long consumed, long additional, long limit, string phase)
@@ -106,6 +121,7 @@ namespace BrawlCrate.Studio
         public string WorstMetric { get; internal set; }
         public int Samples { get; internal set; }
         public long BudgetSamples { get; internal set; }
+        public long BudgetPoseEvaluations { get; internal set; }
         public long BudgetBoneVisits { get; internal set; }
         public long BudgetVertexVisits { get; internal set; }
         public double MaximumEulerError { get; internal set; }
@@ -113,6 +129,7 @@ namespace BrawlCrate.Studio
         public double MaximumScaleError { get; internal set; }
         public double MaximumLocalTranslationError { get; internal set; }
         public double MaximumWorldBoneError { get; internal set; }
+        public double MaximumWorldAxisAngleError { get; internal set; }
         public double MaximumSkinError { get; internal set; }
         public double MaximumEulerDerivativeError { get; internal set; }
         public double MaximumOrientationDerivativeError { get; internal set; }
@@ -138,12 +155,12 @@ namespace BrawlCrate.Studio
         // Only the explicitly selected Small file profile widens these ceilings.
         // Exact fallback and all existing callers retain the established bounds.
         private static bool SmallProfile(NativeAnimationOptimizationOptions options) => options.SmallFile && !options.ExactOnly;
-        private static double RotationBound(NativeAnimationOptimizationOptions options) => SmallProfile(options) ? .1 : RotationLimit;
-        private static double ScaleBound(NativeAnimationOptimizationOptions options) => SmallProfile(options) ? .0001 : ScaleLimit;
-        private static double RotationSpeedBound(NativeAnimationOptimizationOptions options) => SmallProfile(options) ? .1 : RotationDerivativeLimit;
+        private static double RotationBound(NativeAnimationOptimizationOptions options) => options.ExportSettings?.RotationDegrees ?? (SmallProfile(options) ? .1 : RotationLimit);
+        private static double ScaleBound(NativeAnimationOptimizationOptions options) => options.ExportSettings?.Scale ?? (SmallProfile(options) ? .0001 : ScaleLimit);
+        private static double RotationSpeedBound(NativeAnimationOptimizationOptions options) => options.ExportSettings?.RotationDerivative ?? (SmallProfile(options) ? .1 : RotationDerivativeLimit);
         private static double StrictLocalBound(double length) => length > 0 ? Math.Min(.0002, length * .0001) : .0002;
-        private static double LocalBound(NativeAnimationOptimizationOptions options) => SmallProfile(options) ? .002 : StrictLocalBound(options.LengthScale);
-        private static double WorldBound(NativeAnimationOptimizationOptions options) => options.LengthScale > 0 ? options.LengthScale * (SmallProfile(options) ? .001 : .0001) : .0002;
+        private static double LocalBound(NativeAnimationOptimizationOptions options) => options.ExportSettings?.Translation ?? (SmallProfile(options) ? .002 : StrictLocalBound(options.LengthScale));
+        private static double WorldBound(NativeAnimationOptimizationOptions options) => options.LengthScale > 0 ? options.LengthScale * (options.ExportSettings?.GeometryRelative ?? (SmallProfile(options) ? .001 : .0001)) : .0002;
 
         public static CHR0Node Copy(CHR0Node source)
             => CopyNativeSnapshot(source, false);
@@ -183,28 +200,9 @@ namespace BrawlCrate.Studio
             catch { copy.Dispose(); throw; }
         }
 
-        // Fixed native storage has no time field. A live editor can nevertheless
-        // hold one +zero-slope key at a later time. Canonicalize only that proved
-        // constant on an operation-owned export copy; Undo keeps the live knot.
-        public static CHR0Node CopyForStorageVerification(CHR0Node source)
-        {
-            var copy = Copy(source);
-            try
-            {
-                foreach (CHR0EntryNode entry in copy.Children)
-                for (int channel = 0; channel < 9; channel++)
-                {
-                    var array = entry.KeyArrays[channel]; if (array.KeyCount != 1) continue;
-                    var key = array.Entries.Single();
-                    if (key._index == 0 || Bits(key._tangent) != 0 || Bits(key._value) == int.MinValue) continue;
-                    float value = key._value; array.Remove(key._index);
-                    entry.Keyframes.SetFrameValue(channel, 0, value, true)._tangent = 0;
-                    entry.SignalPropertyChange();
-                }
-                return copy;
-            }
-            catch { copy.Dispose(); throw; }
-        }
+        // The precise writer retains noncanonical single-key times/tangents
+        // through I12. Reference measurement must not canonicalize the master.
+        public static CHR0Node CopyForStorageVerification(CHR0Node source) => Copy(source);
 
         public static double GetBindBoundsDiagonal(MDL0Node modelSnapshot)
         {
@@ -238,6 +236,8 @@ namespace BrawlCrate.Studio
             {
                 using (var writer = new BinaryWriter(buffer, Encoding.UTF8, true))
                 {
+                    bool fractional = clip.Children.OfType<CHR0EntryNode>().SelectMany(e => e.KeyArrays).SelectMany(a => a.Entries).Any(k => k._index != Math.Floor(k._index) || Bits(k._index)==int.MinValue);
+                    if (fractional) writer.Write("CHR0-fractional-times-v1");
                     writer.Write(clip.Name ?? ""); writer.Write(clip.Version); writer.Write(clip.FrameCount);
                     writer.Write(clip.Loop); writer.Write(clip.OriginalPath ?? ""); writer.Write(clip.UserEntries.Count);
                     foreach (UserDataClass user in clip.UserEntries)
@@ -254,7 +254,7 @@ namespace BrawlCrate.Studio
                         {
                             writer.Write(channel.KeyCount);
                             foreach (var key in channel.Entries)
-                            { writer.Write(key._index); writer.Write(Bits(key._value)); writer.Write(Bits(key._tangent)); }
+                            { if (fractional) writer.Write(key._index); else writer.Write(checked((int)key._index)); writer.Write(Bits(key._value)); writer.Write(Bits(key._tangent)); }
                         }
                     }
                 }
@@ -278,8 +278,8 @@ namespace BrawlCrate.Studio
                 float bind = bone.BindState[channel];
                 if (!Finite(bind) || Bits(bind) == int.MinValue) return false;
                 var keys = entry.KeyArrays[channel].Entries.ToArray();
-                if (keys.Select(k => k._index).Distinct().Count() != keys.Length || keys.Any(k =>
-                    Bits(k._value) != Bits(bind) || Bits(k._value) == int.MinValue || Bits(k._tangent) != 0)) return false;
+                if (keys.Any(k =>
+                    Bits(k._index) == int.MinValue || Bits(k._value) != Bits(bind) || Bits(k._value) == int.MinValue || Bits(k._tangent) != 0)) return false;
             }
             return true;
         }
@@ -289,7 +289,7 @@ namespace BrawlCrate.Studio
             CancellationToken token = default(CancellationToken))
         {
             if (modelSnapshot == null || beforeSnapshot == null || options == null) throw new ArgumentNullException("Optimization requires independent native snapshots and frozen options.");
-            token.ThrowIfCancellationRequested();
+            token.ThrowIfCancellationRequested(); options.ExportSettings?.Validate();
             if (!Finite(options.LengthScale) || options.LengthScale < 0 || !options.ExactOnly && options.LengthScale <= 0)
                 throw new InvalidDataException("High quality optimization requires a positive verified target geometry scale; exact mode does not guess one.");
             if (options.OriginalStoredResourceBytes.HasValue && options.OriginalStoredResourceBytes.Value <= 0)
@@ -312,8 +312,14 @@ namespace BrawlCrate.Studio
                 throw new InvalidDataException("Optimized tracks contain missing or duplicate identities.");
             var proposedNames = Set(tracks.Select(t => t.Bone).ToArray());
             var bindCleanup = Set(options.BindPoseCleanupBones);
-            var mandatory = new HashSet<int>(options.MandatoryFrames ?? new int[0]);
-            var fitJoins = new HashSet<int>(options.FitJoinFrames ?? new int[0]);
+            var mandatory = new HashSet<float>((options.MandatoryFrames ?? new int[0]).Select(f => (float)f));
+            var fitJoins = new HashSet<float>((options.FitJoinFrames ?? new int[0]).Select(f => (float)f));
+            var generatedFrames = new HashSet<float>(options.GeneratedPairFrames ?? new float[0]);
+            var generatedSites = (options.GeneratedPairSites ?? new NativeGeneratedPairSite[0]);
+            if(generatedFrames.Count>200000||generatedFrames.Any(frame=>!Finite(frame)||frame<0||frame>beforeSnapshot.FrameCount)||
+                generatedSites.Length>MaximumKeys||generatedSites.Any(site=>site==null||!targets.Contains(site.Bone)||site.Channel<0||site.Channel>8||!Finite(site.Frame)||site.Frame<0||site.Frame>beforeSnapshot.FrameCount))
+                throw new InvalidDataException("Generated curve provenance exceeds its exact target or native frame bounds.");
+            var generatedSiteKeys = new HashSet<(string Bone,int Channel,float Frame)>(generatedSites.Select(site=>(site.Bone,site.Channel,site.Frame)));
             if (mandatory.Any(frame => frame < 0 || frame > beforeSnapshot.FrameCount)) throw new InvalidDataException("A mandatory optimization frame lies outside native timing.");
             if (fitJoins.Any(frame => frame < 0 || frame > beforeSnapshot.FrameCount)) throw new InvalidDataException("A fitting optimization frame lies outside native timing.");
             string beforeContent = ContentKey(beforeSnapshot);
@@ -362,15 +368,21 @@ namespace BrawlCrate.Studio
                     {
                         var old = sourceEntry.KeyArrays[channel].Entries.ToArray();
                         bool fixedConstant = ExactFixedChannel(old, track.Channels[channel]);
-                        var paired = new HashSet<int>(old.GroupBy(k => k._index).Where(g => g.Count() > 1).Select(g => g.Key));
-                        var signedZero = new HashSet<int>(SmallProfile(options) ? old.Where(k => Bits(k._value) == int.MinValue || Bits(k._tangent) == int.MinValue).Select(k => k._index) : Enumerable.Empty<int>());
-                        foreach (int frame in mandatory.Concat(fitJoins).Concat(paired).Concat(signedZero).Distinct())
+                        var paired = new HashSet<float>(old.GroupBy(k => k._index).Where(g => g.Count() > 1).Select(g => g.Key));
+                        var signedZero = new HashSet<float>(old.Where(k => Bits(k._index) == int.MinValue ||
+                            SmallProfile(options) && (Bits(k._value) == int.MinValue || Bits(k._tangent) == int.MinValue)).Select(k => k._index));
+                        foreach (float frame in mandatory.Concat(fitJoins).Concat(paired).Concat(signedZero).Distinct())
                         {
                             var required = old.Where(k => k._index == frame).ToArray();
                             if (required.Length == 0) continue;
                             var actual = track.Channels[channel].Where(k => k.Frame == frame).ToArray();
+                            bool generatedReduction = SmallProfile(options) && (generatedFrames.Contains(frame) || generatedSiteKeys.Contains((track.Bone,channel,frame)))
+                                && !exactBones.Contains(track.Bone) && !protectedBones.Contains(track.Bone) && !mandatory.Contains(frame) && !fitJoins.Contains(frame)
+                                && required.Length == 2 && actual.Length < 2 && required.All(k => Bits(k._value) == Bits(required[0]._value)
+                                    && Bits(k._index) != int.MinValue && Bits(k._value) != int.MinValue && Bits(k._tangent) != int.MinValue)
+                                && (actual.Length == 0 || required.Any(k => Bits(k._value) == Bits(actual[0].Value) && Bits(k._tangent) == Bits(actual[0].Tangent)));
                             bool exactTuple = !SmallProfile(options) || mandatory.Contains(frame) || paired.Contains(frame) || signedZero.Contains(frame) || exactBones.Contains(track.Bone) || protectedBones.Contains(track.Bone);
-                            if (!fixedConstant && (required.Length != actual.Length || exactTuple && required.Where((k, i) => Bits(k._value) != Bits(actual[i].Value) || Bits(k._tangent) != Bits(actual[i].Tangent)).Any()))
+                            if (!fixedConstant && !generatedReduction && (required.Length != actual.Length || exactTuple && required.Where((k, i) => Bits(k._index) != Bits(actual[i].Frame) || Bits(k._value) != Bits(actual[i].Value) || Bits(k._tangent) != Bits(actual[i].Tangent)).Any()))
                                 throw new InvalidDataException("Optimization changed a mandatory or discontinuous native knot: " + track.Bone + " at " + frame);
                         }
                         var array = entry.KeyArrays[channel];
@@ -458,6 +470,8 @@ namespace BrawlCrate.Studio
         {
             var vertices = model.Objects.OfType<MDL0ObjectNode>().SelectMany(o => o.Vertices ?? new List<Vertex3>()).ToArray();
             var budget = options.Budget ?? new NativeAnimationOptimizationBudget();
+            options.ReferenceSamples?.Validate(model, before);
+            int minimumEvaluations = options.ReferenceSamples == null ? 2 : 1;
             var sampleTimes = new SortedSet<double> { 0, Math.Max(0, before.FrameCount - 1) };
             // Ordinary non-loop preview includes the final held display interval
             // up to (but excluding) N. Core's N-.0001 witness must be verified,
@@ -465,7 +479,7 @@ namespace BrawlCrate.Studio
             // separately retained explicit closing sample.
             double end = before.Loop ? before.FrameCount : Math.Max(0, before.FrameCount - .0001);
             sampleTimes.Add(end);
-            budget.Require(checked((long)Math.Ceiling(end) * 7 + 1), bones.Length, vertices.Length, "mandatory base-probe estimate");
+            budget.Require(checked((long)Math.Ceiling(end) * 7 + 1), bones.Length, vertices.Length, "mandatory base-probe estimate", minimumEvaluations);
             // Integer and quarter frames are supplemented by deterministic held-out
             // fractions. Both sides of native duplicate knots are sampled separately.
             for (int frame = 0; frame < end; frame++)
@@ -493,7 +507,7 @@ namespace BrawlCrate.Studio
                 }
                 previousTime = time;
             }
-            budget.Require(minimumWitnesses, bones.Length, vertices.Length, "complete base probes and mandatory adaptive-midpoint estimate");
+            budget.Require(minimumWitnesses, bones.Length, vertices.Length, "complete base probes and mandatory adaptive-midpoint estimate", minimumEvaluations);
             var exact = Set(options.ExactBones); var protectedBones = Set(options.ProtectedBones);
             double length = options.LengthScale;
             double localLimit = LocalBound(options), worldLimit = WorldBound(options);
@@ -537,30 +551,37 @@ namespace BrawlCrate.Studio
 
             internal ErrorSample Sample(double time)
             {
-                Token.ThrowIfCancellationRequested(); Budget.Consume(Bones.Length, Vertices.Length); Result.Samples++;
-                Result.BudgetSamples = Budget.Samples; Result.BudgetBoneVisits = Budget.BoneVisits; Result.BudgetVertexVisits = Budget.VertexVisits;
+                Token.ThrowIfCancellationRequested();
                 var sample = new ErrorSample { Time = time, Local = new double[Bones.Length * 9], Rotation = new double[Bones.Length * 9],
                     World = new double[Bones.Length * 12], Skin = new double[Vertices.Length * 3] };
-                Model.ApplyCHR(Before, (float)time + 1);
-                for (int bone = 0; bone < Bones.Length; bone++)
+                var arrays = new[] { sample.Local, sample.Rotation, sample.World, sample.Skin };
+                bool cached = Options.ReferenceSamples?.TryRead(time, arrays) == true;
+                Budget.Consume(Bones.Length, Vertices.Length, cached); Result.Samples++;
+                Result.BudgetSamples = Budget.Samples; Result.BudgetPoseEvaluations = Budget.PoseEvaluations; Result.BudgetBoneVisits = Budget.BoneVisits; Result.BudgetVertexVisits = Budget.VertexVisits;
+                if (!cached)
                 {
-                    var state = Bones[bone].FrameState;
-                    for (int channel = 0; channel < 9; channel++) sample.Local[bone * 9 + channel] = state[channel];
-                    var rotation = Matrix.TransformMatrix(new Vector3(1), state.Rotate, new Vector3());
-                    for (int column = 0; column < 3; column++) for (int row = 0; row < 3; row++)
-                        sample.Rotation[bone * 9 + column * 3 + row] = rotation[column * 4 + row];
-                    for (int column = 0; column < 4; column++) for (int row = 0; row < 3; row++)
-                        sample.World[bone * 12 + column * 3 + row] = Bones[bone]._frameMatrix[column * 4 + row];
+                    Model.ApplyCHR(Before, (float)time + 1);
+                    for (int bone = 0; bone < Bones.Length; bone++)
+                    {
+                        var state = Bones[bone].FrameState;
+                        for (int channel = 0; channel < 9; channel++) sample.Local[bone * 9 + channel] = state[channel];
+                        var rotation = Matrix.TransformMatrix(new Vector3(1), state.Rotate, new Vector3());
+                        for (int column = 0; column < 3; column++) for (int row = 0; row < 3; row++)
+                            sample.Rotation[bone * 9 + column * 3 + row] = rotation[column * 4 + row];
+                        for (int column = 0; column < 4; column++) for (int row = 0; row < 3; row++)
+                            sample.World[bone * 12 + column * 3 + row] = Bones[bone]._frameMatrix[column * 4 + row];
+                    }
+                    for (int vertex = 0; vertex < Vertices.Length; vertex++) Store(sample.Skin, vertex * 3, Vertices[vertex].WeightedPosition);
+                    Options.ReferenceSamples?.Retain(time, arrays);
                 }
-                for (int vertex = 0; vertex < Vertices.Length; vertex++) Store(sample.Skin, vertex * 3, Vertices[vertex].WeightedPosition);
                 Model.ApplyCHR(After, (float)time + 1);
                 for (int bone = 0; bone < Bones.Length; bone++)
                 {
                     string name = Bones[bone].Name; var state = Bones[bone].FrameState;
                     bool exactBone = SmallProfile(Options) && (Exact.Contains(name) || Protected.Contains(name));
-                    double localBound = exactBone ? StrictLocalLimit : LocalLimit, worldBound = exactBone ? StrictWorldLimit : WorldLimit;
-                    double rotationBound = exactBone ? RotationLimit : RotationValueLimit, scaleBound = exactBone ? ScaleLimit : ScaleValueLimit;
-                    double rotationSpeed = exactBone ? RotationDerivativeLimit : RotationSpeedLimit;
+                    double localBound = exactBone ? Math.Min(StrictLocalLimit,LocalLimit) : LocalLimit, worldBound = exactBone ? Math.Min(StrictWorldLimit,WorldLimit) : WorldLimit;
+                    double rotationBound = exactBone ? Math.Min(RotationLimit,RotationValueLimit) : RotationValueLimit, scaleBound = exactBone ? Math.Min(ScaleLimit,ScaleValueLimit) : ScaleValueLimit;
+                    double rotationSpeed = exactBone ? Math.Min(RotationDerivativeLimit,RotationSpeedLimit) : RotationSpeedLimit;
                     double translationDerivativeSquared = 0;
                     for (int channel = 0; channel < 9; channel++)
                     {
@@ -575,7 +596,7 @@ namespace BrawlCrate.Studio
                         var afterCurve = AfterCurves.TryGetValue(name, out var afterChannels) ? afterChannels[channel] : null;
                         double derivativeDifference = (afterCurve?.Derivative(time) ?? 0) - (beforeCurve?.Derivative(time) ?? 0);
                         double derivativeError = Math.Abs(derivativeDifference);
-                        double derivativeLimit = channel < 3 ? scaleBound : channel < 6 ? rotationSpeed : localBound;
+                        double derivativeLimit = channel < 3 ? (exactBone ? Math.Min(ScaleLimit,Options.ExportSettings?.ScaleDerivative ?? scaleBound) : Options.ExportSettings?.ScaleDerivative ?? scaleBound) : channel < 6 ? rotationSpeed : (exactBone ? Math.Min(StrictLocalLimit,Options.ExportSettings?.TranslationDerivative ?? localBound) : Options.ExportSettings?.TranslationDerivative ?? localBound);
                         if (channel < 3) Result.MaximumScaleDerivativeError = Math.Max(Result.MaximumScaleDerivativeError, derivativeError);
                         else if (channel < 6) Result.MaximumEulerDerivativeError = Math.Max(Result.MaximumEulerDerivativeError, derivativeError);
                         else Result.MaximumTranslationDerivativeError = Math.Max(Result.MaximumTranslationDerivativeError, derivativeError);
@@ -587,7 +608,7 @@ namespace BrawlCrate.Studio
                     Observe(sample, translationError, localBound, name, "local translation vector");
                     double translationDerivativeError = Math.Sqrt(translationDerivativeSquared);
                     Result.MaximumTranslationDerivativeError = Math.Max(Result.MaximumTranslationDerivativeError, translationDerivativeError);
-                    Observe(sample, translationDerivativeError, localBound, name, "native translation vector derivative");
+                    Observe(sample, translationDerivativeError, exactBone ? Math.Min(StrictLocalLimit,Options.ExportSettings?.TranslationDerivative ?? localBound) : Options.ExportSettings?.TranslationDerivative ?? localBound, name, "native translation vector derivative");
                     var rotation = Matrix.TransformMatrix(new Vector3(1), state.Rotate, new Vector3()); double squared = 0;
                     for (int column = 0; column < 3; column++) for (int row = 0; row < 3; row++)
                     {
@@ -599,6 +620,23 @@ namespace BrawlCrate.Studio
                     for (int column = 0; column < 4; column++)
                     {
                         double errorSquared = 0;
+                        if(column < 3 && Options.ExportSettings != null)
+                        {
+                            int offset=bone*12+column*3;
+                            double ax=sample.World[offset],ay=sample.World[offset+1],az=sample.World[offset+2];
+                            double bx=Bones[bone]._frameMatrix[column*4],by=Bones[bone]._frameMatrix[column*4+1],bz=Bones[bone]._frameMatrix[column*4+2];
+                            double normA=Math.Sqrt(ax*ax+ay*ay+az*az),normB=Math.Sqrt(bx*bx+by*by+bz*bz);
+                            // Compare native basis directions without decomposing
+                            // reflection, shear or nonuniform scale. Singular axes
+                            // retain the independent complete matrix-distance gate.
+                            if(normA>0 && normB>0)
+                            {
+                                double crossX=ay*bz-az*by,crossY=az*bx-ax*bz,crossZ=ax*by-ay*bx;
+                                double angleWorld=Math.Atan2(Math.Sqrt(crossX*crossX+crossY*crossY+crossZ*crossZ),ax*bx+ay*by+az*bz)*180/Math.PI;
+                                Result.MaximumWorldAxisAngleError=Math.Max(Result.MaximumWorldAxisAngleError,angleWorld);
+                                Observe(sample,angleWorld,rotationBound,name,"native world basis orientation");
+                            }
+                        }
                         for (int row = 0; row < 3; row++)
                         {
                             int index = bone * 12 + column * 3 + row; double difference = Bones[bone]._frameMatrix[column * 4 + row] - sample.World[index];
@@ -652,8 +690,8 @@ namespace BrawlCrate.Studio
                 for (int bone = 0; bone < Bones.Length; bone++)
                 {
                     bool exactBone = SmallProfile(Options) && (Exact.Contains(Bones[bone].Name) || Protected.Contains(Bones[bone].Name));
-                    double worldBound = exactBone ? StrictWorldLimit : WorldLimit;
-                    double rotationSpeed = exactBone ? RotationDerivativeLimit : RotationSpeedLimit;
+                    double worldBound = exactBone ? Math.Min(StrictWorldLimit,WorldLimit) : WorldLimit;
+                    double rotationSpeed = exactBone ? Math.Min(RotationDerivativeLimit,RotationSpeedLimit) : RotationSpeedLimit;
                     for (int column = 0; column < 4; column++)
                     {
                         double error = DifferenceNorm(left.World, right.World, bone * 12 + column * 3) / span;
@@ -700,15 +738,16 @@ namespace BrawlCrate.Studio
 
         private static string BuildReport(NativeAnimationOptimizationResult result, NativeAnimationOptimizationOptions options)
         {
-            return (options.ExactOnly ? "Exact curve reduction; native float rounding checked." : SmallProfile(options) ? "Small file curve reduction; explicitly selected bounded native profile checked." : "High quality curve reduction; frozen native error bounds checked.") +
-                (SmallProfile(options) ? "\r\nSmall file ceilings: raw Euler/orientation 0.1 degrees, local translation 0.002 native units, local scale 0.0001; Euler derivative 0.1 degrees/frame, translation 0.002/frame, scale 0.0001/frame; cumulative native bone/basis/skin and error-chord derivative 0.001 times target bind diagonal L. Fit join times remain present while numeric values may change within these limits; explicit mandatory knots, pairs, signed zero, protected pins/contacts and source-owned controls retain their exact policies." : "") +
+            return (options.ExportSettings==null?"":"Explicit export limits: "+options.ExportSettings.StableKey+". Fitting joins remain exact.\r\n") + (options.ExactOnly ? "Exact curve reduction; native float rounding checked." : SmallProfile(options) ? "Small file curve reduction; explicitly selected bounded native profile checked." : "High quality curve reduction; frozen native error bounds checked.") +
+                (SmallProfile(options) && options.ExportSettings==null ? "\r\nSmall file ceilings: raw Euler/orientation 0.1 degrees, local translation 0.002 native units, local scale 0.0001; Euler derivative 0.1 degrees/frame, translation 0.002/frame, scale 0.0001/frame; cumulative native bone/basis/skin and error-chord derivative 0.001 times target bind diagonal L. Fit join times remain present while numeric values may change within these limits; explicit mandatory knots, pairs, signed zero, protected pins/contacts and source-owned controls retain their exact policies." : "") +
                 "\r\nCHR0: " + result.BeforeBytes + " → " + result.AfterBytes + " bytes; " + result.BeforeKeys + " → " + result.AfterKeys + " keys; " + result.BeforeTracks + " → " + result.AfterTracks + " tracks." +
                 "\r\nNative resource block: " + result.BeforeResourceBytes + " → " + result.CandidateResourceBytes + " bytes, verified against each exported CHR0 header size; external/shared string tables excluded." +
                 "\r\nIndependent I12 decode preserves every candidate key, tangent, semantic flag, entry order and metadata field." +
                 "\r\n" + result.Samples + " native samples: integer/quarter/withheld fractions, loop endpoints, mandatory knots and bounded adaptive midpoints; all native bones and skinned vertices." +
-                "\r\nAggregate native work: " + result.BudgetSamples + "/" + NativeAnimationOptimizationBudget.MaximumSamples + " logical witnesses (" + (result.BudgetSamples * 2) + " baseline/candidate pose evaluations), " +
+                "\r\nAggregate native work: " + result.BudgetSamples + "/" + NativeAnimationOptimizationBudget.MaximumSamples + " logical witnesses (" + result.BudgetPoseEvaluations + " actual baseline/candidate pose evaluations), " +
                     result.BudgetBoneVisits + "/" + NativeAnimationOptimizationBudget.MaximumBoneVisits + " bone visits, " + result.BudgetVertexVisits + "/" + NativeAnimationOptimizationBudget.MaximumVertexVisits + " skin-vertex visits." +
                 "\r\nMaximum errors: Euler " + G(result.MaximumEulerError) + "°, orientation " + G(result.MaximumOrientationError) + "°, scale " + G(result.MaximumScaleError) + ", local translation " + G(result.MaximumLocalTranslationError) + ", world/basis " + G(result.MaximumWorldBoneError) + ", skin " + G(result.MaximumSkinError) + "." +
+                "\r\nNative world basis maximum angular difference " + G(result.MaximumWorldAxisAngleError) + " degrees (singular axes use the full matrix gate)." +
                 "\r\nDerivative error/frame: Euler " + G(result.MaximumEulerDerivativeError) + "°, orientation " + G(result.MaximumOrientationDerivativeError) + "°, scale " + G(result.MaximumScaleDerivativeError) + ", translation " + G(result.MaximumTranslationDerivativeError) + ", world " + G(result.MaximumWorldDerivativeError) + ", skin " + G(result.MaximumSkinDerivativeError) + "." +
                 "\r\nScalar derivatives use decoded native Hermite coefficients. Cumulative orientation/world/skin derivative chords use smooth intervals at least 1/64 native frame apart; near-knot value witnesses remain included. Sampled cumulative geometry/derivatives are not a continuous-time certificate." +
                 (options.OriginalStoredBytes.HasValue ? "\r\nRecorded clean standalone file size: " + options.OriginalStoredBytes.Value + " bytes; candidate cannot exceed either this size or the current precise export." : "") +
@@ -723,14 +762,14 @@ namespace BrawlCrate.Studio
             if (track.Channels == null || track.Channels.Length != 9 || track.Channels.Any(c => c == null)) throw new InvalidDataException("Native optimization needs all nine channels for " + track.Bone);
             foreach (var channel in track.Channels)
             {
-                int previous = -1, duplicates = 0;
+                float previous = -1; int duplicates = 0;
                 foreach (var key in channel)
                 {
-                    if (key == null || key.Frame < 0 || key.Frame > (loop ? frames : frames - 1) || key.Frame < previous || !Finite(key.Value) || !Finite(key.Tangent)) throw new InvalidDataException("Invalid optimized native key at " + track.Bone);
+                    if (key == null || !Finite(key.Frame) || key.Frame < 0 || key.Frame > (loop ? frames : frames - 1) || key.Frame < previous || !Finite(key.Value) || !Finite(key.Tangent)) throw new InvalidDataException("Invalid optimized native key at " + track.Bone);
                     duplicates = key.Frame == previous ? duplicates + 1 : 1;
                     if (duplicates > 2) throw new InvalidDataException("Native channels permit at most two sides at a knot."); previous = key.Frame;
                 }
-                if (channel.Length == 1 && (channel[0].Frame != 0 || Bits(channel[0].Tangent) != Bits(0f))) throw new InvalidDataException("A fixed native channel must use frame zero and zero tangent.");
+                // Noncanonical singletons use the precise I12 stream; fixed slots are reserved for frame-zero, positive-zero-slope keys.
             }
         }
 
@@ -770,7 +809,7 @@ namespace BrawlCrate.Studio
 
         private static bool SameChannels(CHR0EntryNode source, ControlKey[][] channels)
         {
-            return Enumerable.Range(0, 9).All(c => { var original = source.KeyArrays[c].Entries.ToArray(); return original.Length == channels[c].Length && original.Where((k, i) => k._index != channels[c][i].Frame || Bits(k._value) != Bits(channels[c][i].Value) || Bits(k._tangent) != Bits(channels[c][i].Tangent)).Any() == false; });
+            return Enumerable.Range(0, 9).All(c => { var original = source.KeyArrays[c].Entries.ToArray(); return original.Length == channels[c].Length && original.Where((k, i) => Bits(k._index) != Bits(channels[c][i].Frame) || Bits(k._value) != Bits(channels[c][i].Value) || Bits(k._tangent) != Bits(channels[c][i].Tangent)).Any() == false; });
         }
         private static bool[] Flags(CHR0EntryNode entry) => new[] { entry.UseModelScale, entry.UseModelRotate, entry.UseModelTranslate, entry.ScaleCompensateApply, entry.ScaleCompensateParent, entry.ClassicScaleOff };
         private static void WriteFlags(CHR0EntryNode source, CHR0EntryNode target)

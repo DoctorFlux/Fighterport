@@ -1,5 +1,24 @@
 # Fighterport
 
+28 October 2026 **preview.54-native-chr0-export-optimization** has bounded source
+acceptance. Retargeting, fitting, contacts and native edits keep their full-quality
+editable master; ordinary Save stays exact. Explicit Exact / Error-bounded CHR0
+copies share frozen dependencies, immutable encoding plans, actual-byte accounting,
+fresh decode and cumulative native checks. Unknown constraints/runtime semantics
+retain Exact/reference. Source-owned motion and all skin coefficients remain.
+Final native19 safety/ownership checks pass 227 assertions with 13 inspected PNGs;
+the native15 numerical/workflow evidence, 32-file byte audit and 632 inspected GIF
+frames remain separately identified through exact backend/unchanged-method proof.
+See [acceptance](docs/NATIVE_CHR0_EXPORT_OPTIMIZATION_ACCEPTANCE_2026-10-28.md) and
+[benchmark](docs/NATIVE_CHR0_OPTIMIZATION_BENCHMARK_2026-10-28.md). The launcher now
+selects `Fighterport-fractional54/export-boundary19/native`. ONE G1/M2 remains
+incomplete; broader contacts, Melee, external-editor/plugin compatibility,
+physical input/DPI, human usability and game acceptance stay unverified. Publish
+source only to public DoctorFlux/Fighterport/main with DoctorFlux attribution.
+
+Earlier checkpoints below are historical; they do not restore automatic lossy
+authoring optimization or select an older launcher.
+
 27 October 2026 preview.53-dense-storage-source-orientation has bounded source
 acceptance: **4,564 application checks**, 1,303 separate final renderer assertions,
 23 inspected native UI PNGs, six inspected GIFs/250 decoded frames and a complete

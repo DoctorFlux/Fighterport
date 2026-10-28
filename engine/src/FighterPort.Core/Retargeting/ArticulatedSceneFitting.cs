@@ -82,7 +82,7 @@ public sealed class ArticulatedSceneFitting
         // are not ancestors of a limb. Let those actual native joints and their
         // trusted paths participate too; anatomy names do not select DOFs.
         var chainRoots=rig.Binding.Chains.Where(c=>c.Reviewed&&c.Bones.All(trusted.Contains)).Select(c=>c.Bones[0]).ToArray();
-        var weighted=rig.Scene.Meshes.SelectMany(m=>m.Vertices).SelectMany(v=>Enumerable.Range(0,4).Where(s=>v.Weights[s]>0).Select(s=>(int)v.Joints[s])).ToHashSet();
+        var weighted=rig.Scene.Meshes.SelectMany(m=>m.Vertices).SelectMany(v=>Enumerable.Range(0,v.InfluenceCount).Where(s=>v.WeightAt(s)>0).Select(s=>(int)v.JointAt(s))).ToHashSet();
         // Preserve the existing missing-articulation capability boundary:
         // weighted body roles alone do not establish a reviewed complete rig.
         if(selected.Count>0)foreach(int bone in trusted.Where(b=>weighted.Contains(b)&&PoseGeometry.Ancestor(rig.Scene,body,b)&&!chainRoots.Any(r=>PoseGeometry.Ancestor(rig.Scene,r,b))))

@@ -76,7 +76,7 @@ internal static partial class Program
                 using (var result = NativeAnimationOptimization.Prepare(model, baseline, proposed, fit, stage))
                 {
                     var output = (CHR0EntryNode)result.Candidate.FindChild(leaf.Name, false);
-                    Check(output.KeyArrays[3].Entries.Select(k => k._index).SequenceEqual(new[] { 0, 4 }) && result.MaximumEulerError > .01 && result.MaximumEulerError <= .1,
+                    Check(output.KeyArrays[3].Entries.Select(k => k._index).SequenceEqual(new[] { 0f, 4f }) && result.MaximumEulerError > .01 && result.MaximumEulerError <= .1,
                         "Small file fit joins retain native key times/counts while allowing only explicitly bounded numeric changes");
                 }
                 var explicitMandatory = Options(true); explicitMandatory.MandatoryFrames = new[] { 0, 4 };
@@ -179,9 +179,12 @@ internal static partial class Program
                 "Small file storage can propose a genuinely smaller indexed encoding that the unchanged stricter mode rejects");
             var original = entry.KeyArrays[3].Entries.ToArray(); var values = i4.Curves[0].Values;
             int changed = Enumerable.Range(0, original.Length).First(i => ReplayFloatBits(original[i]._value) != ReplayFloatBits(values[i]));
-            int frame = original[changed]._index;
+            // This independently authored fixture uses integral 0,3,...,45
+            // schedule; retain the mandatory-frame API's integral test input.
+            int frame = changed * 3;
+            Check(original[changed]._index == frame, "Small file fixture retains its independently authored integral timing schedule");
             var fit = NativeCompactAnimationStorage.CreateAlternatives(entry, 1, false, false, new int[0], length, true, new[] { frame });
-            Check(fit.Any(p => p.Format == AnimDataFormat.I4) && fit.All(p => p.Curves[0].Frames.SequenceEqual(original.Select(k => k._index))),
+            Check(fit.Any(p => p.Format == AnimDataFormat.I4) && fit.All(p => p.Curves[0].Times.SequenceEqual(original.Select(k => k._index))),
                 "Small file indexed proposals retain all authored fit times while permitting bounded coefficient changes");
             var mandatory = NativeCompactAnimationStorage.CreateAlternatives(entry, 1, false, false, new[] { frame }, length, true, new int[0]);
             Check(mandatory.All(p => ReplayFloatBits(p.Curves[0].Values[changed]) == ReplayFloatBits(original[changed]._value) &&

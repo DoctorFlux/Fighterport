@@ -231,7 +231,7 @@ public sealed class SceneBodyFitting
         var belowBody=Enumerable.Range(0,target.Scene.Bones.Length).Select(bone=>PoseGeometry.Ancestor(target.Scene,targetBody,bone)).ToArray();
         clearance=target.SkinPoints.Where(p=>p.Mesh>=0&&DefaultVisible(target.Scene.Meshes[p.Mesh])).Select(p=>
         {
-            float alpha=0;for(int slot=0;slot<4;slot++)if(p.Weights[slot]>0&&belowBody[(int)p.Joints[slot]])alpha+=p.Weights[slot];
+            float alpha=0;for(int slot=0;slot<p.InfluenceCount;slot++)if(p.WeightAt(slot)>0&&belowBody[(int)p.JointAt(slot)])alpha+=p.WeightAt(slot);
             return new ClearanceSample(p,alpha);
         }).ToArray();
         // Exact graph identity alone says nothing about differing body volumes.
@@ -247,8 +247,8 @@ public sealed class SceneBodyFitting
                 for(int i=0;i<sourceMesh.Vertices.Length;i++)
                 {
                     if((i&255)==0)request.Cancellation.ThrowIfCancellationRequested();var x=sourceMesh.Vertices[i];var y=targetMesh.Vertices[i];
-                    if(x.Position!=y.Position||x.Weights!=y.Weights)return false;
-                    for(int slot=0;slot<4;slot++)if(x.Weights[slot]>0&&corresponding[(int)x.Joints[slot]]!=(int)y.Joints[slot])return false;
+                    if(x.Position!=y.Position||x.InfluenceCount!=y.InfluenceCount||Enumerable.Range(0,x.InfluenceCount).Any(slot=>BitConverter.SingleToInt32Bits(x.WeightAt(slot))!=BitConverter.SingleToInt32Bits(y.WeightAt(slot))))return false;
+                    for(int slot=0;slot<x.InfluenceCount;slot++)if(x.WeightAt(slot)>0&&corresponding[(int)x.JointAt(slot)]!=(int)y.JointAt(slot))return false;
                 }
             }
             return true;

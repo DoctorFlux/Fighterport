@@ -129,6 +129,22 @@ internal static partial class Program
         using (var source = CompactFixture(12, 3, new[] { 0, 4, 4, 8 }, i => i * .125f, i => .1234567f))
             Check(NativeCompactAnimationStorage.CreateAlternatives((CHR0EntryNode)source.Children[0], 1, false, false, new int[0], 1).Length == 0,
                 "Compact storage: high quality cannot quantize either side of an authored paired key");
+        using (var source = CompactFixture(20, 3, new[] { 0, 4, 4, 8 }, i => new[] { 1.123f, 2.234f, 2.234f, 3.456f }[i], i => i < 2 ? .1234567f : .2234567f))
+        {
+            var entry = (CHR0EntryNode)source.Children[0];
+            var choices = NativeCompactAnimationStorage.CreateAlternatives(entry, 1, false, false, new int[0], 1, true, new int[0]);
+            Check(choices.Length > 0 && choices.All(p => p.Curves[0].Frames.SequenceEqual(new[] { 0, 4, 4, 8 })),
+                "Bounded compact storage retains both continuous body sides while offering smaller decoded tangent coefficients");
+            Check(NativeCompactAnimationStorage.CreateAlternatives(entry, 1, true, true, new int[0], 1, true, new int[0]).Length == 0 &&
+                NativeCompactAnimationStorage.CreateAlternatives(entry, 1, false, false, new int[0], 1).Length == 0,
+                "Exact roots and the strict quality profile retain the original continuous paired tangent bits");
+            NativeCompactAnimationStorage.ApplyGroup(source, choices[0]);
+            string path = Path.Combine(stage, "bounded-continuous-pair.chr0"); source.ExportChecked(path);
+            using (var decoded = NodeFactory.FromFile(null, path) as CHR0Node)
+                Check(((CHR0EntryNode)decoded.Children[0]).KeyArrays[3].Entries.Count(k => k._index == 4) == 2 &&
+                    ((CHR0EntryNode)decoded.Children[0]).KeyArrays[3].Entries.Where(k => k._index == 4).Select(k => ReplayFloatBits(k._value)).Distinct().Count() == 1,
+                    "Independent compact decode retains continuous paired values and both ordered tangent sides");
+        }
         using (var source = CompactFixture(20, 3, Enumerable.Range(0, 16).ToArray(), i => i * 48f, i => 48f))
         {
             string expected = NativeAnimationOptimization.ContentKey(source);

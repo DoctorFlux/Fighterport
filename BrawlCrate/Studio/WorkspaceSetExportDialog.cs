@@ -12,6 +12,7 @@ namespace BrawlCrate.Studio
         private readonly TextBox _path;
         private readonly Label _status;
         private readonly Button _accept, _cancel, _browse;
+        private readonly WorkspaceExportOptimizationOptions _optimization;
         private bool _running;
         private CancellationTokenSource _cancellation;
         internal Action<string> ValidateDestination;
@@ -21,11 +22,11 @@ namespace BrawlCrate.Studio
         {
             Name = "workspaceSetExportDialog"; Text = "Export reviewed animation set";
             StartPosition = FormStartPosition.CenterParent; ShowInTaskbar = false; MinimizeBox = false; MaximizeBox = false;
-            ClientSize = new Size(780, 540); FormBorderStyle = FormBorderStyle.FixedDialog;
-            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(12), ColumnCount = 1, RowCount = 6 };
+            ClientSize = new Size(780, 630); FormBorderStyle = FormBorderStyle.FixedDialog;
+            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(12), ColumnCount = 1, RowCount = 7 };
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             layout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
+            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); layout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 60)); layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
             var heading = new Label { Name = "setExportSummary", AutoSize = true, Dock = DockStyle.Fill, UseMnemonic = false,
                 Text = "Project: " + project + Environment.NewLine + "Target: " + target + Environment.NewLine +
@@ -36,23 +37,25 @@ namespace BrawlCrate.Studio
                     Environment.NewLine + Environment.NewLine + string.Join(Environment.NewLine + Environment.NewLine, clips), TabIndex = 0,
                 AccessibleName = "Frozen clips, exact identities, frame counts and proposed filenames" };
             layout.Controls.Add(list, 0, 1);
-            layout.Controls.Add(new Label { AutoSize = true, Text = "New output folder", Margin = new Padding(0, 10, 0, 6) }, 0, 2);
-            var picker = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Margin = Padding.Empty };
+            _optimization = new WorkspaceExportOptimizationOptions(new NativeExportOptimizationPreferences().Read()) { TabIndex = 1 };
+            layout.Controls.Add(_optimization, 0, 2);
+            layout.Controls.Add(new Label { AutoSize = true, Text = "New output folder", Margin = new Padding(0, 10, 0, 6) }, 0, 3);
+            var picker = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Margin = Padding.Empty, TabIndex = 2 };
             picker.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); picker.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120));
             picker.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
             _path = new TextBox { Name = "setExportPath", Dock = DockStyle.Fill, TabIndex = 1, AccessibleName = "New, nonexistent output folder" };
             _browse = new WorkspaceButton { Name = "setExportBrowse", Text = "Browse parent...", Dock = DockStyle.Fill, TabIndex = 2,
                 AccessibleDescription = "Choose an existing parent directory, then name the new set folder." };
             _browse.Click += (s, e) => BrowseParent(); _path.TextChanged += (s, e) => ValidatePath();
-            picker.Controls.Add(_path, 0, 0); picker.Controls.Add(_browse, 1, 0); layout.Controls.Add(picker, 0, 3);
+            picker.Controls.Add(_path, 0, 0); picker.Controls.Add(_browse, 1, 0); layout.Controls.Add(picker, 0, 4);
             _status = new Label { Name = "setExportStatus", Dock = DockStyle.Fill, UseMnemonic = false, AccessibleName = "Set export validation and progress" };
-            layout.Controls.Add(_status, 0, 4);
-            var actions = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft, WrapContents = false, Margin = Padding.Empty };
+            layout.Controls.Add(_status, 0, 5);
+            var actions = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft, WrapContents = false, Margin = Padding.Empty, TabIndex = 3 };
             _cancel = new WorkspaceButton { Name = "setExportCancel", Text = "Cancel", AutoSize = true, TabIndex = 4 };
             _accept = new WorkspaceButton { Name = "setExportAccept", Text = "Export set", AutoSize = true, Enabled = false, TabIndex = 3 };
             _cancel.Click += (s, e) => { if (_running) RequestCancel(); else DialogResult = DialogResult.Cancel; };
             _accept.Click += async (s, e) => await ExportSet();
-            actions.Controls.Add(_cancel); actions.Controls.Add(_accept); layout.Controls.Add(actions, 0, 5); Controls.Add(layout);
+            actions.Controls.Add(_cancel); actions.Controls.Add(_accept); layout.Controls.Add(actions, 0, 6); Controls.Add(layout);
             AcceptButton = _accept; CancelButton = _cancel;
             FormClosing += (s, e) => { if (_running) { e.Cancel = true; RequestCancel(); } };
             DarkTheme.Apply(this); WorkspaceAppearance.SizeDialog(this);
@@ -60,6 +63,7 @@ namespace BrawlCrate.Studio
             Shown += (s, e) => { ValidatePath(); _path.Focus(); };
             AccessibleDescription = "Review the frozen animation list and choose a new folder. Tab navigates controls; Escape cancels. Existing folders are preserved.";
         }
+        internal NativeExportOptimizationSettings ReadOptimizationSettings() => _optimization.Read();
         public new DialogResult ShowDialog(IWin32Window owner)
         {
             Action restore = WorkspaceDialogFocus.Capture(owner);
@@ -97,7 +101,7 @@ namespace BrawlCrate.Studio
         {
             if (_running || !ValidatePath()) return;
             string destination = Destination;
-            _running = true; _path.Enabled = _browse.Enabled = _accept.Enabled = false;
+            _running = true; _path.Enabled = _browse.Enabled = _accept.Enabled = _optimization.Enabled = false;
             _cancellation = new CancellationTokenSource();
             var cancellation = _cancellation;
             try
@@ -114,7 +118,7 @@ namespace BrawlCrate.Studio
             finally
             {
                 _running = false; _cancellation.Dispose(); _cancellation = null;
-                _cancel.Enabled = _path.Enabled = _browse.Enabled = true;
+                _cancel.Enabled = _path.Enabled = _browse.Enabled = _optimization.Enabled = true;
                 _status.AccessibleDescription = _status.Text;
                 // On error, keep the frozen operation reviewable and let the
                 // caller reopen if its content dependencies became stale.

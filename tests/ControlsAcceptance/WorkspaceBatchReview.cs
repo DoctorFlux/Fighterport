@@ -150,9 +150,17 @@ internal static partial class Program
             using(var source=library.Open(asset.Retarget.Library.ClipId))
             using(var fit=asset.Retarget.Timing.Resample(source.Animation))
             {
-                string fitPath=Path.Combine(output,"reference-fit-"+asset.Id+".chr0"),resultPath=Path.Combine(output,"reference-result-"+asset.Id+".chr0");fit.ExportChecked(fitPath);
+                string fitPath=Path.Combine(output,"reference-fit-"+asset.Id+".chr0"),resultPath=Path.Combine(output,"reference-result-"+asset.Id+".chr0");
+                // Match the actual worker's immutable precise source snapshot.
+                // A bare legacy Export can alter the resampled source curves
+                // before this independent solver replay even begins.
+                using(var frozenFit=NativeAnimationOptimization.CopySource(fit))frozenFit.ExportChecked(fitPath);
                 using(var decodedFit=NodeFactory.FromFile(null,fitPath) as CHR0Node)
-                using(var expected=BrawlRetargeter.Bake(source.Model,(MDL0Node)target,decodedFit,groundMode:form.FighterProject.GroundMode))expected.Animation.ExportChecked(resultPath);
+                {
+                    Check(decodedFit!=null&&NativeAnimationOptimization.SourceContentKey(decodedFit)==NativeAnimationOptimization.SourceContentKey(fit),
+                        "Independent batch replay freezes every original resampled source coefficient exactly before the unchanged Next solver");
+                    using(var expected=BrawlRetargeter.Bake(source.Model,(MDL0Node)target,decodedFit,groundMode:form.FighterProject.GroundMode))expected.Animation.ExportChecked(resultPath);
+                }
                 using(var expected=NodeFactory.FromFile(null,resultPath) as CHR0Node)
                 {
                     string difference=NativeDifference(expected,(CHR0Node)Call(form,"FighterRoot",asset));File.WriteAllText(resultPath+".comparison.txt",difference??"Exact original Next native match");

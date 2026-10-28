@@ -70,6 +70,7 @@ public sealed unsafe partial class SkinnedViewport : OpenGlControlBase
     readonly Dictionary<string,uint> textures=[];
     readonly List<(Mesh Mesh,int Offset,int Count)> ranges=[];
     Scene? uploadedScene;
+    Vertex[] uploadedVertices=[];bool completeSkin;
     NativeMaterialPipeline? nativeMaterials;
     JointDisplay? jointDisplay;
     MorphVertexStream? morphStream;
@@ -210,9 +211,10 @@ public sealed unsafe partial class SkinnedViewport : OpenGlControlBase
             var pose=ReferencePose||!SkeletalAnimationVisible?AnimationService.Evaluate(Document.Project.Scene,null,0):Document.Evaluate();currentPose=pose;
             // Dynamic line data and mesh share a buffer; reupload only prepared geometry, never decode here.
             if(FloorVisible)DrawGrid();CheckGraphics("grid");if(pose.World.Length==0){PresentedFrames++;RenderError=null;return;}UploadMesh(Document.Project.Scene);CheckGraphics("mesh upload");
-            morphStream!.Apply(ReferencePose?null:Document.EvaluateMorph(pose),vbo);
+            var morph=ReferencePose?null:Document.EvaluateMorph(pose);
+            if(completeSkin)morphStream!.ApplyCompleteSkin(uploadedVertices,pose,morph);else morphStream!.Apply(morph,vbo);
             MorphUploads=morphStream.Uploads;MorphBytes=morphStream.Bytes;DisplayedMorphBindings=morphStream.Bindings;
-            g.Uniform1(g.GetUniformLocation(program,"skinned"),1);g.Uniform1(g.GetUniformLocation(program,"lit"),1);
+            g.Uniform1(g.GetUniformLocation(program,"skinned"),completeSkin?0:1);g.Uniform1(g.GetUniformLocation(program,"lit"),1);
             g.Uniform3(g.GetUniformLocation(program,"offset"),0f,0f,0f);
             fixed(Matrix4x4* p=pose.Skin) g.UniformMatrix4(g.GetUniformLocation(program,"bones[0]"),(uint)pose.Skin.Length,false,(float*)p);
             CheckGraphics("skin uniforms");
@@ -225,6 +227,7 @@ public sealed unsafe partial class SkinnedViewport : OpenGlControlBase
                 var reference=Document.Project.Clips[(Document.SelectedClip+1)%Document.Project.Clips.Length];
                 double referenceFrame=Document.Clock.Frame/Document.Clip.Rate.FramesPerSecond*reference.Rate.FramesPerSecond;referenceFrame=reference.Loop?referenceFrame%reference.SampleCount:Math.Min(referenceFrame,reference.LastSampleFrame);
                 var bind=AnimationService.Evaluate(Document.Project.Scene,reference,referenceFrame);
+                if(completeSkin)morphStream!.ApplyCompleteSkin(uploadedVertices,bind,null);
                 g.UseProgram(program);
                 fixed(Matrix4x4* p=bind.Skin)g.UniformMatrix4(g.GetUniformLocation(program,"bones[0]"),(uint)bind.Skin.Length,false,(float*)p);
                 g.UseProgram(program);g.Uniform3(g.GetUniformLocation(program,"offset"),comparisonOffset,0,0);DrawMeshes(bind,new(comparisonOffset,0,0));
@@ -248,7 +251,8 @@ public sealed unsafe partial class SkinnedViewport : OpenGlControlBase
         var g=api!;g.BindVertexArray(vao);
         if(ReferenceEquals(uploadedScene,scene))return;
         morphStream?.Reset(vbo);
-        var data=Pack(scene.Meshes.SelectMany(x=>x.Vertices));var indices=new List<uint>();uint offset=0;
+        uploadedVertices=scene.Meshes.SelectMany(x=>x.Vertices).ToArray();completeSkin=uploadedVertices.Any(v=>v.InfluenceCount>4);
+        var data=Pack(uploadedVertices);var indices=new List<uint>();uint offset=0;
         ranges.Clear();foreach(var m in scene.Meshes){ranges.Add((m,indices.Count,m.Indices.Length));indices.AddRange(m.Indices.Select(x=>x+offset));offset+=(uint)m.Vertices.Length;}
         nativeMaterials?.Dispose();nativeMaterials=new(g,GpuInfo.Contains("OpenGL ES",StringComparison.Ordinal));drawRanges.Clear();
         foreach(var range in ranges){var calls=range.Mesh.DrawCalls.Length>0?range.Mesh.DrawCalls:[new(range.Mesh.Material,range.Mesh.VisibilityBone,true,0,0,0)];for(int i=0;i<calls.Length;i++)drawRanges.Add((range.Mesh,range.Offset,range.Count,calls[i],i));}
@@ -280,7 +284,7 @@ public sealed unsafe partial class SkinnedViewport : OpenGlControlBase
             if(vis is null&&!range.Call.DefaultVisible&&!ShownMeshes.Contains(range.Mesh.Name))continue;
             var material=scene.Materials.FirstOrDefault(m=>m.Name==range.Call.Material);string? image=material?.Textures.FirstOrDefault();
             bool hiddenTexture=material?.Textures.Any(HiddenTextures.Contains)==true;
-            bool bound=ShadersVisible&&!hiddenTexture&&material is not null&&nativeMaterials!.Bind(material,Camera,Camera.ViewProjection((float)Bounds.Width/Math.Max(1,(float)Bounds.Height)),pose,offset,textures,Document,ReferencePose);
+            bool bound=ShadersVisible&&!hiddenTexture&&material is not null&&nativeMaterials!.Bind(material,Camera,Camera.ViewProjection((float)Bounds.Width/Math.Max(1,(float)Bounds.Height)),pose,offset,textures,Document,ReferencePose,completeSkin);
             NativeProgramCount=Math.Max(NativeProgramCount,nativeMaterials!.ProgramCount);foreach(var message in nativeMaterials.Diagnostics)if(!MaterialDiagnostics.Contains(message)){MaterialDiagnostics.Add(message);MaterialDiagnosticRaised?.Invoke(message);}
             if(bound){NativeDrawCount++;DrawVisibleRange(range.Offset,range.Count);continue;}
             g.UseProgram(program);g.ActiveTexture(TextureUnit.Texture0);g.Disable(EnableCap.Blend);g.Disable(EnableCap.CullFace);g.DepthMask(true);g.Enable(EnableCap.DepthTest);g.DepthFunc(DepthFunction.Less);
@@ -306,7 +310,7 @@ public sealed unsafe partial class SkinnedViewport : OpenGlControlBase
         g.UseProgram(probeProgram);var vp=Camera.ViewProjection((float)Bounds.Width/Math.Max(1,(float)Bounds.Height));
         g.UniformMatrix4(g.GetUniformLocation(probeProgram,"viewProjection"),1,false,(float*)&vp);
         fixed(Matrix4x4* p=pose.Skin)g.UniformMatrix4(g.GetUniformLocation(probeProgram,"bones[0]"),(uint)pose.Skin.Length,false,(float*)p);
-        g.Uniform1(g.GetUniformLocation(probeProgram,"skinned"),1);g.Uniform3(g.GetUniformLocation(probeProgram,"offset"),0f,0f,0f);
+        g.Uniform1(g.GetUniformLocation(probeProgram,"skinned"),completeSkin?0:1);g.Uniform3(g.GetUniformLocation(probeProgram,"offset"),0f,0f,0f);
         uint feedback=g.GenBuffer();bool mapped=false;
         float error=0,normalError=0,colorError=0;
         try
@@ -318,10 +322,10 @@ public sealed unsafe partial class SkinnedViewport : OpenGlControlBase
             g.Enable(EnableCap.RasterizerDiscard);g.BeginTransformFeedback(PrimitiveType.Points);g.DrawArrays(PrimitiveType.Points,0,(uint)vertices.Length);g.EndTransformFeedback();g.Disable(EnableCap.RasterizerDiscard);g.Finish();
             var data=(float*)g.MapBufferRange(BufferTargetARB.TransformFeedbackBuffer,0,(nuint)(vertices.Length*56),MapBufferAccessMask.ReadBit);
             if(data==null)throw new InvalidOperationException("GPU acceptance readback unavailable.");mapped=true;
-            var morph=Document.EvaluateMorph(pose);for(int i=0;i<vertices.Length;i++)
+            var morph=ReferencePose?null:Document.EvaluateMorph(pose);for(int i=0;i<vertices.Length;i++)
             {
                 int o=i*14;var vertex=morph?.Vertex(i,vertices[i])??vertices[i];error=Math.Max(error,Vector3.Distance(new(data[o],data[o+1],data[o+2]),AnimationService.Skin(vertex,pose)));
-                Vector3 n=Vector3.Zero;for(int j=0;j<4;j++)n+=Vector3.TransformNormal(vertex.Normal,pose.Skin[(int)vertex.Joints[j]])*vertex.Weights[j];normalError=Math.Max(normalError,Vector3.Distance(new(data[o+3],data[o+4],data[o+5]),n));
+                Vector3 n=Vector3.Zero;for(int j=0;j<vertex.InfluenceCount;j++)n+=Vector3.TransformNormal(vertex.Normal,pose.Skin[(int)vertex.JointAt(j)])*vertex.WeightAt(j);normalError=Math.Max(normalError,Vector3.Distance(new(data[o+3],data[o+4],data[o+5]),n));
                 colorError=Math.Max(colorError,Vector4.Distance(new(data[o+6],data[o+7],data[o+8],data[o+9]),vertex.Color));colorError=Math.Max(colorError,Vector4.Distance(new(data[o+10],data[o+11],data[o+12],data[o+13]),vertex.Color1));
             }
         }

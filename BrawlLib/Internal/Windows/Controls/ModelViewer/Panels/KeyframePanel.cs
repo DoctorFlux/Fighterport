@@ -5,6 +5,7 @@ using BrawlLib.SSBB;
 using BrawlLib.SSBB.ResourceNodes;
 using BrawlLib.Wii.Animations;
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Windows.Forms;
 
@@ -20,6 +21,34 @@ namespace BrawlLib.Internal.Windows.Controls.ModelViewer.Panels
 
     public partial class KeyframePanel : UserControl
     {
+        // The legacy sampled frame struct has an integral display Index. Keep
+        // that API intact and retain exact native knot time in the list row.
+        private sealed class FractionalChrFrame
+        {
+            public readonly float Time;
+            public readonly CHRAnimationFrame Frame;
+
+            public FractionalChrFrame(CHR0EntryNode entry, float time)
+            {
+                Time = time;
+                var frame = new CHRAnimationFrame(
+                    new Vector3(entry.GetFrameValue(0, time), entry.GetFrameValue(1, time), entry.GetFrameValue(2, time)),
+                    new Vector3(entry.GetFrameValue(3, time), entry.GetFrameValue(4, time), entry.GetFrameValue(5, time)),
+                    new Vector3(entry.GetFrameValue(6, time), entry.GetFrameValue(7, time), entry.GetFrameValue(8, time)));
+                for (int channel = 0; channel < 9; channel++)
+                {
+                    frame.SetBool(channel, entry.GetKeyframe(channel, time) != null);
+                }
+                Frame = frame;
+            }
+
+            public override string ToString()
+            {
+                string values = Frame.ToString();
+                return "[" + (Time + 1) + "]" + values.Substring(values.IndexOf(']') + 1);
+            }
+        }
+
         public ModelEditorBase _mainWindow;
 
         public KeyframePanel()
@@ -65,13 +94,22 @@ namespace BrawlLib.Internal.Windows.Controls.ModelViewer.Panels
                 {
                     if (_target is CHR0EntryNode)
                     {
-                        CHRAnimationFrame a;
-                        for (int x = 0; x < entry.FrameCount; x++)
+                        var chr = (CHR0EntryNode) entry;
+                        var times = new SortedSet<float>();
+                        foreach (KeyframeArray channel in chr.KeyArrays)
                         {
-                            if ((a = ((CHR0EntryNode) entry).GetAnimFrame(x)).HasKeys)
+                            KeyframeEntry root = channel._keyRoot;
+                            for (KeyframeEntry key = root._next; key != root; key = key._next)
                             {
-                                listKeyframes.Items.Add(a);
+                                times.Add(key._index);
                             }
+                        }
+
+                        foreach (float time in times)
+                        {
+                            listKeyframes.Items.Add(time == Math.Truncate(time)
+                                ? (object) chr.GetAnimFrame((int) time)
+                                : new FractionalChrFrame(chr, time));
                         }
                     }
                     else if (_target is SRT0TextureNode)
@@ -174,6 +212,10 @@ namespace BrawlLib.Internal.Windows.Controls.ModelViewer.Panels
                 {
                     if (_target is CHR0EntryNode)
                     {
+                        if (listKeyframes.Items[w] is FractionalChrFrame)
+                        {
+                            continue;
+                        }
                         CHRAnimationFrame a = (CHRAnimationFrame) listKeyframes.Items[w];
                         if (a.Index == x)
                         {
@@ -329,6 +371,25 @@ namespace BrawlLib.Internal.Windows.Controls.ModelViewer.Panels
             _updating = false;
         }
 
+        public void UpdateKeyframe(float time)
+        {
+            if (float.IsNaN(time) || float.IsInfinity(time))
+            {
+                throw new ArgumentOutOfRangeException(nameof(time));
+            }
+
+            if (time == Math.Truncate(time))
+            {
+                UpdateKeyframe(checked((int) time));
+            }
+            else if (Visible)
+            {
+                // Fractional points are authored keys, not integer samples.
+                // Refresh their exact-time rows without moving the native clock.
+                UpdateKeyframes();
+            }
+        }
+
         private void SetTarget()
         {
             clrControl.ColorSource = null;
@@ -444,7 +505,14 @@ namespace BrawlLib.Internal.Windows.Controls.ModelViewer.Panels
             for (int i = 0; i < count; i++)
             {
                 object x = listKeyframes.Items[i];
-                if (x is CHRAnimationFrame)
+                if (x is FractionalChrFrame)
+                {
+                    if (((FractionalChrFrame) x).Time == index)
+                    {
+                        return i;
+                    }
+                }
+                else if (x is CHRAnimationFrame)
                 {
                     if (((CHRAnimationFrame) x).Index == index)
                     {
@@ -498,7 +566,11 @@ namespace BrawlLib.Internal.Windows.Controls.ModelViewer.Panels
             {
                 object x = listKeyframes.SelectedItem;
                 float i = 0;
-                if (x is CHRAnimationFrame)
+                if (x is FractionalChrFrame)
+                {
+                    i = ((FractionalChrFrame) x).Time + 1;
+                }
+                else if (x is CHRAnimationFrame)
                 {
                     i = ((CHRAnimationFrame) listKeyframes.SelectedItem).Index + 1;
                 }
@@ -521,7 +593,9 @@ namespace BrawlLib.Internal.Windows.Controls.ModelViewer.Panels
 
                 if (_mainWindow.CurrentFrame != i)
                 {
-                    _mainWindow.SetFrame((int) i);
+                    // The ordinary native viewport clock remains on its nearest
+                    // integral frame; list/curve points keep their exact time.
+                    _mainWindow.SetFrame((int) Math.Round(i, MidpointRounding.AwayFromZero));
                 }
             }
         }

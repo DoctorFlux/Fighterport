@@ -1,11 +1,13 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Text.Json;
 using FighterPort.Core;
 
 namespace FighterPort.Adapters.Brawl;
 
-public record NativeEdit(string Bone,int Channel,int Frame,float Value,float Tangent)
+public record NativeEdit(string Bone,int Channel,float Frame,float Value,float Tangent)
 {
+    [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public int FrameBits=>BitConverter.SingleToInt32Bits(Frame);
     [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
     public int ValueBits=>BitConverter.SingleToInt32Bits(Value);
     [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
@@ -66,9 +68,9 @@ public sealed partial class BrawlAdapter(string worker)
         if(ProjectStore.PreservedSourcePaths(project).Any(p=>string.Equals(Path.GetFullPath(p),output,StringComparison.OrdinalIgnoreCase)))throw new IOException("Output must be distinct from every original source and target.");
         if(File.Exists(output))throw new IOException("Native output already exists. Choose a new output path.");
         if(clip.Tracks.SelectMany(t=>t.Channels.OfType<Curve>()).Any(c=>c.Keys.Select(k=>k.Frame).Distinct().Count()!=c.Keys.Length || c.Keys.Any(k=>k.InTangent!=k.OutTangent)))throw new InvalidOperationException("Native writer currently requires unique key times and one tangent per key; no duplicate pair or split tangent will be silently lost.");
-        if(clip.Tracks.SelectMany(t=>t.Channels.OfType<Curve>()).SelectMany(c=>c.Keys).Any(k=>k.Frame!=Math.Truncate(k.Frame)))throw new InvalidOperationException("CHR0 native key indices must be integral. Fractional sampling is supported; fractional keys need an explicit resampling policy.");
+        if(clip.Tracks.SelectMany(t=>t.Channels.OfType<Curve>()).SelectMany(c=>c.Keys).Any(k=>!double.IsFinite(k.Frame)||(double)(float)k.Frame!=k.Frame||k.Frame<0||k.Frame>clip.SampleCount))throw new InvalidOperationException("CHR0 native key times require finite, nonnegative, exactly representable native float times within the animation. No rounding or resampling is implicit.");
         if(clip.Tracks.Any(t=>Enumerable.Range(0,3).Any(g=>t.Channels.Skip(g*3).Take(3).Any(c=>c is not null)&&t.Channels.Skip(g*3).Take(3).Any(c=>c is null))))throw new NotSupportedException("A partially absent native S/R/T group needs an explicit rest-value materialization policy. Save Project retains the exact edit; native output is blocked rather than inventing fixed keys.");
-        var edits=clip.Tracks.SelectMany(t=>t.Channels.SelectMany((c,i)=>c?.Keys.Select(k=>new NativeEdit(t.Bone,i,(int)k.Frame,k.Value,k.OutTangent))??[])).ToArray();
+        var edits=clip.Tracks.SelectMany(t=>t.Channels.SelectMany((c,i)=>c?.Keys.Select(k=>new NativeEdit(t.Bone,i,checked((float)k.Frame),k.Value,k.OutTangent))??[])).ToArray();
         var response=await RunAsync(new(insert?"insert":source is null?"create":"export",model.Path,source?.Resource.Path??"",source?.Resource.Entry,output,edits,[0,.5,Math.Max(0,clip.LastSampleFrame/2),clip.LastSampleFrame],model.Entry,OutputSampleCount:clip.SampleCount,OutputLoop:clip.Loop,ReplaceTracks:source is null||insert||clip.Retarget is not null||clip.NativeWrite==NativeWriteMode.NewResource,OutputName:clip.NativeWriteName??source?.NativeName??(source is null?clip.Name:null),RewriteChannels:clip.RewriteNativeChannels),ct);
         if(clip.RewriteNativeChannels)
         {

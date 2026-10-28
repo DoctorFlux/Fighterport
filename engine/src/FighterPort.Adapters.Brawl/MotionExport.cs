@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using FighterPort.Core;
 
 namespace FighterPort.Adapters.Brawl;
@@ -21,12 +21,12 @@ public sealed partial class BrawlAdapter
         if(changed.Any(l=>l.Diagnostics.Any(d=>d.Error)))throw new InvalidOperationException("Resolve the edited morph layer's native array diagnostics before export.");
         if(Math.Abs(clip.Rate.FramesPerSecond-60)>1e-7||changed.Any(l=>Math.Abs(l.Rate.FramesPerSecond-60)>1e-7))throw new NotSupportedException("Native motion output requires the original 60 fps timebase; select an explicit conversion policy first.");
         if(clip.Tracks.Any(t=>t.Rotation is not null))throw new NotSupportedException("Bake quaternion source rotations to native bone channels first.");
-        static void CheckCurve(Curve curve,int max,string label)
+        static void CheckCurve(Curve curve,int max,string label,bool fractional=false)
         {
             if(curve.Interpolation!=Interpolation.Hermite&&curve.Keys.Length>1)throw new NotSupportedException(label+": only native Hermite curves can be saved without conversion.");
-            if(curve.Keys.Length>32767||curve.Keys.Select(k=>k.Frame).Distinct().Count()!=curve.Keys.Length||curve.Keys.Any(k=>k.Frame!=Math.Truncate(k.Frame)||k.Frame<0||k.Frame>max||k.InTangent!=k.OutTangent))throw new NotSupportedException(label+": native keys require unique integral times in range and one tangent per key.");
+            if(curve.Keys.Length>32767||curve.Keys.Select(k=>k.Frame).Distinct().Count()!=curve.Keys.Length||curve.Keys.Any(k=>!double.IsFinite(k.Frame)||(fractional?(double)(float)k.Frame!=k.Frame:k.Frame!=Math.Truncate(k.Frame))||k.Frame<0||k.Frame>max||k.InTangent!=k.OutTangent))throw new NotSupportedException(label+": native keys require unique "+(fractional?"exactly representable native float":"integral")+" times in range and one tangent per key.");
         }
-        foreach(var curve in clip.Tracks.SelectMany(t=>t.Channels.OfType<Curve>()))CheckCurve(curve,clip.SampleCount,"Bone channel");
+        foreach(var curve in clip.Tracks.SelectMany(t=>t.Channels.OfType<Curve>()))CheckCurve(curve,clip.SampleCount,"Bone channel",true);
         var changes=changed.Select(l=>new NativeMorphChange(l.Resource.Entry,l.Resource.Version,l.SampleCount,l.Loop,l.Tracks.Select(t=>
         {
             if(t.Native is null)throw new InvalidOperationException("Reimport this older project to retain exact native morph-channel identities before saving.");
@@ -52,7 +52,7 @@ public sealed partial class BrawlAdapter
         if(samples.Length>4096)throw new NotSupportedException("Export verification sample budget exceeded; split this edit into smaller independently verified outputs.");
         try
         {
-            var edits=clip.Tracks.SelectMany(t=>t.Channels.SelectMany((c,i)=>c?.Keys.Select(k=>new NativeEdit(t.Bone,i,(int)k.Frame,k.Value,k.OutTangent))??[])).ToArray();
+            var edits=clip.Tracks.SelectMany(t=>t.Channels.SelectMany((c,i)=>c?.Keys.Select(k=>new NativeEdit(t.Bone,i,checked((float)k.Frame),k.Value,k.OutTangent))??[])).ToArray();
             var response=await RunAsync(new("save-motion",source.Model.Path,source.Resource.Path,source.Resource.Entry,stage,edits,samples,source.Model.Entry,OutputSampleCount:clip.SampleCount,OutputLoop:clip.Loop,MorphEntry:active.Resource.Entry,MorphChanges:changes,LogicalOutput:output,GeometryChanges:geometry,ModelOutput:modelStage,LogicalModelOutput:modelOutput),ct).ConfigureAwait(false);
             var fresh=response.Project??throw new InvalidDataException("Missing fresh native motion project.");ProjectStore.Validate(fresh);
             var freshClip=fresh.Clips.Single(c=>c.Source?.Resource.Entry==source.Resource.Entry);
@@ -66,7 +66,7 @@ public sealed partial class BrawlAdapter
                 for(int i=0;i<original.Length;i++)
                 {
                     var v=morph?.Vertex(i,original[i])??original[i];var p=response.ExpectedVertices![f][i];position=Math.Max(position,Vector3.Distance(AnimationService.Skin(v,pose),new(p[0],p[1],p[2])));
-                    Vector3 n=Vector3.Zero;for(int j=0;j<4;j++)n+=Vector3.TransformNormal(v.Normal,pose.Skin[(int)v.Joints[j]])*v.Weights[j];if(n.LengthSquared()>0)n=Vector3.Normalize(n);var en=response.ExpectedNormals![f][i];normal=Math.Max(normal,Vector3.Distance(n,new(en[0],en[1],en[2])));
+                    Vector3 n=Vector3.Zero;for(int j=0;j<v.InfluenceCount;j++)n+=Vector3.TransformNormal(v.Normal,pose.Skin[(int)v.JointAt(j)])*v.WeightAt(j);if(n.LengthSquared()>0)n=Vector3.Normalize(n);var en=response.ExpectedNormals![f][i];normal=Math.Max(normal,Vector3.Distance(n,new(en[0],en[1],en[2])));
                     var ec=response.ExpectedColors![f][i];var ed=response.ExpectedColors1![f][i];color=Math.Max(color,Math.Max(Vector4.Distance(v.Color,new(ec[0],ec[1],ec[2],ec[3])),Vector4.Distance(v.Color1,new(ed[0],ed[1],ed[2],ed[3]))));
                 }
             }

@@ -48,10 +48,10 @@ public static class TemporalRetargetSolver
         foreach(var pin in plan.Graph.Relations.SelectMany(c=>c.Pins))
         {
             AddAncestors(pin.Bone);
-            foreach(var point in pin.SurfacePoints.Concat(pin.SurfaceRegion).Concat(pin.Reference?.SurfaceTripod??[]))for(int j=0;j<4;j++)if(point.Weights[j]>0)AddAncestors((int)point.Joints[j]);
+            foreach(var point in pin.SurfacePoints.Concat(pin.SurfaceRegion).Concat(pin.Reference?.SurfaceTripod??[]))for(int j=0;j<point.InfluenceCount;j++)if(point.WeightAt(j)>0)AddAncestors((int)point.JointAt(j));
             if(pin.Reference?.Bone is {} attachment)AddAncestors(attachment);
         }
-        if(plan.Clearance is not null)foreach(var point in plan.Rig.SkinPoints)for(int j=0;j<4;j++)if(point.Weights[j]>0)AddAncestors((int)point.Joints[j]);
+        if(plan.Clearance is not null)foreach(var point in plan.Rig.SkinPoints)for(int j=0;j<point.InfluenceCount;j++)if(point.WeightAt(j)>0)AddAncestors((int)point.JointAt(j));
         var variables=joints.OrderBy(b=>plan.Rig.CanonicalBoneRanks[b]).SelectMany(b=>Enumerable.Range(0,3).Select(c=>new Variable(b,c))).ToList();
         int body=plan.Rig.Binding.Roles.GetValueOrDefault("Hips",-1);if(body>=0&&body!=root)variables.AddRange(Enumerable.Range(3,3).Select(c=>new Variable(body,c)));
         double CoordinateWeight(int j)=>variables[j].Channel<3?RotationPriorWeight:BodyTranslationPriorWeight;
@@ -82,7 +82,7 @@ public static class TemporalRetargetSolver
         {
             var affected=new HashSet<int>();
             void Bone(int bone){for(;bone>=0;bone=scene.Bones[bone].Parent)affected.Add(bone);}
-            void Point(SkinSurfacePoint point){for(int j=0;j<4;j++)if(point.Weights[j]>0)Bone((int)point.Joints[j]);}
+            void Point(SkinSurfacePoint point){for(int j=0;j<point.InfluenceCount;j++)if(point.WeightAt(j)>0)Bone((int)point.JointAt(j));}
             foreach(var pin in pins)
             {
                 if(pin.HoldRotation||pin.SurfacePoints.Length==0&&pin.SurfaceRegion.Length==0)Bone(pin.Bone);
@@ -240,8 +240,8 @@ public static class TemporalRetargetSolver
             for(int sweep=0;sweep<2;sweep++)
             {
                 cancellation.ThrowIfCancellationRequested();var pose=Pose(frame,best);var influences=new HashSet<int>();
-                foreach(var point in plane.Points.OrderBy(p=>plane.Surface.Clearance(ContactGeometry.Point(p,pose))).Take(8))for(int k=0;k<4;k++)if(point.Weights[k]>0)
-                    for(int bone=(int)point.Joints[k];bone>=0&&bone!=root;bone=scene.Bones[bone].Parent)influences.Add(bone);
+                foreach(var point in plane.Points.OrderBy(p=>plane.Surface.Clearance(ContactGeometry.Point(p,pose))).Take(8))for(int k=0;k<point.InfluenceCount;k++)if(point.WeightAt(k)>0)
+                    for(int bone=(int)point.JointAt(k);bone>=0&&bone!=root;bone=scene.Bones[bone].Parent)influences.Add(bone);
                 foreach(int index in Enumerable.Range(0,variables.Count).Where(j=>variables[j].Channel<3&&influences.Contains(variables[j].Bone)))
                 {
                     double[]? improved=null;double candidateCost=bestCost;
@@ -279,7 +279,7 @@ public static class TemporalRetargetSolver
                         bool bodyRequired=plan.Grounding is {} g&&SurfaceContacts.BodySupportedAt(g.BodySupportPhases,g.BodySupportedThroughout,g.BodySupportedAtClosing,plan.SourceFrame(times[f]),plan.AuthenticSourceSamples);
                         string support=bodyRequired&&plan.BodySupportPoints.Length>0?$"; required torso surface gap {Math.Abs(plan.BodySupportPoints.Min(p=>Vector3.Dot(ContactGeometry.Point(p,pose),failedPlane.Normal))-failedPlane.Height):G9}":"";
                         issues+=$"; fixed-plane full-skin penetration {depth:G9}, sparse proxy penetration {proxyDepth:G9} at height {failedPlane.Height:G9}{support}";
-                        if(witness is not null)issues+=$"; deepest mesh {witness.Mesh}, vertex {witness.Vertex}, bones {string.Join('/',Enumerable.Range(0,4).Where(i=>witness.Weights[i]>0).Select(i=>(int)witness.Joints[i]))}";
+                        if(witness is not null)issues+=$"; deepest mesh {witness.Mesh}, vertex {witness.Vertex}, bones {string.Join('/',Enumerable.Range(0,witness.InfluenceCount).Where(i=>witness.WeightAt(i)>0).Select(i=>(int)witness.JointAt(i)))}";
                     }
                     return new(null,[new("TEMPORAL_NONCONVERGENCE",$"Constraint projection did not converge at target sample {times[f]:G12}, source {plan.SourceFrame(times[f]):G12}; maximum normalized full constraint violation {TargetMotionConstraints.MaximumNormalizedViolation(plan,times[f],pose):G9}; maximum normalized sparse residual component {Residual(f,q[f]).Select(Math.Abs).DefaultIfEmpty().Max():G9}; {issues}. This is not proof of incompatible anatomy; no skeleton stretching or contact release was used.")],[]);
                 }

@@ -112,7 +112,16 @@ internal static partial class Program
             using(var probe=new CHR0Node{Name="OriginalTrackOwnershipProbe",FrameCount=2})
             {
                 var entry=probe.CreateEntry(captured.Bones[captured.Rig.Roles["pelvis"]].Name);entry.SetKeyframe(3,0,0,true,true);entry.SetKeyframe(3,1,3,true,true);
-                probe.CreateEntry("OriginalUnownedAccessoryTrack").SetKeyframe(4,0,12,true,true);
+                // Native CHR0 rotation groups contain all three axis cells.
+                // Author their fixed siblings explicitly so this modal-only
+                // fixture has an exactly representable native source snapshot.
+                entry.SetKeyframe(4,0,0,true,true);entry.SetKeyframe(5,0,0,true,true);
+                var foreign=probe.CreateEntry("OriginalUnownedAccessoryTrack");foreign.SetKeyframe(3,0,0,true,true);foreign.SetKeyframe(4,0,12,true,true);foreign.SetKeyframe(5,0,0,true,true);
+                string probePath=Path.Combine(output,"modal-source-probe.chr0");
+                using(var snapshot=NativeAnimationOptimization.CopySource(probe))snapshot.ExportChecked(probePath);
+                using(var reopened=NodeFactory.FromFile(null,probePath) as CHR0Node)
+                    Check(reopened!=null&&NativeAnimationOptimization.SourceContentKey(reopened)==NativeAnimationOptimization.SourceContentKey(probe),
+                        "Synthetic cancellation/stale probe freezes all native rotation-axis cells exactly before retargeting");
                 using(var native=BrawlRetargeter.Bake(captured,BrawlRetargeter.Capture(target),probe,groundMode:GroundContactMode.Airborne))
                     Check(native.IgnoredSourceBones.Contains("OriginalUnownedAccessoryTrack")&&!native.Animation.Children.Any(c=>c.Name=="OriginalUnownedAccessoryTrack"),"Original Next accepts mapped body channels and reports excluded foreign/accessory tracks explicitly");
                 using(var ready=OnRetargetReady(form,dialog=>dialog.Controls.OfType<Button>().Single().PerformClick()))

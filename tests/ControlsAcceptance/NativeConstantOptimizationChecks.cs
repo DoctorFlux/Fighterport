@@ -56,9 +56,9 @@ internal static partial class Program
                 OptimizationReplace(entry,3,new[]{OptimizationKey(4,.5f,0)});
                 string original = NativeAnimationOptimization.ContentKey(before);
                 using (var encodedCopy = NativeAnimationOptimization.CopyForStorageVerification(before))
-                    Check(((CHR0EntryNode)encodedCopy.Children[0]).KeyArrays[3].Entries.Single()._index == 0 &&
+                    Check(((CHR0EntryNode)encodedCopy.Children[0]).KeyArrays[3].Entries.Single()._index == 4 &&
                         entry.KeyArrays[3].Entries.Single()._index == 4 && NativeAnimationOptimization.ContentKey(before) == original,
-                        "Native constants: storage verification canonicalizes a single zero-slope key only on its independent copy");
+                        "Native constants: reference storage verification retains the authored single-knot time and the unchanged original");
                 var track = OptimizationTrack(entry); track.Channels[3] = new[]{OptimizationKey(0,.5f,0)};
                 var options = new NativeAnimationOptimizationOptions { ExactOnly = true, TargetBones = names,
                     LengthScale = NativeAnimationOptimization.GetBindBoundsDiagonal(model), Budget = new NativeAnimationOptimizationBudget() };
@@ -83,6 +83,23 @@ internal static partial class Program
 
     static void NativeConstantJoinChecks(MDL0Node model,MDL0BoneNode bone,string[] names,string stage)
     {
+        using(var before=OptimizationFixture(bone.Name,"Independent generated continuous corner"))
+        {
+            before.FrameCount=5;before.Loop=false;var entry=(CHR0EntryNode)before.Children[0];
+            OptimizationReplace(entry,3,new[]{OptimizationKey(0,0,1),OptimizationKey(2,2,1),OptimizationKey(2,2,1.02f),OptimizationKey(4,4,1)});
+            var track=OptimizationTrack(entry);track.Channels[3]=new[]{OptimizationKey(0,0,1),OptimizationKey(4,4,1)};
+            var generated=new NativeAnimationOptimizationOptions{SmallFile=true,ExactOnly=false,TargetBones=names,
+                LengthScale=NativeAnimationOptimization.GetBindBoundsDiagonal(model),GeneratedPairSites=new[]{new NativeGeneratedPairSite{Bone=bone.Name,Channel=3,Frame=2}}};
+            using(var result=NativeAnimationOptimization.Prepare(model,before,new[]{track},generated,stage))
+                Check(result.HasChanges&&result.AfterBytes<result.BeforeBytes&&result.MaximumEulerError<.01&&result.MaximumSkinError<generated.LengthScale*.001,
+                    "Generated native corner reduction independently reopens and verifies the complete target hierarchy and skin");
+            generated.ExactBones=new[]{bone.Name};
+            OptimizationReject(()=>NativeAnimationOptimization.Prepare(model,before,new[]{track},generated,stage),"mandatory or discontinuous",
+                "Generated provenance cannot remove a source-owned exact native control side");
+            generated.ExactBones=new string[0];generated.GeneratedPairSites=new NativeGeneratedPairSite[0];
+            OptimizationReject(()=>NativeAnimationOptimization.Prepare(model,before,new[]{track},generated,stage),"mandatory or discontinuous",
+                "Imported native authored pairs remain protected without exact operation-owned provenance");
+        }
         foreach(bool loop in new[]{false,true})
         using(var before=OptimizationFixture(bone.Name,"Independent exact fitting-join constant"))
         {
@@ -105,6 +122,10 @@ internal static partial class Program
             }
             Check(NativeAnimationOptimization.ContentKey(before)==original,
                 "Native constants: fitting-join preparation never edits the original keys, timing, loop or metadata");
+            entry.Keyframes.SetFrameValue(3,4,720,true)._tangent=0;
+            using(var redundant=NativeAnimationOptimization.Prepare(model,before,new[]{track},options,stage))
+                Check(redundant.HasChanges&&redundant.AfterKeys==9&&redundant.MaximumEulerError==0&&redundant.MaximumSkinError==0,
+                    "Native constants: a redundant identical paired side collapses through independent encoding and exact native pose/skin verification");
             options.ProtectedBones=new[]{bone.Name};
             OptimizationReject(()=>NativeAnimationOptimization.Prepare(model,before,new[]{track},options,stage),"protected native track",
                 "Native constants: structural pin/contact protection retains authored constant join tuples");

@@ -362,6 +362,26 @@ namespace BrawlLib.SSBB.ResourceNodes
 
         #region Extra Functions
 
+        // These optional historical commands enumerate whole-frame keys.
+        // Refuse fractional authoring before any mutation rather than silently
+        // dropping its knots. Playback, the curve editor and native writing
+        // use the authoritative real times and remain available.
+        private static void RequireIntegralLegacyTransform(string operation, params CHR0Node[] clips)
+        {
+            foreach (var clip in clips)
+            {
+                if (clip == null) continue;
+                foreach (CHR0EntryNode entry in clip.Children)
+                foreach (KeyframeArray channel in entry.KeyArrays)
+                foreach (KeyframeEntry key in channel.Entries)
+                {
+                    if (float.IsNaN(key._index) || float.IsInfinity(key._index) || key._index != Math.Truncate(key._index))
+                        throw new NotSupportedException("The legacy " + operation + " command requires integral native knot times. " +
+                            "No animation was changed. Fractional curve editing, playback, Undo, Save and export remain available.");
+                }
+            }
+        }
+
         /// <summary>
         /// Stretches or compresses all frames of the animation to fit a new frame count specified by the user.
         /// </summary>
@@ -379,6 +399,7 @@ namespace BrawlLib.SSBB.ResourceNodes
         /// </summary>
         public void Resize(int newFrameCount)
         {
+            RequireIntegralLegacyTransform("Resize", this);
             KeyframeEntry kfe = null;
             float ratio = newFrameCount / (float) FrameCount;
             foreach (CHR0EntryNode e in Children)
@@ -423,6 +444,7 @@ namespace BrawlLib.SSBB.ResourceNodes
 
         public void MergeWith(CHR0Node external)
         {
+            RequireIntegralLegacyTransform("Merge", this, external);
             if (external.FrameCount != FrameCount && MessageBox.Show(null,
                 "Frame counts are not equal; the shorter animation will end early. Do you still wish to continue?",
                 "Merge Animations", MessageBoxButtons.YesNo) == DialogResult.No)
@@ -572,6 +594,7 @@ namespace BrawlLib.SSBB.ResourceNodes
 
         public void Append(CHR0Node external, int timesToAppend)
         {
+            RequireIntegralLegacyTransform("Append", this, external);
             int extCount = external.FrameCount;
 
             for (int appendCount = 0; appendCount < timesToAppend; appendCount++)
@@ -621,6 +644,7 @@ namespace BrawlLib.SSBB.ResourceNodes
 
         public CHR0Node Reverse(bool appendReverse)
         {
+            RequireIntegralLegacyTransform("Reverse", this);
             using (CHR0Node tempReversedCHR0 = new CHR0Node
                 {Name = Name, Loop = Loop, FrameCount = FrameCount})
             {
@@ -679,6 +703,7 @@ namespace BrawlLib.SSBB.ResourceNodes
 
         public void Port(MDL0Node _targetModel, MDL0Node _extModel)
         {
+            RequireIntegralLegacyTransform("Port", this);
             MDL0BoneNode extBone;
             MDL0BoneNode bone;
             KeyframeEntry kfe;
@@ -1123,10 +1148,21 @@ namespace BrawlLib.SSBB.ResourceNodes
 
         public KeyframeEntry GetKeyframe(int arrayIndex, int index)
         {
+            return GetKeyframe(arrayIndex, (float) index);
+        }
+
+        public KeyframeEntry GetKeyframe(int arrayIndex, float index)
+        {
             return Keyframes.GetKeyframe(arrayIndex, index);
         }
 
         public KeyframeEntry SetKeyframe(int arrayIndex, int index, float value, bool forceNoGenTans = false,
+                                         bool parsing = false)
+        {
+            return SetKeyframe(arrayIndex, (float) index, value, forceNoGenTans, parsing);
+        }
+
+        public KeyframeEntry SetKeyframe(int arrayIndex, float index, float value, bool forceNoGenTans = false,
                                          bool parsing = false)
         {
             KeyframeEntry k = Keyframes.SetFrameValue(arrayIndex, index, value, parsing);
@@ -1214,6 +1250,11 @@ namespace BrawlLib.SSBB.ResourceNodes
         }
 
         public void RemoveKeyframe(int arrayIndex, int index)
+        {
+            RemoveKeyframe(arrayIndex, (float) index);
+        }
+
+        public void RemoveKeyframe(int arrayIndex, float index)
         {
             KeyframeEntry k = Keyframes.Remove(arrayIndex, index);
             if (k != null && _generateTangents &&

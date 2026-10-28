@@ -72,11 +72,11 @@ internal static class NativeCurveProjection
                 foreach(var pin in samples.SelectMany(s=>windowPlan.Pins(s.Frame)).Where(p=>!p.SoftSupport||p.RequiredSupport))
                 {
                     Add(pin.Bone);
-                    foreach(var point in pin.SurfacePoints.Concat(pin.SurfaceRegion).Concat(pin.Reference?.SurfaceTripod??[]))for(int j=0;j<4;j++)if(point.Weights[j]>0)Add((int)point.Joints[j]);
+                    foreach(var point in pin.SurfacePoints.Concat(pin.SurfaceRegion).Concat(pin.Reference?.SurfaceTripod??[]))for(int j=0;j<point.InfluenceCount;j++)if(point.WeightAt(j)>0)Add((int)point.JointAt(j));
                     if(pin.Reference?.Bone is {} attachment)Add(attachment);
                 }
-                foreach(var point in samples.Any(s=>s.Body is not null)?windowPlan.BodySupportPoints:[])for(int j=0;j<4;j++)if(point.Weights[j]>0)Add((int)point.Joints[j]);
-                if(windowPlan.Clearance is {} plane)foreach(int index in samples.SelectMany(s=>s.Active).Distinct())for(int j=0;j<4;j++)if(plane.Points[index].Weights[j]>0)Add((int)plane.Points[index].Joints[j]);
+                foreach(var point in samples.Any(s=>s.Body is not null)?windowPlan.BodySupportPoints:[])for(int j=0;j<point.InfluenceCount;j++)if(point.WeightAt(j)>0)Add((int)point.JointAt(j));
+                if(windowPlan.Clearance is {} plane)foreach(int index in samples.SelectMany(s=>s.Active).Distinct())for(int j=0;j<plane.Points[index].InfluenceCount;j++)if(plane.Points[index].WeightAt(j)>0)Add((int)plane.Points[index].JointAt(j));
                 var editable=bones.OrderBy(b=>plan.Rig.CanonicalBoneRanks[b]).SelectMany(b=>Enumerable.Range(3,b==body?6:3).Select(ch=>(Bone:b,Channel:ch,Track:Array.FindIndex(input,t=>t.Bone==scene.Bones[b].Name)))).Where(v=>v.Track>=0).ToArray();
                 var variables=Enumerable.Range(firstKey,lastKey-firstKey+1).SelectMany(key=>editable.SelectMany(v=>new[]{new Variable(key,v.Track,v.Bone,v.Channel,true),new Variable(key,v.Track,v.Bone,v.Channel,false)})).ToArray();
                 if(variables.Length==0){immutableWindows++;continue;}
@@ -279,7 +279,7 @@ internal static class NativeCurveProjection
                     if(windowPlan.Clearance is {} surface)foreach(var sample in samples)
                         points.AddRange(sample.Cuts.Where(c=>c.Active).Select(c=>surface.Points[c.Index]));
                     foreach(var sample in samples){if(sample.Body is {} supported)points.Add(supported);points.AddRange(sample.Pins.SelectMany(p=>p.SurfacePoints.Concat(p.SurfaceRegion)));}
-                    double Leverage(int bone)=>points.Sum(p=>Enumerable.Range(0,4).Where(i=>p.Weights[i]>0&&PoseGeometry.Ancestor(scene,bone,(int)p.Joints[i])).Sum(i=>(double)p.Weights[i]));
+                    double Leverage(int bone)=>points.Sum(p=>Enumerable.Range(0,p.InfluenceCount).Where(i=>p.WeightAt(i)>0&&PoseGeometry.Ancestor(scene,bone,(int)p.JointAt(i))).Sum(i=>(double)p.WeightAt(i)));
                     int Depth(int bone){int depth=0;for(;bone>=0;bone=scene.Bones[bone].Parent)depth++;return depth;}
                     var seeds=editable.Where(c=>c.Channel<6).Select(c=>(Channel:c,Score:Leverage(c.Bone)))
                         .Where(c=>c.Score>0).OrderByDescending(c=>c.Score).ThenByDescending(c=>Depth(c.Channel.Bone))

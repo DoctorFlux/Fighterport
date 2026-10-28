@@ -184,8 +184,8 @@ public sealed class PreparedMotionAction
                 if(!double.IsFinite(value))throw new InvalidDataException("Action rest geometry has nonfinite triangle area.");
                 area+=value;measures[m][a]+=value/3;measures[m][b]+=value/3;measures[m][c]+=value/3;
             }
-            for(int v=0;v<mesh.Vertices.Length;v++)for(int j=0;j<4;j++)
-                if(mesh.Vertices[v].Weights[j]>0)mass[(int)mesh.Vertices[v].Joints[j]]+=measures[m][v]*mesh.Vertices[v].Weights[j];
+            for(int v=0;v<mesh.Vertices.Length;v++)for(int j=0;j<mesh.Vertices[v].InfluenceCount;j++)
+                if(mesh.Vertices[v].WeightAt(j)>0)mass[(int)mesh.Vertices[v].JointAt(j)]+=measures[m][v]*mesh.Vertices[v].WeightAt(j);
         }
         if(area<=0)
         {
@@ -206,7 +206,7 @@ public sealed class PreparedMotionAction
             if(!PoseGeometry.Finite(point))throw new InvalidDataException("Action geometry layer has a nonfinite position.");
             double[] coordinates=[point.X,point.Y,point.Z,1];
             var influences=new Dictionary<int,double>();
-            for(int j=0;j<4;j++)if(vertex.Weights[j]>0){int bone=(int)vertex.Joints[j];influences[bone]=influences.GetValueOrDefault(bone)+vertex.Weights[j];}
+            for(int j=0;j<vertex.InfluenceCount;j++)if(vertex.WeightAt(j)>0){int bone=(int)vertex.JointAt(j);influences[bone]=influences.GetValueOrDefault(bone)+vertex.WeightAt(j);}
             var ordered=influences.OrderBy(p=>index[p.Key]).ToArray();
             foreach(var a in ordered)foreach(var b in ordered)
             {

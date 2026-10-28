@@ -99,10 +99,10 @@ public sealed class MorphEvaluation
             for(int i=first;i<first+count;i++)
             {
                 var vertex=vertices[i];var forward=default(Matrix4x4);var reverse=default(Matrix4x4);
-                for(int j=0;j<4;j++)if(vertex.Weights[j]!=0)
+                for(int j=0;j<vertex.InfluenceCount;j++)if(vertex.WeightAt(j)!=0)
                 {
-                    int bone=(int)vertex.Joints[j];if(!inverseReady[bone]){if(!Matrix4x4.Invert(pose.Skin[bone],out inverseSkin[bone]))throw new InvalidDataException("Singular animated skin transform for morph normals.");inverseReady[bone]=true;}
-                    forward+=pose.Skin[bone]*vertex.Weights[j];reverse+=inverseSkin[bone]*vertex.Weights[j];
+                    int bone=(int)vertex.JointAt(j);if(!inverseReady[bone]){if(!Matrix4x4.Invert(pose.Skin[bone],out inverseSkin[bone]))throw new InvalidDataException("Singular animated skin transform for morph normals.");inverseReady[bone]=true;}
+                    forward+=pose.Skin[bone]*vertex.WeightAt(j);reverse+=inverseSkin[bone]*vertex.WeightAt(j);
                 }
                 var normal=Vector3.TransformNormal(normalBlend[i],forward);if(normal.LengthSquared()>0)normal=Vector3.Normalize(normal);normal=Vector3.TransformNormal(normal,reverse);int offset=i*Stride+3;VertexData[offset]=normal.X;VertexData[offset+1]=normal.Y;VertexData[offset+2]=normal.Z;
             }

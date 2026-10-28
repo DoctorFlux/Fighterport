@@ -238,8 +238,8 @@ namespace BrawlCrate.Studio.Retargeting
 
         static int Count(CHR0Node clip)=>checked(clip.Children.OfType<CHR0EntryNode>().Sum(e=>e.KeyArrays.Sum(a=>a.KeyCount)));
         static bool SameBits(float a,float b)=>BitConverter.ToInt32(BitConverter.GetBytes(a),0)==BitConverter.ToInt32(BitConverter.GetBytes(b),0);
-        static float PreviousFloat(int value){int bits=BitConverter.ToInt32(BitConverter.GetBytes((float)value),0);return BitConverter.ToSingle(BitConverter.GetBytes(bits-1),0);}
-        static float NextFloat(int value){int bits=BitConverter.ToInt32(BitConverter.GetBytes((float)value),0);return BitConverter.ToSingle(BitConverter.GetBytes(bits+1),0);}
+        static float PreviousFloat(float value){int bits=BitConverter.ToInt32(BitConverter.GetBytes(value),0);return BitConverter.ToSingle(BitConverter.GetBytes(bits-1),0);}
+        static float NextFloat(float value){int bits=BitConverter.ToInt32(BitConverter.GetBytes(value),0);return BitConverter.ToSingle(BitConverter.GetBytes(bits+1),0);}
         static void Finite(double value){if(double.IsNaN(value)||double.IsInfinity(value))throw new InvalidDataException("Source-key native evaluation produced a non-finite value. The candidate was discarded.");}
     }
 }

@@ -24,6 +24,12 @@ public record Transform(Vector3 Scale, Vector3 Rotation, Vector3 Translation)
 public record Bone(string Name, int Parent, Transform Rest);
 public record Vertex(Vector3 Position, Vector3 Normal, Vector2 UV, Vector4 Joints, Vector4 Weights, Vector4 Color)
 {
+    [JsonIgnore] public SkinInfluence[] Influences {get;init;}=[];
+    [JsonPropertyName("Influences"),JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
+    public SkinInfluence[]? InfluenceData {get=>Influences.Length==0?null:Influences;init=>Influences=value??[];}
+    [JsonIgnore] public int InfluenceCount => SkinInfluences.Count(Influences);
+    public float JointAt(int slot) => SkinInfluences.Joint(Joints, Influences, slot);
+    public float WeightAt(int slot) => SkinInfluences.Weight(Weights, Influences, slot);
     public Vector2[] UVSets {get;init;}=[];
     public Vector4 Color1 {get;init;}=Vector4.One;
 }
@@ -82,7 +88,7 @@ public record Scene(string Name, Bone[] Bones, Mesh[] Meshes)
         {
             if (mesh.Indices.Any(x=>x>=mesh.Vertices.Length)) throw new InvalidDataException("Invalid triangle index.");
             foreach(var v in mesh.Vertices)
-                for(int j=0;j<4;j++) if(!float.IsFinite(v.Weights[j])||v.Weights[j]<0||!float.IsFinite(v.Joints[j])||v.Joints[j]!=MathF.Truncate(v.Joints[j])||v.Joints[j]<0||v.Joints[j]>=Bones.Length)throw new InvalidDataException("Invalid skin joint/weight.");
+                if(!SkinInfluences.Valid(v.Joints,v.Weights,v.Influences,Bones.Length))throw new InvalidDataException("Invalid or inconsistent complete skin joint/weight data.");
         }
     }
 }

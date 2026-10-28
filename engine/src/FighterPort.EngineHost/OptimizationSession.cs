@@ -1,16 +1,23 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using FighterPort.Core;
 
 sealed record OptimizationRequest(string InputPath,string OutputPath);
-sealed record OptimizationRawKey(int Frame,int ValueBits,int TangentBits);
+sealed record OptimizationRawKey(float Frame,int ValueBits,int TangentBits,int? FrameBits=null)
+{
+    [System.Text.Json.Serialization.JsonIgnore]
+    public float NativeTime=>FrameBits is {} bits?BitConverter.Int32BitsToSingle(bits):Frame;
+}
 sealed record OptimizationRawTrack(string Bone,OptimizationRawKey[][] Channels,int FrameLimit,bool Loop);
 sealed record OptimizationBindBits(string Bone,int[] Bits);
+sealed record OptimizationGeneratedPairSite(string Bone,int Channel,float Frame);
+sealed record OptimizationExplicitBounds(double RotationDegrees,double Translation,double Scale,double GeometryRelative,
+    double RotationDerivative,double TranslationDerivative,double ScaleDerivative);
 sealed record OptimizationInput(string Name,int SampleCount,bool Loop,bool HighQuality,double LengthScale,
     OptimizationRawTrack[] Tracks,string[] ExactBones,string[] ProtectedBones,int[] MandatoryFrames,
     ProtectedInterval[] ProtectedRanges,bool ProtectionKnown,double PrecisionScale=1,
     long MaximumWork=2_000_000,int MaximumCandidateSpans=100_000,
     OptimizationBindBits[]? BindPoses=null,OptimizationRawTrack[]? CandidateTracks=null,
-    bool SmallFile=false,int[]? FitJoinFrames=null);
+    bool SmallFile=false,int[]? FitJoinFrames=null,float[]? GeneratedPairFrames=null,OptimizationGeneratedPairSite[]? GeneratedPairSites=null,OptimizationExplicitBounds? ExplicitBounds=null);
 
 sealed partial class ControlSession
 {
@@ -72,7 +79,7 @@ sealed partial class ControlSession
             void ProtectSurface(SkinSurfacePoint point)
             {
                 if(!ContactGeometry.Valid(point,scene.Bones.Length))throw new InvalidDataException("A saved optimization constraint has invalid skin dependencies.");
-                for(int axis=0;axis<4;axis++)if(point.Weights[axis]>0)ProtectAncestors((int)point.Joints[axis]);
+                for(int axis=0;axis<point.InfluenceCount;axis++)if(point.WeightAt(axis)>0)ProtectAncestors((int)point.JointAt(axis));
             }
             void ProtectContact(ContactPin pin)
             {
@@ -105,7 +112,7 @@ sealed partial class ControlSession
         }
 
         BoneTrack[] DecodeTracks(OptimizationRawTrack[] raw)=>raw.Select(track=>new BoneTrack(track.Bone,track.Channels.Select(channel=>channel.Length==0?null:
-            new Curve(channel.Select(key=>new Key(key.Frame,BitConverter.Int32BitsToSingle(key.ValueBits),
+            new Curve(channel.Select(key=>new Key(key.NativeTime,BitConverter.Int32BitsToSingle(key.ValueBits),
                 BitConverter.Int32BitsToSingle(key.TangentBits),BitConverter.Int32BitsToSingle(key.TangentBits))).ToArray(),
                 Interpolation.Hermite,track.Loop?track.FrameLimit:null)).ToArray())).ToArray();
         var tracks=DecodeTracks(input.Tracks);
@@ -113,6 +120,15 @@ sealed partial class ControlSession
         // Retries tighten only scalar construction tolerances. Authentic bind
         // scale, protections and independent native acceptance limits never move.
         var frozenBounds=new AnimationOptimizationSettings {Mode=input.SmallFile?AnimationOptimizationMode.SmallFile:AnimationOptimizationMode.HighQuality};
+        if(input.ExplicitBounds is {} b)
+        {
+            double[] bounds=[b.RotationDegrees,b.Translation,b.Scale,b.GeometryRelative,b.RotationDerivative,b.TranslationDerivative,b.ScaleDerivative];
+            double[] ceilings=[.1,.002,.0001,.001,.1,.002,.0001];
+            if(bounds.Where((v,i)=>!double.IsFinite(v)||v<=0||v>ceilings[i]).Any())throw new InvalidDataException("Export limits must remain within the approved explicit bounds.");
+            frozenBounds=frozenBounds with {EulerValueBoundDegrees=b.RotationDegrees,EulerSpeedBoundDegreesPerFrame=b.RotationDerivative,
+                TranslationAbsoluteCap=b.Translation,TranslationSpeedAbsoluteCapPerFrame=b.TranslationDerivative,
+                ScaleValueBound=b.Scale,ScaleSpeedBoundPerFrame=b.ScaleDerivative};
+        }
         double precision=input.PrecisionScale;
         var settings=frozenBounds with
         {
@@ -132,6 +148,8 @@ sealed partial class ControlSession
             PreserveStructureBones=protectedBones.Order(StringComparer.Ordinal).ToArray(),
             MandatoryFrames=input.MandatoryFrames.Select(f=>(double)f).ToArray(),
             FitJoinFrames=(input.FitJoinFrames??[]).Select(f=>(double)f).ToArray(),
+            GeneratedPairFrames=(input.GeneratedPairFrames??[]).Select(f=>(double)f).ToArray(),
+            GeneratedPairSites=(input.GeneratedPairSites??[]).Select(site=>new AnimationOptimizationPairSite(site.Bone,site.Channel,site.Frame)).ToArray(),
             ProtectedRanges=input.ProtectedRanges,
             BindPoses=(input.BindPoses??[]).Select(b=>new AnimationOptimizationBindPose(b.Bone,b.Bits.Select(BitConverter.Int32BitsToSingle).ToArray())).ToArray()
         };
@@ -176,10 +194,11 @@ sealed partial class ControlSession
                         writer.WriteStartArray();
                         foreach(var key in curve?.Keys??[])
                         {
-                            if(key.Frame!=Math.Truncate(key.Frame)||key.InTangent!=key.OutTangent||
+                            if(!double.IsFinite(key.Frame)||(double)(float)key.Frame!=key.Frame||key.InTangent!=key.OutTangent||
                                 BitConverter.SingleToInt32Bits(key.InTangent)!=BitConverter.SingleToInt32Bits(key.OutTangent))
                                 throw new InvalidDataException("Optimization produced an unsupported native key representation.");
-                            writer.WriteStartObject();writer.WriteNumber("Frame",checked((int)key.Frame));
+                            writer.WriteStartObject();writer.WriteNumber("Frame",(float)key.Frame);
+                            writer.WriteNumber("FrameBits",BitConverter.SingleToInt32Bits((float)key.Frame));
                             writer.WriteNumber("ValueBits",BitConverter.SingleToInt32Bits(key.Value));
                             writer.WriteNumber("TangentBits",BitConverter.SingleToInt32Bits(key.OutTangent));writer.WriteEndObject();
                         }
@@ -195,6 +214,8 @@ sealed partial class ControlSession
                 writer.WritePropertyName("ProtectedBones");JsonSerializer.Serialize(writer,settings.PreserveStructureBones,outputOptions);
                 writer.WriteNumber("PrecisionScale",input.PrecisionScale);
                 writer.WriteBoolean("SmallFile",input.SmallFile);
+                writer.WritePropertyName("GeneratedPairFrames");writer.WriteStartArray();foreach(var frame in input.GeneratedPairFrames??[])writer.WriteNumberValue(frame);writer.WriteEndArray();
+                writer.WritePropertyName("GeneratedPairSites");JsonSerializer.Serialize(writer,input.GeneratedPairSites??[],ProjectStore.Json);
                 writer.WriteNumber("MaximumWork",input.MaximumWork);
                 writer.WriteNumber("MaximumCandidateSpans",input.MaximumCandidateSpans);
                 writer.WriteEndObject();writer.Flush();file.Flush(true);
@@ -226,16 +247,22 @@ sealed partial class ControlSession
             keys+=channel.LongLength;
             if(keys>AnimationOptimization.MaximumInputKeys)throw new NotSupportedException("Optimization exceeds its two-million native-key budget.");
             for(int i=0;i<channel.Length;i++)
-                if(channel[i] is null||channel[i].Frame<0||channel[i].Frame>=track.FrameLimit||
-                    i>0&&channel[i].Frame<channel[i-1].Frame||
-                    !float.IsFinite(BitConverter.Int32BitsToSingle(channel[i].ValueBits))||
-                    !float.IsFinite(BitConverter.Int32BitsToSingle(channel[i].TangentBits)))
+            {
+                var key=channel[i];
+                if(key is null||!float.IsFinite(key.Frame)||!float.IsFinite(key.NativeTime)||key.NativeTime<0||key.NativeTime>=track.FrameLimit||
+                    key.FrameBits is {} bits&&BitConverter.SingleToInt32Bits(key.Frame)!=bits&&!(key.Frame==0&&key.NativeTime==0)||
+                    i>0&&key.NativeTime<channel[i-1].NativeTime||
+                    !float.IsFinite(BitConverter.Int32BitsToSingle(key.ValueBits))||
+                    !float.IsFinite(BitConverter.Int32BitsToSingle(key.TangentBits)))
                     throw new InvalidDataException("Optimization native keys must be ordered finite signed-float32 data inside their retained frame limit.");
+            }
         }
         if(input.ExactBones.Length>65536||input.ProtectedBones.Length>65536||
             input.ExactBones.Concat(input.ProtectedBones).Any(n=>string.IsNullOrEmpty(n)||n.Length>256)||
             input.MandatoryFrames.Length>200000||input.MandatoryFrames.Any(f=>f<0||f>input.SampleCount)||
             input.FitJoinFrames is {} fitFrames&&(fitFrames.Length>200000||fitFrames.Any(f=>f<0||f>input.SampleCount))||
+            input.GeneratedPairFrames is {} generatedFrames&&(generatedFrames.Length>200000||generatedFrames.Any(f=>f<0||f>input.SampleCount))||
+            input.GeneratedPairSites is {} generatedSites&&(generatedSites.Length>2000000||generatedSites.Any(site=>site is null||string.IsNullOrEmpty(site.Bone)||site.Bone.Length>256||site.Channel<0||site.Channel>8||site.Frame<0||site.Frame>input.SampleCount))||
             input.ProtectedRanges.Length>65536||input.ProtectedRanges.Any(r=>r is null||!double.IsFinite(r.Start)||
                 !double.IsFinite(r.End)||r.Start<0||r.End<r.Start||r.End>input.SampleCount||r.Reason is null||r.Reason.Length>4096))
             throw new InvalidDataException("Invalid bounded optimization frame or bone protections.");

@@ -46,7 +46,7 @@ public static class AnimationControls
         using var stream=new MemoryStream();using(var w=new BinaryWriter(stream,Encoding.UTF8,true))
         {
             w.Write(Fingerprint(scene));foreach(var mesh in scene.Meshes)foreach(var v in mesh.Vertices)
-            {w.Write(v.Position.X);w.Write(v.Position.Y);w.Write(v.Position.Z);for(int i=0;i<4;i++){w.Write(v.Joints[i]);w.Write(v.Weights[i]);}}
+            {w.Write(v.Position.X);w.Write(v.Position.Y);w.Write(v.Position.Z);if(v.Influences.Length>0){w.Write(int.MinValue);w.Write(v.InfluenceCount);}for(int i=0;i<v.InfluenceCount;i++){w.Write(v.JointAt(i));w.Write(v.WeightAt(i));}}
         }
         return Convert.ToHexString(SHA256.HashData(stream.ToArray()));
     }
@@ -56,7 +56,7 @@ public static class AnimationControls
         if(exact is not null)return exact;
         var pose=AnimationService.Evaluate(scene,null,0);var diagnostics=new List<Diagnostic>();var result=new List<ControlChain>();
         var children=Enumerable.Range(0,scene.Bones.Length).Select(i=>Enumerable.Range(0,scene.Bones.Length).Where(j=>scene.Bones[j].Parent==i).ToArray()).ToArray();
-        var weighted=scene.Meshes.SelectMany(m=>m.Vertices).SelectMany(v=>Enumerable.Range(0,4).Where(i=>v.Weights[i]>0).Select(i=>(int)v.Joints[i])).ToHashSet();
+        var weighted=scene.Meshes.SelectMany(m=>m.Vertices).SelectMany(v=>Enumerable.Range(0,v.InfluenceCount).Where(i=>v.WeightAt(i)>0).Select(i=>(int)v.JointAt(i))).ToHashSet();
         string Normal(int i)=>new(scene.Bones[i].Name.ToLowerInvariant().Where(char.IsLetterOrDigit).ToArray());
         int NameScore(int i,string family)=>family switch{
             "hand"=>Normal(i).Contains("hand")||Normal(i).Contains("wrist")?8:0,

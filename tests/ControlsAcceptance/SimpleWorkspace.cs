@@ -260,7 +260,7 @@ internal static partial class Program
             curves.SelectedMode = 6;
             var first = entry.KeyArrays[6].Entries.First();
             var second = entry.KeyArrays[6].Entries.Skip(1).First();
-            int firstIndex = first._index;
+            float firstIndex = first._index;
             curves.SelectedKeyframe = first;
             float oldTangent = first._tangent, newTangent = oldTangent + .125f;
             var tangent = (NumericInputBox)Field(curves, "numInTan");

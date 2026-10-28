@@ -1,4 +1,4 @@
-using BrawlCrate.Studio;
+﻿using BrawlCrate.Studio;
 using BrawlLib.Internal;
 using BrawlLib.Modeling;
 using BrawlLib.SSBB.ResourceNodes;
@@ -139,12 +139,14 @@ namespace BrawlCrate.UI
             Directory.CreateDirectory(_controlStage);string modelPath=Path.Combine(_controlStage,Guid.NewGuid().ToString("N")+".mdl0"),motionPath=clip==null?null:Path.Combine(_controlStage,Guid.NewGuid().ToString("N")+".chr0");
             // Snapshot actual edited native nodes on their owner thread. Workers
             // never touch controls/native scene objects or run during playback.
-            model.Export(modelPath);clip?.Export(motionPath);
-            string modelHash=FighterProject.HashFile(modelPath),clipHash=motionPath==null?null:FighterProject.HashFile(motionPath);
+            string clipHash=ControlClipIdentity(clip);
+            model.Export(modelPath);
+            if(clip!=null)using(var snapshot=NativeAnimationOptimization.CopySource(clip))snapshot.ExportChecked(motionPath);
+            string modelHash=FighterProject.HashFile(modelPath);
             try
             {
                 var reply=await _controlEngine.Send(new{Operation="load",Model=modelPath,Motion=motionPath,State=ControlState(key),TargetBinding=EngineBinding(model),Frame=Math.Max(0,frame-1)});
-                if(IsDisposed||epoch!=_controlEpoch||modelEditControl1.TargetModel!=model||modelEditControl1.SelectedCHR0!=clip||ControlKey()!=key||modelEditControl1.CurrentFrame!=frame||NativeControlHash(model,".mdl0")!=modelHash||(clip!=null&&NativeControlHash(clip,".chr0")!=clipHash)){_controlReloadRequested=true;throw new InvalidOperationException("The model, animation or frame changed; the stale setup was discarded.");}
+                if(IsDisposed||epoch!=_controlEpoch||modelEditControl1.TargetModel!=model||modelEditControl1.SelectedCHR0!=clip||ControlKey()!=key||modelEditControl1.CurrentFrame!=frame||NativeControlHash(model,".mdl0")!=modelHash||ControlClipIdentity(clip)!=clipHash){_controlReloadRequested=true;throw new InvalidOperationException("The model, animation or frame changed; the stale setup was discarded.");}
                 _loadedControlKey=key;_loadedControlModel=model;_loadedControlClip=clip;_controlBoneNames=reply.BoneNames;modelEditControl1.AnimationAuthoringBones=reply.BoneNames;StoreControls(key,reply.State);PublishPins(reply);
                 _loadedControlModelHash=modelHash;_loadedControlClipHash=clipHash;
                 if(clip==null){modelEditControl1.AnimationAuthoringPose=reply.Pose;PreviewControlPose(model,reply.Pose);}
@@ -153,6 +155,7 @@ namespace BrawlCrate.UI
             }
             finally {if(File.Exists(modelPath))File.Delete(modelPath);if(motionPath!=null&&File.Exists(motionPath))File.Delete(motionPath);}
         }
+        private static string ControlClipIdentity(CHR0Node clip)=>clip==null?null:NativeAnimationOptimization.SourceContentKey(clip)+"|storage:"+NativeAnimationOptimization.StorageKey(clip);
         private readonly HashSet<string> _protectedMotionBones = new HashSet<string>(StringComparer.Ordinal);
         private string[] _referenceFitControls = new string[0];
         private bool _bodyBindingReady;
@@ -246,7 +249,7 @@ namespace BrawlCrate.UI
                 if(!g.Released)return;
                 var commit=await _controlEngine.Send(new{Operation="commit"});
                 if(!GestureCurrent(g)){CancelControlGesture();return;}
-                if(NativeControlHash(g.Model,".mdl0")!=g.ModelHash||(g.Clip!=null&&NativeControlHash(g.Clip,".chr0")!=g.ClipHash))throw new InvalidOperationException("Native model or animation content changed during the edit. The stale gesture was discarded.");
+                if(NativeControlHash(g.Model,".mdl0")!=g.ModelHash||ControlClipIdentity(g.Clip)!=g.ClipHash)throw new InvalidOperationException("Native model or animation content changed during the edit. The stale gesture was discarded.");
                 if(commit.Committed)
                 {
                     var tracks=commit.Tracks??new ControlTrack[0];var before=NativeControlSnapshot.Capture(g.Clip,tracks.Select(t=>t.Bone));
@@ -274,7 +277,13 @@ namespace BrawlCrate.UI
         private string NativeControlHash(ResourceNode node,string extension)
         {
             Directory.CreateDirectory(_controlStage);string path=Path.Combine(_controlStage,Guid.NewGuid().ToString("N")+extension);
-            try{node.Export(path);return FighterProject.HashFile(path);}finally{if(File.Exists(path))File.Delete(path);}
+            try
+            {
+                if(node is CHR0Node clip)using(var snapshot=NativeAnimationOptimization.CopySource(clip))snapshot.ExportChecked(path);
+                else node.Export(path);
+                return FighterProject.HashFile(path);
+            }
+            finally{if(File.Exists(path))File.Delete(path);}
         }
         private void PreviewControlPose(MDL0Node model,float[][] pose)
         {
@@ -289,7 +298,7 @@ namespace BrawlCrate.UI
             string modelHash=_loadedControlModelHash,clipHash=_loadedControlClipHash;
             string name=requestedName??"NewAnimation";int suffix=2;if(requestedName==null)while(_fighterProject.Animations.Any(a=>Path.GetFileNameWithoutExtension(a.SourcePath)==name))name="NewAnimation"+suffix++;
             var created=await _controlEngine.Send(new{Operation="create-animation",Name=name,SampleCount=samples});
-            if(IsDisposed||epoch!=_controlEpoch||modelEditControl1.TargetModel!=model||modelEditControl1.SelectedCHR0!=selected||ControlKey()!=key||NativeControlHash(model,".mdl0")!=modelHash||(selected!=null&&NativeControlHash(selected,".chr0")!=clipHash))throw new InvalidOperationException("The model or source pose changed. The stale animation was discarded.");
+            if(IsDisposed||epoch!=_controlEpoch||modelEditControl1.TargetModel!=model||modelEditControl1.SelectedCHR0!=selected||ControlKey()!=key||NativeControlHash(model,".mdl0")!=modelHash||ControlClipIdentity(selected)!=clipHash)throw new InvalidOperationException("The model or source pose changed. The stale animation was discarded.");
             using(var clip=new CHR0Node{Name=created.Name,FrameCount=created.SampleCount,Loop=created.Loop})
             {
                 NativeControlSnapshot.Apply(clip,created.Tracks.Where(t=>CanEditBodyBone(t.Bone)).ToArray());
@@ -305,7 +314,8 @@ namespace BrawlCrate.UI
         {
             private sealed class Entry {internal string Bone;internal ControlKey[][] Keys;internal bool Scale,Rotate,Translate,CompApply,CompParent,Classic;internal BrawlLib.Wii.Animations.IndexedCHR0EntryStorage Storage;}
             private readonly List<Entry> _entries=new List<Entry>();
-            internal string ContentKey=>string.Join("|",_entries.Select(e=>e.Bone+":"+e.Scale+e.Rotate+e.Translate+e.CompApply+e.CompParent+e.Classic+":"+(e.Keys==null?"absent":string.Join(";",e.Keys.Select(c=>string.Join(",",c.Select(k=>k.Frame+":"+k.Value.ToString("R",System.Globalization.CultureInfo.InvariantCulture)+":"+k.Tangent.ToString("R",System.Globalization.CultureInfo.InvariantCulture))))))));
+            private static string FloatKey(float time)=>BitConverter.ToInt32(BitConverter.GetBytes(time),0)==int.MinValue?"-0#80000000":time.ToString("R",System.Globalization.CultureInfo.InvariantCulture);
+            internal string ContentKey=>string.Join("|",_entries.Select(e=>e.Bone+":"+e.Scale+e.Rotate+e.Translate+e.CompApply+e.CompParent+e.Classic+":"+(e.Keys==null?"absent":string.Join(";",e.Keys.Select(c=>string.Join(",",c.Select(k=>FloatKey(k.Frame)+":"+FloatKey(k.Value)+":"+FloatKey(k.Tangent))))))));
             internal static NativeControlSnapshot Capture(CHR0Node clip,IEnumerable<string> bones)
             {
                 var result=new NativeControlSnapshot();foreach(string name in bones.Distinct())

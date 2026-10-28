@@ -194,7 +194,7 @@ namespace BrawlLib.Internal.Windows.Controls
             if (index >= 0)
             {
                 FloatKeyframe f = (FloatKeyframe) listKeyframes.SelectedItem;
-                numFrame.Value = f.Index + 1;
+                numFrame.Value = (decimal) f.Index + 1;
             }
         }
 
@@ -409,7 +409,7 @@ namespace BrawlLib.Internal.Windows.Controls
             _entry = e;
         }
 
-        public int Index
+        public float Index
         {
             get => _entry._index;
             set => _entry._index = value;

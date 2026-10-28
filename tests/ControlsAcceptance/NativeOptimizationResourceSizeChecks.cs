@@ -35,7 +35,7 @@ internal static partial class Program
                 "Native size: clean embedded CHR0 block length independently matches its big-endian header size and BRRES byte range");
             var compactEntry = (CHR0EntryNode)compact.Children[0];
             Check(PreciseCHR0EntryNode.CaptureStorage(compactEntry)?[3]?.Format == AnimDataFormat.I4 &&
-                compactEntry.KeyArrays[3].Entries.Select(k => k._index).SequenceEqual(Enumerable.Range(0, 17)) &&
+                compactEntry.KeyArrays[3].Entries.Select(k => k._index).SequenceEqual(Enumerable.Range(0, 17).Select(frame => (float)frame)) &&
                 compactEntry.KeyArrays[3].Entries.Select((k, i) => ReplayFloatBits(k._value) == ReplayFloatBits(i * .125f) && ReplayFloatBits(k._tangent) == ReplayFloatBits(.125f)).All(v => v),
                 "Native size: independently reopened procedural I4 resource retains every exact authored time, value and tangent without a dense terminal context");
             using (var working = NativeAnimationOptimization.Copy(compact))

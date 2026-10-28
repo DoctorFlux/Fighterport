@@ -83,7 +83,7 @@ public record RigDescriptor(Scene Scene,string SkeletonFingerprint,string Deform
         if(setup.Coordinates is null)diagnostics.Add(new("UNIT_CONTEXT","Physical file units are unspecified; anatomical transfers use declared model units. No metre-based scene or actor compatibility is claimed.",false));
         if(chains.Any(c=>!c.Reviewed))diagnostics.Add(new("RIG_BINDING_REVIEW","Unreviewed virtual/control-chain bindings require focused review.",false));
         return new(scene,fingerprint,AnimationControls.DeformChecksum(scene),rest,rotations,basis,new(roles,chains.ToArray(),setup.Provenance?.Evidence??"Exact saved native rig bindings"),units,diagnostics.ToArray())
-        {SkinPoints=scene.Meshes.SelectMany((m,mi)=>m.Vertices.Select((v,vi)=>new SkinSurfacePoint(v.Position,v.Joints,v.Weights){Mesh=mi,Vertex=vi})).ToArray(),CanonicalBoneRanks=CanonicalRanks(scene,roles)};
+        {SkinPoints=scene.Meshes.SelectMany((m,mi)=>m.Vertices.Select((v,vi)=>new SkinSurfacePoint(v.Position,v.Joints,v.Weights){Influences=v.Influences,Mesh=mi,Vertex=vi})).ToArray(),CanonicalBoneRanks=CanonicalRanks(scene,roles)};
     }
     static int[] CanonicalRanks(Scene scene,Dictionary<string,int> roles)
     {
@@ -93,7 +93,7 @@ public record RigDescriptor(Scene Scene,string SkeletonFingerprint,string Deform
         int count=scene.Bones.Length;var first=Enumerable.Repeat(long.MaxValue,count).ToArray();long vertex=0;
         foreach(var mesh in scene.Meshes)foreach(var point in mesh.Vertices)
         {
-            for(int slot=0;slot<4;slot++)if(point.Weights[slot]>0){int bone=(int)point.Joints[slot];first[bone]=Math.Min(first[bone],vertex);}
+            for(int slot=0;slot<point.InfluenceCount;slot++)if(point.WeightAt(slot)>0){int bone=(int)point.JointAt(slot);first[bone]=Math.Min(first[bone],vertex);}
             vertex++;
         }
         var children=Enumerable.Range(0,count).Select(b=>Enumerable.Range(0,count).Where(c=>scene.Bones[c].Parent==b).ToArray()).ToArray();var keys=new string[count];

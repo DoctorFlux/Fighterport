@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><AllowUnsafeBlocks>true</AllowUnsafeBlocks></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/FighterPort.Rendering/FighterPort.Rendering.csproj" />
+    <ProjectReference Include="../../src/FighterPort.Adapters.Brawl/FighterPort.Adapters.Brawl.csproj" />
+    <PackageReference Include="Avalonia.Win32" Version="11.3.9" />
+    <PackageReference Include="Avalonia.Skia" Version="11.3.9" />
+  </ItemGroup>
+</Project>

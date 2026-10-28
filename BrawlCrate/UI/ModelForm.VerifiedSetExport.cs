@@ -54,6 +54,7 @@ namespace BrawlCrate.UI
         }
         private FrozenAnimationSet FreezeWorkspaceSet()
         {
+            RequireSavedAnimationExportTarget(modelEditControl1.TargetModel as MDL0Node);
             var rows = ValidateBatchReviewRows();
             long keys = rows.Sum(r => r.Clip.Children.OfType<CHR0EntryNode>().Sum(e => e.KeyArrays.Sum(c => (long)c.KeyCount)));
             if (keys > 2000000) throw new InvalidOperationException("This set exceeds two million native keys. Use a smaller review set.");
@@ -73,6 +74,7 @@ namespace BrawlCrate.UI
                 ValidateSetFilenames(set);
                 set.Validate = () =>
                 {
+                    RequireSavedAnimationExportTarget(target);
                     if (_controlBusy || _retargetBusy || _pinGesture != null || _workspaceBusy && !ReferenceEquals(_activeSetExport, set) ||
                         !ReferenceEquals(project, _fighterProject) || !ReferenceEquals(target, modelEditControl1.TargetModel) || project.Name != set.ProjectName ||
                         !_batchReviewRows.SequenceEqual(rows) || project.Model == null || FighterAnimationKey(project.Model, target) != set.TargetIdentity)
@@ -128,11 +130,22 @@ namespace BrawlCrate.UI
                     using (var decoded = NodeFactory.FromFile(null, path) as CHR0Node)
                         if (decoded == null || ExportContent(decoded) != item.Snapshot.ExpectedContent)
                             throw new InvalidDataException("Set candidate verification failed: native metadata, timing, keys, tangents or flags differ. No set was published.");
-                    prepared.Hashes.Add(item.Key, FighterProject.HashFile(path));
+                    var size = NativeChr0SizeReport.Read(path); item.Snapshot.ByteReport = size.Describe(); item.Snapshot.ExportBytes = size.FileBytes;
+                    if (item.Snapshot.MasterBytes > 0 && size.FileBytes > item.Snapshot.MasterBytes)
+                        throw new InvalidDataException("A final set member is larger than its frozen target master. No set was published.");
+                    if (item.Snapshot.MasterBytes == 0) item.Snapshot.MasterBytes = size.FileBytes;
+                    string hash = FighterProject.HashFile(path);
+                    if (item.Snapshot.PreparedEncodedSha256 != null && (size.FileBytes != item.Snapshot.PreparedEncodedBytes || hash != item.Snapshot.PreparedEncodedSha256))
+                        throw new InvalidDataException("A set member differs from its independently qualified prepared bytes. No set was published.");
+                    prepared.Hashes.Add(item.Key, hash);
                 }
                 token.ThrowIfCancellationRequested();
                 var receipt = new { Schema = 1, Format = "Brawl CHR0", Project = set.ProjectName, Target = set.TargetName, set.TargetIdentity, set.TargetSha256,
-                    Clips = set.Items.Select(i => new { Identity = i.Key, Name = i.ClipName, i.Frames, i.Filename, SourceClipId = i.SourceId, Sha256 = prepared.Hashes[i.Key] }).ToArray() };
+                    Clips = set.Items.Select(i => new { Identity = i.Key, Name = i.ClipName, i.Frames, i.Filename, SourceClipId = i.SourceId, Sha256 = prepared.Hashes[i.Key],
+                        MasterContentSha256 = OptimizationTextHash(ExportContent(i.Snapshot.Master)), ExportContentSha256 = OptimizationTextHash(i.Snapshot.ExpectedContent),
+                        RequestedExportPolicy = i.Snapshot.PreparedPolicyKey ?? "Exact/reference", EffectiveExportPolicy = i.Snapshot.EffectiveExportPolicy,
+                        PreparationMilliseconds = i.Snapshot.PreparationMilliseconds,
+                        ByteAccounting = i.Snapshot.ByteReport }).ToArray() };
                 string manifest = Path.Combine(prepared.Temporary, "fighterport-set.json"); prepared.Files.Add(manifest);
                 byte[] bytes = Encoding.UTF8.GetBytes(new JavaScriptSerializer().Serialize(receipt));
                 using (var file = new FileStream(manifest, FileMode.CreateNew, FileAccess.Write, FileShare.None))
@@ -155,13 +168,26 @@ namespace BrawlCrate.UI
             if (FighterProject.HashFile(Path.Combine(prepared.Temporary, "fighterport-set.json")) != prepared.ReceiptHash)
                 throw new IOException("The set receipt changed. No set was published.");
         }
-        private async Task ExportWorkspaceSet(FrozenAnimationSet set, string destination, CancellationToken token, IProgress<string> progress)
+        private Task ExportWorkspaceSet(FrozenAnimationSet set, string destination, CancellationToken token, IProgress<string> progress)
+            => ExportOptimizedWorkspaceSet(set, destination, token, progress, null);
+
+        private async Task ExportOptimizedWorkspaceSet(FrozenAnimationSet set, string destination, CancellationToken token, IProgress<string> progress, NativeExportOptimizationSettings optimization)
         {
             set.Validate(); destination = AnimationLibrary.OrdinaryPath(destination); ValidateSetDestination(set, destination);
             _activeSetExport = set; _workspaceBusy = true; UpdateSimpleWorkspace();
             PreparedAnimationSet prepared = null;
             try
             {
+                if (optimization != null)
+                {
+                    var settings = optimization.Clone(); settings.Validate(); var preferences = new NativeExportOptimizationPreferences(); preferences.Save(settings);
+                    foreach (var item in set.Items) item.Snapshot.PreferenceWarning = preferences.LastError;
+                    foreach (var item in set.Items)
+                    {
+                        token.ThrowIfCancellationRequested(); set.Validate();
+                        await PrepareOptimizedExportSnapshot(item.Snapshot, settings, token, progress);
+                    }
+                }
                 // The worker owns only frozen native candidates. Modal cancellation
                 // waits for this task before releasing those resources.
                 prepared = await Task.Run(() => PrepareWorkspaceSet(set, destination, token, progress));
@@ -181,7 +207,13 @@ namespace BrawlCrate.UI
                         asset.Retarget.Library.LastExportFormat = "CHR0"; MarkFighterChanged();
                     }
                 }
-                _fighterStatus.Text = "Verified and exported " + set.Items.Count + " animations to " + destination;
+                long before = set.Items.Sum(item => item.Snapshot.MasterBytes), after = set.Items.Sum(item => item.Snapshot.ExportBytes);
+                int fallbacks = set.Items.Count(item => item.Snapshot.RequestedExportPolicy == NativeExportOptimizationPolicy.ErrorBounded && !item.Snapshot.EffectiveExportPolicy.StartsWith("ErrorBounded", StringComparison.Ordinal));
+                _fighterStatus.Text = "Exported " + set.Items.Count + " animations · CHR0 bytes " + before + " → " + after + " (" + (before - after) + " saved) · " + fallbacks + " Exact/reference fallbacks.";
+                if (set.Items.Any(item => item.Snapshot.PreferenceWarning != null)) _fighterStatus.Text += ". Export settings could not be saved.";
+                string report = _fighterStatus.Text + "\r\nReceipt/manifest bytes are separate; container savings were not measured.\r\n" +
+                    string.Join("\r\n", set.Items.Select(item => item.ClipName + ": " + item.Snapshot.MasterBytes + " → " + item.Snapshot.ExportBytes + " bytes; " + item.Snapshot.EffectiveExportPolicy + ". " + item.Snapshot.ByteReport));
+                _fighterStatus.ToolTipText = _fighterStatus.AccessibleDescription = BoundedExportReport(report);
             }
             finally
             {
@@ -196,7 +228,7 @@ namespace BrawlCrate.UI
                 set.Items.Select(i => i.ClipName + " · " + i.Frames + " frames → " + i.Filename + Environment.NewLine + "  Exact result: " + i.Key).ToArray()))
             {
                 dialog.ValidateDestination = path => ValidateSetDestination(set, path);
-                dialog.Export = (path, token, progress) => ExportWorkspaceSet(set, path, token, progress);
+                dialog.Export = (path, token, progress) => ExportOptimizedWorkspaceSet(set, path, token, progress, dialog.ReadOptimizationSettings());
                 dialog.ShowDialog(this);
             }
         }

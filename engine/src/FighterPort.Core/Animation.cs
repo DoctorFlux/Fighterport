@@ -119,7 +119,7 @@ public static class AnimationService
     public static Vector3 Skin(Vertex v, EvaluatedPose pose)
     {
         var p=Vector3.Zero;
-        for(int i=0;i<4;i++) if(v.Weights[i]!=0) p+=Vector3.Transform(v.Position,pose.Skin[(int)v.Joints[i]])*v.Weights[i];
+        for(int i=0;i<v.InfluenceCount;i++) if(v.WeightAt(i)!=0) p+=Vector3.Transform(v.Position,pose.Skin[(int)v.JointAt(i)])*v.WeightAt(i);
         return p;
     }
 }

@@ -33,7 +33,7 @@ namespace BrawlCrate.Studio
                 ValidateRawMetadata(source, working, source.IsBranch, sourceSnapshot);
         }
 
-        private static unsafe int SourceScalingRule(CHR0Node source)
+        internal static unsafe int SourceScalingRule(CHR0Node source)
         {
             ValidateMetadataPolicy(source, true);
             if (source is NativeSourceSnapshotNode snapshot) return snapshot.ScalingRule;

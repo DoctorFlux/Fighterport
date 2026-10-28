@@ -103,9 +103,9 @@ public sealed class NativePoseDifferentials
             geometry[point.Mesh][point.Vertex]:point.Position;
         if(!PoseGeometry.Finite(position))throw new ArgumentException("Native skin derivative point must be finite.",nameof(point));
         var result=Vector3.Zero;
-        for(int slot=0;slot<4;slot++)
+        for(int slot=0;slot<point.InfluenceCount;slot++)
         {
-            float weight=point.Weights[slot],joint=point.Joints[slot];
+            float weight=point.WeightAt(slot),joint=point.JointAt(slot);
             if(!float.IsFinite(weight)||weight<0)throw new ArgumentException("Native skin derivative weights must be finite and nonnegative.",nameof(point));
             if(weight==0)continue;
             if(!float.IsFinite(joint)||joint!=MathF.Truncate(joint)||joint<0||joint>=count)

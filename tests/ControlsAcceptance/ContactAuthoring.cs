@@ -55,7 +55,29 @@ internal static partial class Program
         Check(project.GameSlotProfiles[0].Entries.All(e=>e.Version==4||e.Version==5)&&project.AnimationSlots.All(s=>!s.Required&&s.AnimationKey==null),"Native motion profiles retain real versions and do not invent required rules or automatic bindings");
         var slot=project.AnimationSlots.Single(s=>s.Id=="Wait1");Call(form,"AssignAnimationSlot",slot.Id,(string)Call(form,"SelectedFighterAnimationKey"));Check(project.AnimationSlots.Single(s=>s.Id=="Wait1").NativeEntry==slot.NativeEntry,"An exact native game slot accepts an explicitly reviewed independent result without changing its runtime entry identity");
         string NativeKeys(CHR0Node clip)=>string.Join("|",clip.Children.OfType<CHR0EntryNode>().Select(e=>e.Name+":"+e.UseModelScale+e.UseModelRotate+e.UseModelTranslate+e.ScaleCompensateApply+e.ScaleCompensateParent+e.ClassicScaleOff+":"+string.Join(";",e.KeyArrays.Select(a=>string.Join(",",a.Entries.Select(k=>k._index+":"+k._value.ToString("R")+":"+k._tangent.ToString("R")))))));
-        string slotPath=Path.Combine(output,"Wait1-slot.chr0");Call(form,"ExportGameSlot",slot.Id,slotPath);using(var slotFile=(CHR0Node)NodeFactory.FromFile(null,slotPath)){var expected=project.GameSlotProfiles.Single().Entries.Single(e=>e.Entry==slot.NativeEntry);Check(slotFile.Name==expected.Name&&slotFile.Version==expected.Version&&NativeKeys(slotFile)==NativeKeys(editor.SelectedCHR0),"Native slot export fresh-reopens with the template's exact name/version and the assigned animation's keys/tangents/flags");}
+        string slotPath=Path.Combine(output,"Wait1-slot.chr0"),slotMaster=NativeKeys(editor.SelectedCHR0);
+        using(var prepared=(IDisposable)Call(form,"FreezeOwnedWorkspaceExport",Call(form,"SelectedFighterAsset"),editor.SelectedCHR0,false,null))
+        {
+            var expected=project.GameSlotProfiles.Single().Entries.Single(e=>e.Entry==slot.NativeEntry);
+            await (Task)Call(form,"PrepareOptimizedExportSnapshot",prepared,new NativeExportOptimizationSettings(),System.Threading.CancellationToken.None,null);
+            Call(form,"PrepareSlotMetadataExport",prepared,expected.Name,expected.Version);
+            Call(form,"ExportGameSlot",slot.Id,slotPath);
+            using(var slotFile=(CHR0Node)NodeFactory.FromFile(null,slotPath))
+            {
+                var candidate=(CHR0Node)Field(prepared,"Candidate");
+                Check(slotFile.Name==expected.Name&&slotFile.Version==expected.Version&&NativeAnimationOptimization.SourceContentKey(slotFile)==NativeAnimationOptimization.SourceContentKey(candidate)&&
+                    NativeAnimationOptimization.StorageKey(slotFile)==NativeAnimationOptimization.StorageKey(candidate)&&FighterProject.HashFile(slotPath)==(string)Field(prepared,"PreparedEncodedSha256")&&
+                    new FileInfo(slotPath).Length<=(long)Field(prepared,"MasterBytes"),
+                    "Native slot export fresh-reopens as its independently prepared same-slot Exact copy, with complete metadata/storage and physical no-growth verification");
+                using(var first=NodeFactory.FromFile(null,modelPath))using(var second=NodeFactory.FromFile(null,modelPath))
+                {
+                    var beforeModel=Walk(first).OfType<MDL0Node>().Single(node=>node.Name==model.Name);var afterModel=Walk(second).OfType<MDL0Node>().Single(node=>node.Name==model.Name);
+                    beforeModel.Populate();afterModel.Populate();
+                    OptimizationWithheldGeometry(beforeModel,afterModel,editor.SelectedCHR0,slotFile,Path.Combine(output,"slot-export-withheld-geometry.json"));
+                }
+            }
+        }
+        Check(NativeKeys(editor.SelectedCHR0)==slotMaster,"Independent slot export preserves the assigned full-quality editable master and authored native keys");
         done=false;form.AnimationSlotsReady=async window=>{try{await CaptureWindow(window,Path.Combine(output,"game-slot-profile.png"));}catch(Exception error){failure=error;}finally{window.Close();done=true;}};Call(form,"ShowAnimationSlots");await Wait(()=>done);if(failure!=null)throw failure;
         string released=Path.Combine(output,"released.chr0");form.ExportFighterResource(released);form.SaveFighterProject(Path.Combine(output,"released-slots.fpstudio"));using(var fresh=FighterProject.Open(Path.Combine(output,"released-slots.fpstudio")))Check(fresh.GameSlotProfiles.Single().Entries.Length==project.GameSlotProfiles[0].Entries.Length&&fresh.AnimationSlots.Single(s=>s.Id=="Wait1").AnimationKey!=null,"Game slot profile and reviewed assignment survive fresh native project reopening");
         Check((string)Call(form,"NativeControlHash",source,".chr0")==sourceHash&&(string)Call(form,"NativeControlHash",model,".mdl0")==modelHash&&hashes.All(p=>FighterProject.HashFile(p.Key)==p.Value),"Contact placement, release and game profiles preserve source bytes and native deform data");

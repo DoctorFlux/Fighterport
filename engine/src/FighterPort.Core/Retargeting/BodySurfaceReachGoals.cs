@@ -12,10 +12,10 @@ public sealed class NativeSurfaceMoment
     {
         if(points.Length==0)throw new ArgumentException("A surface moment needs original material points.");
         var sums=new Dictionary<int,Vector4>();var inverses=rig.Rest.World.Select(w=>Matrix4x4.Invert(w,out var inverse)?inverse:throw new NotSupportedException("Surface moments require invertible native rest transforms.")).ToArray();
-        foreach(var p in points)for(int slot=0;slot<4;slot++)if(p.Weights[slot]>0)
+        foreach(var p in points)for(int slot=0;slot<p.InfluenceCount;slot++)if(p.WeightAt(slot)>0)
         {
-            int bone=(int)p.Joints[slot];
-            var value=Vector4.Transform(new Vector4(p.Position,1),inverses[bone])*(p.Weights[slot]/points.Length);
+            int bone=(int)p.JointAt(slot);
+            var value=Vector4.Transform(new Vector4(p.Position,1),inverses[bone])*(p.WeightAt(slot)/points.Length);
             sums[bone]=sums.GetValueOrDefault(bone)+value;
         }
         moments=sums.OrderBy(p=>rig.CanonicalBoneRanks[p.Key]).Select(p=>(p.Key,p.Value)).ToArray();

@@ -12,7 +12,7 @@ internal sealed unsafe class NativeMaterialPipeline(Gl gl,bool es) : IDisposable
     readonly Dictionary<MaterialProgram,uint> programs=[];
     public List<string> Diagnostics {get;}=[];
     public int ProgramCount=>programs.Values.Count(p=>p!=0);
-    public bool Bind(Material material,OrbitCamera camera,Matrix4x4 vp,EvaluatedPose pose,Vector3 offset,IReadOnlyDictionary<string,uint> textures,EditorDocument document,bool referencePose=false)
+    public bool Bind(Material material,OrbitCamera camera,Matrix4x4 vp,EvaluatedPose pose,Vector3 offset,IReadOnlyDictionary<string,uint> textures,EditorDocument document,bool referencePose=false,bool completeSkin=false)
     {
         if(material.Program is not {} data)
         {
@@ -26,6 +26,7 @@ internal sealed unsafe class NativeMaterialPipeline(Gl gl,bool es) : IDisposable
         }
         if(program==0)return false;
         gl.UseProgram(program);Matrix(program,"viewProjection",vp);Matrix(program,"view",camera.View);
+        gl.Uniform1(gl.GetUniformLocation(program,"completeSkin"),completeSkin?1:0);
         fixed(Matrix4x4* p=pose.Skin)gl.UniformMatrix4(gl.GetUniformLocation(program,"bones[0]"),(uint)pose.Skin.Length,false,(float*)p);
         gl.Uniform3(gl.GetUniformLocation(program,"offset"),offset.X,offset.Y,offset.Z);
         foreach(var pair in data.Colors)Vector(program,pair.Key,pair.Value);
@@ -85,11 +86,11 @@ internal sealed unsafe class NativeMaterialPipeline(Gl gl,bool es) : IDisposable
         if(!vertex)return header+"out vec4 outputColor;\n"+source;
         header+="layout(location=0) in vec3 position;layout(location=1) in vec3 normal;layout(location=2) in vec2 uv0;layout(location=3) in vec4 joints;layout(location=4) in vec4 weights;layout(location=5) in vec4 color0;layout(location=6) in vec4 color1;\n";
         header+=string.Join("\n",Enumerable.Range(1,7).Select(i=>$"layout(location={i+6}) in vec2 uv{i};"));
-        header+="\nuniform mat4 bones[128];uniform mat4 viewProjection;uniform mat4 view;uniform mat4 textureMatrices[8];uniform vec3 offset;\n";
+        header+="\nuniform mat4 bones[128];uniform mat4 viewProjection;uniform mat4 view;uniform mat4 textureMatrices[8];uniform vec3 offset;uniform int completeSkin;\n";
         for(int i=0;i<8;i++){int coord=i<data.Bindings.Length?data.Bindings[i].Coordinate:i;source=source.Replace("gl_MultiTexCoord"+i,$"vec4(uv{Math.Clamp(coord,0,7)},0.0,1.0)");}
         source=source.Replace("gl_ModelViewProjectionMatrix","viewProjection").Replace("gl_ModelViewMatrix","view").Replace("gl_NormalMatrix","fpNormalMatrix").Replace("gl_Normal","fpWorldNormal").Replace("gl_Vertex","fpVertex").Replace("gl_SecondaryColor","color1").Replace("gl_Color","color0");
         int main=source.IndexOf("void main",StringComparison.Ordinal),brace=source.IndexOf('{',main);
-        string skin="\nmat4 fpSkin=bones[int(joints.x)]*weights.x+bones[int(joints.y)]*weights.y+bones[int(joints.z)]*weights.z+bones[int(joints.w)]*weights.w;vec4 fpVertex=fpSkin*vec4(position,1.0);fpVertex.xyz+=offset;vec3 fpWorldNormal=mat3(fpSkin)*normal;mat3 fpNormalMatrix=mat3(view);\n";
+        string skin="\nmat4 fpSkin=completeSkin==1?mat4(1.0):bones[int(joints.x)]*weights.x+bones[int(joints.y)]*weights.y+bones[int(joints.z)]*weights.z+bones[int(joints.w)]*weights.w;vec4 fpVertex=fpSkin*vec4(position,1.0);fpVertex.xyz+=offset;vec3 fpWorldNormal=mat3(fpSkin)*normal;mat3 fpNormalMatrix=mat3(view);\n";
         return header+source.Insert(brace+1,skin);
     }
     public void Dispose(){foreach(uint p in programs.Values)if(p!=0)gl.DeleteProgram(p);programs.Clear();}

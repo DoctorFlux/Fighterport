@@ -135,7 +135,7 @@ public static class NativeContactVelocity
                 foreach(var pin in pins)
                 {
                     Add(pin.Bone);if(pin.Reference?.Bone is {} attachment)Add(attachment);
-                    foreach(var point in pin.SurfacePoints.Concat(pin.Reference?.SurfaceTripod??[]))for(int i=0;i<4;i++)if(point.Weights[i]>0)Add((int)point.Joints[i]);
+                    foreach(var point in pin.SurfacePoints.Concat(pin.Reference?.SurfaceTripod??[]))for(int i=0;i<point.InfluenceCount;i++)if(point.WeightAt(i)>0)Add((int)point.JointAt(i));
                 }
                 var variables=affected.OrderBy(bone=>plan.Rig.CanonicalBoneRanks[bone]).SelectMany(bone=>Enumerable.Range(3,bone==body?6:3).Select(channel=>new Variable(bone,trackIndices[bone],channel,channel>=6?scale:180/Math.PI))).ToArray();
                 if(variables.Length==0){skipped++;Reason("No permitted native derivative channel affects this contact");continue;}

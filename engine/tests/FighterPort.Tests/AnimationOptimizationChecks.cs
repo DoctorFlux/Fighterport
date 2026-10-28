@@ -6,6 +6,7 @@ internal static class AnimationOptimizationChecks
 {
     public static void Run(Action<bool, string> check)
     {
+        NativeFractionalWireChecks.Run(check);
         ExactPolynomials(check);
         NativeStructure(check);
         HighQualityBounds(check);
@@ -94,8 +95,11 @@ internal static class AnimationOptimizationChecks
         var held = fractional with { Interpolation = Interpolation.Step };
         var a = AnimationOptimization.Optimize(Clip(Track("detail", 6, fractional)), new[] { "detail" });
         var b = AnimationOptimization.Optimize(Clip(Track("detail", 6, held)), new[] { "detail" });
-        check(ReferenceEquals(Reduced(a, 6), fractional) && ReferenceEquals(Reduced(b, 6), held),
-            "Unqualified fractional-time and held interpolation channels retain their original objects without conversion");
+        var nonNative = new Curve([new(0, 0, 1, 1), new(.1, .1f, 1, 1), new(1, 1, 1, 1)]);
+        var c = AnimationOptimization.Optimize(Clip(Track("detail", 6, nonNative)), new[] { "detail" });
+        check(Reduced(a, 6).Keys.Length == 2 && a.Report.Channels.Single().CertifiedValueErrorBound == 0 &&
+            ReferenceEquals(Reduced(b, 6), held) && ReferenceEquals(Reduced(c, 6), nonNative),
+            "Exactly representable native fractional times receive rational cleanup; held and non-native double times remain unchanged without conversion");
     }
 
     static void HighQualityBounds(Action<bool, string> check)

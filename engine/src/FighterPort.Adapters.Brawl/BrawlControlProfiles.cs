@@ -20,7 +20,7 @@ public static class BrawlControlProfiles
         if(profile is null)return AnimationControls.SetUp(scene,project.ControlRigs);
         int Bone(string name)=>Array.FindIndex(scene.Bones,b=>b.Name==name);
         var bind=AnimationService.Evaluate(scene,null,0);
-        var weighted=scene.Meshes.SelectMany(m=>m.Vertices).SelectMany(v=>Enumerable.Range(0,4).Where(i=>v.Weights[i]>0).Select(i=>(int)v.Joints[i])).ToHashSet();
+        var weighted=scene.Meshes.SelectMany(m=>m.Vertices).SelectMany(v=>Enumerable.Range(0,v.InfluenceCount).Where(i=>v.WeightAt(i)>0).Select(i=>(int)v.JointAt(i))).ToHashSet();
         var setup=new ControlRigSetup(Guid.NewGuid(),fingerprint,[],[]);
         foreach(var side in new[]{"L","R"})foreach(var family in new[]{"Hand","Foot"})
         {

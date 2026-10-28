@@ -136,7 +136,7 @@ public static class BoundaryFloorRecovery
                 {
                     double before=Height(point,pose),deficit=baseline-before;
                     if(deficit<=0)continue;
-                    double bodyWeight=0;for(int slot=0;slot<4;slot++)if(point.Weights[slot]>0&&PoseGeometry.Ancestor(scene,body,(int)point.Joints[slot]))bodyWeight+=point.Weights[slot];
+                    double bodyWeight=0;for(int slot=0;slot<point.InfluenceCount;slot++)if(point.WeightAt(slot)>0&&PoseGeometry.Ancestor(scene,body,(int)point.JointAt(slot)))bodyWeight+=point.WeightAt(slot);
                     if(bodyWeight>0)maximumPointwiseLift=Math.Max(maximumPointwiseLift,deficit/bodyWeight);
                     double response=Height(point,one)-before;
                     if(response<=1e-10)
@@ -206,9 +206,9 @@ public static class BoundaryFloorRecovery
             for(int mesh=0;mesh<scene.Meshes.Length;mesh++)for(int vertex=0;vertex<scene.Meshes[mesh].Vertices.Length;vertex++)
             {
                 var v=scene.Meshes[mesh].Vertices[vertex];double weight=0;
-                for(int slot=0;slot<4;slot++)if(v.Weights[slot]>0&&PoseGeometry.Ancestor(scene,leg.Effector,(int)v.Joints[slot]))weight+=v.Weights[slot];
+                for(int slot=0;slot<v.InfluenceCount;slot++)if(v.WeightAt(slot)>0&&PoseGeometry.Ancestor(scene,leg.Effector,(int)v.JointAt(slot)))weight+=v.WeightAt(slot);
                 if(weight<=0)continue;
-                var point=new SkinSurfacePoint(v.Position,v.Joints,v.Weights){Mesh=mesh,Vertex=vertex};
+                var point=new SkinSurfacePoint(v.Position,v.Joints,v.Weights){Influences=v.Influences,Mesh=mesh,Vertex=vertex};
                 if(!ContactGeometry.Valid(point,scene.Bones.Length))throw new InvalidDataException("A complete foot region contains invalid authentic skin data.");
                 points.Add(point);if(weight>=.8)legacy++;
             }
@@ -229,7 +229,8 @@ public static class BoundaryFloorRecovery
             Text(mesh.Name);Integer(mesh.Vertices.Length);foreach(var vertex in mesh.Vertices)
             {
                 Float(vertex.Position.X);Float(vertex.Position.Y);Float(vertex.Position.Z);
-                for(int slot=0;slot<4;slot++){Float(vertex.Joints[slot]);Float(vertex.Weights[slot]);}
+                if(vertex.Influences.Length>0){Integer(int.MinValue);Integer(vertex.InfluenceCount);}
+                for(int slot=0;slot<vertex.InfluenceCount;slot++){Float(vertex.JointAt(slot));Float(vertex.WeightAt(slot));}
             }
         }
         return Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant();

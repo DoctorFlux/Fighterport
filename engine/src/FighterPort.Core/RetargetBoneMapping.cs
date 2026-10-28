@@ -161,9 +161,9 @@ public static class RetargetBoneMapping
             // Rest evaluated geometry respects the scene's actual skinning;
             // influence magnitudes are evidence only and are never rewritten.
             var position=AnimationService.Skin(vertex,rest);
-            for(int slot=0;slot<4;slot++)if(vertex.Weights[slot]>0)
+            for(int slot=0;slot<vertex.InfluenceCount;slot++)if(vertex.WeightAt(slot)>0)
             {
-                int bone=(int)vertex.Joints[slot];float weight=vertex.Weights[slot];
+                int bone=(int)vertex.JointAt(slot);float weight=vertex.WeightAt(slot);
                 weights[bone]+=weight;centroids[bone]+=position*weight;
             }
         }

@@ -16,6 +16,8 @@ namespace BrawlCrate.Studio
         public bool BudgetExhausted { get; set; }
         public string Report { get; set; }
         public double[] ProbeFrames { get; set; } = new double[0];
+        public string FailedBone { get; set; }
+        public int? FailedChannel { get; set; }
     }
 
     internal static partial class NativeAnimationOptimization
@@ -198,6 +200,7 @@ namespace BrawlCrate.Studio
                     // the less quantized indexed alternative wherever available.
                     // This avoids evaluating every frame/vertex per scalar group.
                     int indexedGroups = 0;
+                    InvalidDataException identifiedFailure = null;
                     for (int precision = 0; precision < 2 && alternatives.Count > 0 && !stoppedByBudget && attempted < MaximumCompactQuantizedAttempts; precision++)
                     {
                         token.ThrowIfCancellationRequested();
@@ -209,13 +212,49 @@ namespace BrawlCrate.Studio
                             try
                             {
                                 var accepted = await TryVerifyCompact(batch, retainedBaseline, bones, modelSnapshot, frozenOptions, stage,
-                                    certify, verifiedPrecise, currentKey, currentStorage, currentBytes, currentBlock, diagnostics, token, false, denseProofBudget).ConfigureAwait(false);
+                                    certify, verifiedPrecise, currentKey, currentStorage, currentBytes, currentBlock, diagnostics, token, false, denseProofBudget, error => identifiedFailure = error).ConfigureAwait(false);
                                 if (accepted != null && CompactSmaller(accepted, best))
                                 { best.Dispose(); best = accepted; quantizedGroups += alternatives.Count; indexedGroups = alternatives.Count; break; }
                                 accepted?.Dispose();
                             }
                             catch (InvalidDataException error) when (error.Data.Contains("OptimizationBudget"))
                             { diagnostics.AppendLine(error.Message); stoppedByBudget = true; break; }
+                        }
+                    }
+
+                    // A typed failed scalar group identifies exactly which
+                    // proposal cannot be retained. Native cumulative failures
+                    // identify a bone and its actual ancestor dependencies.
+                    // Exclude those proposals before bisecting unrelated groups;
+                    // every repaired COMPLETE candidate still uses both gates.
+                    if (indexedGroups == 0 && options.SmallFile && !stoppedByBudget && identifiedFailure != null)
+                    {
+                        var remaining = alternatives.ToList();
+                        for (int repair = 0; repair < 6 && remaining.Count > 0 && attempted < MaximumCompactQuantizedAttempts; repair++)
+                        {
+                            token.ThrowIfCancellationRequested();
+                            var excluded = CompactFailedGroups(identifiedFailure, bones, remaining);
+                            if (excluded.Count == 0) break;
+                            remaining.RemoveAll(choices => excluded.Contains(choices[0].Bone + "\0" + choices[0].Group));
+                            if (remaining.Count == 0) break;
+                            identifiedFailure = null;
+                            using (var batch = Copy(best.Candidate))
+                            {
+                                foreach (var choices in remaining) NativeCompactAnimationStorage.ApplyGroup(batch, choices[Math.Min(1, choices.Length - 1)]);
+                                attempted++; selectiveAttempts++;
+                                try
+                                {
+                                    var accepted = await TryVerifyCompact(batch, retainedBaseline, bones, modelSnapshot, frozenOptions, stage,
+                                        certify, verifiedPrecise, currentKey, currentStorage, currentBytes, currentBlock, diagnostics, token, false, denseProofBudget,
+                                        error => identifiedFailure = error).ConfigureAwait(false);
+                                    if (accepted != null && CompactSmaller(accepted, best))
+                                    { best.Dispose(); best = accepted; quantizedGroups += remaining.Count; indexedGroups = remaining.Count; break; }
+                                    accepted?.Dispose();
+                                }
+                                catch (InvalidDataException error) when (error.Data.Contains("OptimizationBudget"))
+                                { diagnostics.AppendLine(error.Message); stoppedByBudget = true; break; }
+                            }
+                            if (identifiedFailure == null) break;
                         }
                     }
 
@@ -274,7 +313,7 @@ namespace BrawlCrate.Studio
                 best.UsedApproximateStorage = quantizedGroups > 0;
                 best.ReductionSelectionReport = verifiedPrecise.ReductionSelectionReport;
                 best.BeforeKeys = CountKeys(currentSnapshot); best.BeforeTracks = currentSnapshot.Children.Count;
-                best.BudgetSamples = budget.Samples; best.BudgetBoneVisits = budget.BoneVisits; best.BudgetVertexVisits = budget.VertexVisits;
+                best.BudgetSamples = budget.Samples; best.BudgetPoseEvaluations = budget.PoseEvaluations; best.BudgetBoneVisits = budget.BoneVisits; best.BudgetVertexVisits = budget.VertexVisits;
                 string scalarReport = best.Report;
                 best.Report = (options.SmallFile && !options.ExactOnly ?
                     "Explicit native storage: guarded L1/L2 rotation and I4/I6 where independently verified; precise I12 fallback. Baked candidates require continuous/native collective gates under both native-Hermite and independent linear interpretations.\r\n" :
@@ -303,7 +342,7 @@ namespace BrawlCrate.Studio
             MDL0BoneNode[] bones, MDL0Node model, NativeAnimationOptimizationOptions options, string stage,
             Func<CHR0Node, CancellationToken, Task<NativeCompactCurveCertificate>> certify, NativeAnimationOptimizationResult precise,
             string currentKey, string currentStorage, long beforeBytes, long beforeBlock, StringBuilder diagnostics, CancellationToken token, bool carryExactProof = false,
-            NativeDenseProofBudget denseProofBudget = null)
+            NativeDenseProofBudget denseProofBudget = null, Action<InvalidDataException> rejected = null)
         {
             try
             {
@@ -313,7 +352,7 @@ namespace BrawlCrate.Studio
                 return result;
             }
             catch (InvalidDataException error) when (Equals(error.Data["OptimizationQuality"], true))
-            { diagnostics.AppendLine(error.Message); return null; }
+            { diagnostics.AppendLine(error.Message); rejected?.Invoke(error); return null; }
         }
 
         private static async Task<NativeAnimationOptimizationResult> VerifyCompact(CHR0Node proposed, CHR0Node baseline,
@@ -376,7 +415,14 @@ namespace BrawlCrate.Studio
                     var exhausted = new InvalidDataException(certificate.Report ?? "The shared continuous scalar verification budget is exhausted.");
                     exhausted.Data["OptimizationBudget"] = "ContinuousScalar"; throw exhausted;
                 }
-                if (!certificate.Accepted) return null;
+                if (!certificate.Accepted)
+                {
+                    string reason=(certificate.Report??"No scalar reason supplied.").Split('\r','\n')[0];
+                    var failed = CompactQualityFailure("The complete decoded candidate did not pass the continuous scalar certificate: "+reason.Substring(0,Math.Min(1024,reason.Length)));
+                    if (certificate.FailedBone != null && certificate.FailedChannel >= 0 && certificate.FailedChannel < 9)
+                    { failed.Data["ScalarBone"] = certificate.FailedBone; failed.Data["ScalarChannel"] = certificate.FailedChannel.Value; }
+                    throw failed;
+                }
                 var result = new NativeAnimationOptimizationResult
                 {
                     BeforeBytes = beforeBytes, BeforeResourceBytes = beforeBlock, AfterBytes = new FileInfo(file).Length,
@@ -422,6 +468,29 @@ namespace BrawlCrate.Studio
                 result.Candidate = decoded; decoded = null; return result;
             }
             finally { decoded?.Dispose(); if (File.Exists(file)) File.Delete(file); }
+        }
+
+        private static HashSet<string> CompactFailedGroups(InvalidDataException failure, MDL0BoneNode[] bones,
+            List<NativeCompactStorageGroup[]> proposals)
+        {
+            var result = new HashSet<string>(StringComparer.Ordinal);
+            if (failure == null) return result;
+            if (failure.Data["ScalarBone"] is string scalar && failure.Data["ScalarChannel"] is int channel && channel >= 0 && channel < 9)
+            {
+                string key = scalar + "\0" + channel / 3;
+                if (proposals.Any(p => p[0].Bone + "\0" + p[0].Group == key)) result.Add(key);
+                return result;
+            }
+            if (!(failure.Data["Metric"] is string metric) || !ReductionBoneMetrics.Contains(metric) || !(failure.Data["Bone"] is string name)) return result;
+            var failed = bones.SingleOrDefault(b => b.Name == name);
+            var seen = new HashSet<MDL0BoneNode>();
+            for (var bone = failed; bone != null; bone = bone.Parent as MDL0BoneNode)
+            {
+                if (!seen.Add(bone)) throw new InvalidDataException("Compact recovery cannot use a cyclic native hierarchy.");
+                foreach (var proposal in proposals.Where(p => p[0].Bone == bone.Name))
+                    result.Add(bone.Name + "\0" + proposal[0].Group);
+            }
+            return result;
         }
 
         private static bool HasDenseStorage(CHR0Node clip) => clip.Children.OfType<CHR0EntryNode>().Any(e =>

@@ -1,4 +1,4 @@
-using BrawlCrate.Studio;
+﻿using BrawlCrate.Studio;
 using BrawlCrate.Studio.Retargeting;
 using BrawlLib.SSBB.ResourceNodes;
 using System;
@@ -53,6 +53,7 @@ namespace BrawlCrate.UI
             var project=_fighterProject;var choices=RegisteredFighterAssets().SelectMany(a=>DiscoverFighterAnimations(FighterRoot(a)).OfType<CHR0Node>().Select(c=>new TransitionClipChoice{Asset=a,Clip=c,Key=FighterAnimationKey(a,c)})).ToList();
             var selected=choices.SingleOrDefault(c=>c.Clip==source)??throw new InvalidOperationException("Register this native animation with the fighter project before fitting.");
             string modelHash=NativeControlHash(model,".mdl0"),sourceHash=NativeControlHash(source,".chr0"),controlKey=ControlKey(),state=ControlState(controlKey);
+            string generatedPairRig=NativeGeneratedPairRegistry.TryRigKey(model);
             bool CurrentRecoveryBinding()=>_bodyBindingReady&&ReferenceEquals(_loadedControlModel,model)&&ReferenceEquals(_loadedControlClip,source)&&_loadedControlKey==controlKey;
             HashSet<string> RetainedControls(TransitionFitOptions options)
             {
@@ -66,6 +67,7 @@ namespace BrawlCrate.UI
             string sourceProvenance=Provenance();
             Action current=()=>{if(IsDisposed||_fighterProject!=project||modelEditControl1.TargetModel!=model||modelEditControl1.SelectedCHR0!=source||NativeControlHash(model,".mdl0")!=modelHash||NativeControlHash(source,".chr0")!=sourceHash||ControlState(controlKey)!=state||Provenance()!=sourceProvenance)throw new InvalidOperationException("The native model, source animation, contact/recovery provenance or pin setup changed. Reopen fitting; stale output was discarded.");};
             string stage=Path.Combine(_controlStage,"transition-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(stage);
+            System.Threading.CancellationTokenSource fitCancellation=null;
             AnimationControlClient client=null;var roots=new List<ResourceNode>();var referenceLeases=new List<LibrarySourceLease>();
             var rootSnapshots=new Dictionary<ResourceNode,string>();
             try
@@ -105,9 +107,10 @@ namespace BrawlCrate.UI
                     window.BindingVerified=options=>FittingBindingKnown(selected,options,choices,model,fittingProof);
                     window.ChooseLibraryReference=side=>PickFittingLibraryReference(window,model,choices,referenceLeases);
                     window.UpdateBinding();
-                    window.CancelWork=()=>{client?.Dispose();client=null;};
+                    window.CancelWork=()=>{fitCancellation?.Cancel();client?.Dispose();client=null;};
                     window.Prepare=async options=>
                     {
+                        fitCancellation?.Dispose();fitCancellation=new System.Threading.CancellationTokenSource();
                         current();var contactBones=NativeTransitionContacts.Resolve(model,selected.Asset,options.PreserveContacts);if(!options.BindingReviewed)throw new InvalidOperationException("Confirm “These animations use this model’s native skeleton and units” above the start/end choices. Verified same-rig library animations are accepted automatically.");
                         var recoveredContactBones=NativeTransitionContacts.ReviewExitRecovery(options,source.FrameCount,source.Loop,contactBones,RetainedControls(options),CurrentRecoveryBinding());
                         if(options.Name!=source.Name)throw new InvalidOperationException("The selected animation identity changed. Reopen fitting for the current clip.");
@@ -125,15 +128,21 @@ namespace BrawlCrate.UI
                         foreach(var proof in hashes)if(NativeControlHash(choices.Single(c=>c.Key==proof.Key).Clip,".chr0")!=proof.Value)throw new InvalidOperationException("A reference changed during preparation; stale output discarded.");
                         if(reply.Tracks.Sum(t=>t.Channels.Sum(c=>c.Length))>200000)throw new InvalidOperationException("This fit exceeds the 200000 native-key review budget. Fit fewer bones or a smaller clip.");
                         var result=NodeFactory.FromFile(null,sourcePath) as CHR0Node??throw new InvalidDataException("Native source snapshot could not reopen.");
+                        var sourceGeneratedPairs=NativeGeneratedPairRegistry.Session.Resolve(source,generatedPairRig,fitCancellation.Token);
                         try
                         {
                             result.Name=options.Name;ApplyBoundaryTracks(result,reply.Tracks,options,model);
+                            const string optimizationReport="Full-quality fitting master retained. Optimize CHR0 size is available at export.";
                             string proofPath=Path.Combine(stage,"candidate-"+Guid.NewGuid().ToString("N")+".chr0");result.Export(proofPath);
                             using(var decoded=NodeFactory.FromFile(null,proofPath) as CHR0Node)
                                 if(decoded==null||decoded.FrameCount!=source.FrameCount||decoded.Loop!=source.Loop||NativeControlSnapshot.Capture(result,result.Children.Select(c=>c.Name)).ContentKey!=NativeControlSnapshot.Capture(decoded,decoded.Children.Select(c=>c.Name)).ContentKey)throw new InvalidDataException("Native fit did not fresh-reopen with its exact keys, tangents and flags. No result was added.");
+                            // Carry only actual unchanged pair tuples from the
+                            // frozen attack. Reference/fitted/unknown pairs do
+                            // not acquire writer provenance by resemblance.
+                            NativeGeneratedPairRegistry.Session.Register(result,generatedPairRig,sourceGeneratedPairs,fitCancellation.Token);
                             var receipt=new NativeTransitionFit{Algorithm=reply.Algorithm,ModelSha256=modelHash,InitialResultSha256=FighterProject.HashFile(proofPath),Options=json.Serialize(options),Receipt=reply.Receipt,Inputs=inputs.ToArray()};receipt.Validate();
                             prepared=result;preparedKey=json.Serialize(options);copiedState=reply.State;metadata=receipt;referenceHashes=hashes;
-                            window.PreparedReport=reply.Algorithm+"\r\nFixed "+source.FrameCount+" samples · native loop flag "+source.Loop+" · "+reply.Tracks.Length+" selected bone tracks.\r\nExact native keys/tangents/flags freshly reopened. References frozen with the independent result.\r\n"+string.Join("\r\n",reply.Diagnostics??new string[0])+"\r\nEntry reference: "+(options.Entry==null?"disabled":choices.Single(c=>c.Key==options.Entry).ToString())+" · phase "+(options.EntryFrame+1)+"\r\nExit reference: "+(options.Exit==null?"disabled":choices.Single(c=>c.Key==options.Exit).ToString())+" · phase "+(options.ExitFrame+1)+" · "+(options.ExitFrozen?"frozen authentic pose":"moving reference")+(options.BoundaryContactRecovery?"\r\nExplicit start/end hip and leg recovery. Original attack curves at and between both joins remain unchanged; retained motion-position tracks keep exact attack motion. Recovered paths: "+string.Join(", ",recoveredContactBones):"")+(options.ExitContactRecovery?"\r\nExplicit contact recovery after display frame "+(source.FrameCount-options.ExitSamples+1)+" through "+source.FrameCount+". Recovered body paths: "+string.Join(", ",recoveredContactBones)+"\r\nReference policy: "+(options.MatchReferenceControls?"reviewed reference controls with attack motion-position curves retained":"reference BODY under all source-authored protected controls")+". Earlier authored contact curves and fixed pin protections remain protected.":"")+(options.PreventFootDipping?"\r\nReviewed floor Y="+options.FloorHeight.ToString("R",System.Globalization.CultureInfo.InvariantCulture)+". Per-region baseline: minimum of zero, original motion and authentic reference body under the selected control policy. Authored endpoint penetration is retained.\r\nSaved floor verification receipt:\r\n"+reply.Receipt:"")+"\r\nPin review:\r\n"+pinReview;
+                            window.PreparedReport=optimizationReport+"\r\n"+reply.Algorithm+"\r\nFixed "+source.FrameCount+" samples · native loop flag "+source.Loop+" · "+reply.Tracks.Length+" selected bone tracks.\r\nExact native keys/tangents/flags freshly reopened. References frozen with the independent result.\r\n"+string.Join("\r\n",reply.Diagnostics??new string[0])+"\r\nEntry reference: "+(options.Entry==null?"disabled":choices.Single(c=>c.Key==options.Entry).ToString())+" · phase "+(options.EntryFrame+1)+"\r\nExit reference: "+(options.Exit==null?"disabled":choices.Single(c=>c.Key==options.Exit).ToString())+" · phase "+(options.ExitFrame+1)+" · "+(options.ExitFrozen?"frozen authentic pose":"moving reference")+(options.BoundaryContactRecovery?"\r\nExplicit start/end hip and leg recovery. Original attack curves at and between both joins remain unchanged; retained motion-position tracks keep exact attack motion. Recovered paths: "+string.Join(", ",recoveredContactBones):"")+(options.ExitContactRecovery?"\r\nExplicit contact recovery after display frame "+(source.FrameCount-options.ExitSamples+1)+" through "+source.FrameCount+". Recovered body paths: "+string.Join(", ",recoveredContactBones)+"\r\nReference policy: "+(options.MatchReferenceControls?"reviewed reference controls with attack motion-position curves retained":"reference BODY under all source-authored protected controls")+". Earlier authored contact curves and fixed pin protections remain protected.":"")+(options.PreventFootDipping?"\r\nReviewed floor Y="+options.FloorHeight.ToString("R",System.Globalization.CultureInfo.InvariantCulture)+". Per-region baseline: minimum of zero, original motion and authentic reference body under the selected control policy. Authored endpoint penetration is retained.\r\nSaved floor verification receipt:\r\n"+reply.Receipt:"")+"\r\nPin review:\r\n"+pinReview;
                             return result;
                         }
                         catch{result.Dispose();throw;}
@@ -167,7 +176,7 @@ namespace BrawlCrate.UI
                             }
                             finally{_restoringCurve=restoring;}
                         }
-                        try{RestoreCurrent(true);metadata.InitialResultSha256=NativeControlHash(source,".chr0");}
+                        try{RestoreCurrent(true);NativeGeneratedPairRegistry.Session.Carry(candidate,source,generatedPairRig);metadata.InitialResultSha256=NativeControlHash(source,".chr0");}
                         catch{RestoreCurrent(false);throw;}
                         modelEditControl1.RecordEditorCommand(()=>RestoreCurrent(false),()=>RestoreCurrent(true));
                         modelEditControl1.ModelPanel.Invalidate();UpdateFighterStatus();
@@ -179,7 +188,7 @@ namespace BrawlCrate.UI
             }
             finally
             {
-                client?.Dispose();foreach(var lease in referenceLeases)lease.Dispose();foreach(var root in roots)root.Dispose();string path=Path.GetFullPath(stage),parent=Path.GetFullPath(_controlStage);if(Path.GetDirectoryName(path)==parent&&Path.GetFileName(path).StartsWith("transition-",StringComparison.Ordinal))try{Directory.Delete(path,true);}catch(IOException){}
+                fitCancellation?.Cancel();fitCancellation?.Dispose();client?.Dispose();foreach(var lease in referenceLeases)lease.Dispose();foreach(var root in roots)root.Dispose();string path=Path.GetFullPath(stage),parent=Path.GetFullPath(_controlStage);if(Path.GetDirectoryName(path)==parent&&Path.GetFileName(path).StartsWith("transition-",StringComparison.Ordinal))try{Directory.Delete(path,true);}catch(IOException){}
             }
         }
         private void ApplyBoundaryTracks(CHR0Node clip,ControlTrack[] tracks,TransitionFitOptions options,MDL0Node model)
@@ -204,7 +213,7 @@ namespace BrawlCrate.UI
                     // Native originals own every protected key bit, including
                     // signed zero and both duplicate sides. Transport supplies
                     // only the new boundary keys and inserted join knots.
-                    var retained=channels[i].Where(k=>!(options.Entry!=null&&k.Frame>=0&&k.Frame<options.EntrySamples-1)&&!(options.Exit!=null&&k.Frame>clip.FrameCount-options.ExitSamples&&k.Frame<clip.FrameCount)).ToArray();var times=new HashSet<int>(retained.Select(k=>k.Frame));channels[i]=track.Channels[i].Where(k=>!times.Contains(k.Frame)).Concat(retained).OrderBy(k=>k.Frame).ToArray();
+                    var retained=channels[i].Where(k=>!(options.Entry!=null&&k.Frame>=0&&k.Frame<options.EntrySamples-1)&&!(options.Exit!=null&&k.Frame>clip.FrameCount-options.ExitSamples&&k.Frame<clip.FrameCount)).ToArray();var times=new HashSet<float>(retained.Select(k=>k.Frame));channels[i]=track.Channels[i].Where(k=>!times.Contains(k.Frame)).Concat(retained).OrderBy(k=>k.Frame).ToArray();
                 }
                 NativeControlSnapshot.Write(entry,channels);entry.UseModelScale=(options.Components&1)!=0?false:scale;entry.UseModelRotate=(options.Components&2)!=0?false:rotate;entry.UseModelTranslate=(options.Components&4)!=0&&!(options.PreserveRootTranslation&&!referenceControl&&!(bone.Parent is MDL0BoneNode))?false:translate;
             }

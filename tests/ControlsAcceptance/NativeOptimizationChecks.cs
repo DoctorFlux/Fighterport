@@ -1,4 +1,4 @@
-using BrawlCrate.Studio;
+﻿using BrawlCrate.Studio;
 using BrawlLib.SSBB;
 using BrawlLib.SSBB.ResourceNodes;
 using System;
@@ -19,6 +19,7 @@ internal static partial class Program
         {
             var model = OptimizationWalk(root).OfType<MDL0Node>().OrderByDescending(m => m.NumVertices).First();
             var names = model.AllBones.Select(b => b.Name).ToArray(); string bone = names[0];
+            NativeExportExplicitLimitsChecks(model,Path.Combine(stage,"explicit-limits"));
             var options = new NativeAnimationOptimizationOptions { ExactOnly = true, TargetBones = names,
                 LengthScale = NativeAnimationOptimization.GetBindBoundsDiagonal(model), ProbeFrames = new[] { .19, 1.63, 3.89, 5 - .0001 } };
             Check(options.LengthScale > 0, "Native optimizer: target scale comes from actual independent native bind geometry");
@@ -64,8 +65,14 @@ internal static partial class Program
                 options.OriginalStoredBytes = null;
                 var tampered = OptimizationTrack(source); tampered.Channels[6] = new[] { OptimizationKey(0, 1, 0), OptimizationKey(4, 1, 0) };
                 OptimizationReject(() => NativeAnimationOptimization.Prepare(model, before, new[] { tampered }, options, stage), "local translation", "Native optimizer: independently encoded but tampered motion fails native pose quality gate");
-                var badEncoding = OptimizationTrack(source); badEncoding.Channels[0] = new[] { OptimizationKey(2, 1, 0) };
-                OptimizationReject(() => NativeAnimationOptimization.Prepare(model, before, new[] { badEncoding }, options, stage), "frame zero", "Native optimizer: noncanonical fixed-channel storage cannot silently discard key time");
+                var retainedTiming = OptimizationTrack(source); retainedTiming.Channels[0] = new[] { OptimizationKey(2, 1, 0) };
+                using (var retained = NativeAnimationOptimization.Prepare(model, before, new[] { retainedTiming }, options, stage))
+                {
+                    var key = ((CHR0EntryNode)retained.Candidate.Children[0]).KeyArrays[0].Entries.Single();
+                    Check(ReplayFloatBits(key._index) == ReplayFloatBits(2f) && ReplayFloatBits(key._value) == ReplayFloatBits(1f) &&
+                        ReplayFloatBits(key._tangent) == 0 && prior == NativeAnimationOptimization.ContentKey(before),
+                        "Native optimizer: noncanonical singleton timing survives independent precise encode/decode without modifying the original");
+                }
                 var cancelled = new CancellationTokenSource(); cancelled.Cancel(); bool cancellation = false;
                 try { using (var ignored = NativeAnimationOptimization.Prepare(model, before, new[] { reduced }, options, stage, cancelled.Token)) { } }
                 catch (OperationCanceledException) { cancellation = true; }
@@ -109,15 +116,30 @@ internal static partial class Program
                 var source = (CHR0EntryNode)before.Children[0];
                 for (int channel = 0; channel < 3; channel++) OptimizationReplace(source, channel,
                     new[] { OptimizationKey(0, 1, channel), OptimizationKey(4, 2, -channel) });
-                OptimizationReject(() => NativeAnimationOptimization.Prepare(model, before, new ControlTrack[0], options, stage), "baseline", "Native optimizer: independent I12 reopen rejects scale-isotropy tangent loss");
+                string prior = NativeAnimationOptimization.ContentKey(before);
+                using (var unchanged = NativeAnimationOptimization.Prepare(model, before, new[] { OptimizationTrack(source) }, options, stage))
+                    Check(!unchanged.HasChanges && unchanged.MaximumScaleError == 0 && NativeAnimationOptimization.ContentKey(before) == prior,
+                        "Native optimizer: independent precise reopen retains unequal scale-axis tangents and the exact original snapshot");
+                string preserved = Path.Combine(stage, "unequal-scale-tangents.chr0");
+                using (var copy = NativeAnimationOptimization.CopySource(before)) copy.ExportChecked(preserved);
+                using (var decoded = (CHR0Node)NodeFactory.FromFile(null, preserved))
+                {
+                    var entry = (CHR0EntryNode)decoded.Children[0];
+                    Check(Enumerable.Range(0, 3).All(c => entry.KeyArrays[c].Entries.Select(k => ReplayFloatBits(k._tangent))
+                        .SequenceEqual(new[] { ReplayFloatBits((float)c), ReplayFloatBits((float)-c) })),
+                        "Native optimizer: actual reopened scale axes contain every independent incoming/outgoing authored tangent bit");
+                }
             }
 
             using (var before = OptimizationFixture(bone, "Candidate scale sharing contradiction"))
             {
-                var changed = OptimizationTrack((CHR0EntryNode)before.Children[0]);
-                for (int channel = 0; channel < 3; channel++) changed.Channels[channel] = new[] { OptimizationKey(0, 1, channel), OptimizationKey(4, 2, -channel) };
-                OptimizationReject(() => NativeAnimationOptimization.Prepare(model, before, new[] { changed }, options, stage), "encode changed",
-                    "Native optimizer: candidate-only scale tangent sharing fails independent encode verification");
+                var source = (CHR0EntryNode)before.Children[0];
+                for (int channel = 0; channel < 3; channel++) OptimizationReplace(source, channel,
+                    new[] { OptimizationKey(0, 1 + channel * .125f, 0), OptimizationKey(4, 2 + channel * .125f, 0) });
+                var changed = OptimizationTrack(source);
+                changed.Channels[0][0].Tangent = .125f;
+                OptimizationReject(() => NativeAnimationOptimization.Prepare(model, before, new[] { changed }, options, stage), "scale",
+                    "Native optimizer: preserved candidate-only scale tangents are rejected by actual scale-quality differences from the finished master");
             }
 
             using (var before = OptimizationFixture(bone, "Native explicit loop closing sample"))
@@ -218,6 +240,31 @@ internal static partial class Program
                     "Native HQ: double/float-adjacent knot witnesses and non-loop end hold do not create spurious tiny-gap derivatives or mutate the source");
                 File.WriteAllText(Path.Combine(stage, "hq-nonzero-report.txt"), result.Report);
             }
+            var reference = new NativeOptimizationReferenceSamples(model, before);
+            options.ReferenceSamples = reference; options.Budget = new NativeAnimationOptimizationBudget();
+            using (var first = NativeAnimationOptimization.Prepare(model, before, new[] { reduced }, options, stage))
+            {
+                long evaluations = options.Budget.PoseEvaluations, hits = reference.Hits;
+                using (var second = NativeAnimationOptimization.Prepare(model, before, new[] { reduced }, options, stage))
+                {
+                    Check(reference.Hits > hits && options.Budget.PoseEvaluations - evaluations == second.Samples &&
+                        second.ContentKey == first.ContentKey && second.EncodedSha256 == first.EncodedSha256 && second.Samples == first.Samples &&
+                        second.MaximumLocalTranslationError == first.MaximumLocalTranslationError && second.MaximumSkinError == first.MaximumSkinError &&
+                        second.MaximumWorldDerivativeError == first.MaximumWorldDerivativeError && second.MaximumSkinDerivativeError == first.MaximumSkinDerivativeError,
+                        "Native optimization: frozen reference reuse eliminates only repeated baseline evaluations; identical witnesses, bytes, local/world/skin values and derivatives remain verified");
+                    Check(reference.Bytes > 0 && reference.Bytes <= NativeOptimizationReferenceSamples.MaximumBytes &&
+                        second.BudgetPoseEvaluations == options.Budget.PoseEvaluations,
+                        "Native optimization: operation-only reference samples are bounded and report actual native work");
+                }
+            }
+            before.Name += " changed";
+            bool staleReference = false;
+            try { reference.Validate(model, before); } catch (InvalidDataException) { staleReference = true; }
+            Check(staleReference, "Native optimization: changed frozen animation cannot reuse native reference samples");
+            bool wrongModel = false;
+            try { reference.Validate(null, before); } catch (InvalidDataException) { wrongModel = true; }
+            Check(wrongModel, "Native optimization: reference samples cannot cross validation model ownership");
+            options.ReferenceSamples = null; options.Budget = null;
         }
 
         using (var before = OptimizationFixture(names[0], "Independent derivative-only native contradiction"))
@@ -307,6 +354,44 @@ internal static partial class Program
             }
             Check(quality.Candidate == null, "HQ coordinator: disposing the selected choice releases its independently verified native candidate");
 
+            calls.Clear(); budget = new NativeAnimationOptimizationBudget(); exact = null; quality = null;
+            using (var choice = NativeAnimationOptimizationPreparation.Prepare(true, currentBytes, (high, scale) =>
+            {
+                calls.Add(high ? "HQ " + scale.ToString(System.Globalization.CultureInfo.InvariantCulture) : "Exact");
+                if (!high) return Task.FromResult(exact = NativeAnimationOptimization.Prepare(model, before, new[] { exactTrack }, OptimizationQualityOptions(names, length, false, budget), stage));
+                var result=NativeAnimationOptimization.Prepare(model,before,new[]{scale==1?exactTrack:qualityTrack},OptimizationQualityOptions(names,length,true,budget),stage);
+                if(scale==1)result.ReductionSelectionReport="Independent verified selective fallback";
+                else quality=result;
+                return Task.FromResult(result);
+            }, CancellationToken.None,exploreSelectiveFallbacks:true).GetAwaiter().GetResult())
+                Check(calls.SequenceEqual(new[]{"Exact","HQ 1","HQ 0.5"})&&ReferenceEquals(choice.Result,quality)&&quality.AfterBytes<exact.AfterBytes,
+                    "One-operation coordinator tries a tighter proposal after a verified selective fallback and retains the smaller independently verified native file");
+
+            calls.Clear(); budget = new NativeAnimationOptimizationBudget(); quality = null;
+            using (var choice = NativeAnimationOptimizationPreparation.Prepare(true,currentBytes,(high,scale)=>
+            {
+                calls.Add(high ? "HQ " + scale.ToString(System.Globalization.CultureInfo.InvariantCulture) : "Exact");
+                var result = NativeAnimationOptimization.Prepare(model,before,new[]{high && scale == .25 ? qualityTrack : exactTrack},
+                    OptimizationQualityOptions(names,length,high,budget),stage);
+                if(high && scale == .25)quality=result;
+                return Task.FromResult(result);
+            },CancellationToken.None,exploreSelectiveFallbacks:true,preferTightPrecision:true).GetAwaiter().GetResult())
+                Check(calls.SequenceEqual(new[]{"Exact","HQ 0.125","HQ 0.25","HQ 0.5","HQ 1"}) &&
+                    ReferenceEquals(choice.Result,quality) && choice.PrecisionScale == .25 && quality.AfterBytes < currentBytes,
+                    "Generated optimization uses the remaining shared budget after a tight first success and retains the smallest fully native-verified candidate, without changing standalone search");
+
+            calls.Clear(); budget = new NativeAnimationOptimizationBudget(); quality = null;
+            using (var choice = NativeAnimationOptimizationPreparation.Prepare(true,currentBytes,(high,scale)=>
+            {
+                calls.Add(high?"HQ "+scale.ToString(System.Globalization.CultureInfo.InvariantCulture):"Exact");
+                if(!high)return Task.FromResult(NativeAnimationOptimization.Prepare(model,before,new[]{exactTrack},OptimizationQualityOptions(names,length,false,budget),stage));
+                if(scale!=1){budget.Require(NativeAnimationOptimizationBudget.MaximumSamples+1,names.Length,0,"tighter proposal budget");throw new Exception("Expected budget rejection");}
+                quality=NativeAnimationOptimization.Prepare(model,before,new[]{qualityTrack},OptimizationQualityOptions(names,length,true,budget),stage);
+                quality.ReductionSelectionReport="Independent verified selective fallback";return Task.FromResult(quality);
+            },CancellationToken.None,exploreSelectiveFallbacks:true).GetAwaiter().GetResult())
+                Check(calls.SequenceEqual(new[]{"Exact","HQ 1","HQ 0.5"})&&ReferenceEquals(choice.Result,quality)&&quality.Candidate!=null,
+                    "Exhausting the shared budget during a tighter proposal retains the already verified best approximate file");
+
             calls.Clear(); budget = new NativeAnimationOptimizationBudget(); exact = null;
             var grown = OptimizationTrack(entry);
             for (int channel = 0; channel < 9; channel++) grown.Channels[channel] = Enumerable.Range(0, 5).Select(i => OptimizationKey(i, channel < 3 ? 1 : 0, 0)).ToArray();
@@ -389,7 +474,7 @@ internal static partial class Program
 
     static IEnumerable<ResourceNode> OptimizationWalk(ResourceNode node)
     { yield return node; foreach (var child in node.Children) foreach (var nested in OptimizationWalk(child)) yield return nested; }
-    static ControlKey OptimizationKey(int frame, float value, float tangent) => new ControlKey { Frame = frame, Value = value, Tangent = tangent };
+    static ControlKey OptimizationKey(float frame, float value, float tangent) => new ControlKey { Frame = frame, Value = value, Tangent = tangent };
     static ControlTrack OptimizationTrack(CHR0EntryNode entry) => new ControlTrack { Bone = entry.Name,
         Channels = entry.KeyArrays.Select(a => a.Entries.Select(k => OptimizationKey(k._index, k._value, k._tangent)).ToArray()).ToArray() };
     static void OptimizationReplace(CHR0EntryNode entry, int channel, ControlKey[] keys)

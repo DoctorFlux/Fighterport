@@ -183,14 +183,31 @@ namespace BrawlCrate.Studio.Retargeting
         { if (v.LengthSquared() < 1e-10f) throw new InvalidDataException("A required rig direction has zero length."); return Vector3.Normalize(v); }
         public static Quaternion FromTo(Vector3 from, Vector3 to)
         {
-            from = Unit(from); to = Unit(to); float dot = Clamp(Vector3.Dot(from, to), -1, 1);
-            if (dot > 0.999999f) return Quaternion.Identity;
-            if (dot < -0.999999f)
+            double a = (double)from.X * from.X + (double)from.Y * from.Y + (double)from.Z * from.Z;
+            double b = (double)to.X * to.X + (double)to.Y * to.Y + (double)to.Z * to.Z;
+            if (!Finite(from) || !Finite(to) || a < 1e-10 || b < 1e-10)
+                throw new InvalidDataException("A required rig direction has zero length or invalid values.");
+            double ia = 1 / Math.Sqrt(a), ib = 1 / Math.Sqrt(b);
+            double ax = from.X * ia, ay = from.Y * ia, az = from.Z * ia;
+            double bx = to.X * ib, by = to.Y * ib, bz = to.Z * ib;
+            double dot = Math.Max(-1, Math.Min(1, ax * bx + ay * by + az * bz));
+            double x = ay * bz - az * by, y = az * bx - ax * bz, z = ax * by - ay * bx;
+            double length = Math.Sqrt(x * x + y * y + z * z);
+            if (length == 0)
             {
-                Vector3 axis = Vector3.Cross(from, Math.Abs(from.X) < 0.8f ? Vector3.UnitX : Vector3.UnitY);
+                if (dot >= 0) return Quaternion.Identity;
+                // A truly opposite direction has no unique transverse axis.
+                // Retain the established deterministic orthogonal-axis rule.
+                var direction = new Vector3((float)ax, (float)ay, (float)az);
+                Vector3 axis = Vector3.Cross(direction, Math.Abs(direction.X) < 0.8f ? Vector3.UnitX : Vector3.UnitY);
                 return Quaternion.CreateFromAxisAngle(Unit(axis), (float)Math.PI);
             }
-            return Quaternion.Normalize(new Quaternion(Vector3.Cross(from, to), 1 + dot));
+            // The old float dot > .999999 identity shortcut discarded every
+            // correction below about .081 degrees and introduced that jump in
+            // IK at neighboring fractional times. atan2 remains conditioned at
+            // both zero and pi, without changing the shortest from/to rotation.
+            double half = .5 * Math.Atan2(length, dot), factor = Math.Sin(half) / length;
+            return Quaternion.Normalize(new Quaternion((float)(x * factor), (float)(y * factor), (float)(z * factor), (float)Math.Cos(half)));
         }
         public static float RotationError(Quaternion a, Quaternion b) =>
             2 * (float)Math.Acos(Clamp(Math.Abs(Quaternion.Dot(Quaternion.Normalize(a), Quaternion.Normalize(b))), 0, 1));

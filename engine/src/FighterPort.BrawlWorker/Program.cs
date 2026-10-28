@@ -28,7 +28,14 @@ internal sealed class Request
     public GeometryChange[] GeometryChanges {get;set;} public string ModelOutput {get;set;} public string LogicalModelOutput {get;set;}
 }
 internal sealed class TextureMatrixInput {public int Mode {get;set;} public float[] Values {get;set;} }
-internal sealed class Edit {public string Bone {get;set;} public int Channel {get;set;} public int Frame {get;set;} public float Value {get;set;} public float Tangent {get;set;} public int? ValueBits {get;set;} public int? TangentBits {get;set;}}
+internal sealed class Edit
+{
+    public string Bone {get;set;} public int Channel {get;set;}
+    float frame; int? frameBits;
+    public float Frame {get=>frame;set {if(!frameBits.HasValue)frame=value;}}
+    public int? FrameBits {get=>frameBits;set {frameBits=value;if(value.HasValue)frame=BitConverter.ToSingle(BitConverter.GetBytes(value.Value),0);}}
+    public float Value {get;set;} public float Tangent {get;set;} public int? ValueBits {get;set;} public int? TangentBits {get;set;}
+}
 internal static unsafe partial class Program
 {
     static readonly JavaScriptSerializer Json=new JavaScriptSerializer {MaxJsonLength=256*1024*1024,RecursionLimit=200};
@@ -79,9 +86,9 @@ internal static unsafe partial class Program
                     var semanticFlags=clip.Children.OfType<CHR0EntryNode>().ToDictionary(t=>t.Name,t=>new[]{t.UseModelScale,t.UseModelRotate,t.UseModelTranslate,t.ScaleCompensateApply,t.ScaleCompensateParent,t.ClassicScaleOff});
                     foreach(var e in r.Edits)
                     {
-                        if(e.Channel<0 || e.Channel>8 || e.Frame<0 || e.Frame>clip.FrameCount)throw new InvalidDataException("Native edit index outside resource.");
+                        if(e.Channel<0 || e.Channel>8 || float.IsNaN(e.Frame) || float.IsInfinity(e.Frame) || e.Frame<0 || e.Frame>clip.FrameCount)throw new InvalidDataException("Native edit index outside resource.");
                         var track=clip.Children.OfType<CHR0EntryNode>().SingleOrDefault(t=>t.Name==e.Bone);
-                        if(track==null){track=new PreciseChrEntry{Name=e.Bone};clip.AddChild(track);}
+                        if(track==null){track=new PreciseChrEntry{Name=e.Bone};clip.AddChild(track);track.Keyframes.FrameLimit=clip.FrameCount+(clip.Loop?1:0);track.Keyframes.Loop=clip.Loop;}
                         ApplyExactEdit(track.Keyframes.SetFrameValue(e.Channel,e.Frame,e.Value,false),e);
                         track.SignalPropertyChange();
                     }
@@ -174,7 +181,7 @@ internal static unsafe partial class Program
         int count=(int)typeof(BrawlLib.Wii.Animations.KeyframeArray).GetField("_keyCount",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(a);if(count==0)return null;
         var root=(BrawlLib.Wii.Animations.KeyframeEntry)typeof(BrawlLib.Wii.Animations.KeyframeArray).GetField("_keyRoot",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(a);
         var keys=new List<object>();var k=root._next;
-        for(int j=0;j<count;j++,k=k._next)keys.Add(new{Frame=k._index,Value=k._value,InTangent=k._tangent,OutTangent=k._tangent,ValueBits=FloatBits(k._value),InTangentBits=FloatBits(k._tangent),OutTangentBits=FloatBits(k._tangent)});
+        for(int j=0;j<count;j++,k=k._next)keys.Add(new{Frame=k._index,FrameBits=FloatBits(k._index),Value=k._value,InTangent=k._tangent,OutTangent=k._tangent,ValueBits=FloatBits(k._value),InTangentBits=FloatBits(k._tangent),OutTangentBits=FloatBits(k._tangent)});
         return new{Keys=keys.ToArray(),Interpolation="Hermite",LoopFrameLimit=a.Loop?(int?)a.FrameLimit:null};
     }
     static string Container(ResourceNode node){var owner=node.Parent??node;while(!(owner is BRRESNode)&&owner.Parent!=null)owner=owner.Parent;return Identity(owner);}
@@ -237,16 +244,18 @@ internal static unsafe partial class Program
         {
             var v=obj.Vertices[faceToVertex[point]];var weights=v.GetBoneWeights();
             if(weights==null || weights.Count==0)throw new InvalidDataException("Unbound geometry needs an explicit rigid transform.");
-            if(weights.Count>4)throw new NotSupportedException("More than four influences per vertex requires an explicit loss policy.");
+            if(weights.Count>65536)throw new InvalidDataException("Native influence data exceeds the bounded skin transport budget.");
             float[] joints=new float[4],values=new float[4];
-            for(int j=0;j<weights.Count;j++){joints[j]=Array.IndexOf(bones,weights[j].Bone);values[j]=weights[j].Weight;}
+            var influences=weights.Select(w=>new{Joint=Array.IndexOf(bones,w.Bone),Weight=w.Weight}).ToArray();
+            if(influences.Any(w=>w.Joint<0||float.IsNaN(w.Weight)||float.IsInfinity(w.Weight)||w.Weight<0))throw new InvalidDataException("Native skin contains invalid bone/weight data.");
+            for(int j=0;j<Math.Min(4,weights.Count);j++){joints[j]=influences[j].Joint;values[j]=influences[j].Weight;}
             var normal=manager._faceData[1]==null?new Vector3(0,1,0):((Vector3*)manager._faceData[1].Address)[point];
             normal=normal*v.GetMatrix().GetRotationMatrix();
             var uv=manager._faceData[4]==null?new Vector2():((Vector2*)manager._faceData[4].Address)[point];
             var color=manager._faceData[2]==null?new BrawlLib.Imaging.RGBAPixel(255,255,255,255):((BrawlLib.Imaging.RGBAPixel*)manager._faceData[2].Address)[point];
             var color1=manager._faceData[3]==null?new BrawlLib.Imaging.RGBAPixel(255,255,255,255):((BrawlLib.Imaging.RGBAPixel*)manager._faceData[3].Address)[point];
             var uvs=Enumerable.Range(0,8).Select(i=>manager._faceData[i+4]==null?new Vector2():((Vector2*)manager._faceData[i+4].Address)[point]).Select(t=>new{X=t._x,Y=t._y}).ToArray();
-            vertices.Add(new {Position=V(v.WeightedPosition),Normal=V(normal),UV=new{X=uv._x,Y=uv._y},UVSets=uvs,Joints=V4(joints[0],joints[1],joints[2],joints[3]),Weights=V4(values[0],values[1],values[2],values[3]),Color=V4(color.R/255f,color.G/255f,color.B/255f,color.A/255f),Color1=V4(color1.R/255f,color1.G/255f,color1.B/255f,color1.A/255f)});
+            vertices.Add(new {Position=V(v.WeightedPosition),Normal=V(normal),UV=new{X=uv._x,Y=uv._y},UVSets=uvs,Joints=V4(joints[0],joints[1],joints[2],joints[3]),Weights=V4(values[0],values[1],values[2],values[3]),Influences=weights.Count>4?influences:influences.Take(0).ToArray(),Color=V4(color.R/255f,color.G/255f,color.B/255f,color.A/255f),Color1=V4(color1.R/255f,color1.G/255f,color1.B/255f,color1.A/255f)});
         }
         return new{Name=obj.Name,Vertices=vertices.ToArray(),Indices=primitive?._indices??new uint[0],Material=obj.DrawCalls.OfType<DrawCall>().FirstOrDefault()?.MaterialNode?.Name,VisibilityBone=obj.DrawCalls.OfType<DrawCall>().FirstOrDefault()?.VisibilityBoneNode?.Name,
             DrawCalls=obj.DrawCalls.OfType<DrawCall>().Select(d=>{d.Bind();return new{Material=d.MaterialNode?.Name,VisibilityBone=d.VisibilityBoneNode?.Name,DefaultVisible=d._render,Pass=(int)d.DrawPass,Priority=(int)d.DrawPriority,MaterialIndex=d.MaterialNode?.Index??-1};}).ToArray()};

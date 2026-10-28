@@ -131,13 +131,22 @@ internal static class AnimationConstantAndCertificateChecks
         var zero=BitConverter.Int32BitsToSingle(int.MinValue);
         var unsafeCurves=new[]{
             original with{Keys=[new(0,720),new(4,720,.001f,.001f),new(34,720),new(43,720)]},
-            original with{Keys=[new(0,720),new(4,720),new(4,720),new(34,720),new(43,720)]},
+            original with{Keys=[new(0,720),new(4,720),new(4,721),new(34,720),new(43,720)]},
             original with{Keys=[new(0,720),new(4,720,zero,zero),new(34,720),new(43,720)]},
             original with{Keys=[new(0,720),new(4,720.00006f),new(34,720),new(43,720)]}
         };
         foreach(var curve in unsafeCurves)
             check(!AnimationOptimization.CertifyCandidate(Clip(Track(curve)),result.Tracks,settings with{Mode=AnimationOptimizationMode.HighQuality,BindBoundsDiagonal=1}).Accepted,
-                "Constant join substitution fails closed for nonzero tangents, paired sides, signed zero and a near-constant authored pulse");
+                "Constant join substitution fails closed for nonzero tangents, differing paired values, signed zero and a near-constant authored pulse");
+        var redundant = original with{Keys=[new(0,720),new(4,720),new(4,720),new(34,720),new(43,720)]};
+        var redundantClip = Clip(Track(redundant));
+        var redundantResult = AnimationOptimization.Optimize(redundantClip,[redundantClip.Tracks[0].Bone],settings);
+        check(redundantResult.Tracks.Single().Channels[3]!.Keys.Length==1 &&
+            AnimationOptimization.CertifyCandidate(redundantClip,redundantResult.Tracks,settings).Accepted,
+            "Identical zero-slope paired constants independently collapse to exact first-frame fixed storage");
+        var pinnedRedundant = settings with{PreserveStructureBones=[redundantClip.Tracks[0].Bone]};
+        check(AnimationOptimization.Optimize(redundantClip,[redundantClip.Tracks[0].Bone],pinnedRedundant).Tracks.Single().Channels[3]!.Keys.Length==redundant.Keys.Length,
+            "Pinned structure keeps even redundant constant paired tuples intact");
         foreach(var protection in new[]{settings with{PreserveStructureBones=[bindTrack.Bone]},settings with{ProtectedRanges=[new(4,34,"contact")]},
             settings with{ChannelRules=[new(bindTrack.Bone,3){PreserveStructure=true}]},
             settings with{ChannelRules=[new(bindTrack.Bone,3){ProtectedRanges=[new(4,34,"pin dependency")]}]}})

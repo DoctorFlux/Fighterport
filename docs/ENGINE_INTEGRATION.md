@@ -1,4 +1,46 @@
-# Native Next integration
+﻿# Native Next integration
+
+28 October qualified preview.54 boundary (see the scoped acceptance): project editing and
+ordinary saves retain the finished full-quality native master, including fitting,
+contact and FK/IK results. Explicit CHR0 size optimization runs on independent
+export snapshots, with Exact versus saved Error-bounded limits and separate
+search effort. Single-animation, reviewed-set and context-qualified native slot
+exports share the same optimizer. Unknown-target owned CHR0 uses an independent
+precise reference copy. Qualified slot metadata conversions reseal against the
+same-slot master; the existing retarget motion-PAC insertion validates complete
+inserted curves and untouched siblings before committing its prepared copy.
+Arbitrary resource/container routes keep distinct reference qualification.
+Session-only writer evidence identifies exact generated pairs; unknown authored
+pairs remain protected. See [current scope](NATIVE_CHR0_EXPORT_OPTIMIZATION_SCOPE_2026-10-28.md)
+and [write-path audit](CHR0_WRITE_PATH_AUDIT_2026-10-28.md).
+
+An uncommitted native target-model edit is an explicit export boundary. Reject
+it before model hashing/serialization, including revalidation during preparation
+and immediately before publication; native rebuilds must not clear its dirty
+state as a side effect of animation optimization. Ordinary Save can commit model
+changes first. Unsaved animation edits on a committed model remain exportable.
+This boundary does not add automatic saving or change native Undo ownership.
+Standalone preview copies bounded native container backing bytes without a live
+container rebuild, then verifies each reopened model's exact identity/hash. Dirty
+CHR0 siblings remain supported. Pending model/texture/palette edits or stale
+backing request ordinary Save before preview; they are never silently committed.
+Current export and review resolve the exact registered animation owner, including
+CHR0 members inside a model-role BRRES/PAC. Retarget-only motion selection retains
+its existing narrower API. No temporary selection or second document is created.
+
+Native CHR0 knot times are float32, retaining I12 times and signed I6 S10.5
+fractions. Integer API overloads remain source compatible; every owned native
+application/worker must be rebuilt because the public KeyframeEntry field type
+changed. Third-party binary plugins are not ABI-qualified. Curve selection and
+numeric editing retain exact fractional times while the shared viewport clock
+keeps its existing integer frame controls. CHR0 Resize/Merge/Append/Reverse/
+Port reject fractional input before mutation until separately adapted. Shared
+integer APIs remain available to other native resources, but this increment
+does not qualify their fractional editing: SRT0 Resize/Append still walk an
+integer grid, and the legacy SHP0 reader still casts key times to integers.
+Those routes must not be presented as fractional-preserving CHR0 operations. Core
+continues to own only native-independent contracts. No playback tick loads,
+hashes, bakes, solves or optimizes.
 
 24 October preview.14 adds offline reviewed contact placement/releases, exact
 Brawl native motion slot inventories/export, and native renderer window/DC

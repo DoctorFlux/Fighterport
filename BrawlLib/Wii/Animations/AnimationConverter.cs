@@ -303,7 +303,8 @@ namespace BrawlLib.Wii.Animations
         private static void DecodeFrames(KeyframeCollection kf, void* dataAddr, AnimDataFormat format,
                                          params int[] arrays)
         {
-            if (format == AnimDataFormat.I12) kf.PreserveInterpolation = true;
+            if (format == AnimDataFormat.I12 || format == AnimDataFormat.L1 || format == AnimDataFormat.L2 || format == AnimDataFormat.L4)
+                kf.PreserveInterpolation = true;
             int fCount;
             float vStep, vBase;
             switch (format)
@@ -358,7 +359,7 @@ namespace BrawlLib.Wii.Animations
                         I12Entry* entry = header->Data;
                         for (int i = 0; i < fCount; i++, entry++)
                         {
-                            kf.SetFrameValue(x, (int) entry->_index, entry->_value, true)._tangent = entry->_tangent;
+                            kf.SetFrameValue(x, entry->_index, entry->_value, true)._tangent = entry->_tangent;
                         }
                     }
 
@@ -374,10 +375,12 @@ namespace BrawlLib.Wii.Animations
                     foreach (int x in arrays)
                     {
                         byte* sPtr = header->Data;
+                        var samples = new float[kf.FrameLimit];
                         for (int i = 0; i < kf.FrameLimit; i++)
                         {
-                            kf.SetFrameValue(x, i, vBase + *sPtr++ * vStep, true).GenerateTangent();
+                            samples[i] = vBase + *sPtr++ * vStep;
                         }
+                        kf._keyArrays[x] = DenseCHR0Projection.Create(samples, kf.FrameLimit, kf.Loop);
                     }
 
                     break;
@@ -392,10 +395,12 @@ namespace BrawlLib.Wii.Animations
                     foreach (int x in arrays)
                     {
                         bushort* sPtr = (bushort*) header->Data;
+                        var samples = new float[kf.FrameLimit];
                         for (int i = 0; i < kf.FrameLimit; i++)
                         {
-                            kf.SetFrameValue(x, i, vBase + *sPtr++ * vStep, true).GenerateTangent();
+                            samples[i] = vBase + *sPtr++ * vStep;
                         }
+                        kf._keyArrays[x] = DenseCHR0Projection.Create(samples, kf.FrameLimit, kf.Loop);
                     }
 
                     break;
@@ -406,10 +411,12 @@ namespace BrawlLib.Wii.Animations
                     foreach (int x in arrays)
                     {
                         bfloat* sPtr = (bfloat*) dataAddr;
+                        var samples = new float[kf.FrameLimit];
                         for (int i = 0; i < kf.FrameLimit; i++)
                         {
-                            kf.SetFrameValue(x, i, *sPtr++, true).GenerateTangent();
+                            samples[i] = *sPtr++;
                         }
+                        kf._keyArrays[x] = DenseCHR0Projection.Create(samples, kf.FrameLimit, kf.Loop);
                     }
 
                     break;
@@ -495,7 +502,7 @@ namespace BrawlLib.Wii.Animations
 
             float min;
             float max;
-            int maxIndex = 0;
+            float maxIndex = 0;
 
             //Initialize values
             for (int i = 0; i < 3; i++)
@@ -565,7 +572,7 @@ namespace BrawlLib.Wii.Animations
                     //useLinear &= (count[0] == numFrames) && (count[1] == numFrames) && (count[2] == numFrames);
                 }
 
-                scaleSpan = @group == 1 ? 255 : maxIndex <= 255 ? 4095 : maxIndex <= 2047 ? 65535 : -1;
+                scaleSpan = @group == 1 ? 255 : maxIndex <= 255 ? 4095 : maxIndex <= short.MaxValue / 32f ? 65535 : -1;
                 //scaleSpan = useLinear ? 255 : 4095;
 
                 //Determine if values are scalable
@@ -663,7 +670,7 @@ namespace BrawlLib.Wii.Animations
                         {
                             scaleSpan = 4095;
                         }
-                        else if (scaleSpan <= 4095 && maxIndex <= 2047)
+                        else if (scaleSpan <= 4095 && maxIndex <= short.MaxValue / 32f)
                         {
                             scaleSpan = 65535;
                         }
@@ -694,7 +701,7 @@ namespace BrawlLib.Wii.Animations
                         {
                             format = AnimDataFormat.I4;
                         }
-                        else if (frameSpan > 1.5f && maxIndex <= 2047)
+                        else if (frameSpan > 1.5f && maxIndex <= short.MaxValue / 32f)
                         {
                             format = AnimDataFormat.I6;
                         }
@@ -717,7 +724,14 @@ namespace BrawlLib.Wii.Animations
                     }
                 }
 
-                if (kf.PreserveInterpolation && format != AnimDataFormat.None)
+                // Dense and I4 storage cannot retain fractional knot times.
+                // The precise floating-time writer is the default for edited
+                // fractional curves; explicit qualified I6 plans stay separate.
+                bool fractionalTimes = false;
+                for (int axis = 0; axis < evalCount; axis++)
+                    for (var knot = roots[axis]._next; knot != roots[axis]; knot = knot._next)
+                        fractionalTimes |= knot._index != Math.Truncate(knot._index);
+                if ((kf.PreserveInterpolation || fractionalTimes) && format != AnimDataFormat.None)
                     format = AnimDataFormat.I12;
 
                 //calculate size
@@ -1030,7 +1044,7 @@ namespace BrawlLib.Wii.Animations
             int span, i;
             int keyCount = kf._keyArrays[index]._keyCount;
 
-            int keyFrameRange = root._prev._index - root._next._index;
+            float keyFrameRange = root._prev._index - root._next._index;
             float oneMinusEpsilon = BitConverter.ToSingle(BitConverter.GetBytes(BitConverter.ToInt32(BitConverter.GetBytes(1.0f), 0) - 1), 0);
             float frameScale = keyFrameRange == 0 ? 0.0f : oneMinusEpsilon / keyFrameRange;
 
@@ -1105,6 +1119,9 @@ namespace BrawlLib.Wii.Animations
 
             if (format == AnimDataFormat.I4)
             {
+                for (var knot = root._next; knot != root; knot = knot._next)
+                    if (knot._index < 0 || knot._index > 255 || knot._index != Math.Truncate(knot._index))
+                        throw new NotSupportedException("I4 requires nonnegative integer knot times through frame 255.");
                 //Find best span
                 span = EvalSpan(4095, 32, min, stride, root, false);
                 step = stride / span;
@@ -1119,7 +1136,7 @@ namespace BrawlLib.Wii.Animations
                     val = (frame._value - min) / step;
                     val += val < 0 ? -0.5f : 0.5f;
 
-                    *entry++ = new I4Entry(frame._index, (int) val, frame._tangent);
+                    *entry++ = new I4Entry((int)frame._index, (int) val, frame._tangent);
                 }
 
                 return keyCount * 4 + 16;
@@ -1179,7 +1196,9 @@ namespace BrawlLib.Wii.Animations
                 {
                     if (evalAll)
                     {
-                        count = entry._next == root ? 1 : entry._next._index - entry._index;
+                        // This measures the legacy integer-grid codec, rather
+                        // than moving or truncating an authored native knot.
+                        count = entry._next == root ? 1 : (int) Math.Ceiling(entry._next._index - entry._index);
                     }
                     else
                     {

@@ -1,4 +1,4 @@
-using BrawlCrate.Studio.Retargeting;
+﻿using BrawlCrate.Studio.Retargeting;
 using BrawlLib.Modeling;
 using BrawlLib.SSBB.ResourceNodes;
 using BrawlLib.Wii.Animations;
@@ -81,7 +81,7 @@ namespace BrawlCrate.Studio
                 for (int c = 0; c < 9; c++)
                 {
                     var list = new List<KeyframeEntry>();
-                    int prior = -1, paired = 0;
+                    float prior = -1; int paired = 0;
                     foreach (var key in t.Node.Keyframes[c].Entries)
                     {
                         if (++keys > KeyLimit) throw new InvalidDataException("Loop inspection is limited to two million authored keys.");

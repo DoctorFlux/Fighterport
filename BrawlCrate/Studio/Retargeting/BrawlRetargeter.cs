@@ -1,4 +1,4 @@
-using BrawlLib.Modeling;
+﻿using BrawlLib.Modeling;
 using BrawlLib.SSBB.ResourceNodes;
 using System;
 using System.Collections.Generic;
@@ -36,6 +36,9 @@ namespace BrawlCrate.Studio.Retargeting
         public float MaximumPelvisCorrection { get; internal set; }
         public RetargetKeyframeMode KeyframeMode { get; internal set; }
         public RetargetKeyframeReport KeyframeReport { get; internal set; }
+        public string OptimizationReport { get; internal set; }
+        internal NativeGeneratedPairEvidence[] GeneratedPairEvidence { get; set; } = new NativeGeneratedPairEvidence[0];
+        internal string GeneratedPairRigKey { get; set; }
         // Kept only for the explicit, read-only sparse-result review. The live
         // target is never selected or replaced while this comparison is open.
         internal CHR0Node DenseAnimation { get; set; }
@@ -49,19 +52,39 @@ namespace BrawlCrate.Studio.Retargeting
         public static int DiagnosticCaptures => Volatile.Read(ref _diagnosticCaptures);
         public static int DiagnosticBakes => Volatile.Read(ref _diagnosticBakes);
         public static void ExportMotionPac(string templatePath, string destination, MDL0Node targetModel, CHR0Node animation)
+            => ExportMotionPac(templatePath, destination, targetModel, animation, null);
+
+        public static void ExportMotionPac(string templatePath, string destination, MDL0Node targetModel, CHR0Node animation,
+            Action validateDependencies)
+            => ExportMotionPac(templatePath, destination, targetModel, animation, validateDependencies, null);
+
+        // The candidate is an independent prepared export copy. This adapter
+        // never serializes, selects or replaces the editable animation owner.
+        internal static void ExportMotionPac(string templatePath, string destination, MDL0Node targetModel, CHR0Node animation,
+            Action validateDependencies, Action<string> candidateWritten)
+            => ExportMotionPac(templatePath, destination, targetModel, animation, validateDependencies, null, candidateWritten);
+
+        internal static void ExportMotionPac(string templatePath, string destination, MDL0Node targetModel, CHR0Node animation,
+            Action validateDependencies, string qualifiedStandaloneSha256, Action<string> candidateWritten)
         {
             string path = Path.GetFullPath(destination), template = Path.GetFullPath(templatePath);
             if (!string.Equals(Path.GetExtension(path), ".pac", StringComparison.OrdinalIgnoreCase) || File.Exists(path) || Directory.Exists(path) ||
                 string.Equals(path, template, StringComparison.OrdinalIgnoreCase))
                 throw new IOException("Choose a new PAC filename. Existing files and the motion template are protected.");
+            if (animation == null || targetModel == null) throw new ArgumentNullException("A target model and prepared animation are required.");
+            validateDependencies?.Invoke();
             BrawlRig target = Capture(targetModel);
             if (animation.Children.Any(c => !target.Bones.Any(b => b.Name == c.Name))) throw new InvalidDataException("The animation contains bones outside the target skeleton.");
+            string targetRig = target.Fingerprint;
+            string liveContent = NativeAnimationOptimization.SourceContentKey(animation), liveStorage = NativeAnimationOptimization.StorageKey(animation);
             string originalHash = FighterProject.HashFile(template);
             string folder = Path.GetDirectoryName(path); Directory.CreateDirectory(folder);
             string replacement = Path.Combine(folder, ".fp-" + Guid.NewGuid().ToString("N") + ".chr0");
             string temporary = Path.Combine(folder, ".fp-" + Guid.NewGuid().ToString("N") + ".pac");
+            string verifiedHash = null;
             try
             {
+                using (var prepared = NativeAnimationOptimization.CopySource(animation))
                 using (ResourceNode root = NodeFactory.FromFile(null, template))
                 {
                     if (!(root is ARCNode)) throw new NotSupportedException("Choose a native Brawl fighter motion PAC template.");
@@ -71,20 +94,43 @@ namespace BrawlCrate.Studio.Retargeting
                     if (!slots[0].Children.Any(c => c.Name == target.Bones[target.Rig.Roles["spine"]].Name))
                         throw new InvalidDataException("This motion PAC template belongs to a different skeleton.");
                     ValidateSource(target, slots[0]);
-                    animation.ExportChecked(replacement);
+                    string slotPath = MotionPacPath(slots[0]);
+                    var siblings = MotionPacState(root, slotPath, folder);
+                    string expectedContent = NativeAnimationOptimization.SourceContentKey(prepared), expectedStorage = NativeAnimationOptimization.StorageKey(prepared), expectedRaw;
+                    prepared.ExportChecked(replacement);
+                    string encodedHash = FighterProject.HashFile(replacement);
+                    if (qualifiedStandaloneSha256 != null && !string.Equals(encodedHash, qualifiedStandaloneSha256, StringComparison.OrdinalIgnoreCase))
+                        throw new InvalidDataException("The PAC animation copy differs from the centrally qualified standalone bytes.");
+                    using (var decoded = NodeFactory.FromFile(null, replacement) as CHR0Node)
+                    {
+                        if (decoded == null || NativeAnimationOptimization.SourceContentKey(decoded) != expectedContent ||
+                            NativeAnimationOptimization.StorageKey(decoded) != expectedStorage)
+                            throw new InvalidDataException("The prepared animation changed while encoding the motion PAC copy.");
+                        expectedRaw = NativeChr0RawStorage.Signature(decoded);
+                    }
                     slots[0].Replace(replacement);
                     root.Merge(); root.ExportChecked(temporary);
+                    candidateWritten?.Invoke(temporary);
                     using (ResourceNode reopened = NodeFactory.FromFile(null, temporary))
                     {
-                        var decoded = Walk(reopened).ToList().OfType<CHR0Node>().ToList();
-                        CHR0Node saved = decoded.SingleOrDefault(c => c.Name == animation.Name);
-                        if (!(reopened is ARCNode) || decoded.Count != clips.Count || saved == null || saved.FrameCount != animation.FrameCount ||
-                            saved.Loop != animation.Loop || saved.Children.Count != animation.Children.Count ||
-                            saved.Children.Any(c => !target.Bones.Any(b => b.Name == c.Name)))
-                            throw new InvalidDataException("Fresh native decoding did not validate the target motion PAC.");
+                        if (!(reopened is ARCNode)) throw new InvalidDataException("The candidate did not reopen as a motion PAC.");
+                        CHR0Node saved = Walk(reopened).OfType<CHR0Node>().SingleOrDefault(c => MotionPacPath(c) == slotPath);
+                        if (saved == null || NativeAnimationOptimization.SourceContentKey(saved) != expectedContent ||
+                            NativeAnimationOptimization.StorageKey(saved) != expectedStorage || NativeChr0RawStorage.Signature(saved) != expectedRaw)
+                            throw new InvalidDataException("Fresh native decoding did not preserve the qualified animation's raw curve headers, payload, metadata, fixed slots and flags after relocation.");
+                        var actual = MotionPacState(reopened, slotPath, folder);
+                        if (siblings.Count != actual.Count || siblings.Any(item => !actual.TryGetValue(item.Key, out string value) || value != item.Value))
+                            throw new InvalidDataException("The motion PAC changed an untouched native sibling, archive entry or resource structure.");
                     }
+                    verifiedHash = FighterProject.HashFile(temporary);
                 }
+                validateDependencies?.Invoke();
+                if (NativeAnimationOptimization.SourceContentKey(animation) != liveContent || NativeAnimationOptimization.StorageKey(animation) != liveStorage ||
+                    SkeletonFingerprint(targetModel) != targetRig)
+                    throw new InvalidOperationException("The prepared animation or target rig changed while exporting. The output was not published.");
                 if (FighterProject.HashFile(template) != originalHash) throw new IOException("The template changed while exporting; the new output was not committed.");
+                if (FighterProject.HashFile(temporary) != verifiedHash) throw new IOException("The verified motion PAC changed before publication. The output was not committed.");
+                if (File.Exists(path) || Directory.Exists(path)) throw new IOException("The destination appeared while preparing the motion PAC. Existing content was kept.");
                 File.Move(temporary, path);
             }
             finally
@@ -92,6 +138,64 @@ namespace BrawlCrate.Studio.Retargeting
                 if (File.Exists(replacement)) File.Delete(replacement);
                 if (File.Exists(temporary)) File.Delete(temporary);
             }
+        }
+
+        private static string MotionPacPath(ResourceNode node)
+        {
+            var indices = new Stack<int>();
+            while (node.Parent != null) { indices.Push(node.Index); node = node.Parent; }
+            return "/" + string.Join("/", indices);
+        }
+
+        // Standalone native resource exports normalize parent-relative string
+        // offsets. CHR0 uses bit-precise semantic/storage identities instead of
+        // comparing relocated container bytes. Only ancestors of the replaced
+        // member may change payload sizes; all archive metadata stays frozen.
+        private static Dictionary<string, string> MotionPacState(ResourceNode root, string replacedPath, string folder)
+        {
+            var state = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var node in Walk(root))
+            {
+                string path = MotionPacPath(node);
+                if (path == replacedPath || path.StartsWith(replacedPath + "/", StringComparison.Ordinal)) continue;
+                var description = new StringBuilder().Append(node.GetType().FullName).Append('|').Append(node.Name).Append('|')
+                    .Append((int)node.ResourceFileType).Append('|').Append(node.Compression).Append('|').Append(node.Children.Count);
+                if (node is ARCEntryNode entry && node.Parent is ARCNode)
+                    description.Append("|arc:").Append((int)entry.FileType).Append(',').Append(entry.FileIndex).Append(',').Append(entry.GroupID).Append(',').Append(entry.RedirectIndex);
+                if (node is ARCNode arc) description.Append("|headers:").Append(MotionPacArcHeaders(arc));
+                if (node is CHR0Node clip)
+                    description.Append("|chr0:").Append(NativeAnimationOptimization.SourceContentKey(clip)).Append('|').Append(NativeAnimationOptimization.StorageKey(clip))
+                        .Append('|').Append(NativeChr0RawStorage.Signature(clip));
+                else if (!replacedPath.StartsWith(path == "/" ? "/" : path + "/", StringComparison.Ordinal) &&
+                    (node is BRESEntryNode || node.Parent is ARCNode))
+                {
+                    string resource = Path.Combine(folder, ".fp-sibling-" + Guid.NewGuid().ToString("N") + ".bin");
+                    try { node.ExportChecked(resource); description.Append("|bytes:").Append(FighterProject.HashFile(resource)); }
+                    finally { if (File.Exists(resource)) File.Delete(resource); }
+                }
+                state.Add(path, description.ToString());
+            }
+            return state;
+        }
+
+        private static unsafe string MotionPacArcHeaders(ARCNode arc)
+        {
+            const int headerSize = 0x40, entrySize = 0x20;
+            var data = arc.WorkingUncompressed;
+            if (data.Length < headerSize) throw new InvalidDataException("The motion PAC archive header is truncated.");
+            byte* address = (byte*)data.Address;
+            var bytes = new List<byte>(headerSize + arc.Children.Count * entrySize);
+            for (int i = 0; i < headerSize; i++) bytes.Add(address[i]);
+            int offset = headerSize;
+            for (int child = 0; child < arc.Children.Count; child++)
+            {
+                if (offset < 0 || offset > data.Length - entrySize) throw new InvalidDataException("The motion PAC archive entry is truncated.");
+                int size = address[offset + 4] << 24 | address[offset + 5] << 16 | address[offset + 6] << 8 | address[offset + 7];
+                if (size < 0 || size > data.Length - offset - entrySize) throw new InvalidDataException("The motion PAC archive entry size is invalid.");
+                for (int i = 0; i < entrySize; i++) bytes.Add(i >= 4 && i < 8 ? (byte)0 : address[offset + i]);
+                offset = checked((offset + entrySize + size + entrySize - 1) & ~(entrySize - 1));
+            }
+            return Convert.ToBase64String(bytes.ToArray());
         }
 
         public static SkeletonCharacterization Characterize(MDL0Node model)
@@ -272,13 +376,16 @@ namespace BrawlCrate.Studio.Retargeting
             {
                 // Quarter-frame evaluation unwraps rotations continuously before integer-frame baking.
                 int last = clip.Loop ? clip.FrameCount : clip.FrameCount - 1;
+                if(9L*(last+1)*target.Bones.Length>2000000)throw new InvalidDataException("The dense native bake exceeds the two-million-key operation budget.");
                 progress?.Invoke(0,"Analyzing source contacts...");
                 result.Contacts = new ContactMotion(plan, time=>Sample(source,clip,time),last,
                     correction && groundMode!=GroundContactMode.Airborne,cancellation,groundMode==GroundContactMode.Auto,groundMode!=GroundContactMode.SourceContacts,progress,
                     groundMode==GroundContactMode.Auto,clip.Loop);
                 cancellation.ThrowIfCancellationRequested();
-                const int samplesPerFrame=4;
+                const int samplesPerFrame=8;
                 var values = new List<float[][]>();
+                var orientations = new List<Quaternion[]>();
+                var mappedTargets=new HashSet<int>(plan.Mapping.Select(map=>map.TargetIndex));
                 Vector3[] previous = null;
                 for (int sample = 0; sample <= last * samplesPerFrame; sample++)
                 {
@@ -294,14 +401,16 @@ namespace BrawlCrate.Studio.Retargeting
                     for (int bone = 0; bone < frame.Length; bone++)
                     {
                         JointTransform local = posed.Pose.Local[bone];
-                        Vector3 euler = Euler(local.Rotation);
+                        Vector3 euler = mappedTargets.Contains(bone)&&local.Rotation!=target.Rig.Joints[bone].Bind.Rotation
+                            ? EulerNear(local.Rotation,previous==null?(Vector3?)null:previous[bone])
+                            : Vector(target.Bones[bone].BindState.Rotate);
                         if (previous != null) euler = ContinuousEuler(euler, previous[bone]);
                         angles[bone] = euler;
                         frame[bone] = new[] {local.Scale.X, local.Scale.Y, local.Scale.Z, euler.X, euler.Y, euler.Z,
                             local.Translation.X, local.Translation.Y, local.Translation.Z};
                         if (frame[bone].Any(v => !RigMath.Finite(v))) throw new InvalidDataException("The retarget result contains non-finite keys.");
                     }
-                    previous = angles; values.Add(frame);
+                    previous = angles; values.Add(frame); orientations.Add((Quaternion[])posed.Pose.Orientation.Clone());
                 }
                 for (int bone = 0; bone < target.Bones.Length; bone++)
                 {
@@ -309,6 +418,9 @@ namespace BrawlCrate.Studio.Retargeting
                     progress?.Invoke(55+bone*10/target.Bones.Length,"Fitting native animation curves...");
                     CHR0EntryNode entry = output.CreateEntry(target.Bones[bone].Name);
                     entry.Keyframes.PreserveInterpolation = true;
+                    entry.ScaleCompensateApply=target.Bones[bone].SegScaleCompApply;
+                    entry.ScaleCompensateParent=target.Bones[bone].SegScaleCompParent;
+                    entry.ClassicScaleOff=!target.Bones[bone].ClassicScale;
                     for (int channel = 0; channel < 9; channel++)
                     {
                         float[] tangents = FitTangents(values, bone, channel, last,samplesPerFrame);
@@ -322,23 +434,37 @@ namespace BrawlCrate.Studio.Retargeting
                 }
                 FitContactCurves(target,output,result.Contacts,last,cancellation,progress);
                 PreserveMotionControls(plan,clip,output,source,target,last);
+                BakeAdaptiveNativeMaster(source,target,clip,result,correction,last,values,samplesPerFrame,cancellation,progress);
                 // The original dense solver, contact fit and source-owned
                 // controls above remain the reference. Sparse storage is an
                 // explicit, separately measured representation of that result.
                 if(keyframeMode!=RetargetKeyframeMode.Dense)
                     RetargetKeyframes.Prepare(result,source,target,clip,keyframeMode,cancellation,progress);
+                // Sparse projection may remove or replace generated sides.
+                // Retain only exact matching writer evidence in this session;
+                // original retarget receipt hashes remain historical evidence.
+                result.GeneratedPairEvidence = NativeGeneratedPairRegistry.Session.Register(result.Animation,
+                    result.GeneratedPairRigKey, result.GeneratedPairEvidence, cancellation);
                 progress?.Invoke(100,"Animation ready");
                 return result;
             }
             catch { result.Dispose(); throw; }
         }
 
-        // Native CHR0 has integer key times. Fit shared Hermite tangents to the
+        // Initial integer Hermite proposal; the adaptive native master later adds
+        // legal fractional knots where these spans cannot represent the solver.
+        // Fit shared Hermite tangents to the
         // quarter-frame solver poses, keeping integer poses and original duration.
         private static float[] FitTangents(List<float[][]> values, int bone, int channel, int last,int samplesPerFrame)
         {
             var result = new float[last + 1];
             if (last == 0) return result;
+            // A constant sample function has an exactly zero derivative.
+            // Solving its cancelling Hermite residual in floating point can
+            // otherwise invent tiny tangents, defeating exact cleanup and
+            // provoking needless hierarchy compensation on fingers/helpers.
+            int constantBits=BitConverter.ToInt32(BitConverter.GetBytes(values[0][bone][channel]),0);
+            if(values.All(frame=>BitConverter.ToInt32(BitConverter.GetBytes(frame[bone][channel]),0)==constantBits))return result;
             var diagonal = new double[last + 1]; var off = new double[last]; var rhs = new double[last + 1];
             for (int frame = 0; frame < last; frame++)
                 for (int quarter = 1; quarter < samplesPerFrame; quarter++)
@@ -398,13 +524,46 @@ namespace BrawlCrate.Studio.Retargeting
                 m[0,2], m[1,2], m[2,2], 0, 0, 0, 0, 1)));
         }
         public static Vector3 Euler(Quaternion q)
+            => EulerNear(q,null);
+
+        // Native XYZ is Rz * Ry * Rx. Do not round the quaternion matrix to
+        // float before extracting pitch: asin(float(sin(y))) loses the entire
+        // x/z decomposition close to a pole. atan2(sin(y), hypot(R00,R10))
+        // retains the available information in the original quaternion.
+        internal static Vector3 EulerNear(Quaternion q,Vector3? previous)
         {
-            Matrix4x4 m = Matrix4x4.CreateFromQuaternion(Quaternion.Normalize(q));
-            double y = Math.Asin(RigMath.Clamp(-m.M13, -1, 1)), x, z;
-            if (Math.PI / 2 - Math.Abs(y) < 1e-6)
-            { z = 0; x = y > 0 ? Math.Atan2(m.M21, m.M31) : Math.Atan2(-m.M21, -m.M31); }
-            else { x = Math.Atan2(m.M23, m.M33); z = Math.Atan2(m.M12, m.M11); }
-            return new Vector3((float)x, (float)y, (float)z) * (180f / (float)Math.PI);
+            double xq=q.X,yq=q.Y,zq=q.Z,wq=q.W;
+            double norm=Math.Sqrt(xq*xq+yq*yq+zq*zq+wq*wq);
+            if(!(norm>0)||double.IsInfinity(norm)||double.IsNaN(norm))throw new InvalidDataException("A native rotation requires a finite nonzero quaternion.");
+            xq/=norm;yq/=norm;zq/=norm;wq/=norm;
+            double r00=1-2*(yq*yq+zq*zq),r10=2*(xq*yq+wq*zq),
+                r21=2*(yq*zq+wq*xq),r22=1-2*(xq*xq+yq*yq),sinY=2*(wq*yq-xq*zq);
+            double cosine=Math.Sqrt(r00*r00+r10*r10),y=Math.Atan2(sinY,cosine),x,z;
+            const double degrees=180/Math.PI;
+            // Quaternions arrive as native float32 components. Inside this
+            // input-roundoff cone, choosing a stable x/z gauge introduces at
+            // most 0.000012 degrees before native Euler float quantization.
+            if(cosine<=1e-7)
+            {
+                double r01=2*(xq*yq-wq*zq),r02=2*(xq*zq+wq*yq);
+                double angle=(y>0?Math.Atan2(r01,r02):Math.Atan2(-r01,-r02))*degrees;
+                if(previous.HasValue)
+                {
+                    var p=previous.Value;
+                    // At +90 degrees x-z is observable; at -90 x+z is.
+                    // Choose the nearest point of that continuous family,
+                    // retaining winding instead of arbitrarily setting z=0.
+                    double reference=y>0?(double)p.X-p.Z:(double)p.X+p.Z;
+                    angle+=360*Math.Round((reference-angle)/360);
+                    x=y>0?((double)p.X+p.Z+angle)*.5:((double)p.X-p.Z+angle)*.5;
+                    z=y>0?((double)p.X+p.Z-angle)*.5:(-(double)p.X+p.Z+angle)*.5;
+                    return Near(new Vector3((float)x,(float)(y*degrees),(float)z),p);
+                }
+                x=angle/degrees;z=0;
+            }
+            else{x=Math.Atan2(r21,r22);z=Math.Atan2(r10,r00);}
+            var result=new Vector3((float)(x*degrees),(float)(y*degrees),(float)(z*degrees));
+            return previous.HasValue?ContinuousEuler(result,previous.Value):result;
         }
         private static Vector3 ContinuousEuler(Vector3 value, Vector3 previous)
         {

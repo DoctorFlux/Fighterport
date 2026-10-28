@@ -32,6 +32,7 @@ namespace BrawlCrate.UI
         }
         private void ExportGameSlot(string id,string destination)
         {
+            RequireSavedAnimationExportTarget(modelEditControl1.TargetModel as MDL0Node);
             var slot=_fighterProject.AnimationSlots.Single(s=>s.Id==id);if(slot.ProfileId==null)throw new InvalidOperationException("Choose a source-bound native game slot.");var profile=_fighterProject.GameSlotProfiles.Single(p=>p.Id==slot.ProfileId);profile.Validate();GameSlotTemplate(profile);
             if(AnimationSlotStatus(slot)!="Assigned · exact native revision")throw new InvalidOperationException("Review this slot's exact animation/model revision before export.");var expected=profile.Entries.Single(e=>e.Entry==slot.NativeEntry);var clip=NativeSlotClips().Single(c=>c.Key==slot.AnimationKey).Clip;
             using(var template=NodeFactory.FromFile(null,GameSlotTemplate(profile)))
@@ -41,12 +42,19 @@ namespace BrawlCrate.UI
             }
             var model=modelEditControl1.TargetModel as MDL0Node??throw new InvalidOperationException("Open this slot's target model.");if(clip.Children.Any(c=>!model._linker.BoneCache.Any(b=>b.Name==c.Name)))throw new InvalidOperationException("This clip contains foreign native tracks. Retarget it and review losses first.");
             destination=Path.GetFullPath(destination);_fighterProject.ProtectOutputPath(destination);if(Path.GetExtension(destination).ToLowerInvariant()!=".chr0"||File.Exists(destination))throw new IOException("Choose a new .chr0 path; existing files remain protected.");
-            string stage=Path.Combine(_controlStage,"slot-"+Guid.NewGuid().ToString("N")+".chr0"),temporary=destination+"."+Guid.NewGuid().ToString("N")+".tmp";
-            try
+            modelEditControl1.StopAnim();FinishControlCurveEdit();
+            var choice=NativeSlotClips().Single(c=>c.Key==slot.AnimationKey);
+            using(var frozen=FreezeOwnedWorkspaceExport(choice.Asset,clip,false))
             {
-                clip.Export(stage);using(var copy=(CHR0Node)NodeFactory.FromFile(null,stage)){copy.Name=expected.Name;copy.Version=expected.Version;PreciseCHR0EntryNode.Promote(copy);copy.Export(temporary);using(var fresh=(CHR0Node)NodeFactory.FromFile(null,temporary))if(fresh.Name!=expected.Name||fresh.Version!=expected.Version||NativeControlSnapshot.Capture(clip,clip.Children.Select(c=>c.Name)).ContentKey!=NativeControlSnapshot.Capture(fresh,fresh.Children.Select(c=>c.Name)).ContentKey)throw new InvalidDataException("The slot's native name/version or keys did not fresh-reopen exactly.");}File.Move(temporary,destination);
+                string frozenProfile=new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(profile),frozenSlot=new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(slot);
+                var validate=frozen.Validate;
+                frozen.Validate=()=>{validate();profile.Validate();GameSlotTemplate(profile);if(AnimationSlotStatus(slot)!="Assigned · exact native revision"||slot.AnimationKey!=choice.Key||new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(profile)!=frozenProfile||new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(slot)!=frozenSlot)throw new InvalidOperationException("The exact slot assignment or template changed. Review it before exporting.");};
+                ProtectVerifiedExport(destination);
+                CaptureWorkspaceExportDestination(frozen,destination);
+                PrepareWorkspaceExportWithProgress(frozen,new NativeExportOptimizationPreferences().Read(),this);
+                PrepareSlotMetadataExport(frozen,expected.Name,expected.Version);
+                ExportWorkspaceSnapshot(frozen,destination);
             }
-            finally{if(File.Exists(stage))File.Delete(stage);if(File.Exists(temporary))File.Delete(temporary);}
         }
         private void EditAnimationSlots(Action<List<NativeAnimationSlot>> change)
         {
@@ -58,6 +66,7 @@ namespace BrawlCrate.UI
         private void AssignAnimationSlot(string id,string key)
         {
             if(!(modelEditControl1.TargetModel is MDL0Node model))throw new InvalidOperationException("Open the slot's native target model first.");
+            RequireSavedAnimationExportTarget(model);
             var choice=NativeSlotClips().SingleOrDefault(c=>c.Key==key)??throw new InvalidOperationException("Choose an exact registered native animation.");
             EditAnimationSlots(slots=>{var slot=slots.Single(s=>s.Id==id);if(slot.Protected)throw new InvalidOperationException("Unlock this slot explicitly before assigning or clearing it.");slot.AnimationKey=key;slot.ModelSha256=NativeControlHash(model,".mdl0");slot.AnimationSha256=NativeControlHash(choice.Clip,".chr0");});
         }
@@ -66,7 +75,9 @@ namespace BrawlCrate.UI
         {
             if(slot.AnimationKey==null)return slot.Required?"Required · unassigned":"Optional · unassigned";
             var clip=NativeSlotClips().SingleOrDefault(c=>c.Key==slot.AnimationKey);if(clip==null)return "Missing animation";
-            if(!(modelEditControl1.TargetModel is MDL0Node model)||NativeControlHash(model,".mdl0")!=slot.ModelSha256)return "Model changed · review assignment";
+            if(!(modelEditControl1.TargetModel is MDL0Node model))return "Model changed · review assignment";
+            if(model.IsDirty)return "Save target model changes · review assignment";
+            if(NativeControlHash(model,".mdl0")!=slot.ModelSha256)return "Model changed · review assignment";
             if(NativeControlHash(clip.Clip,".chr0")!=slot.AnimationSha256)return "Animation changed · review assignment";
             return "Assigned · exact native revision";
         }

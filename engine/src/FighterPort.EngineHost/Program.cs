@@ -25,7 +25,12 @@ sealed record SetupReview(string? Role,int[]? Bones,float[]? Pole,Dictionary<str
 sealed record Request(string Operation,string? Model=null,string? Motion=null,string? State=null,double Frame=0,int Bone=0,string? Pin=null,float[]? Values=null,bool Follow=false,string? SourceModel=null,bool Fit=true,BindingReview? SourceBinding=null,BindingReview? TargetBinding=null,string? Name=null,int SampleCount=60,string? Path=null,string? TargetId=null,string? SceneId=null,string? Game=null,string? Platform=null,string? Build=null,string? Mode=null,string? Package=null,string? Output=null,WorkspaceMotion[]? Motions=null,string? ClipKey=null,SetupReview? Review=null,FittingOptions? Fitting=null,string? SourceAssociation=null,string? SourceRegistration=null,BoundaryRequest? Boundary=null,EditorSlotIntent[]? Slots=null,ContactBakeOptions? ContactEdit=null,string[]? ContactProtection=null,ContactBakeReceipt? ContactProof=null,OptimizationRequest? Optimization=null);
 sealed record ControlState(string Fingerprint,Guid Clip,ControlRigSetup Setup,ContactFrame[] Contacts,ContactPin[] AuthoringContacts,EditorBonePin[]? BonePins,Dictionary<int,Transform> AuthoringPose,string? BindingKey=null);
 sealed record PinView(string Id,int Bone,string BoneName,string Name,bool Soft,float[] Position,float[] Rotation);
-sealed record KeyView(int Frame,float Value,float Tangent);
+sealed record KeyView(float Frame,float Value,float Tangent)
+{
+    public int FrameBits=>BitConverter.SingleToInt32Bits(Frame);
+    public int ValueBits=>BitConverter.SingleToInt32Bits(Value);
+    public int TangentBits=>BitConverter.SingleToInt32Bits(Tangent);
+}
 sealed record TrackView(string Bone,KeyView[][] Channels);
 sealed partial class ControlSession
 {
@@ -174,11 +179,11 @@ sealed partial class ControlSession
         {
             bool group=track.Channels.Skip(i/3*3).Take(3).Any(c=>c is not null);
             var keys=c?.Keys??(group?[new Key(0,rest[i])]:[]);
-            if(keys.Any(k=>k.Frame!=Math.Truncate(k.Frame)))throw new NotSupportedException("Native commit requires integral key times; exact fractional project data remains available.");
+            if(keys.Any(k=>!double.IsFinite(k.Frame)||(double)(float)k.Frame!=k.Frame||k.Frame<0))throw new NotSupportedException("Native commit requires finite, nonnegative, exactly representable float key times. No rounding or resampling is implicit; the project data remains available.");
             // CHR0 represents incoming/outgoing sides with up to two entries at
             // one time. Preserve existing discontinuities and encode asymmetric
             // smooth tangents as equal-value native pairs.
-            var native=keys.SelectMany(k=>k.InTangent==k.OutTangent?new[]{new KeyView((int)k.Frame,k.Value,k.OutTangent)}:new[]{new KeyView((int)k.Frame,k.Value,k.InTangent),new KeyView((int)k.Frame,k.Value,k.OutTangent)}).ToArray();
+            var native=keys.SelectMany(k=>BitConverter.SingleToInt32Bits(k.InTangent)==BitConverter.SingleToInt32Bits(k.OutTangent)?new[]{new KeyView((float)k.Frame,k.Value,k.OutTangent)}:new[]{new KeyView((float)k.Frame,k.Value,k.InTangent),new KeyView((float)k.Frame,k.Value,k.OutTangent)}).ToArray();
             if(native.GroupBy(k=>k.Frame).Any(g=>g.Count()>2))throw new NotSupportedException("A native curve supports at most two entries at one key time; the original project curve remains intact.");
             return native;
         }).ToArray());

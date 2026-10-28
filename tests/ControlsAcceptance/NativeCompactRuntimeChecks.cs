@@ -31,6 +31,23 @@ internal static partial class Program
                             "Compact runtime: format-only optimization independently decodes unchanged coefficients and carries the qualified precise proof without repeating solver work");
                         Check(!packed.UsedApproximateStorage && packed.MaximumEulerError == 0 && packed.MaximumWorldBoneError == 0 && packed.MaximumSkinError == 0 && packed.Candidate != null,
                             "Compact runtime: exact indexed storage retains zero collective native pose/skin error");
+                        using (var fallbackChoice = await NativeAnimationOptimizationPreparation.Prepare(true, precise.BeforeBytes,
+                            (approximate, precision) =>
+                            {
+                                if (approximate)
+                                {
+                                    var limit = new InvalidDataException("The shared proof budget has no remaining approximation witnesses.");
+                                    limit.Data["OptimizationBudget"] = true; throw limit;
+                                }
+                                return Task.FromResult(new NativeAnimationOptimizationResult {
+                                    Candidate = NativeAnimationOptimization.CopySource(packed.Candidate), HasChanges = true,
+                                    BeforeBytes = precise.BeforeBytes, AfterBytes = packed.AfterBytes, AfterKeys = packed.AfterKeys,
+                                    ContentKey = packed.ContentKey, StorageKey = packed.StorageKey });
+                            }, CancellationToken.None))
+                            Check(!fallbackChoice.HighQuality && fallbackChoice.Result.AfterBytes == packed.AfterBytes &&
+                                fallbackChoice.Result.AfterBytes < precise.AfterBytes &&
+                                NativeAnimationOptimization.SourceContentKey(fallbackChoice.Result.Candidate) == NativeAnimationOptimization.SourceContentKey(packed.Candidate),
+                                "Compact runtime: an Error-bounded search exhausted after Exact retains the smaller independently verified lossless storage fallback");
                         options.OriginalStoredBytes = packed.AfterBytes; options.OriginalStoredResourceBytes = packed.CandidateResourceBytes;
                         using (var repeat = await NativeAnimationOptimization.PrepareCompact(model, baseline, packed.Candidate, precise, options, stage,
                             (candidate, token) => Task.FromResult(new NativeCompactCurveCertificate { Accepted = NativeAnimationOptimization.ContentKey(candidate) == key, Report = "Independent exact coefficient identity." })))
@@ -161,6 +178,20 @@ internal static partial class Program
                     packed.MaximumOrientationError <= .01 && packed.MaximumSkinError <= .0001 * length,
                     "Compact selective: the failing branch stays precise while the complete cumulative native hierarchy and skin are verified against the immutable original");
             }
+
+            options = Options(); options.SmallFile = true; calls = 0;
+            using (var precise = NativeAnimationOptimization.Prepare(model, baseline, tracks, options, stage))
+            using (var identified = await NativeAnimationOptimization.PrepareCompact(model, baseline, baseline, precise, options, stage,
+                (candidate, token) =>
+                {
+                    calls++;
+                    return Task.FromResult(CompactBoneCoefficientsEqual(baseline, candidate, blocked) ? CompactIndependentBound(baseline, candidate) :
+                        new NativeCompactCurveCertificate { Accepted = false, FailedBone = blocked, FailedChannel = 3,
+                            Report = "Independent typed scalar witness rejects this exact rotation group." });
+                }))
+                Check(identified.HasChanges && identified.AfterBytes < identified.BeforeBytes && calls == 3 &&
+                    CompactBoneCoefficientsEqual(baseline, identified.Candidate, blocked) && !CompactBoneCoefficientsEqual(baseline, identified.Candidate, eligible),
+                    "Compact identified recovery: a failed exact group is excluded before partitioning, retaining unrelated smaller storage through independent scalar and complete native gates");
 
             options = Options(); calls = 0;
             using (var precise = NativeAnimationOptimization.Prepare(model, baseline, tracks, options, stage))

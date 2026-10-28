@@ -5,6 +5,8 @@ public sealed record AnimationOptimizationCertificate(bool Accepted, long Work, 
     AnimationOptimizationChannelReport[] Channels)
 {
     public double[] ProbeFrames { get; init; } = [];
+    public string? FailedBone { get; init; }
+    public int? FailedChannel { get; init; }
 }
 
 public static partial class AnimationOptimization
@@ -52,19 +54,23 @@ public static partial class AnimationOptimization
                 return new(false, 0, 0, false, 0, 0, "A removed native target track is not proven bind-constant or has structural protections.", []);
         }
         var budget = new Budget(settings, cancellation);
+        var generatedSites = settings.GeneratedPairSites.Select(site => (site.Bone, site.Channel, site.Frame)).ToHashSet();
         var exactBones = settings.ExactOnlyBones.ToHashSet(StringComparer.Ordinal);
         var protectedBones = settings.PreserveStructureBones.ToHashSet(StringComparer.Ordinal);
         var reports = new List<AnimationOptimizationChannelReport>(); int intervals = 0;
         double maximumValue = 0, maximumSpeed = 0;
+        string? activeBone = null; int? activeChannel = null;
         string reason = "Continuous rational Hermite value/derivative certificate passed; native floating and cumulative geometry checks remain separate.";
         try
         {
             foreach (var sourceTrack in baseline.Tracks)
             {
+                activeBone = sourceTrack.Bone; activeChannel = null;
                 if (!outputs.TryGetValue(sourceTrack.Bone, out var outputTrack)) continue;
                 bool singular = sourceTrack.Channels.Take(3).Concat(outputTrack.Channels.Take(3)).OfType<Curve>().Any(c => MayHaveSingularScale(c, cancellation));
                 for (int channel = 0; channel < 9; channel++)
                 {
+                    activeChannel = channel;
                     cancellation.ThrowIfCancellationRequested();
                     var source = sourceTrack.Channels[channel]; var output = outputTrack.Channels[channel];
                     if (source is null && output is null) continue;
@@ -88,14 +94,25 @@ public static partial class AnimationOptimization
                     {
                         var a = source.Keys[k];
                         budget.Charge(1);
+                        if (fixedConstant) continue; // Both identical zero-slope sides describe the same exact constant.
                         bool paired = k > 0 && source.Keys[k - 1].Frame == a.Frame || k + 1 < source.Keys.Length && source.Keys[k + 1].Frame == a.Frame;
-                        bool protectedKey = preserve || paired || HasSignedZero(a) || !fixedConstant && frames.Contains(a.Frame)
+                        // Retain both incoming/outgoing sides. In the bounded
+                        // storage profile a continuous body's slopes can be
+                        // quantized, then proved over both adjacent intervals.
+                        // A jump, exact control, pin or signed zero stays exact.
+                        bool boundedPair = paired && settings.Mode == AnimationOptimizationMode.SmallFile && !exact
+                            && incoming[a.Frame].Select(key => Bits(key.Value)).Distinct().Count() == 1;
+                        bool protectedKey = preserve || paired && !boundedPair || HasSignedZero(a) || !fixedConstant && frames.Contains(a.Frame)
                             || ranges.Any(r => a.Frame >= r.Start && a.Frame <= r.End);
                         bool fitTime=settings.Mode==AnimationOptimizationMode.SmallFile&&!fixedConstant&&settings.FitJoinFrames.Contains(a.Frame);
-                        if (!protectedKey&&!fitTime) continue;
+                        if (!protectedKey&&!fitTime&&!paired) continue;
                         var required = incoming[a.Frame];
                         var actual = outgoing.GetValueOrDefault(a.Frame, []);
-                        if (required.Length != actual.Length || protectedKey&&required.Where((key, side) =>
+                        bool generatedReduction = boundedPair && !protectedKey && (settings.GeneratedPairFrames.Contains(a.Frame) ||
+                            generatedSites.Contains((sourceTrack.Bone, channel, a.Frame)))
+                            && actual.Length < required.Length && (!fitTime || actual.Length > 0);
+                        if (!generatedReduction && required.Length != actual.Length || boundedPair && actual.Select(key => Bits(key.Value)).Distinct().Count() > 1 || protectedKey&&required.Where((key, side) =>
+                            BitConverter.DoubleToInt64Bits(key.Frame) != BitConverter.DoubleToInt64Bits(actual[side].Frame) ||
                             Bits(key.Value) != Bits(actual[side].Value) || Bits(key.InTangent) != Bits(actual[side].InTangent)
                             || Bits(key.OutTangent) != Bits(actual[side].OutTangent)).Any())
                             return Failed("Indexed storage changed a protected native key, paired side, signed zero or index.");
@@ -117,7 +134,8 @@ public static partial class AnimationOptimization
                         budget.Charge(1);
                         var difference = At(source, point) - At(output, point);
                         bool protectedPoint = frames.Contains(point) || ranges.Any(r => point >= r.Start && point <= r.End);
-                        if (difference.Abs() > Rational.FromDouble(protectedPoint ? 0 : valueBound)) return Failed("A native exact-time value exceeds its frozen scalar bound or exact point protection.");
+                        if (difference.Abs() > Rational.FromDouble(protectedPoint ? 0 : valueBound))
+                            return Failed("A native exact-time value exceeds its frozen scalar bound or exact point protection: "+sourceTrack.Bone+" / "+channel+" / frame "+point+" / error "+difference.Abs().ToUpperDouble()+" / bound "+(protectedPoint?0:valueBound)+".");
                         valueMaximum = Math.Max(valueMaximum, difference.Abs().ToUpperDouble());
                     }
                     for (int i = 1; i < breaks.Length; i++)
@@ -136,7 +154,7 @@ public static partial class AnimationOptimization
                             Math.Max(first, r.Start) < Math.Min(last, r.End) || r.Start == r.End && r.Start > first && r.Start < last);
                         if (!Certify(difference, Rational.FromDouble(protectedInterval ? 0 : valueBound), budget, out double value)
                             || !Certify(derivative, Rational.FromDouble(protectedInterval ? 0 : speedBound), budget, out double speed))
-                            return Failed("A continuous Hermite value/derivative bound failed or could not be proved within subdivision limits.");
+                            return Failed($"A continuous Hermite value/derivative bound failed or could not be proved at {sourceTrack.Bone}/{channel}, interval {first:R}–{last:R}.");
                         valueMaximum = Math.Max(valueMaximum, value); speedMaximum = Math.Max(speedMaximum, speed);
                     }
                     maximumValue = Math.Max(maximumValue, valueMaximum); maximumSpeed = Math.Max(maximumSpeed, speedMaximum);
@@ -152,7 +170,7 @@ public static partial class AnimationOptimization
         catch (LimitReachedException) { return Failed("Continuous indexed-storage proof exhausted its operation budget; candidate retained precise storage."); }
 
         AnimationOptimizationCertificate Failed(string why) => new(false, budget.Work, intervals, budget.WorkLimited,
-            maximumValue, maximumSpeed, why, reports.ToArray());
+            maximumValue, maximumSpeed, why, reports.ToArray()) { FailedBone = activeBone, FailedChannel = activeChannel };
     }
 
     static Rational At(Curve curve, double frame)

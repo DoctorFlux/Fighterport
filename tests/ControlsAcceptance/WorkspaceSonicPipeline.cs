@@ -9,13 +9,14 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 using System.Windows.Forms;
 
 internal static partial class Program
 {
-    static object SonicStage(CHR0Node clip, string file, string label)
+    static object SonicStage(CHR0Node clip, string file, string label, object comparison = null)
     {
         using (var decoded = NodeFactory.FromFile(null, file) as CHR0Node)
         {
@@ -35,7 +36,7 @@ internal static partial class Program
             return new { Stage = label, File = file, Bytes = new FileInfo(file).Length, PreciseI12Bytes = preciseBytes,
                 ResourceBytes = decoded.WorkingUncompressed.Length, Keys = OptimizationKeyCount(decoded), Tracks = decoded.Children.Count,
                 decoded.FrameCount, decoded.Loop, Content = NativeAnimationOptimization.SourceContentKey(decoded), Sha256 = FighterProject.HashFile(file),
-                Formats = groups.GroupBy(g => g.Format).ToDictionary(g => g.Key, g => g.Count()), Groups = groups };
+                Formats = groups.GroupBy(g => g.Format).ToDictionary(g => g.Key, g => g.Count()), Groups = groups, Comparison = comparison };
         }
     }
 
@@ -57,6 +58,93 @@ internal static partial class Program
             CaptureDialog(window, output, label + "-native-mapping.png");
             SimpleControl<Button>(window, "applySkeletonMap").PerformClick();
         })) Call(form, "CaptureFighterRig", model, true);
+    }
+
+    static bool SonicRawMiddleKeys(CHR0Node source, CHR0Node fitted, float first, float last)
+    {
+        foreach (var before in source.Children.OfType<CHR0EntryNode>())
+        {
+            var after = fitted.Children.OfType<CHR0EntryNode>().SingleOrDefault(e => e.Name == before.Name);
+            if (after == null || before.UseModelScale != after.UseModelScale || before.UseModelRotate != after.UseModelRotate ||
+                before.UseModelTranslate != after.UseModelTranslate || before.ScaleCompensateApply != after.ScaleCompensateApply ||
+                before.ScaleCompensateParent != after.ScaleCompensateParent || before.ClassicScaleOff != after.ClassicScaleOff) return false;
+            for (int channel = 0; channel < 9; channel++)
+            {
+                var required = before.KeyArrays[channel].Entries.Where(k => k._index > first && k._index < last).ToArray();
+                var times = required.Select(k => k._index).ToArray();
+                var actual = after.KeyArrays[channel].Entries.Where(k => times.Contains(k._index)).ToArray();
+                if (actual.Length != required.Length || required.Where((k, i) => ReplayFloatBits(k._index) != ReplayFloatBits(actual[i]._index) ||
+                    ReplayFloatBits(k._value) != ReplayFloatBits(actual[i]._value) || ReplayFloatBits(k._tangent) != ReplayFloatBits(actual[i]._tangent)).Any()) return false;
+            }
+        }
+        return true;
+    }
+
+    static async Task<object> SonicExportCopy(ModelForm form, CHR0Node clip, MDL0Node model, string modelFile,
+        string[] roots, int[] fitJoins, string referenceFile, string directory, string tag, bool bounded)
+    {
+        var editor = form.FighterEditor;
+        string content = NativeAnimationOptimization.SourceContentKey(clip), storage = NativeAnimationOptimization.StorageKey(clip);
+        string identity = OptimizationNativeIdentity(clip), referenceHash = FighterProject.HashFile(referenceFile);
+        var bone = editor.SelectedBone; int frame = editor.CurrentFrame, cursor = editor._saveIndex;
+        var undo = editor._undoSaves.ToArray(); var redo = editor._redoSaves.ToArray();
+        bool dirty = clip.IsDirty, branch = clip.IsBranch;
+        var livePose = model.AllBones.SelectMany(b => Enumerable.Range(0, 9).Select(c => ReplayFloatBits(b.FrameState[c]))).ToArray();
+        object frozen = Call(form, "FreezeWorkspaceExport");
+        try
+        {
+            var master = (CHR0Node)Field(frozen, "Master");
+            Check(NativeAnimationOptimization.SourceContentKey(master) == content && NativeAnimationOptimization.StorageKey(master) == storage,
+                tag + ": export freezes the same finished target master including native storage; a donor or previous export is never its compression reference");
+            var settings = new NativeExportOptimizationSettings { Policy = bounded ? NativeExportOptimizationPolicy.ErrorBounded : NativeExportOptimizationPolicy.Exact };
+            var preparationTime = System.Diagnostics.Stopwatch.StartNew();
+            await (Task)Call(form, "PrepareOptimizedExportSnapshot", frozen, settings, CancellationToken.None, null);
+            preparationTime.Stop();
+            var candidate = (CHR0Node)Field(frozen, "Candidate");
+            string report = (string)Field(frozen, "OptimizationReport"), effective = (string)Field(frozen, "EffectiveExportPolicy");
+            var context = Field(frozen, "Optimization"); string unavailable = (string)Field(context, "BoundedUnavailable");
+            Check(candidate != null && (string)Field(frozen, "PreparedPolicyKey") == settings.StableKey && !string.IsNullOrWhiteSpace(report),
+                tag + ": explicit export preparation records the requested policy, independent candidate and complete qualification/fallback report");
+            if (bounded && !string.IsNullOrWhiteSpace(unavailable))
+                Check(effective == "Exact" && report.Contains("Exact fallback"), tag + ": unresolved absolute fit/contact/review acceptance selects the explicit Exact fallback");
+            ReplayRootsMatch(master, candidate, model, roots);
+            foreach (int join in fitJoins)
+                Check(ReplayKnotMatches(master, candidate, join, new HashSet<string>(model.AllBones.Select(b => b.Name), StringComparer.Ordinal), model),
+                    tag + ": exported copy retains the exact finished-master fitting boundary/join " + join);
+            using (var beforeRoot = NodeFactory.FromFile(null, modelFile))
+            using (var afterRoot = NodeFactory.FromFile(null, modelFile))
+            {
+                var beforeModel = Walk(beforeRoot).OfType<MDL0Node>().OrderByDescending(m => m.NumVertices).First();
+                var afterModel = Walk(afterRoot).OfType<MDL0Node>().OrderByDescending(m => m.NumVertices).First();
+                Check(BrawlRetargeter.SkeletonFingerprint(beforeModel) == BrawlRetargeter.SkeletonFingerprint(model), tag + ": independent geometry witnesses use the same authentic target rig");
+                OptimizationWithheldGeometry(beforeModel, afterModel, master, candidate, Path.Combine(directory, tag + "-withheld.json"), effective == "ErrorBounded");
+            }
+            string file = Path.Combine(directory, tag + ".chr0"); Call(form, "ExportWorkspaceSnapshot", frozen, file);
+            long masterBytes = new FileInfo(referenceFile).Length, exportedBytes = new FileInfo(file).Length;
+            Check((long)Field(frozen, "MasterBytes") == masterBytes && exportedBytes <= masterBytes &&
+                NativeChr0SizeReport.Read(file).AccountedBytes == exportedBytes,
+                tag + ": independently accounted export bytes never grow relative to this same finished target master");
+            File.WriteAllText(Path.Combine(directory, tag + "-report.txt"), report);
+            File.WriteAllText(Path.Combine(directory, tag + "-bytes.txt"), (string)Field(frozen, "ByteReport"));
+            var comparison = new { RequestedPolicy = settings.Policy.ToString(), EffectivePolicy = effective, settings.SearchEffort,
+                PreparationMilliseconds = preparationTime.ElapsedMilliseconds,
+                FinishedMasterFile = referenceFile, FinishedMasterBytes = masterBytes, ExportBytes = exportedBytes,
+                FinishedMasterContent = content, FinishedMasterStorage = storage, FinishedMasterSha256 = referenceHash,
+                ExportContent = NativeAnimationOptimization.SourceContentKey(candidate), ExportStorage = NativeAnimationOptimization.StorageKey(candidate),
+                BoundedUnavailable = unavailable, FitJoinFrames = fitJoins, Report = tag + "-report.txt", EditableMasterChanged = false };
+            return SonicStage(candidate, file, tag, comparison);
+        }
+        finally
+        {
+            ((IDisposable)frozen).Dispose();
+            Check(ReferenceEquals(editor.TargetModel, model) && ReferenceEquals(editor.SelectedCHR0, clip) && ReferenceEquals(editor.SelectedBone, bone) &&
+                editor.CurrentFrame == frame && editor._saveIndex == cursor && editor._undoSaves.SequenceEqual(undo) && editor._redoSaves.SequenceEqual(redo) &&
+                clip.IsDirty == dirty && clip.IsBranch == branch && OptimizationNativeIdentity(clip) == identity &&
+                NativeAnimationOptimization.SourceContentKey(clip) == content && NativeAnimationOptimization.StorageKey(clip) == storage &&
+                model.AllBones.SelectMany(b => Enumerable.Range(0, 9).Select(c => ReplayFloatBits(b.FrameState[c]))).SequenceEqual(livePose) &&
+                FighterProject.HashFile(referenceFile) == referenceHash,
+                tag + ": analysis/publication preserve exact live master, storage, identity, pose, target/bone selection, frame, native Undo/Redo and full-quality reference bytes");
+        }
     }
 
     static async Task WorkspaceSonicPipeline(string[] args, string output)
@@ -89,6 +177,7 @@ internal static partial class Program
         using (var original = NodeFactory.FromFile(null, sourceFile) as CHR0Node)
         {
             Check(original != null && original.FrameCount == expectedFrames, "Exact " + sourceLabel + " AttackAirLw retains its authentic " + expectedFrames + "-frame timing without substituting the catalogue animation");
+            NativeDenseCodecChecks(original, sourceFile, Path.Combine(output, "source-codec"));
             File.WriteAllText(Path.Combine(output, "provided-source-native.json"), json.Serialize(new { File = sourceFile, Bytes = new FileInfo(sourceFile).Length,
                 Sha256 = FighterProject.HashFile(sourceFile), original.Name, original.Version, original.FrameCount, original.Loop,
                 Keys = OptimizationKeyCount(original), Tracks = original.Children.Count }));
@@ -106,11 +195,12 @@ internal static partial class Program
             SourceAnimation = Path.Combine(output, "source-original-native.chr0"), SourceModel = sourceModelPath, SourceContainer = sourceContainer,
             TargetModel = Path.Combine(output, "target-model.mdl0"), TargetContainer = targetContainer, Fall = Path.Combine(output, "Fall.chr0"),
             ProvidedMario = Path.Combine(output, "provided-mario-original.chr0"), SampleCount = expectedFrames, EntryJoinDisplay = 5, ExitJoinDisplay = exitStart,
-            FallSampleDisplay = 1, AttackTravelControls = attackTravelControls.ToArray(), PrivateDesktop, OSInputInjected = false, ScreenCopied = false, Modes = allModes }));
+            FallSampleDisplay = 1, AttackTravelControls = attackTravelControls.ToArray(), PrivateDesktop, OSInputInjected = false, ScreenCopied = false,
+            OptimizationBoundary = "Retargeting and fitting retain full-quality editable masters; Exact and ErrorBounded optimize explicit export copies only.", Modes = allModes }));
         WriteManifest();
         try
         {
-            foreach (var keyMode in new[] { RetargetKeyframeMode.SourceBoneTimes, RetargetKeyframeMode.SourceChannelTimes })
+            foreach (var keyMode in new[] { RetargetKeyframeMode.SourceBoneTimes, RetargetKeyframeMode.SourceChannelTimes }.Where(mode=>!args.Contains("--sonic-pipeline-mode")||mode.ToString()==Arg("--sonic-pipeline-mode")))
             {
                 string modeDirectory = Path.Combine(output, keyMode.ToString()); Directory.CreateDirectory(modeDirectory);
                 using (var project = FighterProject.Create(sourceLabel + " AttackAirLw to " + targetLabel + " — " + keyMode))
@@ -120,7 +210,7 @@ internal static partial class Program
                     {
                         form.InitializeFighterProject(project); form.Show(); form.ClientSize = new Size(1700, 950); Call(form, "SetWorkspaceTextSize", 100);
                         Call(form, "ImportFighterModel", args[0]); Call(form, "ImportFighterAnimations", new[] { new[] { targetMotion, sourceFile } });
-                        await SimpleControlsReady(form);
+                        await GameLibraryWait(()=>!(bool)Field(form,"_controlBusy")&&!(bool)Field(form,"_controlSetupQueued"),"Native control setup did not settle.",120);
                         Console.WriteLine("TRACE " + keyMode + " imports and native control setup settled");
                         var editor = form.FighterEditor; var model = (MDL0Node)editor.TargetModel;
                         var inputAsset = project.Animations.Last(a => string.Equals(Path.GetFullPath(a.SourcePath), sourceFile, StringComparison.OrdinalIgnoreCase));
@@ -135,11 +225,17 @@ internal static partial class Program
                             model.ExportChecked(Path.Combine(output, "target-model.mdl0"));
                         }
                         foreach (ListViewItem row in editor.leftPanel.listAnims.Items) row.Selected = ReferenceEquals(row.Tag, source);
-                        editor.SelectedCHR0 = source; await SimpleControlsReady(form); await Await<ControlReply>(Call(form, "LoadControls"));
+                        editor.SelectedCHR0 = source; await GameLibraryWait(()=>!(bool)Field(form,"_controlBusy")&&!(bool)Field(form,"_controlSetupQueued"),"Native control setup did not settle.",120); await Await<ControlReply>(Call(form, "LoadControls"));
                         Console.WriteLine("TRACE " + keyMode + " exact provided source selected and controls loaded");
                         SonicReviewNativeMapping(form, model, targetFingerprint, modeDirectory, "target");
                         using (var donorRoot = NodeFactory.FromFile(null, sourceModelPath))
                             SonicReviewNativeMapping(form, Walk(donorRoot).OfType<MDL0Node>().Single(), sourceFingerprint, modeDirectory, "source");
+                        if(reciprocal)
+                        {
+                            var captured=BrawlRetargeter.Capture(model);var bindings=captured.Rig.Roles.ToDictionary(pair=>pair.Key,pair=>captured.Bones[pair.Value].Name);
+                            using(var coordinates=Modal("Rig Coordinates",dialog=>dialog.Controls.OfType<Button>().Single(button=>button.Text=="Use Coordinates").PerformClick()))
+                                Check((bool)Call(form,"ReviewEngineCoordinates",model,bindings),"Sonic exact existing rig receives explicit native control/coordinate review through the actual dialog");
+                        }
                         Console.WriteLine("TRACE " + keyMode + " native source/target mappings reviewed");
                         using (var modal = Modal("Retarget Options", window =>
                         {
@@ -168,7 +264,7 @@ internal static partial class Program
                             quality.MaximumOrientationError <= .01 && quality.MaximumEulerError <= .01 &&
                             quality.MaximumWorldBoneError <= .0001 * quality.LengthScale && quality.MaximumSkinError <= .0001 * quality.LengthScale,
                             keyMode + ": guarded source seeds independently pass frozen scalar and cumulative native quality ceilings");
-                        await SimpleControlsReady(form);
+                        await GameLibraryWait(()=>!(bool)Field(form,"_controlBusy")&&!(bool)Field(form,"_controlSetupQueued"),"Native control setup did not settle.",120);
                         var clip = editor.SelectedCHR0;
                         Check(clip.FrameCount == expectedFrames && !clip.Loop, keyMode + ": source-key retargeting preserves authentic " + expectedFrames + "-frame native timing");
                         var setup = await Await<ControlReply>(Call(form, "LoadControls"));
@@ -186,6 +282,10 @@ internal static partial class Program
                             File.WriteAllText(Path.Combine(modeDirectory, "stage-sizes.json"), json.Serialize(stages)); return stage;
                         }
                         Export("raw-retarget");
+                        foreach (bool bounded in new[] { false, true })
+                            stages.Add(await SonicExportCopy(form, clip, model, Path.Combine(output, "target-model.mdl0"), rootNames, new int[0],
+                                Path.Combine(modeDirectory, "raw-retarget.chr0"), modeDirectory, bounded ? "raw-retarget-optimized-hq" : "raw-retarget-optimized-exact", bounded));
+                        File.WriteAllText(Path.Combine(modeDirectory, "stage-sizes.json"), json.Serialize(stages));
                         using (var attack = NativeAnimationOptimization.Copy(clip))
                         {
                             async Task Fit(bool scoped, bool apply)
@@ -213,9 +313,15 @@ internal static partial class Program
                                         Check(window.Candidate != null, keyMode + ": " + (scoped ? "existing-track" : "full") + " fitting prepares both frozen first-Fall references: " + SimpleControl<TextBox>(window, "transitionReport").Text);
                                         var fitted = window.Candidate;
                                         Check(RecoveryKeys(fitted, positionNames) == RecoveryKeys(attack, positionNames), keyMode + ": fitting never replaces the attack's own TransN/root-motion curves with Fall");
-                                        Check(RecoveryRetainedKeysExact(attack, fitted, 4, exitStart - 1), keyMode + ": both native joins and unchanged attack middle retain exact authored keys/tangents");
+                                        Check(SonicRawMiddleKeys(attack, fitted, 4, exitStart - 1), keyMode + ": full-quality fitting retains every authored interior attack key, paired side, tangent and native semantic flag exactly");
+                                        foreach(float time in Enumerable.Range(4,exitStart-4).SelectMany(frame=>new[]{(float)frame,frame+.137f,frame+.733f}).Where(time=>time<=exitStart-1))
+                                            Check(model.AllBones.All(b=>
+                                            {
+                                                var before = RecoverySample(attack, b, time); var after = RecoverySample(fitted, b, time);
+                                                return RecoverySamePose(before, after) && Enumerable.Range(3, 3).All(c => Math.Abs((double)before[c] - after[c]) <= LoopOrientationTolerance);
+                                            }),keyMode+": unchanged attack middle retains raw Euler channels and native pose within existing floating-point comparison tolerances at "+time);
                                         var fittedBones = new HashSet<string>(window.ReadOptions().Bones, StringComparer.Ordinal);
-                                        foreach (int frame in new[] { 0, expectedFrames - 1 }) Check(model.AllBones.Where(b => fittedBones.Contains(b.Name) && !positionNames.Contains(b.Name))
+                                        foreach (int frame in new[] { 0, expectedFrames - 1 }) Check(model.AllBones.Where(b => fittedBones.Contains(b.Name) && !rootNames.Contains(b.Name))
                                             .All(b => RecoverySamePose(RecoverySample(fitted, b, frame), RecoverySample(fall, b, 0))), keyMode + ": selected body at frame " + (frame + 1) + " reaches only " + targetLabel + " Fall first pose");
                                         string export = Path.Combine(modeDirectory, scoped ? "fitted-candidate.chr0" : "full-fit-control.chr0"); fitted.ExportChecked(export);
                                         stages.Add(SonicStage(fitted, export, scoped ? "fitted-candidate" : "full-fit-control"));
@@ -225,44 +331,21 @@ internal static partial class Program
                                     finally { finished = true; }
                                 };
                                 Call(form, "ShowTransitionFit"); await GameLibraryWait(() => finished, "Sonic fitting did not finish.", 180);
-                                form.TransitionFitReady = null; if (failure != null) throw failure; await SimpleControlsReady(form);
+                                form.TransitionFitReady = null; if (failure != null) throw failure; await GameLibraryWait(()=>!(bool)Field(form,"_controlBusy")&&!(bool)Field(form,"_controlSetupQueued"),"Native control setup did not settle.",120);
                             }
-                            await Fit(false, false); await Fit(true, true); Export("fitted");
-                            using (var fittedBaseline = NativeAnimationOptimization.Copy(clip))
-                            {
-                                string baselineContent = NativeAnimationOptimization.ContentKey(clip);
-                                foreach (bool highQuality in (fitOnly ? new bool[0] : new[] { false, true }))
-                                {
-                                    string tag = highQuality ? "optimized-hq" : "optimized-exact";
-                                    bool applied = false, finished = false; Exception failure = null;
-                                    form.OptimizationReady = async window =>
-                                    {
-                                        try
-                                        {
-                                            SimpleControl<ComboBox>(window, "optimizationMode").SelectedIndex = highQuality ? 1 : 0;
-                                            SimpleControl<CheckBox>(window, "optimizationCompactStorage").Checked = true; await window.Analyze();
-                                            Check(window.Candidate != null, keyMode + ": " + tag + " prepares a fully verified current-animation candidate: " + SimpleControl<Label>(window, "optimizationSummary").Text);
-                                            ReplayRootsMatch(fittedBaseline, window.Candidate, model, rootNames);
-                                            foreach (int join in new[] { 0, 4, exitStart - 1, expectedFrames - 1 }) Check(ReplayKnotMatches(fittedBaseline, window.Candidate, join, new HashSet<string>(model.AllBones.Select(b => b.Name), StringComparer.Ordinal), model), keyMode + ": optimization retains fitting boundary/join " + join);
-                                            OptimizationWithheldGeometry(window.SourceView, window.TargetView, fittedBaseline, window.Candidate, Path.Combine(modeDirectory, tag + "-withheld.json"));
-                                            File.WriteAllText(Path.Combine(modeDirectory, tag + "-report.txt"), SimpleControl<TextBox>(window, "optimizationReport").Text);
-                                            await CaptureOptimization(window, Path.Combine(modeDirectory, tag + "-review.png"));
-                                            applied = window.PreparedCanApply;
-                                            if (applied) SimpleControl<Button>(window, "optimizeApply").PerformClick(); else window.Close();
-                                        }
-                                        catch (Exception error) { failure = error; window.Close(); }
-                                        finally { finished = true; }
-                                    };
-                                    Call(form, "ShowAnimationOptimization"); await GameLibraryWait(() => finished, "Sonic optimization did not finish.", 180);
-                                    form.OptimizationReady = null; if (failure != null) throw failure; await SimpleControlsReady(form); Export(tag);
-                                    if (applied) { editor.Undo(); await SimpleControlsReady(form); }
-                                    Check(NativeAnimationOptimization.ContentKey(clip) == baselineContent, keyMode + ": independent optimization modes both restore the exact fitted baseline with native Undo");
-                                }
-                            }
+                            if(!fitOnly)await Fit(false, false); await Fit(true, true); Export("fitted");
+                            foreach (bool bounded in new[] { false, true })
+                                stages.Add(await SonicExportCopy(form, clip, model, Path.Combine(output, "target-model.mdl0"), rootNames,
+                                    new[] { 0, 4, exitStart - 1, expectedFrames - 1 }, Path.Combine(modeDirectory, "fitted.chr0"), modeDirectory,
+                                    bounded ? "optimized-hq" : "optimized-exact", bounded));
                         }
-                        File.WriteAllText(Path.Combine(modeDirectory, "stage-sizes.json"), json.Serialize(stages)); allModes.Add(new { Mode = keyMode.ToString(), ClipIdentity = OptimizationNativeIdentity(clip), AttackTravelControls = positionNames, Stages = stages }); WriteManifest();
+                        File.WriteAllText(Path.Combine(modeDirectory, "stage-sizes.json"), json.Serialize(stages));
+                        allModes.Add(new { Mode = keyMode.ToString(), ClipIdentity = OptimizationNativeIdentity(clip), AttackTravelControls = positionNames,
+                            RawMaster = Path.Combine(modeDirectory, "raw-retarget.chr0"), RawExactExport = Path.Combine(modeDirectory, "raw-retarget-optimized-exact.chr0"),
+                            RawBoundedExport = Path.Combine(modeDirectory, "raw-retarget-optimized-hq.chr0"), FittedMaster = Path.Combine(modeDirectory, "fitted.chr0"),
+                            FittedExactExport = Path.Combine(modeDirectory, "optimized-exact.chr0"), FittedBoundedExport = Path.Combine(modeDirectory, "optimized-hq.chr0"), Stages = stages }); WriteManifest();
                     }
-                    finally { form.OptimizationReady = null; form.TransitionFitReady = null; form.RetargetKeyframeReviewReady = null; if (!form.IsDisposed) SimpleDisposeForm(form); }
+                    finally { form.TransitionFitReady = null; form.RetargetKeyframeReviewReady = null; if (!form.IsDisposed) SimpleDisposeForm(form); }
                 }
             }
             if (!fitOnly)
@@ -274,42 +357,18 @@ internal static partial class Program
                 try
                 {
                     form.InitializeFighterProject(project); form.Show(); form.ClientSize = new Size(1700, 950);
-                    Call(form, "ImportFighterModel", args[0]); Call(form, "ImportFighterAnimations", new[] { new[] { providedMario } }); await SimpleControlsReady(form);
+                    Call(form, "ImportFighterModel", args[0]); Call(form, "ImportFighterAnimations", new[] { new[] { providedMario } }); await GameLibraryWait(()=>!(bool)Field(form,"_controlBusy")&&!(bool)Field(form,"_controlSetupQueued"),"Native control setup did not settle.",120);
                     var editor = form.FighterEditor; var clip = editor.SelectedCHR0; var model = (MDL0Node)editor.TargetModel;
                     var setup = await Await<ControlReply>(Call(form, "LoadControls")); var roots = (setup.ProtectedMotionBones ?? new int[0]).Select(i => setup.BoneNames[i]).ToArray();
                     var stages = new List<object>();
-                    using (var baseline = NativeAnimationOptimization.Copy(clip))
-                    {
-                        string content = NativeAnimationOptimization.ContentKey(clip);
-                        string file = Path.Combine(providedDirectory, "provided-original.chr0"); form.ExportSimpleWorkspaceResult(file); stages.Add(SonicStage(clip, file, "provided-original"));
-                        foreach (bool quality in new[] { false, true })
-                        {
-                            string tag = quality ? "optimized-hq" : "optimized-exact"; bool applied = false, finished = false; Exception failure = null;
-                            form.OptimizationReady = async window =>
-                            {
-                                try
-                                {
-                                    SimpleControl<ComboBox>(window, "optimizationMode").SelectedIndex = quality ? 1 : 0;
-                                    SimpleControl<CheckBox>(window, "optimizationCompactStorage").Checked = true; await window.Analyze();
-                                    Check(window.Candidate != null, "Provided Mario " + tag + ": prepares from exact current-animation data: " + SimpleControl<Label>(window, "optimizationSummary").Text);
-                                    ReplayRootsMatch(baseline, window.Candidate, model, roots);
-                                    OptimizationWithheldGeometry(window.SourceView, window.TargetView, baseline, window.Candidate, Path.Combine(providedDirectory, tag + "-withheld.json"));
-                                    File.WriteAllText(Path.Combine(providedDirectory, tag + "-report.txt"), SimpleControl<TextBox>(window, "optimizationReport").Text);
-                                    applied = window.PreparedCanApply; if (applied) SimpleControl<Button>(window, "optimizeApply").PerformClick(); else window.Close();
-                                }
-                                catch (Exception error) { failure = error; window.Close(); }
-                                finally { finished = true; }
-                            };
-                            Call(form, "ShowAnimationOptimization"); await GameLibraryWait(() => finished, "Provided Mario optimization did not complete.", 180);
-                            form.OptimizationReady = null; if (failure != null) throw failure; await SimpleControlsReady(form);
-                            file = Path.Combine(providedDirectory, tag + ".chr0"); form.ExportSimpleWorkspaceResult(file); stages.Add(SonicStage(clip, file, tag)); form.SaveFighterProject(Path.Combine(providedDirectory, tag + ".fpstudio"));
-                            if (applied) { editor.Undo(); await SimpleControlsReady(form); }
-                            Check(NativeAnimationOptimization.ContentKey(clip) == content, "Provided Mario " + tag + ": native Undo returns to the identical independent original baseline");
-                        }
-                    }
+                    string file = Path.Combine(providedDirectory, "provided-original.chr0"); form.ExportSimpleWorkspaceResult(file);
+                    stages.Add(SonicStage(clip, file, "provided-original")); form.SaveFighterProject(Path.Combine(providedDirectory, "provided-original.fpstudio"));
+                    foreach (bool bounded in new[] { false, true })
+                        stages.Add(await SonicExportCopy(form, clip, model, args[0], roots, new int[0], file, providedDirectory,
+                            bounded ? "optimized-hq" : "optimized-exact", bounded));
                     File.WriteAllText(Path.Combine(providedDirectory, "stage-sizes.json"), json.Serialize(stages)); allModes.Add(new { Mode = "ProvidedMario", Stages = stages });
                 }
-                finally { form.OptimizationReady = null; if (!form.IsDisposed) SimpleDisposeForm(form); }
+                finally { if (!form.IsDisposed) SimpleDisposeForm(form); }
             }
             }
             Check(originals.All(pair => FighterProject.HashFile(pair.Key) == pair.Value), sourceLabel + " pipeline preserves every provided original source/target file and source catalogue");

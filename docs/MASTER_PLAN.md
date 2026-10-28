@@ -1,5 +1,21 @@
 # Fighterport master plan
 
+28 October 2026 **preview.54-native-chr0-export-optimization** completes its bounded
+source increment within the ONE incomplete G1/M2. Full-quality retarget/fitting/
+contact/native masters and exact ordinary Save remain separate from explicit
+Exact / Error-bounded export copies. Shared current/member/set/slot/PAC boundaries
+retain independent native verification, original Next, complete skin weights,
+source-owned motion and native Undo. Forward fitted bounded exports measure
+108,308 → 53,700 and 147,536 → 59,640 bytes; reciprocal scale/compensation remains
+Exact fallback. There is no fixed compression ratio, global optimum or donor-size
+equivalence claim. See [acceptance](NATIVE_CHR0_EXPORT_OPTIMIZATION_ACCEPTANCE_2026-10-28.md),
+[benchmark](NATIVE_CHR0_OPTIMIZATION_BENCHMARK_2026-10-28.md) and the sole
+[current plan](plans/current.md). The launcher selects qualified native19.
+Broader contacts/game destinations, Melee writing, external-editor/plugin round
+trips and physical-input/DPI/human/game acceptance remain separate, unverified
+work. Source publication stays public main as DoctorFlux; assets/settings/media/
+binaries remain excluded. Historical checkpoints follow.
+
 27 October 2026 preview.53-dense-storage-source-orientation has bounded source
 acceptance: **4,564 application checks**, 1,303 separate final renderer assertions,
 23 inspected native UI PNGs, six inspected GIFs/250 decoded frames and a complete

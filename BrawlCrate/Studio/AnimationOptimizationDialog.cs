@@ -1,4 +1,4 @@
-using BrawlLib.Internal.Windows.Controls.Model_Panel;
+﻿using BrawlLib.Internal.Windows.Controls.Model_Panel;
 using BrawlLib.SSBB.ResourceNodes;
 using System;
 using System.Collections.Generic;
@@ -24,16 +24,13 @@ namespace BrawlCrate.Studio
         internal CHR0Node Candidate { get; private set; }
 
         readonly CHR0Node source;
+        readonly WorkspaceExportOptimizationOptions exportOptions;
         readonly bool highQualityQualified;
         readonly TableLayoutPanel layout, views, transport;
-        readonly FlowLayoutPanel options, footer;
-        readonly Panel modeSlot = new Panel { Name = "optimizationModeSlot", TabStop = false };
+        readonly FlowLayoutPanel footer;
         readonly Label identity, modeHint, summary;
-        readonly ComboBox mode = new ComboBox { Name = "optimizationMode", DropDownStyle = ComboBoxStyle.DropDownList };
-        readonly CheckBox compactStorage = new CheckBox { Name = "optimizationCompactStorage", Text = "Smaller native storage", AutoSize = true };
-        readonly Label modeLabel = new Label { Text = "Mode", AutoSize = true, Padding = new Padding(0, 6, 6, 0) };
         readonly Button analyze = new Button { Name = "optimizeAnalyze", Text = "Analyze", AutoSize = true };
-        readonly Button apply = new Button { Name = "optimizeApply", Text = "Apply optimization", AutoSize = true, Enabled = false };
+        readonly Button apply = new Button { Name = "optimizeApply", Text = "Export optimized copy…", AutoSize = true, Enabled = false };
         readonly Button cancel = new Button { Name = "optimizationCancel", Text = "Cancel analysis", AutoSize = true, Enabled = false };
         readonly Button close = new Button { Name = "optimizationClose", Text = "Close", AutoSize = true };
         readonly Button details = new Button { Name = "optimizationDetails", Text = "Show details", AutoSize = true };
@@ -45,7 +42,7 @@ namespace BrawlCrate.Studio
         readonly Stopwatch previewTime = new Stopwatch();
         readonly Dictionary<Control, Control> regionFocus = new Dictionary<Control, Control>();
         int generation, previewStart;
-        bool loading = true, preparedHighQuality, preparedSmallFile, preparedCompact, analyzingCompact, layingOut, analyzingHighQuality, analyzingSmallFile, cancellationRequested, closeQueued;
+        bool  preparedHighQuality, preparedSmallFile, preparedCompact, analyzingCompact, layingOut, analyzingHighQuality, analyzingSmallFile, cancellationRequested, closeQueued;
 
         internal AnimationOptimizationDialog(ResourceNode originalRoot, MDL0Node originalModel,
             ResourceNode resultRoot, MDL0Node resultModel, CHR0Node originalSnapshot,
@@ -56,7 +53,7 @@ namespace BrawlCrate.Studio
             source = originalSnapshot;
             this.highQualityQualified = highQualityQualified;
             Name = "animationOptimizationDialog";
-            Text = "Optimize current animation";
+            Text = "Optimize CHR0 size";
             AutoScaleMode = AutoScaleMode.None;
             Font = WorkspaceAppearance.Font;
             ClientSize = new Size(1060, 730);
@@ -68,24 +65,11 @@ namespace BrawlCrate.Studio
                 AutoSize = true, Margin = new Padding(0, 0, 0, 6), Font = WorkspaceAppearance.BoldFont };
             modeHint = new Label { Name = "optimizationModeHint", AutoSize = true, Margin = new Padding(0, 0, 0, 6) };
             summary = new Label { Name = "optimizationSummary", AutoSize = true, Margin = new Padding(0, 6, 0, 2),
-                Text = "Analyze the current animation, compare its prepared result, then Apply optimization. Save or export afterward." };
+                Text = "Analyze the finished current animation, preview the decoded result, then export an optimized copy. The editable master stays unchanged." };
 
-            mode.Items.Add("Exact");
-            if (highQualityQualified) { mode.Items.Add("High quality"); mode.Items.Add("Small file (0.1°)"); }
-            mode.SelectedIndex = 0;
-            mode.AccessibleName = "Animation optimization mode";
-            mode.AccessibleDescription = "Changing the mode discards the prepared result. Analyze explicitly to prepare another result.";
-            options = new FlowLayoutPanel { Name = "optimizationOptions", Dock = DockStyle.Fill, AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = true, Margin = Padding.Empty };
-            options.Controls.Add(modeLabel);
-            // An unqualified quality mode is absent from the control entirely.
-            // The single Exact choice remains visible as the active policy.
-            mode.Dock = DockStyle.Fill;
-            modeSlot.Controls.Add(mode);
-            options.Controls.Add(modeSlot);
-            compactStorage.AccessibleDescription = "Try smaller native storage. Exact requires lossless decoded coefficients. High quality and Small file keep their selected measured error limits. Analyze explicitly; native Undo restores the original storage.";
-            options.Controls.Add(compactStorage);
-
+            exportOptions = new WorkspaceExportOptimizationOptions(new NativeExportOptimizationPreferences().Read())
+            { Dock = DockStyle.Fill, Margin = Padding.Empty, TabIndex = 0 };
+            exportOptions.SettingsChanged += (s,e) => { if(!Busy) { Discard(); UpdateModeHint(); } };
             SourceView = new FittingModelView(originalModel, originalRoot, "Original current animation · read-only", true, viewer, references) { Dock = DockStyle.Fill };
             TargetView = new FittingModelView(resultModel, resultRoot, "Original animation · no result prepared", false, viewer, references) { Dock = DockStyle.Fill };
             views = new TableLayoutPanel { Name = "optimizationPreviews", Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Margin = Padding.Empty };
@@ -109,9 +93,9 @@ namespace BrawlCrate.Studio
             footer = new FlowLayoutPanel { Name = "optimizationActions", Dock = DockStyle.Fill, AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = true, Margin = Padding.Empty };
             footer.Controls.AddRange(new Control[] { analyze, cancel, apply, close });
-            analyze.AccessibleDescription = "Prepare an independent result for this exact current target animation. The current animation changes only when Apply optimization is chosen.";
-            apply.AccessibleDescription = "Apply the prepared optimization to the current animation. Native Undo restores the previous curves. Save or export afterward.";
-            details.AccessibleDescription = "Show measured key counts, native byte sizes, errors, protections and tracks absent from the target that will be removed by Apply.";
+            analyze.AccessibleDescription = "Prepare an independent result for this exact current target animation. The authoring animation remains unchanged; only a separately verified export copy is published.";
+            apply.AccessibleDescription = "Export the prepared independent CHR0 copy. The current animation and native Undo remain unchanged.";
+            details.AccessibleDescription = "Show measured key counts, native byte sizes, errors, protections and tracks absent from the target that will be omitted from the export copy.";
 
             layout = new TableLayoutPanel { Name = "optimizationLayout", Dock = DockStyle.Fill, ColumnCount = 1,
                 RowCount = 9, Padding = new Padding(8), Margin = Padding.Empty };
@@ -120,7 +104,7 @@ namespace BrawlCrate.Studio
             layout.RowStyles[3] = new RowStyle(SizeType.Percent, 100);
             layout.RowStyles[7] = new RowStyle(SizeType.Absolute, 0);
             layout.Controls.Add(identity, 0, 0);
-            layout.Controls.Add(options, 0, 1);
+            layout.Controls.Add(exportOptions, 0, 1);
             layout.Controls.Add(modeHint, 0, 2);
             layout.Controls.Add(views, 0, 3);
             layout.Controls.Add(transport, 0, 4);
@@ -130,8 +114,6 @@ namespace BrawlCrate.Studio
             layout.Controls.Add(footer, 0, 8);
             Controls.Add(layout);
 
-            mode.SelectedIndexChanged += (s, e) => Changed();
-            compactStorage.CheckedChanged += (s, e) => Changed();
             analyze.Click += async (s, e) => await Analyze();
             cancel.Click += (s, e) => CancelAnalysis();
             apply.Click += (s, e) => ApplyPrepared();
@@ -159,7 +141,6 @@ namespace BrawlCrate.Studio
             FormClosed += (s, e) => { Discard(false); clock.Dispose(); };
             ClientSizeChanged += (s, e) => LayoutText();
             Shown += (s, e) => { ShowFrame(); SourceView.ShownFrame(); TargetView.ShownFrame(); analyze.Focus(); };
-            loading = false;
             UpdateModeHint();
             ShowFrame();
             report.Text = "Analyze to see key and native byte counts, independently measured errors, retained protections and any tracks absent from this exact target skeleton.";
@@ -167,9 +148,12 @@ namespace BrawlCrate.Studio
             ApplyTextSize();
         }
 
-        internal bool ReadHighQuality() => highQualityQualified && mode.SelectedIndex >= 1;
-        internal bool ReadSmallFile() => highQualityQualified && mode.SelectedIndex == 2;
-        internal bool ReadCompactStorage() => ReadSmallFile() || compactStorage.Checked;
+        // Background harness policy probes are not product mode selectors.
+        internal bool? TestHighQuality, TestSmallFile, TestCompactStorage;
+        internal NativeExportOptimizationSettings ReadExportSettings() => exportOptions.Read();
+        internal bool ReadHighQuality() => TestHighQuality ?? (ReadExportSettings().Policy == NativeExportOptimizationPolicy.ErrorBounded && highQualityQualified);
+        internal bool ReadSmallFile() => TestSmallFile ?? ReadHighQuality();
+        internal bool ReadCompactStorage() => TestCompactStorage ?? true;
 
         internal async Task Analyze()
         {
@@ -200,8 +184,8 @@ namespace BrawlCrate.Studio
                 preparedHighQuality = quality;
                 preparedSmallFile = analyzingSmallFile;
                 preparedCompact = analyzingCompact;
-                TargetView.Heading.Text = "Optimization result · review before applying";
-                summary.Text = PreparedSummary ?? "Optimization ready. Compare the original and result, then Apply optimization. Native Undo restores the previous animation.";
+                TargetView.Heading.Text = "Decoded optimized export copy · read-only";
+                summary.Text = PreparedSummary ?? "Optimization ready. Compare the original and result, then export a separate copy. The master and native Undo stay unchanged.";
                 report.Text = PreparedReport ?? "Analysis prepared. No detailed measurements were supplied.";
                 ShowFrame();
             }
@@ -244,36 +228,13 @@ namespace BrawlCrate.Studio
             try
             {
                 if (preparedHighQuality != ReadHighQuality() || preparedSmallFile != ReadSmallFile() || preparedCompact != ReadCompactStorage()) throw new InvalidOperationException("The optimization settings changed. Analyze again.");
-                if (Apply == null) throw new InvalidOperationException("Applying optimization is unavailable.");
+                if (Apply == null) throw new InvalidOperationException("Exporting the optimized copy is unavailable.");
                 Apply(preparedHighQuality, Candidate);
                 DialogResult = DialogResult.OK;
                 Close();
             }
             catch (Exception error)
             { Discard(); summary.Text = error.Message; report.Text = error.Message; analyze.Focus(); }
-        }
-
-        void Changed()
-        {
-            if (loading) return;
-            if (Busy)
-            {
-                // The disabled selector can still receive a programmatic
-                // change. Retain the active operation's mode until it finishes.
-                loading = true;
-                try { mode.SelectedIndex = analyzingSmallFile ? 2 : analyzingHighQuality ? 1 : 0; compactStorage.Checked = analyzingCompact; }
-                finally { loading = false; }
-                return;
-            }
-            generation++;
-            if (ReadSmallFile()) { loading = true; try { compactStorage.Checked = true; } finally { loading = false; } }
-            Stop();
-            CancelWork?.Invoke();
-            SetBusy(false);
-            Discard();
-            UpdateModeHint();
-            summary.Text = "Mode changed. Analyze to prepare another result for the current animation.";
-            report.Text = "The previous prepared result was discarded. The current animation is unchanged.";
         }
 
         void CancelAnalysis()
@@ -295,8 +256,7 @@ namespace BrawlCrate.Studio
             Busy = value;
             cancel.Enabled = value;
             if (value && analyze.ContainsFocus) cancel.Focus();
-            analyze.Enabled = mode.Enabled = play.Enabled = frame.Enabled = !value;
-            compactStorage.Enabled = !value && !ReadSmallFile();
+            analyze.Enabled = play.Enabled = frame.Enabled = exportOptions.Enabled = !value;
             apply.Enabled = !value && Candidate != null && PreparedCanApply;
             if (!value && restoreFocus) analyze.Focus();
         }
@@ -315,11 +275,8 @@ namespace BrawlCrate.Studio
 
         void UpdateModeHint()
         {
-            modeHint.Text = ReadSmallFile()
-                ? "Small file · up to 0.1° rotation, 0.002 translation and 0.0001 scale. Fitting joins can change; root motion and authored pin/contact protections stay exact. Compact storage included."
-                : ReadHighQuality()
-                ? "High quality · uses the qualified measured error bounds shown in Details. Duration and loop remain unchanged."
-                : "Exact · removes redundant data while preserving native curves. Tracks absent from this target are listed before Apply.";
+            modeHint.Text = "Optimize a separate native export copy. Exact is the default; Error-bounded requires verified protections. " +
+                "Up to 0.1° rotation, 0.002 translation and 0.0001 scale; root motion and pin/contact protections stay exact. Details report the actual result.";
         }
 
         void ShowFrame()
@@ -364,18 +321,6 @@ namespace BrawlCrate.Studio
             foreach (var control in Descendants(this)) control.Font = Font;
             identity.Font = WorkspaceAppearance.BoldFont;
             SourceView.Heading.Height = TargetView.Heading.Height = Math.Max(38, Font.Height * 2 + 12);
-            mode.ItemHeight = Font.Height + 6;
-            modeSlot.Width = WorkspaceAppearance.Pixels(190);
-            // PreferredHeight uses the font, while the native selection box also
-            // honors ItemHeight. Release docking before measuring so shrinking
-            // text does not retain the previous slot height. Include native
-            // chrome before handle creation as well as the measured HWND height.
-            var docking = mode.Dock;
-            mode.Dock = DockStyle.None;
-            mode.Height = mode.PreferredHeight;
-            int chrome = Math.Max(0, mode.PreferredHeight - mode.Font.Height);
-            modeSlot.Height = Math.Max(mode.Height, mode.ItemHeight + chrome);
-            mode.Dock = docking;
             frame.Height = Math.Max(38, Font.Height + 18);
             LayoutText();
         }
@@ -397,7 +342,7 @@ namespace BrawlCrate.Studio
         {
             if (keyData == Keys.F6 || keyData == (Keys.Shift | Keys.F6))
             {
-                Control[] regions = { options, SourceView.Viewport, TargetView.Viewport, transport, report, footer };
+                Control[] regions = { exportOptions, SourceView.Viewport, TargetView.Viewport, transport, report, footer };
                 int at = Array.FindIndex(regions, c => c.ContainsFocus);
                 if (at >= 0) regionFocus[regions[at]] = Descendants(regions[at]).FirstOrDefault(c => c.Focused) ?? regions[at];
                 int direction = keyData == Keys.F6 ? 1 : -1;

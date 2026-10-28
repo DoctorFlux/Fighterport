@@ -1,4 +1,4 @@
-using BrawlLib.SSBB.ResourceNodes;
+﻿using BrawlLib.SSBB.ResourceNodes;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -35,7 +35,9 @@ namespace BrawlCrate.Studio
             string baseline = ContentKey(beforeSnapshot);
             var budget = options.Budget ?? new NativeAnimationOptimizationBudget();
             var frozen = ReductionOptions(options, budget);
-            for (int attempt = 1; attempt <= 8; attempt++)
+            int attempts=options.ReductionAttemptLimit;
+            if(attempts<1||attempts>8)throw new ArgumentOutOfRangeException(nameof(options.ReductionAttemptLimit));
+            for (int attempt = 1; attempt <= attempts; attempt++)
             {
                 token.ThrowIfCancellationRequested();
                 if (ContentKey(beforeSnapshot) != baseline) throw new InvalidOperationException("The frozen reduction baseline changed; the composed candidate was discarded.");
@@ -56,15 +58,20 @@ namespace BrawlCrate.Studio
                 catch (InvalidDataException error) when (error.Data.Contains("OptimizationQuality"))
                 {
                     token.ThrowIfCancellationRequested();
-                    if (attempt == 8 || !(error.Data["Metric"] is string metric) || !ReductionBoneMetrics.Contains(metric) ||
+                    if (attempt == attempts || !(error.Data["Metric"] is string metric) || !ReductionBoneMetrics.Contains(metric) ||
                         !(error.Data["Bone"] is string name) || !bones.TryGetValue(name, out var failed)) throw;
                     bool changed = false;
                     var seen = new HashSet<MDL0BoneNode>();
+                    var recovery = new List<MDL0BoneNode>();
                     // A world-matrix error may be inherited from any ancestor.
                     // Restore the actual chain rather than guessing from names.
                     for (var bone = failed; bone != null; bone = bone.Parent as MDL0BoneNode)
                     {
                         if(!seen.Add(bone))throw new InvalidDataException("Selective reduction cannot restore a cyclic native ancestor hierarchy.");
+                        recovery.Add(bone);
+                    }
+                    foreach(var bone in recovery)
+                    {
                         ControlTrack replacement = null;
                         if (exact != null) exact.TryGetValue(bone.Name, out replacement);
                         else if (originals.TryGetValue(bone.Name, out var original)) replacement = ReductionOriginalTrack(original);
@@ -101,13 +108,14 @@ namespace BrawlCrate.Studio
 
         static bool ReductionSameTrack(ControlTrack a, ControlTrack b) => a.Bone == b.Bone && Enumerable.Range(0, 9).All(c =>
             a.Channels[c].Length == b.Channels[c].Length && a.Channels[c].Select((key, i) => key != null && b.Channels[c][i] != null &&
-                key.Frame == b.Channels[c][i].Frame && Bits(key.Value) == Bits(b.Channels[c][i].Value) && Bits(key.Tangent) == Bits(b.Channels[c][i].Tangent)).All(same => same));
+                Bits(key.Frame) == Bits(b.Channels[c][i].Frame) && Bits(key.Value) == Bits(b.Channels[c][i].Value) && Bits(key.Tangent) == Bits(b.Channels[c][i].Tangent)).All(same => same));
 
         static NativeAnimationOptimizationOptions ReductionOptions(NativeAnimationOptimizationOptions source, NativeAnimationOptimizationBudget budget) =>
-            new NativeAnimationOptimizationOptions { ExactOnly = source.ExactOnly, SmallFile = source.SmallFile, LengthScale = source.LengthScale,
+            new NativeAnimationOptimizationOptions { ExactOnly = source.ExactOnly, SmallFile = source.SmallFile, ExportSettings = source.ExportSettings?.Clone(), GeneratedPairFrames = source.GeneratedPairFrames?.ToArray(), GeneratedPairSites = source.GeneratedPairSites?.ToArray(), LengthScale = source.LengthScale,
                 OriginalStoredBytes = source.OriginalStoredBytes, OriginalStoredResourceBytes = source.OriginalStoredResourceBytes,
                 TargetBones = source.TargetBones?.ToArray(), ProtectedBones = source.ProtectedBones?.ToArray(), ExactBones = source.ExactBones?.ToArray(),
                 MandatoryFrames = source.MandatoryFrames?.ToArray(), FitJoinFrames = source.FitJoinFrames?.ToArray(), ProbeFrames = source.ProbeFrames?.ToArray(),
-                BindPoseCleanupBones = source.BindPoseCleanupBones?.ToArray(), DeferSizeValidation = source.DeferSizeValidation, Budget = budget };
+                BindPoseCleanupBones = source.BindPoseCleanupBones?.ToArray(), DeferSizeValidation = source.DeferSizeValidation, Budget = budget,
+                ReferenceSamples=source.ReferenceSamples, ReductionAttemptLimit=source.ReductionAttemptLimit };
     }
 }

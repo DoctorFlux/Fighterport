@@ -190,7 +190,7 @@ internal static partial class Program
                 ordinary.Keyframes.PreserveInterpolation=false;
                 string path=Path.Combine(output,"legacy-codec-contradiction.chr0");legacy.ExportChecked(path);
                 using(var decoded=NodeFactory.FromFile(null,path) as CHR0Node)
-                    Check(!((CHR0EntryNode)decoded.FindChild(entry.Name,false)).KeyArrays[3].Entries.Select(k=>k._index).SequenceEqual(times),
+                    Check(!((CHR0EntryNode)decoded.FindChild(entry.Name,false)).KeyArrays[3].Entries.Select(k=>k._index).SequenceEqual(times.Select(frame => (float)frame)),
                         "Independent legacy writer would replace this dirty sparse source schedule before retargeting");
             }
             string original=NativeAnimationOptimization.ContentKey(clip);bool dirty=clip.IsDirty,branch=clip.IsBranch,entryDirty=entry.IsDirty;

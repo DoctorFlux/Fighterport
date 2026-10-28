@@ -81,7 +81,7 @@ internal static partial class Program
                 var originalEntry=source.Children.OfType<CHR0EntryNode>().SingleOrDefault(e=>e.Name==boneName);var fittedEntry=window.Candidate.Children.OfType<CHR0EntryNode>().Single(e=>e.Name==boneName);
                 bool unchanged=Enumerable.Range(0,9).Where(c=>c<3||c>=6).All(c=>
                 {
-                    var before=originalEntry==null?Enumerable.Empty<Tuple<int,float,float>>():originalEntry.KeyArrays[c].Entries.Select(k=>Tuple.Create(k._index,k._value,k._tangent));
+                    var before=originalEntry==null?Enumerable.Empty<Tuple<float,float,float>>():originalEntry.KeyArrays[c].Entries.Select(k=>Tuple.Create(k._index,k._value,k._tangent));
                     return before.SequenceEqual(fittedEntry.KeyArrays[c].Entries.Select(k=>Tuple.Create(k._index,k._value,k._tangent)));
                 });
                 Check(unchanged,"Unselected native scale/translation keys and tangents stay exact");

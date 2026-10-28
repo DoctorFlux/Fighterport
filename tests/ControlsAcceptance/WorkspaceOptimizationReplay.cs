@@ -28,7 +28,15 @@ internal static partial class Program
     static void OptimizationWithheldGeometry(FittingModelView beforeView, FittingModelView afterView,
         CHR0Node baseline, CHR0Node candidate, string reportPath, bool smallFile = false)
     {
-        var original = beforeView.Model; var result = afterView.Model;
+        OptimizationWithheldGeometry(beforeView.Model, afterView.Model, baseline, candidate, reportPath, smallFile);
+        beforeView.Pose(baseline, 1); afterView.Pose(candidate, 1);
+    }
+
+    // Export-only qualification uses independent native model snapshots without
+    // opening a competing optimization dialog or posing the editable viewport.
+    static void OptimizationWithheldGeometry(MDL0Node original, MDL0Node result,
+        CHR0Node baseline, CHR0Node candidate, string reportPath, bool smallFile = false)
+    {
         var bones = original.AllBones.ToArray(); var targetBones = result.AllBones.ToDictionary(b => b.Name, StringComparer.Ordinal);
         var originalVertices = original.Objects.OfType<MDL0ObjectNode>().Where(o => o.Vertices != null).SelectMany(o => o.Vertices).ToArray();
         var resultVertices = result.Objects.OfType<MDL0ObjectNode>().Where(o => o.Vertices != null).SelectMany(o => o.Vertices).ToArray();
@@ -126,7 +134,6 @@ internal static partial class Program
             MaximumWorldErrorChord = maximumWorldSpeed, MaximumSkinErrorChord = maximumSkinSpeed,
             MaximumEulerErrorChord = maximumEulerSpeed, MaximumOrientationErrorChord = maximumOrientationSpeed, MaximumScaleErrorChord = maximumScaleSpeed, MaximumLocalErrorChord = maximumLocalSpeed,
             ContinuousGeometryCertificate = false }));
-        beforeView.Pose(baseline, 1); afterView.Pose(candidate, 1);
     }
 
     static bool ReplayBindTrackExact(CHR0EntryNode entry, MDL0BoneNode bone)
@@ -142,7 +149,7 @@ internal static partial class Program
         });
     }
 
-    static bool ReplayKnotMatches(CHR0Node before, CHR0Node after, int frame, ISet<string> targetNames, MDL0Node model = null)
+    static bool ReplayKnotMatches(CHR0Node before, CHR0Node after, float frame, ISet<string> targetNames, MDL0Node model = null)
     {
         foreach (var entry in before.Children.OfType<CHR0EntryNode>().Where(t => targetNames.Contains(t.Name)))
         {
@@ -161,12 +168,7 @@ internal static partial class Program
                 // an exception based on what the optimizer says it removed.
                 var all = entry.KeyArrays[channel].Entries.ToArray();
                 var fixedKeys = candidate.KeyArrays[channel].Entries.ToArray();
-                bool exactConstant = all.Length != 0 && ReplayFloatBits(all[0]._value) != int.MinValue &&
-                    !float.IsNaN(all[0]._value) && !float.IsInfinity(all[0]._value) &&
-                    all.Select(k => k._index).Distinct().Count() == all.Length &&
-                    all.All(k => ReplayFloatBits(k._value) == ReplayFloatBits(all[0]._value) && ReplayFloatBits(k._tangent) == 0) &&
-                    fixedKeys.Length == 1 && fixedKeys[0]._index == 0 && ReplayFloatBits(fixedKeys[0]._value) == ReplayFloatBits(all[0]._value) &&
-                    ReplayFloatBits(fixedKeys[0]._tangent) == 0;
+                bool exactConstant = ReplayConstantCollapseExact(all, fixedKeys);
                 if (exactConstant) continue;
                 if (actual.Length != original.Length || original.Where((key, index) =>
                     ReplayFloatBits(key._value) != ReplayFloatBits(actual[index]._value) ||
@@ -174,6 +176,21 @@ internal static partial class Program
             }
         }
         return true;
+    }
+
+    // Independent mathematical oracle, deliberately separate from the reducer.
+    // Two identical sides at a knot do not introduce motion into an otherwise
+    // constant Hermite function. Distinct sides, signed zero and nonzero slopes
+    // are not eligible for this exception to raw boundary-tuple equality.
+    static bool ReplayConstantCollapseExact(BrawlLib.Wii.Animations.KeyframeEntry[] before,
+        BrawlLib.Wii.Animations.KeyframeEntry[] after)
+    {
+        return before.Length > 0 && after.Length == 1 &&
+            !float.IsNaN(before[0]._value) && !float.IsInfinity(before[0]._value) && ReplayFloatBits(before[0]._value) != int.MinValue &&
+            before.All(k => !float.IsNaN(k._index) && !float.IsInfinity(k._index) && k._index >= 0 && ReplayFloatBits(k._index) != int.MinValue &&
+                ReplayFloatBits(k._value) == ReplayFloatBits(before[0]._value) && ReplayFloatBits(k._tangent) == 0) &&
+            before.GroupBy(k => k._index).All(group => group.Count() <= 2) &&
+            ReplayFloatBits(after[0]._index) == 0 && ReplayFloatBits(after[0]._value) == ReplayFloatBits(before[0]._value) && ReplayFloatBits(after[0]._tangent) == 0;
     }
 
     static void ReplaySmallFileJoinBounds(CHR0Node baseline, CHR0Node candidate, int frame, MDL0Node model)
@@ -237,14 +254,15 @@ internal static partial class Program
             else Check(entry.UseModelScale == actual.UseModelScale && entry.UseModelRotate == actual.UseModelRotate && entry.UseModelTranslate == actual.UseModelTranslate &&
                     entry.ScaleCompensateApply == actual.ScaleCompensateApply && entry.ScaleCompensateParent == actual.ScaleCompensateParent && entry.ClassicScaleOff == actual.ClassicScaleOff,
                     "Replay preserves native semantic flags on source-owned control " + entry.Name);
-            foreach (var array in entry.KeyArrays)
+            for (int channel = 0; channel < 9; channel++)
             {
+                var array = entry.KeyArrays[channel];
                 var groups = array.Entries.GroupBy(k => k._index).OrderBy(g => g.Key).ToArray();
                 foreach (var group in groups)
                 {
                     times.Add(group.Key);
                     if (group.Count() > 1)
-                        Check(ReplayKnotMatches(before, after, group.Key, new HashSet<string>(new[] { entry.Name }, StringComparer.Ordinal)), "Replay preserves both paired native control knot sides at " + entry.Name + " / " + group.Key);
+                        Check(ReplayPairedChannelMatches(entry, actual, channel, group.Key), "Replay preserves both paired native control knot sides at " + entry.Name + " / " + channel + " / " + group.Key);
                 }
                 for (int i = 1; i < groups.Length; i++)
                 {
@@ -570,5 +588,21 @@ internal static partial class Program
                 if (!form.IsDisposed) { Call(form, "SetWorkspaceTextSize", 100); SimpleDisposeForm(form); }
             }
         }
+    }
+
+    // A paired rotation knot imposes a side-retention contract on that channel,
+    // not on unrelated translation/scale knots at the same native time. Full
+    // fitting joins keep their separate all-channel oracle above.
+    static bool ReplayPairedChannelMatches(CHR0EntryNode before, CHR0EntryNode after, int channel, float time)
+    {
+        if (before == null || after == null || channel < 0 || channel > 8) return false;
+        var original = before.KeyArrays[channel].Entries.Where(k => k._index == time).ToArray();
+        if (original.Length < 2) return false;
+        var actual = after.KeyArrays[channel].Entries.Where(k => k._index == time).ToArray();
+        if (ReplayConstantCollapseExact(before.KeyArrays[channel].Entries.ToArray(), after.KeyArrays[channel].Entries.ToArray())) return true;
+        return actual.Length == original.Length && !original.Where((key, index) =>
+            ReplayFloatBits(key._index) != ReplayFloatBits(actual[index]._index) ||
+            ReplayFloatBits(key._value) != ReplayFloatBits(actual[index]._value) ||
+            ReplayFloatBits(key._tangent) != ReplayFloatBits(actual[index]._tangent)).Any();
     }
 }

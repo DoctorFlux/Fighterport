@@ -53,7 +53,7 @@ internal sealed unsafe class PreciseChrEntry : CHR0EntryNode
                 int channel=group*3+axis;var array=KeyArrays[channel];var root=(KeyframeEntry)array.GetType().GetField("_keyRoot",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(array);
                 if(code.GetIsFixed(channel)){MorphFloatBytes.Write(table,root._next._value);continue;}
                 if(code.GetFormat(group)!=AnimDataFormat.I12)throw new NotSupportedException("Derived CHR0 curves require float I12 storage.");
-                byte* data=(byte*)address+*(bint*)table;int span=root._prev._index-root._next._index;MorphFloatBytes.Write(data+4,span==0?0:.99999994f/span);byte* row=data+8;
+                byte* data=(byte*)address+*(bint*)table;float span=root._prev._index-root._next._index;MorphFloatBytes.Write(data+4,span==0?0:.99999994f/span);byte* row=data+8;
                 for(var key=root._next;key!=root;key=key._next,row+=12){MorphFloatBytes.Write(row,key._index);MorphFloatBytes.Write(row+4,key._value);MorphFloatBytes.Write(row+8,key._tangent);}
             }
         }

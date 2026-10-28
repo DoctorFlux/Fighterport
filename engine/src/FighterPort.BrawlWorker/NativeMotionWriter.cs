@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -43,14 +43,14 @@ internal static unsafe partial class Program
         var edited=shapes.Cast<ResourceNode>().Concat(boneChanges.Length>0?new ResourceNode[]{chr}:new ResourceNode[0]).ToArray();var preserved=ResourceHashes(root,edited:edited);
         foreach(var e in boneChanges)
         {
-            if(e.Channel<0||e.Channel>8||e.Frame<0||e.Frame>chr.FrameCount||!OrderedBones(model).Any(b=>b.Name==e.Bone))throw new InvalidDataException("Invalid edited native bone channel.");
+            if(e.Channel<0||e.Channel>8||float.IsNaN(e.Frame)||float.IsInfinity(e.Frame)||e.Frame<0||e.Frame>chr.FrameCount||!OrderedBones(model).Any(b=>b.Name==e.Bone))throw new InvalidDataException("Invalid edited native bone channel.");
             var t=chr.Children.OfType<CHR0EntryNode>().SingleOrDefault(c=>c.Name==e.Bone)??chr.CreateEntry(e.Bone);ApplyExactEdit(t.Keyframes.SetFrameValue(e.Channel,e.Frame,e.Value,false),e);t.SignalPropertyChange();
         }
         for(int i=0;i<shapes.Length;i++)foreach(var channel in changes[i].Channels)
         {
             var shape=shapes[i];var set=channel.New?shape.Children.OfType<SHP0EntryNode>().Single(e=>Identity(e)==channel.Entry.Substring(0,channel.Entry.LastIndexOf('/'))).FindOrCreateEntry(channel.Target):shape.Children.SelectMany(e=>e.Children).OfType<SHP0VertexSetNode>().Single(s=>Identity(s)==channel.Entry);
             foreach(var old in NativeKeys(set.Keyframes))set.Keyframes.Remove(old._index);
-            foreach(var key in channel.Keys.OrderBy(k=>k.Frame))set.Keyframes.SetFrameValue((int)key.Frame,key.Value)._tangent=key.OutTangent;
+            foreach(var key in channel.Keys.OrderBy(k=>k.Frame))set.Keyframes.SetFrameValue(checked((float)key.Frame),key.Value)._tangent=key.OutTangent;
             set.SignalPropertyChange();
         }
         var signatures=shapes.ToDictionary(Identity,ShapeSignature);var geometry=WriteGeometry(model,r);root.Export(r.Output);

@@ -34,15 +34,16 @@ internal static unsafe class NativeChrFloats
                         int ch=iso?group*3+column:channel;var old=collection._keyArrays[ch];var fresh=new KeyframeArray(old.FrameLimit,group==0?1:0){Loop=old.Loop};
                         for(int i=0;i<count;i++)
                         {
-                            byte* row=data+offset+i*rowSize;int frame=i;float value,tangent=0;
+                            byte* row=data+offset+i*rowSize;float frame=i;float value,tangent=0;
                             if(fixedValue){frame=0;value=MorphFloatBytes.Read(data);}
-                            else if(format==3){float time=MorphFloatBytes.Read(row);if(time!=(int)time)throw new NotSupportedException("Fractional CHR0 key indices require explicit conversion.");frame=(int)time;value=MorphFloatBytes.Read(row+4);tangent=MorphFloatBytes.Read(row+8);}
+                            else if(format==3){frame=MorphFloatBytes.Read(row);value=MorphFloatBytes.Read(row+4);tangent=MorphFloatBytes.Read(row+8);}
                             else if(format==1){uint packed=U32(row);frame=(int)(packed>>24);value=basis+((packed>>12)&4095)*step;tangent=((int)(packed<<20)>>20)/32f;}
-                            else if(format==2){frame=U16(row)>>5;value=basis+U16(row+2)*step;tangent=(short)U16(row+4)/256f;}
+                            else if(format==2){frame=(short)U16(row)/32f;value=basis+U16(row+2)*step;tangent=(short)U16(row+4)/256f;}
                             else value=format==6?MorphFloatBytes.Read(row):basis+(format==5?U16(row):row[0])*step;
-                            if(float.IsNaN(value)||float.IsInfinity(value)||float.IsNaN(tangent)||float.IsInfinity(tangent))throw new InvalidDataException("Nonfinite native animation key.");
-                            var key=fresh.SetFrameValue(frame,value,true);if(!fixedValue&&format>=4)key.GenerateTangent();else key._tangent=tangent;
+                            if(float.IsNaN(frame)||float.IsInfinity(frame)||frame<0||float.IsNaN(value)||float.IsInfinity(value)||float.IsNaN(tangent)||float.IsInfinity(tangent))throw new InvalidDataException("Nonfinite or negative native animation key.");
+                            fresh.SetFrameValue(frame,value,true)._tangent=tangent;
                         }
+                        if(!fixedValue&&format>=4)fresh=DenseCHR0Projection.Create(fresh.Entries.Select(k=>k._value).ToArray(),old.FrameLimit,old.Loop);
                         collection._keyArrays[ch]=fresh;
                     }
                 }

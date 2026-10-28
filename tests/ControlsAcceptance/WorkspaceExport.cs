@@ -6,6 +6,7 @@ using System;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -75,14 +76,25 @@ internal static partial class Program
                         SimpleControl<Button>(dialog, "workspaceFileCancel").PerformClick();
                     })) Call(form, "ChooseSimpleWorkspaceExport");
                 }
-                using (FlowModal("workspaceFilePath", dialog =>
+                using(var expected=(IDisposable)Call(form,"FreezeWorkspaceExport"))
                 {
-                    SimpleControl<TextBox>(dialog,"workspaceFilePath").Text=path;
-                    using(FlowModal("workspaceOverwriteAccept", confirm=>SimpleControl<Button>(confirm,"workspaceOverwriteAccept").PerformClick()))
-                        SimpleControl<Button>(dialog,"workspaceFileAccept").PerformClick();
-                    Check(dialog.DialogResult==DialogResult.OK,"Confirmed export publishes through the application-owned dialog: "+SimpleControl<Label>(dialog,"workspaceFileValidation").Text);
-                })) Call(form,"ChooseSimpleWorkspaceExport");
-                Check(FighterProject.HashFile(path)==hash,"Confirmed atomic overwrite retains independently verified exact content");
+                    await (Task)Call(form,"PrepareOptimizedExportSnapshot",expected,new NativeExportOptimizationSettings(),CancellationToken.None,null);
+                    using (FlowModal("workspaceFilePath", dialog =>
+                    {
+                        SimpleControl<TextBox>(dialog,"workspaceFilePath").Text=path;
+                        using(FlowModal("workspaceOverwriteAccept", confirm=>SimpleControl<Button>(confirm,"workspaceOverwriteAccept").PerformClick()))
+                            SimpleControl<Button>(dialog,"workspaceFileAccept").PerformClick();
+                        Check(dialog.DialogResult==DialogResult.OK,"Confirmed export publishes through the application-owned dialog: "+SimpleControl<Label>(dialog,"workspaceFileValidation").Text);
+                    })) Call(form,"ChooseSimpleWorkspaceExport");
+                    using(var decoded=NodeFactory.FromFile(null,path) as CHR0Node)
+                    {
+                        var candidate=(CHR0Node)Field(expected,"Candidate");
+                        Check(decoded!=null&&NativeAnimationOptimization.SourceContentKey(decoded)==NativeAnimationOptimization.SourceContentKey(candidate)&&
+                            NativeAnimationOptimization.StorageKey(decoded)==NativeAnimationOptimization.StorageKey(candidate)&&FighterProject.HashFile(path)==(string)Field(expected,"PreparedEncodedSha256")&&
+                            new FileInfo(path).Length<=(long)Field(expected,"MasterBytes"),
+                            "Confirmed atomic overwrite publishes the independently prepared Exact copy within its same-master byte cap, retaining complete native decoded content/storage");
+                    }
+                }
                 Check(edited == LifecycleContent(clip) && editor._undoSaves.Count == undo, "All review/cancellation layouts preserve live channels and Undo");
                 // Original procedural sparse tracks and native metadata exercise exactness independently of game fixtures.
                 var fixture = new CHR0Node { Name = "Wait1", Version = 5, FrameCount = 19, Loop = true, OriginalPath = "authored/original" };

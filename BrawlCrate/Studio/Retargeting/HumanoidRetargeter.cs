@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -27,7 +27,7 @@ namespace BrawlCrate.Studio.Retargeting
 
     public sealed class HumanoidRetargeter
     {
-        public const string Algorithm = "bind-world-fk-body-contact-ik-v8";
+        public const string Algorithm = "bind-world-fk-body-contact-ik-v10";
         public const string MotionControlPolicy = "source-local-controls-v1";
         public int[] SourceMotionControls { get; }
         public int[] TargetMotionControls { get; }
@@ -46,6 +46,7 @@ namespace BrawlCrate.Studio.Retargeting
         public string[] UnmappedTarget { get; }
         private readonly Dictionary<int, RetargetMap> _byTarget;
         private readonly RetargetMap trajectory;
+        private readonly Dictionary<int,Tuple<Quaternion,Quaternion>> localFrames=new Dictionary<int,Tuple<Quaternion,Quaternion>>();
 
         public HumanoidRetargeter(Rig source, Rig target)
         {
@@ -86,6 +87,19 @@ namespace BrawlCrate.Studio.Retargeting
             if (!RigMath.Finite(LegScale) || !RigMath.Finite(ArmScale) || !RigMath.Finite(HeadScale) || LegScale<=0 || ArmScale<=0 || HeadScale<=0)
                 throw new InvalidDataException("The rig needs finite positive measured proportions.");
             Calibration = Quaternion.Normalize(RigMath.BodyFrame(target) * Quaternion.Inverse(RigMath.BodyFrame(source)));
+            // Factor the same world-bind-relative FK equation into fixed local
+            // bases when the actual direct parents correspond. Repeated world
+            // quaternion cancellation otherwise adds frame-dependent roundoff to
+            // an authored constant finger/helper channel, making it needlessly dense.
+            foreach(var map in Mapping)
+            {
+                int sp=Source.Joints[map.SourceIndex].Parent,tp=Target.Joints[map.TargetIndex].Parent;
+                if(sp<0||tp<0||TargetMotionControls.Contains(map.TargetIndex)||TargetMotionControls.Contains(tp)||
+                    !_byTarget.TryGetValue(tp,out var parent)||parent.SourceIndex!=sp)continue;
+                var left=Quaternion.Normalize(Quaternion.Inverse(Target.Rest.Orientation[tp])*Calibration*Source.Rest.Orientation[sp]);
+                var right=Quaternion.Normalize(Quaternion.Inverse(Source.Rest.Orientation[map.SourceIndex])*Quaternion.Inverse(Calibration)*Target.Rest.Orientation[map.TargetIndex]);
+                localFrames.Add(map.TargetIndex,Tuple.Create(left,right));
+            }
             UnmappedSource = source.Joints.Where((j, i) => !Mapping.Any(m => m.SourceIndex == i)).Select(j => j.Name).ToArray();
             UnmappedTarget = target.Joints.Where((j, i) => !_byTarget.ContainsKey(i)).Select(j => j.Name).ToArray();
         }
@@ -154,10 +168,16 @@ namespace BrawlCrate.Studio.Retargeting
                     target.UpdateJoint(t);
                     continue;
                 }
-                Quaternion delta = Convert(source.Orientation[s] * Quaternion.Inverse(Source.Rest.Orientation[s]));
-                Quaternion desired = Quaternion.Normalize(delta * Target.Rest.Orientation[t]);
-                int parent = Target.Joints[t].Parent;
-                target.Local[t].Rotation = Quaternion.Normalize(parent < 0 ? desired : Quaternion.Inverse(target.Orientation[parent]) * desired);
+                if(localFrames.TryGetValue(t,out var localFrame))
+                    target.Local[t].Rotation=source.Local[s].Rotation==Source.Joints[s].Bind.Rotation?Target.Joints[t].Bind.Rotation:
+                        Quaternion.Normalize(localFrame.Item1*source.Local[s].Rotation*localFrame.Item2);
+                else
+                {
+                    Quaternion delta = Convert(source.Orientation[s] * Quaternion.Inverse(Source.Rest.Orientation[s]));
+                    Quaternion desired = Quaternion.Normalize(delta * Target.Rest.Orientation[t]);
+                    int parent = Target.Joints[t].Parent;
+                    target.Local[t].Rotation = Quaternion.Normalize(parent < 0 ? desired : Quaternion.Inverse(target.Orientation[parent]) * desired);
+                }
                 target.Local[t].Scale = Target.Joints[t].Bind.Scale * (source.Local[s].Scale / Source.Joints[s].Bind.Scale);
                 Vector3 translationDelta = source.Local[s].Translation - Source.Joints[s].Bind.Translation;
                 target.Local[t].Translation = Target.Joints[t].Bind.Translation + TransferTranslationDelta(map,translationDelta);

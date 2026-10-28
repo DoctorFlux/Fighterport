@@ -656,6 +656,7 @@ namespace BrawlCrate.UI
         {
             ProtectCharacterWorkspaceOutput(destination);
             (_library??(_library=new AnimationLibrary())).ProtectOutputPath(destination);
+            if (TryExportOwnedAnimationCopy(node, destination)) return;
             if (TryExportFighterRetargetPac(node, destination)) return;
             if (node != null && node.RootNode.IsDirty)
             {
@@ -686,7 +687,7 @@ namespace BrawlCrate.UI
             }
 
             RecordLibraryExport(node, fullDestination);
-            _fighterStatus.Text = "Exported and reopened " + Path.GetFileName(fullDestination) + ". Original sources were preserved.";
+            _fighterStatus.Text = "Exported and reopened " + Path.GetFileName(fullDestination) + ". Reference native route; export optimization is not qualified for this container/context.";
         }
 
         internal bool OwnsFighterRoot(ResourceNode root)

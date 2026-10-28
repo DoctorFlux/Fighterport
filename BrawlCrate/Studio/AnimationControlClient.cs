@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 using System.Text;
+using System.Collections.Generic;
 
 namespace BrawlCrate.Studio
 {
@@ -15,6 +16,7 @@ namespace BrawlCrate.Studio
         private readonly JavaScriptSerializer _json=new JavaScriptSerializer{MaxJsonLength=64*1024*1024,RecursionLimit=200};
         private Task<string> _errors;
         private StreamWriter _input;
+        internal AnimationControlClient() { _json.RegisterConverters(new[] { new ControlKeyTimeConverter() }); }
         internal async Task<ControlReply> Send(object request)
         {
             await _queue.WaitAsync().ConfigureAwait(false);
@@ -78,6 +80,43 @@ namespace BrawlCrate.Studio
     internal sealed class ControlChain {public string Role {get;set;}public int Root {get;set;}public int Middle {get;set;}public int Effector {get;set;}public float[] Pole {get;set;}public float[] PoleParent {get;set;}public string Evidence {get;set;}public bool Reviewed {get;set;}}
     internal sealed class ControlRole {public string Role {get;set;}public int? Bone {get;set;}public bool Reviewed {get;set;}public string Evidence {get;set;}}
     internal sealed class NativeWorkspaceControls {public string Path {get;set;}public string Entry {get;set;}public string State {get;set;}public string Id {get;set;}}
-    internal sealed class ControlKey {public int Frame {get;set;}public float Value {get;set;}public float Tangent {get;set;}}
+    internal sealed class ControlKey
+    {
+        public float Frame {get;set;}
+        public int? FrameBits {get=>BitConverter.ToInt32(BitConverter.GetBytes(Frame),0);set {if(value.HasValue)Frame=BitConverter.ToSingle(BitConverter.GetBytes(value.Value),0);}}
+        public float Value {get;set;}public float Tangent {get;set;}
+    }
+    // Native reply decoding is scoped to the transport. FrameBits is optional
+    // for old workers; supplied bits must match the parsed native single except
+    // for the legacy JSON serializer's indistinguishable +zero/-zero spelling.
+    internal sealed class ControlKeyTimeConverter : JavaScriptConverter
+    {
+        public override IEnumerable<Type> SupportedTypes => new[] { typeof(ControlKey) };
+        public override object Deserialize(IDictionary<string,object> values, Type type, JavaScriptSerializer serializer)
+        {
+            float Single(string name) => values.TryGetValue(name,out var value) ? Convert.ToSingle(value,System.Globalization.CultureInfo.InvariantCulture) : 0;
+            float Exact(string name,string bitsName)
+            {
+                float parsed=Single(name);
+                if(!values.TryGetValue(bitsName,out var raw)||raw==null)return parsed;
+                int bits=Convert.ToInt32(raw,System.Globalization.CultureInfo.InvariantCulture);
+                float exact=BitConverter.ToSingle(BitConverter.GetBytes(bits),0);
+                if(float.IsNaN(exact)||float.IsInfinity(exact)||float.IsNaN(parsed)||float.IsInfinity(parsed)||
+                    BitConverter.ToInt32(BitConverter.GetBytes(parsed),0)!=bits&&!(parsed==0&&exact==0))
+                    throw new InvalidDataException("Native control reply bits disagree with its finite "+name+" value.");
+                return exact;
+            }
+            float frame=Exact("Frame","FrameBits");
+            if(float.IsNaN(frame)||float.IsInfinity(frame)||frame<0)throw new InvalidDataException("Invalid native control knot time.");
+            return new ControlKey {Frame=frame,Value=Exact("Value","ValueBits"),Tangent=Exact("Tangent","TangentBits")};
+        }
+        public override IDictionary<string,object> Serialize(object value, JavaScriptSerializer serializer)
+        {
+            var key=(ControlKey)value;
+            int Bits(float single)=>BitConverter.ToInt32(BitConverter.GetBytes(single),0);
+            return new Dictionary<string,object>{{"Frame",key.Frame},{"FrameBits",Bits(key.Frame)},
+                {"Value",key.Value},{"ValueBits",Bits(key.Value)},{"Tangent",key.Tangent},{"TangentBits",Bits(key.Tangent)}};
+        }
+    }
     internal sealed class ControlTrack {public string Bone {get;set;}public ControlKey[][] Channels {get;set;}}
 }

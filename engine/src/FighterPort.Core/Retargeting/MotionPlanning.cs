@@ -112,7 +112,7 @@ public record TargetMotionPlan(RigDescriptor Rig,ControlRigSetup Controls,Baseli
             var first=declared[0];if(declared.Any(p=>p.Normal!=first.Normal||p.Height!=first.Height))throw new NotSupportedException("Multiple authored clearance surfaces need separate reviewed target geometry bindings.");
             up=Vector3.Normalize(Vector3.TransformNormal(first.Normal,Matrix4x4.Transpose(source.Basis)*target.Basis));floor=first.Height*baseline.FileUnitRatio;
             // Source skin weights are never copied as target collision geometry.
-            var points=target.Scene.Meshes.SelectMany((m,mi)=>m.Vertices.Select((v,vi)=>new SkinSurfacePoint(v.Position,v.Joints,v.Weights){Mesh=mi,Vertex=vi})).ToArray();plane=new(up,floor,points);
+            var points=target.Scene.Meshes.SelectMany((m,mi)=>m.Vertices.Select((v,vi)=>new SkinSurfacePoint(v.Position,v.Joints,v.Weights){Influences=v.Influences,Mesh=mi,Vertex=vi})).ToArray();plane=new(up,floor,points);
         }
         foreach(var interval in sourceRelations)
         {

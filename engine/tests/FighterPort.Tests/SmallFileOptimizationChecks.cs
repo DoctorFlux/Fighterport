@@ -8,6 +8,8 @@ internal static class SmallFileOptimizationChecks
         Bounds(check);
         FitAndAuthoredProtections(check);
         NativeStructure(check);
+        ContinuousPairedStorage(check);
+        GeneratedPairReduction(check);
         LimitsAndIdentities(check);
     }
 
@@ -66,6 +68,10 @@ internal static class SmallFileOptimizationChecks
         var tooLarge=Clip("outside scalar ceiling",3,Pulse(.125f));
         check(Output(AnimationOptimization.Optimize(tooLarge,["outside scalar ceiling"],Small()),3).Keys.Length==3,
             "Small file cannot flatten an authored rotation outside its .1-degree ceiling");
+        var tangentSource = Clip("independent tangent contradiction",3,new([new(0,0,.25f,.25f),new(4,0,.25f,.25f)]));
+        var failed = Certify(tangentSource,new([new(0,0),new(4,0)]),3,Small());
+        check(!failed.Accepted && failed.FailedBone == tangentSource.Tracks[0].Bone && failed.FailedChannel == 3 && failed.Reason.Contains("interval"),
+            "A genuine continuous bound failure identifies its exact bone/channel and interval for independently revalidated native storage recovery");
     }
 
     static void FitAndAuthoredProtections(Action<bool,string> check)
@@ -117,6 +123,48 @@ internal static class SmallFileOptimizationChecks
             "Small file retains a full authored 720-degree Euler path without quaternion-shortest-path conversion");
         check(turn.SampleCount==5&&turn.Rate==new RationalRate(60)&&!turn.Loop,
             "Small optimization keeps native timing, rate and loop metadata outside the curve reducer unchanged");
+    }
+
+    static void ContinuousPairedStorage(Action<bool,string> check)
+    {
+        var curve = new Curve([new(0, 0, 1, 1), new(2, 2, 1, 1), new(2, 2, 2, 2), new(4, 6, 2, 2)]);
+        var source = Clip("unfamiliar continuous body", 3, curve);
+        var candidate = new Curve([new(0, 0, 1, 1), new(2, 2, 1.0005f, 1.0005f), new(2, 2, 1.9995f, 1.9995f), new(4, 6, 2, 2)]);
+        check(Certify(source, candidate, 3, Small()).Accepted,
+            "Continuous paired body slopes retain both sides and independently certify bounded compact rounding on both neighboring intervals");
+        foreach(var settings in new[]{Small() with{ExactOnlyBones=[source.Tracks[0].Bone]}, Small() with{PreserveStructureBones=[source.Tracks[0].Bone]}, Small() with{MandatoryFrames=[2]}, Small() with{Mode=AnimationOptimizationMode.HighQuality}})
+            check(!Certify(source, candidate, 3, settings).Accepted,
+                "Exact roots, pins, mandatory tuples and the strict quality profile reject rounded paired coefficients");
+        check(!Certify(source, new Curve([candidate.Keys[0],candidate.Keys[1],candidate.Keys[3]]),3,Small()).Accepted,
+            "Compact certification cannot silently remove a required incoming/outgoing side");
+        var jump = new Curve([candidate.Keys[0],candidate.Keys[1],new(2,2.01f,1.9995f,1.9995f),candidate.Keys[3]]);
+        check(!Certify(source,jump,3,Small()).Accepted,
+            "Bounded body storage cannot manufacture a discontinuity at a continuous paired knot");
+    }
+
+    static void GeneratedPairReduction(Action<bool,string> check)
+    {
+        var curve = new Curve([new(0,0,1,1),new(2,2,1,1),new(2,2,1.02f,1.02f),new(4,4,1,1)]);
+        var source = Clip("unfamiliar generated body",3,curve);
+        var settings = Small() with{GeneratedPairFrames=[2]};
+        var reduced = AnimationOptimization.Optimize(source,[source.Tracks[0].Bone],settings);
+        check(Output(reduced,3).Keys.Length==2&&Certify(source,Output(reduced,3),3,settings).Accepted,
+            "Known generated continuous corners reduce against the complete original Hermite pieces without cumulative approximation");
+        check(new[]{.137,1.337,2.713,3.831}.All(t=>Math.Abs(curve.Sample(t)-Output(reduced,3).Sample(t))<.01),
+            "Independent withheld samples bound the generated-corner reduction below the declared rotation ceiling");
+        foreach(var protectedSettings in new[]{Small(),settings with{ExactOnlyBones=[source.Tracks[0].Bone]},settings with{PreserveStructureBones=[source.Tracks[0].Bone]},settings with{MandatoryFrames=[2]}})
+            check(Output(AnimationOptimization.Optimize(source,[source.Tracks[0].Bone],protectedSettings),3).Keys.Length==4,
+                "Unknown authored pairs, exact motion, pins and mandatory points keep both original sides");
+        var specific = Small() with{GeneratedPairSites=[new(source.Tracks[0].Bone,3,2)]};
+        var specificResult=AnimationOptimization.Optimize(source,[source.Tracks[0].Bone],specific);
+        check(Output(specificResult,3).Keys.Length==2&&Certify(source,Output(specificResult,3),3,specific).Accepted,
+            "Fitting provenance identifies an exact bone, channel and frame without relaxing other authored channels");
+        check(Output(AnimationOptimization.Optimize(source,[source.Tracks[0].Bone],specific with{GeneratedPairSites=[new(source.Tracks[0].Bone,6,2)]}),3).Keys.Length==4,
+            "Generated translation provenance cannot authorize removal of an authored rotation pair");
+        var jump = curve with{Keys=[curve.Keys[0],curve.Keys[1],new(2,2.01f,1.02f,1.02f),curve.Keys[3]]};
+        var jumpSource=Clip(source.Tracks[0].Bone,3,jump);
+        check(Output(AnimationOptimization.Optimize(jumpSource,[jumpSource.Tracks[0].Bone],settings),3).Keys.Count(k=>k.Frame==2)==2,
+            "Generated provenance never permits spanning an actual value discontinuity");
     }
 
     static void LimitsAndIdentities(Action<bool,string> check)
