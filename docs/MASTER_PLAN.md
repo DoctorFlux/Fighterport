@@ -1,5 +1,23 @@
 # Fighterport master plan
 
+28 October 2026 **preview.56-constrained-span-refitting** completes its bounded
+increment within the ONE incomplete G1/M2. Generic generated-curve span/tangent
+refitting is integrated into the existing explicit Error-bounded export path;
+Exact, full-quality masters, ordinary Save, original Next, complete previewer,
+all skin weights, source-owned roots and native Undo retain their contracts.
+The same finished Sonic → Mario master measures 235,344 → 56,808 bytes,
+876 bytes below the independently verified deletion-only alternative. Reciprocal
+Mario → Sonic stays 126,600 → 112,652 bytes with explicit Exact fallback for
+unqualified scale/compensation semantics. Quality/work ceilings are unchanged.
+Evidence: 5,763 checks / 13 admitted runs, 50 inspected UI PNGs, all 316 decoded
+GIF frames in 40 sheets and an independent eight-file byte audit. The launcher
+selects `Fighterport-span56/native2`. See [acceptance](CONSTRAINED_SPAN_REFITTING_ACCEPTANCE_2026-10-28.md),
+[benchmark](SPAN_REFITTING_BENCHMARK_2026-10-28.md) and the sole
+[current plan](plans/current.md). No new increment, runtime qualification or game
+adapter is promoted. Background-only testing and DoctorFlux source-only public
+main remain; physical input/DPI, human usability, broad contacts, external-editor/
+plugin, Melee and game acceptance stay unverified. Earlier checkpoints follow.
+
 28 October 2026 **preview.55-animation-stages-simple-controls** completes its
 bounded source increment within the ONE incomplete G1/M2: 5,695 recorded checks,
 50 inspected native UI PNGs, 176 inspected GIF frames and independent byte

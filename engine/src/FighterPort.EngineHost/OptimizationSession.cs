@@ -17,7 +17,8 @@ sealed record OptimizationInput(string Name,int SampleCount,bool Loop,bool HighQ
     ProtectedInterval[] ProtectedRanges,bool ProtectionKnown,double PrecisionScale=1,
     long MaximumWork=2_000_000,int MaximumCandidateSpans=100_000,
     OptimizationBindBits[]? BindPoses=null,OptimizationRawTrack[]? CandidateTracks=null,
-    bool SmallFile=false,int[]? FitJoinFrames=null,float[]? GeneratedPairFrames=null,OptimizationGeneratedPairSite[]? GeneratedPairSites=null,OptimizationExplicitBounds? ExplicitBounds=null);
+    bool SmallFile=false,int[]? FitJoinFrames=null,float[]? GeneratedPairFrames=null,OptimizationGeneratedPairSite[]? GeneratedPairSites=null,OptimizationExplicitBounds? ExplicitBounds=null,
+    bool EnableSpanRefitting=false);
 
 sealed partial class ControlSession
 {
@@ -144,6 +145,7 @@ sealed partial class ControlSession
             TranslationSpeedAbsoluteCapPerFrame=frozenBounds.TranslationSpeedAbsoluteCapPerFrame*precision,
             MaximumWork=input.MaximumWork,
             MaximumCandidateSpans=input.MaximumCandidateSpans,
+            EnableSpanRefitting=input.HighQuality&&input.EnableSpanRefitting,
             ExactOnlyBones=exact.Order(StringComparer.Ordinal).ToArray(),
             PreserveStructureBones=protectedBones.Order(StringComparer.Ordinal).ToArray(),
             MandatoryFrames=input.MandatoryFrames.Select(f=>(double)f).ToArray(),
@@ -182,8 +184,10 @@ sealed partial class ControlSession
             using(var writer=new Utf8JsonWriter(bounded))
             {
                 writer.WriteStartObject();
-                writer.WriteStartArray("Tracks");
-                foreach(var track in result.Tracks)
+                void WriteTracks(string property,BoneTrack[] values)
+                {
+                writer.WriteStartArray(property);
+                foreach(var track in values)
                 {
                     var native=originals[track.Bone];
                     writer.WriteStartObject();writer.WriteString("Bone",track.Bone);
@@ -207,6 +211,9 @@ sealed partial class ControlSession
                     writer.WriteEndArray();writer.WriteEndObject();
                 }
                 writer.WriteEndArray();
+                }
+                WriteTracks("Tracks",result.Tracks);
+                if(result.PreRefitTracks is {} previous)WriteTracks("PreRefitTracks",previous);
                 writer.WritePropertyName("RemovedUnmatchedTracks");JsonSerializer.Serialize(writer,result.RemovedUnmatchedTracks,outputOptions);
                 writer.WritePropertyName("RemovedBindTracks");JsonSerializer.Serialize(writer,result.RemovedBindTracks,outputOptions);
                 writer.WritePropertyName("Report");JsonSerializer.Serialize(writer,result.Report,outputOptions);
@@ -214,6 +221,7 @@ sealed partial class ControlSession
                 writer.WritePropertyName("ProtectedBones");JsonSerializer.Serialize(writer,settings.PreserveStructureBones,outputOptions);
                 writer.WriteNumber("PrecisionScale",input.PrecisionScale);
                 writer.WriteBoolean("SmallFile",input.SmallFile);
+                writer.WriteBoolean("EnableSpanRefitting",input.HighQuality&&input.EnableSpanRefitting);
                 writer.WritePropertyName("GeneratedPairFrames");writer.WriteStartArray();foreach(var frame in input.GeneratedPairFrames??[])writer.WriteNumberValue(frame);writer.WriteEndArray();
                 writer.WritePropertyName("GeneratedPairSites");JsonSerializer.Serialize(writer,input.GeneratedPairSites??[],ProjectStore.Json);
                 writer.WriteNumber("MaximumWork",input.MaximumWork);

@@ -1,5 +1,25 @@
 ﻿# Native Next integration
 
+Preview.56 adds offline span/tangent proposals to that same explicit export-copy
+boundary. Core's additive `EnableSpanRefitting` defaults false for existing
+callers; qualified Error-bounded requests enable it. Exact, authoring, retarget
+and fitting masters keep their existing behavior. Proposed float-rounded slopes
+are proved over every affected original Hermite interval, with generated-pair
+provenance and exact root/pin/join/range/sign protections. Separate native rows
+represent differing incoming/outgoing slopes; no new CHR0 format is introduced.
+
+The same proof budget allocates up to 60% to legacy reduction and up to 80% total
+to generation/refitting, reserving 20% for decoded codec certificates. An immutable
+deletion-only alternative is retained when refitting succeeds. Alternatives are
+independently encoded/reopened and checked against the same full-quality master,
+using shared cumulative native work/error ceilings and actual-byte selection.
+Core proposal counts do not establish that the selected native file uses a refit.
+Native admission of changed paired slopes requires explicit internal permission
+and exact typed generated sites; unknown/authored pairs and protected controls
+retain their existing guards. Unqualified scale-compensation and absolute-contact
+contexts remain Exact. Qualification is recorded in the
+[refitting acceptance record](CONSTRAINED_SPAN_REFITTING_ACCEPTANCE_2026-10-28.md).
+
 Preview.55 keeps the same finished-master/export-copy boundary. The standalone
 tool shows Optimize, Export optimized copy and Close; the shared Exact /
 Error-bounded policy stays visible while search effort and saved limits live

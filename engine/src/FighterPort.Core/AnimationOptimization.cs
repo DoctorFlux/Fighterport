@@ -21,6 +21,9 @@ public sealed record AnimationOptimizationPairSite(string Bone, int Channel, dou
 public sealed record AnimationOptimizationSettings
 {
     public AnimationOptimizationMode Mode { get; init; } = AnimationOptimizationMode.Exact;
+    // Explicit offline permission. Existing callers retain original tangents;
+    // native export enables this only for a reviewed Error-bounded operation.
+    public bool EnableSpanRefitting { get; init; }
     public double BindBoundsDiagonal { get; init; }
     double? scaleValueBound, scaleSpeedBound, eulerValueBound, eulerSpeedBound, translationCap, translationSpeedCap;
     public double ScaleValueBound { get => scaleValueBound ?? (Mode == AnimationOptimizationMode.SmallFile ? .0001 : 1e-5); init => scaleValueBound = value; }
@@ -53,13 +56,23 @@ public sealed record AnimationOptimizationSettings
 public sealed record AnimationOptimizationChannelReport(string Bone, int Channel, int BeforeKeys, int AfterKeys,
     string Policy, int CandidateSpans, int AcceptedMerges, int PolynomialIntervals,
     double CertifiedValueErrorBound, double CertifiedSpeedErrorBound, double ValueBound, double SpeedBound,
-    string? RetainedReason);
+    string? RetainedReason)
+{
+    public int RefitCandidateSpans { get; init; }
+    public int AcceptedRefitSpans { get; init; }
+    public int RefitTangents { get; init; }
+}
 
 public sealed record AnimationOptimizationReport(string Version, AnimationOptimizationMode Mode,
     int InputTracks, int OutputTracks, long InputKeys, long OutputKeys, long RemovedUnmatchedKeys,
     int CandidateSpans, int AcceptedMerges, long Work, bool WorkLimitReached, bool CandidateLimitReached,
     bool ProbeLimitReached, double[] ProbeFrames, AnimationOptimizationChannelReport[] Channels)
 {
+    public int RefitCandidateSpans { get; init; }
+    public int AcceptedRefitSpans { get; init; }
+    public int RefitTangents { get; init; }
+    public bool RefitWorkLimited { get; init; }
+    public bool LegacyPhaseLimited { get; init; }
     public long RemovedKeys => InputKeys - OutputKeys;
     public long ReducedMatchedKeys => RemovedKeys - RemovedUnmatchedKeys;
     public string Claim => "Continuous rational scalar polynomial/value-speed bounds only; floating evaluation roundoff, native encode/reopen, cumulative orientation/world/skin/contact quality and actual file size require independent caller validation.";
@@ -69,14 +82,17 @@ public sealed record AnimationOptimizationResult(BoneTrack[] Tracks, string[] Re
     AnimationOptimizationReport Report)
 {
     public string[] RemovedBindTracks { get; init; } = [];
+    // This independent candidate retains the deletion-only search result, so
+    // native byte/geometry validation can prefer it over a larger refitted copy.
+    public BoneTrack[]? PreRefitTracks { get; init; }
 }
 
-// Offline representation reduction, never a pose, contact or tangent generator.
-// Retained native coefficients and absent channels remain authentic. Every new
+// Offline representation reduction, never a pose or contact generator.
+// Explicit bounded refitting can propose native scalar tangents. Every new
 // span is compared to the immutable input, not to a previously reduced curve.
 public static partial class AnimationOptimization
 {
-    public const string Version = "native-hermite-rational-span-reduction-1";
+    public const string Version = "native-hermite-rational-span-refit-2";
     public const int MaximumInputKeys = 2_000_000;
 
     public static AnimationOptimizationResult Optimize(AnimationClip baseline,
@@ -149,7 +165,11 @@ public static partial class AnimationOptimization
             }
         }
 
+        bool refit = settings.EnableSpanRefitting && settings.Mode != AnimationOptimizationMode.Exact
+            && states.Any(s => s.Reason is null && !s.Exact);
         var queue = new PriorityQueue<Candidate, Priority>();
+        bool legacyPhaseLimited = false;
+        if (refit) budget.StartPhase(Math.Max(1, settings.MaximumWork * 3 / 5), Math.Max(1, settings.MaximumCandidateSpans * 3 / 5));
         try
         {
             foreach (var state in states.Where(s => s.Reason is null))
@@ -178,10 +198,12 @@ public static partial class AnimationOptimization
                 Enqueue(state, candidate.Right);
             }
         }
+        catch (PhaseLimitReachedException) { legacyPhaseLimited = true; }
         catch (LimitReachedException) { }
+        finally { budget.EndPhase(); }
 
         var byChannel = states.ToDictionary(s => (s.Bone, s.Channel));
-        tracks = tracks.Select(t =>
+        BoneTrack[] Materialize() => tracks.Select(t =>
         {
             bool changed = false;
             var channels = t.Channels.Select((curve, channel) =>
@@ -193,6 +215,20 @@ public static partial class AnimationOptimization
             }).ToArray();
             return changed ? t with { Channels = channels } : t;
         }).ToArray();
+        BoneTrack[]? beforeRefit = refit ? Materialize() : null;
+        bool refitWorkLimited = refit && (budget.WorkLimited || budget.CandidateLimited);
+        if (refit && !budget.WorkLimited && !budget.CandidateLimited)
+        {
+            // Generation and the caller's decoded-codec certificates share one
+            // operation allowance. Leave its final fifth for those certificates;
+            // this phase limit grants neither more work nor looser error bounds.
+            budget.StartPhase(Math.Max(1, settings.MaximumWork * 4 / 5), settings.MaximumCandidateSpans);
+            try { RefitSpans(states, budget); }
+            catch (PhaseLimitReachedException) { refitWorkLimited = true; }
+            catch (LimitReachedException) { refitWorkLimited = true; }
+            finally { budget.EndPhase(); }
+        }
+        tracks = Materialize();
         // The native adapter permits only tracks whose resource flags also
         // allow removal. All authored channels must be exactly bind-constant;
         // this never removes a model bone or guesses a role from its name.
@@ -205,12 +241,20 @@ public static partial class AnimationOptimization
             .Select(t => t.Bone).ToArray();
         var removedBindSet = removedBind.ToHashSet(StringComparer.Ordinal);
         tracks = tracks.Where(t => !removedBindSet.Contains(t.Bone)).ToArray();
-        var probes = BuildProbes(baseline, tracks, settings, cancellation, out bool probeLimited);
+        // Both independent alternatives contribute extrema/near-key witnesses;
+        // the caller must not reuse a refitted-only probe set for the legacy copy.
+        var probes = BuildProbes(baseline, beforeRefit is null ? tracks : tracks.Concat(beforeRefit).ToArray(), settings, cancellation, out bool probeLimited);
         cancellation.ThrowIfCancellationRequested();
+        if (beforeRefit is not null)
+            beforeRefit = beforeRefit.Where(t => !removedBindSet.Contains(t.Bone)).ToArray();
         return new(tracks, removed, new(Version, settings.Mode, baseline.Tracks.Length, tracks.Length,
             inputKeys, tracks.Sum(CountKeys), unmatchedKeys, budget.Candidates, budget.Merges, budget.Work,
-            budget.WorkLimited, budget.CandidateLimited, probeLimited, probes, states.Select(s => s.Report()).ToArray()))
-            { RemovedBindTracks = removedBind };
+            budget.WorkLimited, budget.CandidateLimited, probeLimited, probes, states.Select(s => s.Report()).ToArray())
+            {
+                RefitCandidateSpans = states.Sum(s => s.RefitCandidates), AcceptedRefitSpans = states.Sum(s => s.RefitSpans),
+                RefitTangents = states.Sum(s => s.RefitTangents), RefitWorkLimited = refitWorkLimited, LegacyPhaseLimited = legacyPhaseLimited
+            })
+            { RemovedBindTracks = removedBind, PreRefitTracks = states.Any(s => s.RefitSpans > 0) ? beforeRefit : null };
 
         void Enqueue(ChannelState state, int middle)
         {
@@ -288,7 +332,7 @@ public static partial class AnimationOptimization
         public readonly string Bone;
         public readonly int Channel;
         public readonly Curve Original;
-        public Key[] Keys => Original.Keys;
+        public readonly Key[] Keys;
         public readonly bool Exact;
         public readonly double ValueBound, SpeedBound;
         public readonly bool[] Alive, Mandatory;
@@ -297,12 +341,18 @@ public static partial class AnimationOptimization
         public readonly ProtectedInterval[] Ranges;
         public readonly HashSet<double> GeneratedPairs;
         public int Candidates, Merges, Intervals;
+        public int RefitCandidates, RefitSpans;
+        public int RefitTangents => Enumerable.Range(0, Keys.Length).Where(i => Alive[i] && RefitChanged[i])
+            .Sum(i => (Bits(Keys[i].InTangent) == Bits(Original.Keys[i].InTangent) ? 0 : 1)
+                + (Bits(Keys[i].OutTangent) == Bits(Original.Keys[i].OutTangent) ? 0 : 1));
+        public readonly bool[] RefitChanged;
         public double ValueError, SpeedError;
         public string? Reason;
         bool constant;
         public ChannelState(string bone, int channel, Curve curve, bool exact, double valueBound, double speedBound, double[] frames, ProtectedInterval[] ranges, double[] generatedPairs)
         {
-            Bone = bone; Channel = channel; Original = curve; Exact = exact; ValueBound = valueBound; SpeedBound = speedBound;
+            Bone = bone; Channel = channel; Original = curve; Keys = curve.Keys.ToArray(); Exact = exact; ValueBound = valueBound; SpeedBound = speedBound;
+            RefitChanged = new bool[Keys.Length];
             Frames = frames; Ranges = ranges;
             GeneratedPairs = generatedPairs.ToHashSet();
             var protectedPairs = Keys.GroupBy(k => k.Frame).Where(g => g.Count() > 1 &&
@@ -340,12 +390,14 @@ public static partial class AnimationOptimization
             Alive[middle] = false; Next[left] = right; Previous[right] = left; Merges++;
             ValueError = Math.Max(ValueError, value); SpeedError = Math.Max(SpeedError, speed);
         }
-        public Curve Output() => !constant && Merges == 0 ? Original : Original with { Keys = constant
+        public Curve Output() => !constant && Merges == 0 && RefitSpans == 0 ? Original : Original with { Keys = constant
             ? [Keys[0].Frame == 0 ? Keys[0] : Keys[0] with { Frame = 0 }]
-            : Keys.Where((_, i) => Alive[i]).ToArray() };
-        public AnimationOptimizationChannelReport Report() => new(Bone, Channel, Keys.Length, Keys.Length - Merges,
+            : Keys.SelectMany((key, i) => !Alive[i] ? [] : RefitChanged[i] && Bits(key.InTangent) != Bits(key.OutTangent)
+                ? new[] { key with { OutTangent = key.InTangent }, key with { InTangent = key.OutTangent } } : new[] { key }).ToArray() };
+        public AnimationOptimizationChannelReport Report() => new(Bone, Channel, Original.Keys.Length, Output().Keys.Length,
             Exact ? "Exact rational polynomial identity" : "Rational Bernstein value/speed bounds", Candidates, Merges, Intervals,
-            ValueError, SpeedError, ValueBound, SpeedBound, Reason);
+            ValueError, SpeedError, ValueBound, SpeedBound, Reason)
+            { RefitCandidateSpans = RefitCandidates, AcceptedRefitSpans = RefitSpans, RefitTangents = RefitTangents };
     }
 
     static int Bits(float value) => BitConverter.SingleToInt32Bits(value);
@@ -372,23 +424,30 @@ public static partial class AnimationOptimization
         }
     }
     sealed class LimitReachedException : Exception;
+    sealed class PhaseLimitReachedException : Exception;
     sealed class Budget(AnimationOptimizationSettings settings, CancellationToken cancellation)
     {
         public long Work;
         public int Candidates, Merges;
         public bool WorkLimited, CandidateLimited;
+        long? phaseWork;
+        int? phaseCandidates;
         public int Depth => settings.MaximumSubdivisionDepth;
         public void Check() => cancellation.ThrowIfCancellationRequested();
+        public void StartPhase(long work, int candidates) { phaseWork = work; phaseCandidates = candidates; }
+        public void EndPhase() { phaseWork = null; phaseCandidates = null; }
         public void Charge(long amount)
         {
             Check();
             if (amount > settings.MaximumWork - Work) { WorkLimited = true; throw new LimitReachedException(); }
+            if (phaseWork is { } limit && amount > limit - Work) throw new PhaseLimitReachedException();
             Work += amount;
         }
         public void BeginCandidate()
         {
             Check();
             if (Candidates >= settings.MaximumCandidateSpans) { CandidateLimited = true; throw new LimitReachedException(); }
+            if (phaseCandidates is { } limit && Candidates >= limit) throw new PhaseLimitReachedException();
             Charge(1); Candidates++;
         }
     }
@@ -396,7 +455,12 @@ public static partial class AnimationOptimization
     static bool TestSpan(ChannelState state, int left, int right, Budget budget, out double valueError, out double speedError)
     {
         valueError = speedError = 0;
-        var a = state.Keys[left]; var b = state.Keys[right];
+        return TestSpan(state, left, right, state.Keys[left], state.Keys[right], budget, out valueError, out speedError);
+    }
+
+    static bool TestSpan(ChannelState state, int left, int right, Key a, Key b, Budget budget, out double valueError, out double speedError)
+    {
+        valueError = speedError = 0;
         if (!state.Exact && state.Channel < 3)
         {
             // Small absolute scale error does not preserve nonsingularity.
@@ -411,7 +475,7 @@ public static partial class AnimationOptimization
         for (int i = left; i < right; i++)
         {
             budget.Charge(1); state.Intervals++;
-            var p = state.Keys[i]; var q = state.Keys[i + 1];
+            var p = state.Original.Keys[i]; var q = state.Original.Keys[i + 1];
             if (p.Frame == q.Frame)
             {
                 if (!state.GeneratedPairs.Contains(p.Frame) || Bits(p.Value) != Bits(q.Value) || HasSignedZero(p) || HasSignedZero(q)) return false;

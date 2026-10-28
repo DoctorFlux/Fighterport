@@ -265,7 +265,7 @@ namespace BrawlCrate.UI
                             context.ExactBones, protectedBones, context.MandatoryFrames, context.ProtectedRanges, context.ProtectionKnown,
                             bounded, bounded, true, null, null, current, token, generatedPairSites:context.GeneratedPairSites,exportSettings: effective))
                         {
-                            report += "\r\n" + analysis.Choice.Report;
+                            report += "\r\n" + analysis.Choice.Report + "\r\n" + analysis.RefitReport;
                             var result = analysis.Choice.Result;
                             if (result?.Candidate != null)
                             {

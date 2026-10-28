@@ -1,5 +1,22 @@
 # Fighterport
 
+28 October 2026 **preview.56-constrained-span-refitting** completes its bounded
+source increment: 5,763 checks / 13 admitted runs, 50 inspected native UI PNGs,
+316 inspected GIF frames / 40 sheets and an eight-file independent byte audit.
+Generic Hermite span/tangent proposals retain exact source-owned controls, all
+skin coefficients, native Undo and ordinary exact Save. Both alternatives use
+the same finished master, continuous scalar proof, fresh native decode and
+cumulative geometry limits. Sonic → Mario measures 235,344 → 56,808 bytes,
+876 bytes smaller than its verified deletion-only alternative. Mario → Sonic
+remains 126,600 → 112,652 bytes through the existing Exact scale-compensation
+fallback; that runtime gate is not weakened. The launcher selects
+`Fighterport-span56/native2`. See [acceptance](docs/CONSTRAINED_SPAN_REFITTING_ACCEPTANCE_2026-10-28.md)
+and [benchmark](docs/SPAN_REFITTING_BENCHMARK_2026-10-28.md). ONE G1/M2 remains
+incomplete; no new increment is promoted. Background-only verification and
+DoctorFlux source-only publication to public Fighterport/main remain. Physical
+input/DPI, human usability, universal contacts, external-editor/plugin, Melee
+and game acceptance remain unverified. Earlier checkpoints are historical.
+
 28 October 2026 **preview.55-animation-stages-simple-controls** has bounded source
 acceptance: 5,695 checks in 13 admitted runs, 50 inspected native UI PNGs, 176
 inspected GIF frames and a six-file independent byte audit. The four exports

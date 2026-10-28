@@ -15,6 +15,7 @@ internal static class AnimationOptimizationChecks
         AnimationConstantAndCertificateChecks.Run(check);
         ScaleOptimizationBoundaryChecks.Run(check);
         SmallFileOptimizationChecks.Run(check);
+        SpanRefittingChecks.Run(check);
     }
 
     static AnimationClip Clip(params BoneTrack[] tracks) => new(Guid.NewGuid(), "Independent native polynomial", 9, new(60000, 1001), false, tracks);

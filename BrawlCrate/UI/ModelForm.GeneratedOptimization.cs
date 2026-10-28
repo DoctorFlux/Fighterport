@@ -24,6 +24,7 @@ namespace BrawlCrate.UI
             internal OptimizationOutput Output;
             internal NativeAnimationOptimizationBudget Budget;
             internal long Work;internal int Spans;internal string[] RetainedDense;
+            internal string RefitReport;
             public void Dispose()=>Choice?.Dispose();
         }
         // Standalone and workflow exports use this same offline pipeline.
@@ -59,6 +60,7 @@ namespace BrawlCrate.UI
                     return true;
                 });
                 var receipts = new Dictionary<NativeAnimationOptimizationResult, OptimizationOutput>();
+                var refitReports = new List<string>();
                 ControlTrack[] exactReductionTracks = null;
                 var wire = OptimizationWireTracks(baseline);
                 var nativeBones = model.AllBones.ToDictionary(b => b.Name, StringComparer.Ordinal);
@@ -92,6 +94,7 @@ namespace BrawlCrate.UI
                     try
                     {
                         var input = new { baseline.Name, SampleCount = baseline.FrameCount, baseline.Loop, HighQuality = approximate, SmallFile = approximate && smallFile, ExplicitBounds = exportSettings, GeneratedPairFrames = generatedPairs, GeneratedPairSites = generatedSites, LengthScale = length,
+                            EnableSpanRefitting = approximate && exportSettings != null,
                             PrecisionScale = precision, MaximumWork = 2000000 - work, MaximumCandidateSpans = 100000 - spans,
                             Tracks = wire, ExactBones = exact.ToArray(), ProtectedBones = analysisProtected.ToArray(), MandatoryFrames = approximate && smallFile && !exactFitJoins ? new int[0] : mandatory.OrderBy(f => f).ToArray(),
                             FitJoinFrames = approximate && smallFile && !exactFitJoins ? mandatory.OrderBy(f => f).ToArray() : new int[0],
@@ -105,16 +108,27 @@ namespace BrawlCrate.UI
                         var output = await Task.Run(() => json.Deserialize<OptimizationOutput>(File.ReadAllText(outputPath)), token);
                         if (output?.Tracks == null || output.Report == null || output.Report.Work < 0 || output.Report.Work > 2000000 - work ||
                             output.Report.CandidateSpans < 0 || output.Report.CandidateSpans > 100000 - spans) throw new InvalidDataException("Invalid aggregate optimization proof receipt.");
+                        if (output.Report.RefitCandidateSpans < 0 || output.Report.RefitCandidateSpans > output.Report.CandidateSpans ||
+                            output.Report.AcceptedRefitSpans < 0 || output.Report.AcceptedRefitSpans > output.Report.RefitCandidateSpans ||
+                            output.Report.RefitTangents < 0 || output.Report.RefitTangents > 2000000 ||
+                            output.PreRefitTracks != null && (!approximate || output.Report.AcceptedRefitSpans == 0))
+                            throw new InvalidDataException("Invalid span-refit proposal receipt.");
                         work += output.Report.Work; spans += output.Report.CandidateSpans;
+                        refitReports.Add("Span refit metrics: " + json.Serialize(new { PrecisionScale = precision, Approximate = approximate,
+                            Candidates = output.Report.RefitCandidateSpans, Certified = output.Report.AcceptedRefitSpans,
+                            Tangents = output.Report.RefitTangents, BudgetLimited = output.Report.RefitWorkLimited, LegacyPhaseLimited = output.Report.LegacyPhaseLimited }));
                         if (output.Report.ProbeLimitReached)
                         {
                             var exhausted = new InvalidDataException("Complete Core witness coverage exceeds the operation budget. No partial candidate can be offered.");
                             exhausted.Data["OptimizationBudget"] = "Core witness coverage"; throw exhausted;
                         }
-                        var tracks = output.Tracks.Select(t => new ControlTrack { Bone = t.Bone, Channels = t.Channels.Select(c => c.Select(k => new ControlKey { Frame = OptimizationTime(k), Value = OptimizationFloat(k.ValueBits), Tangent = OptimizationFloat(k.TangentBits) }).ToArray()).ToArray() }).ToArray();
+                        ControlTrack[] Decode(OptimizationTrackBits[] values) => values?.Select(t => new ControlTrack { Bone = t.Bone, Channels = t.Channels.Select(c => c.Select(k => new ControlKey { Frame = OptimizationTime(k), Value = OptimizationFloat(k.ValueBits), Tangent = OptimizationFloat(k.TangentBits) }).ToArray()).ToArray() }).ToArray();
+                        var tracks = Decode(output.Tracks);
+                        var preRefitTracks = Decode(output.PreRefitTracks);
                         // Retain proof/protection receipts, not a second
                         // raw-key object graph for every retry.
                         output.Tracks = null;
+                        output.PreRefitTracks = null;
                         var options = new NativeAnimationOptimizationOptions { ExactOnly = !approximate, SmallFile = approximate && smallFile, ExportSettings = exportSettings, GeneratedPairFrames = generatedPairs, GeneratedPairSites = generatedSites, LengthScale = length, OriginalStoredBytes = storedBytes, OriginalStoredResourceBytes = storedResourceBytes,
                             TargetBones = model.AllBones.Select(b => b.Name).ToArray(), ProtectedBones = output.ProtectedBones, ExactBones = output.ExactBones,
                             BindPoseCleanupBones = output.RemovedBindTracks, DeferSizeValidation = compact,
@@ -124,14 +138,17 @@ namespace BrawlCrate.UI
                             // the SAME shared proof/native work budgets. It
                             // does not increase any motion error allowance.
                             ReductionAttemptLimit=exportSettings?.SearchEffort==NativeExportSearchEffort.Thorough?8:2 };
+                        async Task<NativeAnimationOptimizationResult> Verify(ControlTrack[] proposal, string label)
+                        {
+                        options.AllowSpanRefitting = approximate && preRefitTracks != null && ReferenceEquals(proposal, tracks) && output.Report.AcceptedRefitSpans > 0;
                         OptimizationNativeChecks++;
                         var verified = await Task.Run(() => approximate
-                            ? NativeAnimationOptimization.PrepareReduction(validationModel, baseline, tracks, exactReductionTracks, options, stage, token)
-                            : NativeAnimationOptimization.Prepare(validationModel, baseline, tracks, options, stage, token), token);
+                            ? NativeAnimationOptimization.PrepareReduction(validationModel, baseline, proposal, exactReductionTracks, options, stage, token)
+                            : NativeAnimationOptimization.Prepare(validationModel, baseline, proposal, options, stage, token), token);
                         // Reuse the already allocated, independently
                         // verified Exact wire for partial HQ fallback.
                         // Its keys remain immutable within this Analyze.
-                        if (!approximate) exactReductionTracks = tracks;
+                        if (!approximate) exactReductionTracks = proposal;
                         if (compact)
                         {
                             // Packing has its own frozen-baseline
@@ -176,8 +193,40 @@ namespace BrawlCrate.UI
                                 verified = await Task.Run(() => NativeAnimationOptimization.PrepareCompact(validationModel, baseline, before, precise, options, stage, Certificate, denseProofBudget, token), token);
                             }
                         }
-                        try { token.ThrowIfCancellationRequested(); current(); receipts.Add(verified, output); return verified; }
+                        try { token.ThrowIfCancellationRequested(); current(); verified.Report += "\r\nNative curve alternative: " + label + "."; return verified; }
                         catch { verified.Dispose(); throw; }
+                        }
+                        NativeAnimationOptimizationResult best = null;
+                        var alternativeNotes = new List<string>();
+                        InvalidDataException lastFailure = null;
+                        try
+                        {
+                            var alternatives = preRefitTracks == null ? new[] { tracks } : new[] { preRefitTracks, tracks };
+                            foreach (var proposal in alternatives)
+                            {
+                                string label = ReferenceEquals(proposal, preRefitTracks) ? "deletion-only fallback" : preRefitTracks == null ? "scalar proposal" : "span/tangent refit proposal";
+                                NativeAnimationOptimizationResult verified = null;
+                                try
+                                {
+                                    verified = await Verify(proposal, label);
+                                    alternativeNotes.Add(label + ": fully verified, " + verified.AfterBytes + " bytes / " + verified.AfterKeys + " native keys.");
+                                    if (best == null || verified.AfterBytes < best.AfterBytes || verified.AfterBytes == best.AfterBytes && verified.AfterKeys < best.AfterKeys)
+                                    { best?.Dispose(); best = verified; verified = null; }
+                                }
+                                catch (InvalidDataException error) when (approximate && (error.Data.Contains("OptimizationQuality") || error.Data.Contains("OptimizationSize") || error.Data.Contains("OptimizationBudget")))
+                                {
+                                    lastFailure = error;
+                                    alternativeNotes.Add(label + ": " + error.Message);
+                                    if (error.Data.Contains("OptimizationBudget")) break;
+                                }
+                                finally { verified?.Dispose(); }
+                            }
+                            if (best == null) throw lastFailure ?? new InvalidDataException("No complete native curve alternative was verified.");
+                            best.Report += "\r\n" + string.Join("\r\n", alternativeNotes) +
+                                "\r\nRefit counts describe Core scalar-certified proposals; native restoration, packing and actual-byte selection may retain the deletion-only copy. Both use the same immutable master and cumulative budgets.";
+                            token.ThrowIfCancellationRequested(); current(); receipts.Add(best, output); return best;
+                        }
+                        catch { best?.Dispose(); throw; }
                     }
                     finally
                     {
@@ -191,7 +240,7 @@ namespace BrawlCrate.UI
                 try
                 {
                     token.ThrowIfCancellationRequested();current();
-                    return new FrozenOptimizationAnalysis{Choice=choice,Output=choice.Result==null?null:receipts[choice.Result],Budget=budget,Work=work,Spans=spans,RetainedDense=retainedDense};
+                    return new FrozenOptimizationAnalysis{Choice=choice,Output=choice.Result==null?null:receipts[choice.Result],Budget=budget,Work=work,Spans=spans,RetainedDense=retainedDense,RefitReport=string.Join("\r\n",refitReports)};
                 }
                 catch{choice.Dispose();throw;}
             }

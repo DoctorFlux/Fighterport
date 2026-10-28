@@ -26,6 +26,9 @@ namespace BrawlCrate.Studio
     {
         public bool ExactOnly { get; set; }
         public bool SmallFile { get; set; }
+        // Operation-owned permission for Core-certified refitting at exact
+        // generated pair sites. Unknown/authored sides never inherit it.
+        public bool AllowSpanRefitting { get; set; }
         public NativeExportOptimizationSettings ExportSettings { get; set; }
         public float[] GeneratedPairFrames { get; set; } = new float[0];
         public NativeGeneratedPairSite[] GeneratedPairSites { get; set; } = new NativeGeneratedPairSite[0];
@@ -381,8 +384,14 @@ namespace BrawlCrate.Studio
                                 && required.Length == 2 && actual.Length < 2 && required.All(k => Bits(k._value) == Bits(required[0]._value)
                                     && Bits(k._index) != int.MinValue && Bits(k._value) != int.MinValue && Bits(k._tangent) != int.MinValue)
                                 && (actual.Length == 0 || required.Any(k => Bits(k._value) == Bits(actual[0].Value) && Bits(k._tangent) == Bits(actual[0].Tangent)));
+                            bool generatedRefit = SmallProfile(options) && options.AllowSpanRefitting && generatedSiteKeys.Contains((track.Bone, channel, frame))
+                                && !exactBones.Contains(track.Bone) && !protectedBones.Contains(track.Bone) && !mandatory.Contains(frame) && !fitJoins.Contains(frame)
+                                && required.Length == 2 && actual.Length <= 2 && required.All(k => Bits(k._value) == Bits(required[0]._value)
+                                    && Bits(k._index) != int.MinValue && Bits(k._value) != int.MinValue && Bits(k._tangent) != int.MinValue)
+                                && actual.All(k => Bits(k.Frame) == Bits(required[0]._index) && Bits(k.Value) == Bits(required[0]._value)
+                                    && Finite(k.Tangent) && Bits(k.Tangent) != int.MinValue);
                             bool exactTuple = !SmallProfile(options) || mandatory.Contains(frame) || paired.Contains(frame) || signedZero.Contains(frame) || exactBones.Contains(track.Bone) || protectedBones.Contains(track.Bone);
-                            if (!fixedConstant && !generatedReduction && (required.Length != actual.Length || exactTuple && required.Where((k, i) => Bits(k._index) != Bits(actual[i].Frame) || Bits(k._value) != Bits(actual[i].Value) || Bits(k._tangent) != Bits(actual[i].Tangent)).Any()))
+                            if (!fixedConstant && !generatedReduction && !generatedRefit && (required.Length != actual.Length || exactTuple && required.Where((k, i) => Bits(k._index) != Bits(actual[i].Frame) || Bits(k._value) != Bits(actual[i].Value) || Bits(k._tangent) != Bits(actual[i].Tangent)).Any()))
                                 throw new InvalidDataException("Optimization changed a mandatory or discontinuous native knot: " + track.Bone + " at " + frame);
                         }
                         var array = entry.KeyArrays[channel];

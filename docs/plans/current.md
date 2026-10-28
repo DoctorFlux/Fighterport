@@ -1,5 +1,41 @@
 ﻿# Current milestone M2 — simpler native workspace
 
+28 October — **preview.56 constrained span/tangent refitting** completes its
+bounded increment within this same incomplete G1/M2. Starting commit:
+`ba51c74ad0a4a73f9a52ef669913af6c4e328910`. A generic offline Hermite
+refitter is integrated with the shared explicit Error-bounded optimizer; Exact remains proved-only,
+the full native previewer, original Next, all skin coefficients, native Undo and
+exact ordinary Save. Add no extra user-facing mode or automatic authoring loss.
+
+Frozen ceilings remain 0.1 degrees raw Euler/local orientation, 0.002 native
+translation, 0.0001 scale and 0.001 times reviewed target bind diagonal for native
+world/basis/skin displacement; derivative ceilings remain 0.1 degrees, 0.002
+translation and 0.0001 scale per frame. Exact source-owned motion, pins/contact
+dependencies, mandatory joins/ranges, signed zeros, unknown paired sides and
+singular/sign-changing scale override approximation. Never wrap Euler turns.
+Refit float-rounded eligible tangents/spans against the immutable finished
+master, with the existing continuous scalar and cumulative fresh-native gates.
+Keep bounded work/cancellation and actual-byte selection; retain the existing
+deletion-only candidate as an alternative rather than forcing refitted storage.
+
+Qualification records **5,763 checks / 13 admitted runs**, 50 inspected native UI
+PNGs and all 316 decoded GIF frames across 40 sheets. Both authentic AttackAirLw
+directions pass private-desktop transfer/Fall-first fitting/native reopen/Undo
+checks. Side GIFs include the Y=0 guide and only one frozen first Fall pose.
+The eight-file independent audit reports 620,762 scalar and 24,559 outgoing-side
+comparisons without differences or unexplained nonzero bytes. Same-master forward
+exports measure 235,344 → 56,808 bytes (legacy alternative 57,684). Reciprocal
+exports remain 126,600 → 112,652 through Exact scale-compensation fallback.
+Existing unqualified contact/runtime gates remain; scalar proof does not qualify
+new transform semantics. See [acceptance](../CONSTRAINED_SPAN_REFITTING_ACCEPTANCE_2026-10-28.md)
+and [benchmark](../SPAN_REFITTING_BENCHMARK_2026-10-28.md).
+
+The launcher selects `Fighterport-span56/native2`; verified source is delivered
+only to public Fighterport/main as DoctorFlux. ONE G1/M2 remains incomplete and
+no new increment is promoted. Physical input/DPI, human usability, universal
+contacts, external-editor/plugin, Melee and game acceptance remain separate.
+The preceding checkpoint and earlier plans are historical.
+
 28 October **preview.55-animation-stages-simple-controls** has bounded source
 acceptance from starting commit `11d6c1d708e3254d1c68101dfcee70b0c9970214`.
 The explicit Sonic original → default Next/Mario → Fall-first fitted master →

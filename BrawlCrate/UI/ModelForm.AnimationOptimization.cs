@@ -68,18 +68,22 @@ namespace BrawlCrate.UI
             public string Bone { get; set; } public int Channel { get; set; } public int BeforeKeys { get; set; } public int AfterKeys { get; set; }
             public string Policy { get; set; } public double CertifiedValueErrorBound { get; set; } public double CertifiedSpeedErrorBound { get; set; }
             public string RetainedReason { get; set; }
+            public int RefitCandidateSpans { get; set; } public int AcceptedRefitSpans { get; set; } public int RefitTangents { get; set; }
         }
         private sealed class OptimizationReportInfo
         {
             public string Version { get; set; }
             public long InputKeys { get; set; } public long OutputKeys { get; set; } public long Work { get; set; }
             public int CandidateSpans { get; set; } public int AcceptedMerges { get; set; }
+            public int RefitCandidateSpans { get; set; } public int AcceptedRefitSpans { get; set; } public int RefitTangents { get; set; }
+            public bool RefitWorkLimited { get; set; } public bool LegacyPhaseLimited { get; set; }
             public bool WorkLimitReached { get; set; } public bool CandidateLimitReached { get; set; } public bool ProbeLimitReached { get; set; }
             public double[] ProbeFrames { get; set; } public OptimizationChannelInfo[] Channels { get; set; } public string Claim { get; set; }
         }
         private sealed class OptimizationOutput
         {
             public OptimizationTrackBits[] Tracks { get; set; } public string[] RemovedUnmatchedTracks { get; set; }
+            public OptimizationTrackBits[] PreRefitTracks { get; set; }
             public string[] RemovedBindTracks { get; set; } = new string[0];
             public string[] ExactBones { get; set; } public string[] ProtectedBones { get; set; } public OptimizationReportInfo Report { get; set; }
         }

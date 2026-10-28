@@ -295,11 +295,11 @@ internal static partial class Program
                         // One explicit strongest search; no preset options are
                         // added to retargeting/fitting or ordinary project Save.
                         object optimized = await SonicExportCopy(form, clip, model, Path.Combine(diagnostics, "Mario-target.mdl0"), roots,
-                            new[] { 0, 4, 34, 43 }, fittedFile, exports, "04-Mario-optimized", true, NativeExportSearchEffort.Thorough);
+                            new[] { 0, 4, 34, 43 }, fittedFile, exports, "04-Mario-optimized", true, NativeExportSearchEffort.Thorough, args.Contains("--span-refit-required"));
                         stages.Add(optimized);
                         string expanded = Path.Combine(exports, "04-Mario-optimized.i12.chr0");
                         if (File.Exists(expanded)) File.Move(expanded, Path.Combine(diagnostics, Path.GetFileName(expanded)));
-                        foreach (string suffix in new[] { "-withheld.json", "-report.txt", "-bytes.txt", "-context.json" })
+                        foreach (string suffix in new[] { "-withheld.json", "-report.txt", "-bytes.txt", "-context.json", "-refit-evidence.json" })
                         {
                             string extra = Path.Combine(exports, "04-Mario-optimized" + suffix);
                             if (File.Exists(extra)) File.Move(extra, Path.Combine(diagnostics, Path.GetFileName(extra)));

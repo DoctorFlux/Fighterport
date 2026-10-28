@@ -80,8 +80,36 @@ internal static partial class Program
         return true;
     }
 
+    static object SonicRefitEvidence(string report, string path, bool required, string effectivePolicy)
+    {
+        const string prefix = "Span refit metrics: ";
+        var json = new JavaScriptSerializer { MaxJsonLength = 1024 * 1024 };
+        var records = new List<Dictionary<string, object>>();
+        foreach (string line in (report ?? string.Empty).Split('\n').Select(value => value.Trim()))
+        {
+            if (!line.StartsWith(prefix, StringComparison.Ordinal)) continue;
+            if (line.Length > 16384 || records.Count >= 64) throw new InvalidDataException("Refit metrics exceed the bounded diagnostic size.");
+            var record = json.Deserialize<Dictionary<string, object>>(line.Substring(prefix.Length));
+            if (record == null || !new[] { "Candidates", "Certified", "Tangents", "BudgetLimited" }.All(record.ContainsKey))
+                throw new InvalidDataException("Refit diagnostic fields are incomplete.");
+            int candidates = Convert.ToInt32(record["Candidates"]), certified = Convert.ToInt32(record["Certified"]), tangents = Convert.ToInt32(record["Tangents"]);
+            if (candidates < 0 || candidates > 100000 || certified < 0 || certified > candidates || tangents < 0 || tangents > 400000 || !(record["BudgetLimited"] is bool))
+                throw new InvalidDataException("Refit diagnostic counts are invalid.");
+            records.Add(record);
+        }
+        int proposed = records.Sum(record => Convert.ToInt32(record["Candidates"]));
+        var evidence = new { Required = required, EffectiveExportPolicy = effectivePolicy, ReportRecords = records,
+            TotalCandidateSpans = proposed, TotalCertifiedSpans = records.Sum(record => Convert.ToInt32(record["Certified"])),
+            TotalRefittedTangents = records.Sum(record => Convert.ToInt32(record["Tangents"])),
+            Claim = "Core proposal/certificate diagnostics only. Native acceptance and final selected export are separately validated; certified proposals do not prove published refitting." };
+        File.WriteAllText(path, json.Serialize(evidence));
+        if (required) Check(proposed > 0, "The requested eligible finished-master workflow actually executes span/tangent refitting; final native acceptance remains independently gated");
+        return evidence;
+    }
+
     static async Task<object> SonicExportCopy(ModelForm form, CHR0Node clip, MDL0Node model, string modelFile,
-        string[] roots, int[] fitJoins, string referenceFile, string directory, string tag, bool bounded, NativeExportSearchEffort effort = NativeExportSearchEffort.Standard)
+        string[] roots, int[] fitJoins, string referenceFile, string directory, string tag, bool bounded, NativeExportSearchEffort effort = NativeExportSearchEffort.Standard,
+        bool requireSpanRefit = false)
     {
         var editor = form.FighterEditor;
         string content = NativeAnimationOptimization.SourceContentKey(clip), storage = NativeAnimationOptimization.StorageKey(clip);
@@ -110,6 +138,7 @@ internal static partial class Program
                 BoundedUnavailable = unavailable, FinishedMasterContent = content, FinishedMasterStorage = storage, Settings = settings }));
             Check(candidate != null && (string)Field(frozen, "PreparedPolicyKey") == settings.StableKey && !string.IsNullOrWhiteSpace(report),
                 tag + ": explicit export preparation records the requested policy, independent candidate and complete qualification/fallback report");
+            var refitEvidence = SonicRefitEvidence(report, Path.Combine(directory, tag + "-refit-evidence.json"), requireSpanRefit, effective);
             if (bounded && !string.IsNullOrWhiteSpace(unavailable))
                 Check(effective == "Exact" && report.Contains("Exact fallback"), tag + ": unresolved absolute fit/contact/review acceptance selects the explicit Exact fallback");
             ReplayRootsMatch(master, candidate, model, roots);
@@ -136,7 +165,7 @@ internal static partial class Program
                 FinishedMasterFile = referenceFile, FinishedMasterBytes = masterBytes, ExportBytes = exportedBytes,
                 FinishedMasterContent = content, FinishedMasterStorage = storage, FinishedMasterSha256 = referenceHash,
                 ExportContent = NativeAnimationOptimization.SourceContentKey(candidate), ExportStorage = NativeAnimationOptimization.StorageKey(candidate),
-                BoundedUnavailable = unavailable, FitJoinFrames = fitJoins, Report = tag + "-report.txt", EditableMasterChanged = false };
+                BoundedUnavailable = unavailable, FitJoinFrames = fitJoins, Report = tag + "-report.txt", RefitEvidence = refitEvidence, EditableMasterChanged = false };
             return SonicStage(candidate, file, tag, comparison);
         }
         finally
@@ -157,6 +186,8 @@ internal static partial class Program
         if (!PrivateDesktop) throw new InvalidOperationException("Sonic fitting/size qualification requires a private desktop.");
         string Arg(string key) => args[Array.IndexOf(args, key) + 1];
         bool reciprocal = args.Contains("--sonic-pipeline-reciprocal"), fitOnly = args.Contains("--sonic-pipeline-fit-only");
+        var pipelineEffort = args.Contains("--sonic-pipeline-thorough") ? NativeExportSearchEffort.Thorough : NativeExportSearchEffort.Standard;
+        bool requireSpanRefit = args.Contains("--span-refit-required");
         string sourceCharacter = reciprocal ? "mario" : "sonic", sourceModelName = reciprocal ? "FitMario00" : "FitSonic00";
         string sourceLabel = reciprocal ? "Mario" : "Sonic", targetLabel = reciprocal ? "Sonic" : "Mario";
         int expectedFrames = reciprocal ? 35 : 44, exitStart = expectedFrames - 9;
@@ -201,7 +232,8 @@ internal static partial class Program
             TargetModel = Path.Combine(output, "target-model.mdl0"), TargetContainer = targetContainer, Fall = Path.Combine(output, "Fall.chr0"),
             ProvidedMario = Path.Combine(output, "provided-mario-original.chr0"), SampleCount = expectedFrames, EntryJoinDisplay = 5, ExitJoinDisplay = exitStart,
             FallSampleDisplay = 1, AttackTravelControls = attackTravelControls.ToArray(), PrivateDesktop, OSInputInjected = false, ScreenCopied = false,
-            OptimizationBoundary = "Retargeting and fitting retain full-quality editable masters; Exact and ErrorBounded optimize explicit export copies only.", Modes = allModes }));
+            OptimizationBoundary = "Retargeting and fitting retain full-quality editable masters; Exact and ErrorBounded optimize explicit export copies only.",
+            SearchEffort = pipelineEffort.ToString(), RequireSpanRefit = requireSpanRefit, Modes = allModes }));
         WriteManifest();
         try
         {
@@ -289,7 +321,7 @@ internal static partial class Program
                         Export("raw-retarget");
                         foreach (bool bounded in new[] { false, true })
                             stages.Add(await SonicExportCopy(form, clip, model, Path.Combine(output, "target-model.mdl0"), rootNames, new int[0],
-                                Path.Combine(modeDirectory, "raw-retarget.chr0"), modeDirectory, bounded ? "raw-retarget-optimized-hq" : "raw-retarget-optimized-exact", bounded));
+                                Path.Combine(modeDirectory, "raw-retarget.chr0"), modeDirectory, bounded ? "raw-retarget-optimized-hq" : "raw-retarget-optimized-exact", bounded, pipelineEffort));
                         File.WriteAllText(Path.Combine(modeDirectory, "stage-sizes.json"), json.Serialize(stages));
                         using (var attack = NativeAnimationOptimization.Copy(clip))
                         {
@@ -342,7 +374,7 @@ internal static partial class Program
                             foreach (bool bounded in new[] { false, true })
                                 stages.Add(await SonicExportCopy(form, clip, model, Path.Combine(output, "target-model.mdl0"), rootNames,
                                     new[] { 0, 4, exitStart - 1, expectedFrames - 1 }, Path.Combine(modeDirectory, "fitted.chr0"), modeDirectory,
-                                    bounded ? "optimized-hq" : "optimized-exact", bounded));
+                                    bounded ? "optimized-hq" : "optimized-exact", bounded, pipelineEffort, bounded && requireSpanRefit));
                         }
                         File.WriteAllText(Path.Combine(modeDirectory, "stage-sizes.json"), json.Serialize(stages));
                         allModes.Add(new { Mode = keyMode.ToString(), ClipIdentity = OptimizationNativeIdentity(clip), AttackTravelControls = positionNames,
@@ -370,7 +402,7 @@ internal static partial class Program
                     stages.Add(SonicStage(clip, file, "provided-original")); form.SaveFighterProject(Path.Combine(providedDirectory, "provided-original.fpstudio"));
                     foreach (bool bounded in new[] { false, true })
                         stages.Add(await SonicExportCopy(form, clip, model, args[0], roots, new int[0], file, providedDirectory,
-                            bounded ? "optimized-hq" : "optimized-exact", bounded));
+                            bounded ? "optimized-hq" : "optimized-exact", bounded, pipelineEffort));
                     File.WriteAllText(Path.Combine(providedDirectory, "stage-sizes.json"), json.Serialize(stages)); allModes.Add(new { Mode = "ProvidedMario", Stages = stages });
                 }
                 finally { if (!form.IsDisposed) SimpleDisposeForm(form); }

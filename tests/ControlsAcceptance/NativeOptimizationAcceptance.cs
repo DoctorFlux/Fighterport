@@ -19,6 +19,7 @@ internal static partial class Program
         NativeDenseEncodedFormatChecks(System.IO.Path.Combine(output, "dense-encoded-format"));
         NativeDenseWriterChecks(System.IO.Path.Combine(output, "dense-storage-writer"));
         NativeDenseImportedExactChecks(args[0], System.IO.Path.Combine(output, "dense-imported-retention"));
+        NativeSpanRefitIntegrationChecks(args[0], System.IO.Path.Combine(output, "span-refit-integration")).GetAwaiter().GetResult();
         return Task.CompletedTask;
     }
 }
