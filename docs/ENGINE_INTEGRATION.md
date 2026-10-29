@@ -1,5 +1,34 @@
 ﻿# Native Next integration
 
+Preview.61 makes prepared animation storage use the shared actual-byte native
+packing boundary. Source-key/interpolated retarget preparation first qualifies
+its precise candidate, then tries indexed I4/I6 copies against both that byte
+ceiling and the unchanged finished Dense target. The original Next reference,
+shared scalar/native work ceilings and strict total quality limits remain.
+Unique reviewed generated-pair sites grant proposal permission separately from
+SmallFile/positive-zero behavior; complete freshly decoded scalar and cumulative
+native checks remain mandatory. Unknown paired sides stay exact in every policy.
+Bounded creation uses six packing attempts; explicit optimization retains 24.
+
+The optimizer and fitting share `ApplyExactStorageChoices`. Fitting first uses
+`CopySource` to retain imported group plans, then applies numerical boundary edits
+and qualifies a storage-only independent copy with identical native coefficients,
+flags, metadata and complete terminal payloads. Both physical length and resource
+block bytes must be no larger; no failed candidate replaces its qualified master.
+Native snapshots carry storage through the existing Apply/Undo/Redo boundary.
+Fitting previews use bounded raw ARC/BRRES visual contexts and overlay the fresh
+current MDL0 in independent owners, omitting pure-motion references. They never
+rebuild the live motion archive merely to display textures. Exact native visual
+paths/ancestor metadata must match; dirty texture/palette/additional-model or
+structurally changed contexts require saving before this operation. Imported
+sampled terminal payloads and animation dirty/backing state remain owned by the
+authoring document. Context limits are 512 MiB / 100k nodes / 128 levels and do
+not increase animation, scalar or native validation budgets.
+Ordinary right-click Export still performs no optimization, and ordinary Save
+does not rerun reduction. No shared BrawlLib codec or model/skin data is changed.
+See [payload notes](CHR0_PAYLOAD_NOTES_2026-10-29.md) and
+[qualification](CHR0_PAYLOAD_ACCEPTANCE_2026-10-29.md).
+
 Preview.60 separates ordinary native animation export from optimization. The
 unchanged LeftPanel SaveFileDialog/callback now publishes a source-aware copy of
 the exact requested current CHR0 via native serialization/fresh decode and atomic

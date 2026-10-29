@@ -38,6 +38,23 @@ internal static partial class Program
         project.SelectedAnimation=sourceKey;project.Frame=1;Call(form,"RebuildFighterScene");await Wait(()=>!(bool)Field(form,"_controlBusy")&&!(bool)Field(form,"_controlSetupQueued"));int count=project.Animations.Count;
         editor.FrameFighterModel();var camera=editor.ModelPanel.Camera;var cameraBefore=Enumerable.Range(0,16).Select(i=>camera._matrix[i]).ToArray();
         await CaptureWindow(form,Path.Combine(output,"transition-before-fit-viewer.png"));
+        string beforeContent=SetNativeContent(source),beforeStorage=NativeAnimationOptimization.StorageKey(source),preparedContent=null,preparedStorage=null;
+        string sourceResourceKey=BrawlLibrarySource.Resources(source.RootNode).Single(p=>ReferenceEquals(p.Item1,source)).Item2;
+        var untouchedBaked=source.Children.OfType<CHR0EntryNode>().Where(entry=>entry.Name!=boneName)
+            .SelectMany(entry=>Enumerable.Range(3,3).Select(channel=>new{Entry=entry,Channel=channel,Storage=PreciseCHR0EntryNode.CaptureStorage(entry)}))
+            .Where(item=>item.Storage!=null&&item.Storage.MatchesGroup(item.Entry.Keyframes,1)&&item.Storage[item.Channel]?.IsDense==true)
+            .Select(item=>new{Bone=item.Entry.Name,item.Channel,Payload=item.Storage[item.Channel].ContentKey,Samples=item.Storage[item.Channel].EncodedSampleCount}).ToArray();
+        void CheckUntouchedBaked(CHR0Node clip,string phase)
+        {
+            Check(untouchedBaked.All(expected=>
+            {
+                var entry=clip.Children.OfType<CHR0EntryNode>().SingleOrDefault(e=>e.Name==expected.Bone);
+                var storage=entry==null?null:PreciseCHR0EntryNode.CaptureStorage(entry);
+                var curve=storage?[expected.Channel];
+                return storage!=null&&storage.MatchesGroup(entry.Keyframes,1)&&curve!=null&&curve.IsDense&&
+                    curve.ContentKey==expected.Payload&&curve.EncodedSampleCount==expected.Samples;
+            }),phase+" retains complete payload hashes and terminal sample counts for "+untouchedBaked.Length+" untouched imported baked rotation channels");
+        }
         Exception failure=null;bool finished=false;int samples=Math.Min(6,(source.FrameCount-1)/3);if(samples<2)throw new Exception("Fixture needs at least seven source frames.");
         float NativeValue(CHR0Node clip,int channel,float time){var node=clip.Children.OfType<CHR0EntryNode>().SingleOrDefault(e=>e.Name==boneName);return node?.KeyArrays[channel].KeyCount>0?node.GetFrameValue(channel,time):bone.BindState[channel];}
         form.TransitionFitReady=async window=>
@@ -85,6 +102,8 @@ internal static partial class Program
                     return before.SequenceEqual(fittedEntry.KeyArrays[c].Entries.Select(k=>Tuple.Create(k._index,k._value,k._tangent)));
                 });
                 Check(unchanged,"Unselected native scale/translation keys and tangents stay exact");
+                Check(SetNativeContent(source)==beforeContent&&NativeAnimationOptimization.StorageKey(source)==beforeStorage,"Fitting analysis preserves the live animation's exact original content and storage policy");
+                CheckUntouchedBaked(window.Candidate,"Prepared fitting");
                 int textSize=WorkspaceAppearance.TextPercent;var windowSize=window.ClientSize;
                 try
                 {
@@ -100,20 +119,41 @@ internal static partial class Program
                 finally{Call(form,"SetWorkspaceTextSize",textSize);window.ApplyTextSize();window.ClientSize=windowSize;((ScrollableControl)scope.Parent).AutoScrollPosition=System.Drawing.Point.Empty;}
                 await CaptureWindow(window,Path.Combine(output,"transition-review.png"));((TrackBar)window.Controls.Find("transitionFrame",true).Single()).Value=source.FrameCount;await CaptureWindow(window,Path.Combine(output,"transition-exit.png"));
                 var nativeReference=(CHR0Node)Call(form,"FighterRoot",referenceAsset);var key=nativeReference.Children.OfType<CHR0EntryNode>().Single(e=>e.Name==boneName).GetKeyframe(3,0);float old=key._value;key._value+=1;nativeReference.SignalPropertyChange();apply.PerformClick();Check(project.Animations.Count==count&&window.Candidate==null&&report.Text.Contains("reference changed"),"Changed native reference content rejects and discards stale Apply");key._value=old;nativeReference.SignalPropertyChange();
-                prepare.PerformClick();await Wait(()=>!window.Busy);Check(window.Candidate!=null,"Restoring authentic reference content allows a newly prepared independent fit");apply.PerformClick();Check(project.Animations.Count==count,"Apply updates the selected native animation without adding an asset");
+                prepare.PerformClick();await Wait(()=>!window.Busy);Check(window.Candidate!=null,"Restoring authentic reference content allows a newly prepared independent fit");
+                preparedContent=SetNativeContent(window.Candidate);preparedStorage=NativeAnimationOptimization.StorageKey(window.Candidate);CheckUntouchedBaked(window.Candidate,"Final prepared fitting");
+                apply.PerformClick();Check(project.Animations.Count==count,"Apply updates the selected native animation without adding an asset");
             }
             catch(Exception error){failure=error;window.Close();}
             finally{finished=true;}
         };
         Call(form,"ShowTransitionFit");await Wait(()=>finished);if(failure!=null)throw failure;await Wait(()=>!(bool)Field(form,"_controlBusy")&&!(bool)Field(form,"_controlSetupQueued"));
+        Check(SetNativeContent(source)==preparedContent&&NativeAnimationOptimization.StorageKey(source)==preparedStorage,"Fitting Apply retains the exact prepared content and immutable native storage plans on the same clip");
+        CheckUntouchedBaked(source,"Applied fitting");
         Check(cameraBefore.SequenceEqual(Enumerable.Range(0,16).Select(i=>camera._matrix[i])),"Current fitting preserves the authoring viewport camera through preview and Apply");
         var generated=(FighterAsset)Call(form,"SelectedFighterAsset");var recipe=(NativeTransitionFit)Call(form,"TransitionRecipeFor",generated,source);Check(recipe?.Algorithm=="fixed-duration-fk-hermite-2"&&recipe.Inputs.Length==3,"Independent result retains exact source/entry/exit native snapshots and Core recipe");recipe.Validate();
         Check(new System.Web.Script.Serialization.JavaScriptSerializer().Deserialize<TransitionFitOptions>(recipe.Options).ExistingTracksOnly,"Native fitted receipt retains the explicit existing-track option");
         string authentic=recipe.Inputs[0].Snapshot;byte[] changed=Convert.FromBase64String(authentic);changed[changed.Length-1]^=1;recipe.Inputs[0].Snapshot=Convert.ToBase64String(changed);bool rejected=false;try{recipe.Validate();}catch(InvalidDataException){rejected=true;}finally{recipe.Inputs[0].Snapshot=authentic;}Check(rejected,"Corrupted portable reference bytes reject independently of the UI's stale-input check");
         Check(editor.AnimationPins.Any(p=>p.Id==pinId&&p.BoneName==boneName),"Existing FK pin identity is copied into the independent animation's own control state");
-        editor.Undo();Check(project.Animations.Count==count&&ReferenceEquals(editor.SelectedCHR0,source),"One native Undo removes the fitted animation and restores the exact source selection");await Wait(()=>!(bool)Field(form,"_controlBusy")&&!(bool)Field(form,"_controlSetupQueued"));string history="Before redo: "+editor.CanRedo+" cursor "+editor._saveIndex+" undo "+editor._undoSaves.Count+" redo "+editor._redoSaves.Count;editor.Redo();history+="\r\nAfter: count "+project.Animations.Count+" name "+editor.SelectedCHR0?.Name+" cursor "+editor._saveIndex+" undo "+editor._undoSaves.Count+" redo "+editor._redoSaves.Count;File.WriteAllText(Path.Combine(output,"redo-diagnostic.txt"),history);Check(project.Animations.Count==count&&ReferenceEquals(editor.SelectedCHR0,source),"Native Redo restores the prepared animation without recomputing fitting");await Wait(()=>!(bool)Field(form,"_controlBusy")&&!(bool)Field(form,"_controlSetupQueued"));
+        editor.Undo();Check(project.Animations.Count==count&&ReferenceEquals(editor.SelectedCHR0,source),"One native Undo removes the fitted animation and restores the exact source selection");
+        Check(SetNativeContent(source)==beforeContent&&NativeAnimationOptimization.StorageKey(source)==beforeStorage,"Native fitting Undo restores original content and storage, including imported terminal context");CheckUntouchedBaked(source,"Fitting Undo");
+        await Wait(()=>!(bool)Field(form,"_controlBusy")&&!(bool)Field(form,"_controlSetupQueued"));string history="Before redo: "+editor.CanRedo+" cursor "+editor._saveIndex+" undo "+editor._undoSaves.Count+" redo "+editor._redoSaves.Count;editor.Redo();history+="\r\nAfter: count "+project.Animations.Count+" name "+editor.SelectedCHR0?.Name+" cursor "+editor._saveIndex+" undo "+editor._undoSaves.Count+" redo "+editor._redoSaves.Count;File.WriteAllText(Path.Combine(output,"redo-diagnostic.txt"),history);Check(project.Animations.Count==count&&ReferenceEquals(editor.SelectedCHR0,source),"Native Redo restores the prepared animation without recomputing fitting");
+        Check(SetNativeContent(source)==preparedContent&&NativeAnimationOptimization.StorageKey(source)==preparedStorage,"Native fitting Redo restores the same prepared content and compact storage plans");CheckUntouchedBaked(source,"Fitting Redo");
+        await Wait(()=>!(bool)Field(form,"_controlBusy")&&!(bool)Field(form,"_controlSetupQueued"));
+        string ownedExport=Path.Combine(output,"boundary-fitted-native-export.chr0");form.ExportFighterResource(ownedExport);
+        using(var decoded=NodeFactory.FromFile(null,ownedExport) as CHR0Node)
+        {
+            Check(decoded!=null&&SetNativeContent(decoded)==preparedContent&&NativeAnimationOptimization.StorageKey(decoded)==preparedStorage,"Ordinary owned CHR0 export/reopen before Save preserves fitted content and storage without optimization");
+            CheckUntouchedBaked(decoded,"Ordinary fitted export");
+        }
         string fittedPath=Path.Combine(output,"boundary-fitted.chr0");editor.SelectedCHR0.Export(fittedPath);string save=Path.Combine(output,"boundary-fit.fpstudio");form.SaveFighterProject(save);
         using(var fresh=FighterProject.Open(save)){var native=fresh.Animations.Single(a=>a.Id==generated.Id);Check(native.TransitionRecipes().Single().Inputs.All(i=>Convert.FromBase64String(i.Snapshot).Length>0)&&native.TransitionRecipes().Single().Options.Contains("Protected"),"Fresh project reopen preserves portable native references and protected fitting options");native.TransitionRecipes().Single().Validate();Check(fresh.AnimationControls.Any(c=>c.Json.Contains(pinId)),"Fresh fitted project retains independently scoped FK pin metadata");}
+        using(var fresh=FighterProject.Open(save))using(var root=NodeFactory.FromFile(null,fresh.Animations.Single(a=>a.Id==generated.Id).WorkingPath))
+        {
+            var decoded=BrawlLibrarySource.Resolve(root,sourceResourceKey) as CHR0Node;
+            Check(decoded!=null&&SetNativeContent(decoded)==preparedContent&&NativeAnimationOptimization.StorageKey(decoded)==preparedStorage,"Project Save/native-member reopen preserves the same fitted content and storage plans");
+            CheckUntouchedBaked(decoded,"Saved fitting reopen");
+        }
+        File.WriteAllText(Path.Combine(output,"transition-storage.json"),new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new{OriginalStorage=beforeStorage,PreparedStorage=preparedStorage,UntouchedBakedChannels=untouchedBaked}));
         finished=false;form.TransitionDetailsReady=async window=>{try{var text=((TextBox)window.Controls.Find("transitionDetailsReport",true).Single()).Text;Check(text.Contains("matches the saved initial fit")&&text.Contains("BoundaryReference"),"Native details identify the current fitted revision and its frozen reference snapshots");await CaptureWindow(window,Path.Combine(output,"transition-details.png"));}catch(Exception error){failure=error;}finally{window.Close();finished=true;}};Call(form,"ShowTransitionFitDetails");await Wait(()=>finished);if(failure!=null)throw failure;
         string frozenPath=Path.Combine(output,"exported-frozen-reference.chr0");var frozenInput=recipe.Inputs.Single(i=>i.Role=="entry");Call(form,"ExportFrozenTransitionInput",recipe,frozenInput,frozenPath);Check(string.Equals(FighterProject.HashFile(frozenPath),frozenInput.Sha256,StringComparison.OrdinalIgnoreCase),"Exporting a frozen reference writes its exact preserved CHR0 bytes to a new file");
         finished=false;form.TransitionFitReady=async window=>{try{

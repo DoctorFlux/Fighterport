@@ -21,6 +21,7 @@ internal static partial class Program
             SourceKeysProcedural(model,output);
             SourceKeyQualityChecks(model,output);
             NativePairedSourceKeyChecks(model,output);
+            NativeRetargetPayloadChecks(model,output);
             NativeSourceKeyFallbackChecks(model);
         }
         if(args.Contains("--retarget-source"))SourceKeysAuthentic(args,output);

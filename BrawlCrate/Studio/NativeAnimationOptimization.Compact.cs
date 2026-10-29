@@ -56,6 +56,9 @@ namespace BrawlCrate.Studio
                 throw new ArgumentNullException("Compact optimization requires frozen native snapshots, a verified precise result and the independent scalar certifier.");
             token.ThrowIfCancellationRequested(); ValidateMetadata(retainedBaseline); ValidateMetadata(currentSnapshot);
             denseProofBudget = denseProofBudget ?? new NativeDenseProofBudget();
+            int attemptLimit = options.CompactCandidateAttemptLimit;
+            if (attemptLimit < 1 || attemptLimit > MaximumCompactQuantizedAttempts)
+                throw new ArgumentOutOfRangeException(nameof(options.CompactCandidateAttemptLimit));
             if (currentSnapshot.Version != 4 && currentSnapshot.Version != 5) throw new NotSupportedException("Compact native storage qualifies Brawl CHR0 v4/v5 only.");
             var bones = modelSnapshot.AllBones.ToArray(); var targetNames = Set(options.TargetBones);
             if (bones.Length == 0 || bones.Length > MaximumBones || !targetNames.SetEquals(bones.Select(b => b.Name)))
@@ -63,6 +66,11 @@ namespace BrawlCrate.Studio
             var baselineKey = ContentKey(retainedBaseline); var currentKey = ContentKey(currentSnapshot); var currentStorage = StorageKey(currentSnapshot);
             var budget = options.Budget ?? new NativeAnimationOptimizationBudget();
             var frozenOptions = CompactOptions(options, options.ProbeFrames, budget);
+            var reviewedSites = options.AllowGeneratedPairReduction || options.AllowSpanRefitting ?
+                options.GeneratedPairSites ?? new NativeGeneratedPairSite[0] : new NativeGeneratedPairSite[0];
+            if (reviewedSites.Length > MaximumKeys) throw new InvalidDataException("Generated-pair storage evidence exceeds the native operation limit.");
+            var reviewedGroups = reviewedSites.Where(p => p != null && p.Bone != null && p.Channel >= 0 && p.Channel < 9)
+                .GroupBy(p => (p.Bone, Group: p.Channel / 3)).ToDictionary(g => g.Key, g => g.ToArray());
             string stage = Path.Combine(Path.GetFullPath(stageDirectory), "compact-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(stage);
             NativeAnimationOptimizationResult best = null; CHR0Node initial = null;
             int exactGroups = 0, quantizedGroups = 0, attempted = 0, selectiveAttempts = 0; bool stoppedByBudget = false, stoppedByAttemptLimit = false;
@@ -90,18 +98,8 @@ namespace BrawlCrate.Studio
 
                 using (var exact = Copy(best.Candidate))
                 {
-                    foreach (CHR0EntryNode entry in exact.Children.ToArray())
-                    for (int group = 0; group < 3; group++)
-                    {
-                        token.ThrowIfCancellationRequested();
-                        var imported = PreciseCHR0EntryNode.CaptureStorage(entry);
-                        if (group == 1 && imported != null && imported.MatchesGroup(entry.Keyframes, group) &&
-                            Enumerable.Range(3, 3).Any(c => imported[c] != null && imported[c].IsDense)) continue;
-                        var proposal = NativeCompactAnimationStorage.CreateAlternatives(entry, group, true, true,
-                            options.MandatoryFrames, options.LengthScale, options.SmallFile, options.FitJoinFrames, token).FirstOrDefault();
-                        if (proposal == null) continue;
-                        NativeCompactAnimationStorage.ApplyGroup(exact, proposal); exactGroups++;
-                    }
+                    exactGroups = ApplyExactStorageChoices(exact, options.MandatoryFrames,
+                        options.FitJoinFrames, options.LengthScale, token);
                     if (StorageKey(exact) != best.StorageKey)
                     {
                         try
@@ -142,7 +140,7 @@ namespace BrawlCrate.Studio
                         // Dense proposals receive an explicitly bounded prefix
                         // of the same 24 attempts. Indexed fallback still has a
                         // chance; it is not hidden behind a four-format index.
-                        while (pending.Count > 0 && !stoppedByBudget && denseAttempts < 8 && attempted < MaximumCompactQuantizedAttempts)
+                        while (pending.Count > 0 && !stoppedByBudget && denseAttempts < 8 && attempted < attemptLimit)
                         {
                             var partition = pending.OrderBy(p => p.Order).First(); pending.Remove(partition); bool kept = false;
                             long proposedKeys = CountKeys(best.Candidate);
@@ -191,8 +189,10 @@ namespace BrawlCrate.Studio
                         var storage = PreciseCHR0EntryNode.CaptureStorage(entry);
                         if (group == 1 && storage != null && storage.MatchesGroup(entry.Keyframes, group) &&
                             Enumerable.Range(3, 3).Any(c => storage[c] != null && storage[c].IsDense)) continue;
+                        reviewedGroups.TryGetValue((entry.Name, group), out var groupSites);
                         var proposals = NativeCompactAnimationStorage.CreateAlternatives(entry, group, false, strict.Contains(entry.Name),
-                            options.MandatoryFrames, options.LengthScale, options.SmallFile, options.FitJoinFrames, token).Where(p => !p.IsExact).ToArray();
+                            options.MandatoryFrames, options.LengthScale, options.SmallFile, options.FitJoinFrames, token,
+                            groupSites).Where(p => !p.IsExact).ToArray();
                         if (proposals.Length > 0) alternatives.Add(proposals);
                     }
                     alternatives = alternatives.OrderByDescending(p => p[0].BeforeBytes - p[0].AfterBytes).ToList();
@@ -201,7 +201,7 @@ namespace BrawlCrate.Studio
                     // This avoids evaluating every frame/vertex per scalar group.
                     int indexedGroups = 0;
                     InvalidDataException identifiedFailure = null;
-                    for (int precision = 0; precision < 2 && alternatives.Count > 0 && !stoppedByBudget && attempted < MaximumCompactQuantizedAttempts; precision++)
+                    for (int precision = 0; precision < 2 && alternatives.Count > 0 && !stoppedByBudget && attempted < attemptLimit; precision++)
                     {
                         token.ThrowIfCancellationRequested();
                         using (var batch = Copy(best.Candidate))
@@ -227,10 +227,10 @@ namespace BrawlCrate.Studio
                     // identify a bone and its actual ancestor dependencies.
                     // Exclude those proposals before bisecting unrelated groups;
                     // every repaired COMPLETE candidate still uses both gates.
-                    if (indexedGroups == 0 && options.SmallFile && !stoppedByBudget && identifiedFailure != null)
+                    if (indexedGroups == 0 && !stoppedByBudget && identifiedFailure != null)
                     {
                         var remaining = alternatives.ToList();
-                        for (int repair = 0; repair < 6 && remaining.Count > 0 && attempted < MaximumCompactQuantizedAttempts; repair++)
+                        for (int repair = 0; repair < 6 && remaining.Count > 0 && attempted < attemptLimit; repair++)
                         {
                             token.ThrowIfCancellationRequested();
                             var excluded = CompactFailedGroups(identifiedFailure, bones, remaining);
@@ -274,7 +274,7 @@ namespace BrawlCrate.Studio
                             pending.Add(new CompactStoragePartition { Choices = choices.Skip(middle).ToArray(), Precision = 1, Order = order++ });
                         }
                         Split(alternatives.ToArray());
-                        while (pending.Count > 0 && !stoppedByBudget && attempted < MaximumCompactQuantizedAttempts)
+                        while (pending.Count > 0 && !stoppedByBudget && attempted < attemptLimit)
                         {
                             token.ThrowIfCancellationRequested();
                             var partition = pending.OrderByDescending(p => p.Savings).ThenBy(p => p.Order).First(); pending.Remove(partition);
@@ -302,7 +302,7 @@ namespace BrawlCrate.Studio
                                     pending.Add(new CompactStoragePartition { Choices = partition.Choices, Precision = 0, Order = order++ });
                             }
                         }
-                        stoppedByAttemptLimit = pending.Count > 0 && !stoppedByBudget && attempted >= MaximumCompactQuantizedAttempts;
+                        stoppedByAttemptLimit = pending.Count > 0 && !stoppedByBudget && attempted >= attemptLimit;
                     }
                 }
 
@@ -320,7 +320,7 @@ namespace BrawlCrate.Studio
                     "Explicit native indexed storage: I4/I6 where independently verified; precise I12 fallback per SRT group. No dense linear codec or automatic tangent regeneration.\r\n") +
                     (string.IsNullOrEmpty(best.ReductionSelectionReport) ? "" : best.ReductionSelectionReport + "\r\n") +
                     "Lossless packing proposals: " + exactGroups + "; accepted quantized groups: " + quantizedGroups + "; complete quantized batch attempts: " + (attempted - selectiveAttempts) +
-                    "; selective cumulative attempts: " + selectiveAttempts + "/" + MaximumCompactQuantizedAttempts + ".\r\n" +
+                    "; selective cumulative attempts: " + selectiveAttempts + "/" + attemptLimit + ".\r\n" +
                     (attempted > 0 && quantizedGroups == 0 ? "Complete quantized batches were not accepted; the verified lossless/precise fallback was retained.\r\n" : "") +
                     BuildReport(best, frozenOptions).Replace("Independent I12 decode", options.SmallFile && !options.ExactOnly ? "Independent L1/L2/I4/I6/I12 decode" : "Independent I4/I6/I12 decode") +
                     "\r\nContinuous scalar certificate: " + scalarReport +

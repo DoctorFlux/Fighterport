@@ -90,14 +90,21 @@ namespace BrawlCrate.UI
                     if(!rootSnapshots.TryGetValue(root,out var path))
                     {
                         string extension=Path.GetExtension(root.FilePath);if(string.IsNullOrEmpty(extension))extension=".brres";
-                        path=Path.Combine(stage,name+extension);root.Export(path);rootSnapshots.Add(root,path);TransitionRootSnapshotExports++;
+                        path=Path.Combine(stage,name+extension);
+                        // A preview must not rebuild the live container: native
+                        // rebuild can drop imported animation storage plans and
+                        // clear dirty flags even when coefficients are unchanged.
+                        NativeFittingPreviewSnapshot.WriteRawContext(root,path,model,modelPath);
+                        rootSnapshots.Add(root,path);TransitionRootSnapshotExports++;
                     }
-                    var copy=NodeFactory.FromFile(null,path)??throw new InvalidDataException("Native preview resource could not be reopened.");
+                    var copy=NativeFittingPreviewSnapshot.OpenContext(root,path,model,modelPath);
                     TransitionRootSnapshotOpens++;roots.Add(copy);return copy;
                 }
                 IEnumerable<ResourceNode> Walk(ResourceNode root){yield return root;foreach(var c in root.Children)foreach(var n in Walk(c))yield return n;}
                 ResourceNode a=CopyRoot(model.RootNode,"before-model"),b=CopyRoot(model.RootNode,"after-model");var beforeModel=Walk(a).OfType<MDL0Node>().Single(m=>NativeControlHash(m,".mdl0")==modelHash);var afterModel=Walk(b).OfType<MDL0Node>().Single(m=>NativeControlHash(m,".mdl0")==modelHash);
-                var references=modelEditControl1.ModelPanel._resourceList.Select(r=>r.RootNode).Distinct().Where(r=>r!=model.RootNode).Select((r,i)=>CopyRoot(r,"reference-"+i)).ToArray();
+                var references=modelEditControl1.ModelPanel._resourceList.Select(r=>r.RootNode).Distinct()
+                    .Where(r=>r!=model.RootNode&&NativeFittingPreviewSnapshot.HasTextureDependencies(r))
+                    .Select((r,i)=>CopyRoot(r,"reference-"+i)).ToArray();
                 CHR0Node prepared=null;string preparedKey=null,copiedState=null;NativeTransitionFit metadata=null;Dictionary<string,string> referenceHashes=null;
                 void VerifyReferences(){if(referenceHashes==null)throw new InvalidOperationException("Prepare the transition first.");foreach(var proof in referenceHashes){var native=choices.Single(c=>c.Key==proof.Key);native.Validate?.Invoke();if(!native.External&&!project.RegisteredAssets().Contains(native.Asset)||NativeControlHash(native.Clip,".chr0")!=proof.Value)throw new InvalidOperationException("A transition reference changed. Prepare the fit again.");}}
                 AddViewerFittingReferences(choices);
@@ -127,15 +134,28 @@ namespace BrawlCrate.UI
                         current();if(client!=session||window.IsDisposed)throw new OperationCanceledException("Transition fitting cancelled.");
                         foreach(var proof in hashes)if(NativeControlHash(choices.Single(c=>c.Key==proof.Key).Clip,".chr0")!=proof.Value)throw new InvalidOperationException("A reference changed during preparation; stale output discarded.");
                         if(reply.Tracks.Sum(t=>t.Channels.Sum(c=>c.Length))>200000)throw new InvalidOperationException("This fit exceeds the 200000 native-key review budget. Fit fewer bones or a smaller clip.");
-                        var result=NodeFactory.FromFile(null,sourcePath) as CHR0Node??throw new InvalidDataException("Native source snapshot could not reopen.");
                         var sourceGeneratedPairs=NativeGeneratedPairRegistry.Session.Resolve(source,generatedPairRig,fitCancellation.Token);
+                        CHR0Node result;
+                        using(var reopened=NodeFactory.FromFile(null,sourcePath) as CHR0Node??throw new InvalidDataException("Native source snapshot could not reopen."))
+                            result=NativeAnimationOptimization.CopySource(reopened);
                         try
                         {
                             result.Name=options.Name;ApplyBoundaryTracks(result,reply.Tracks,options,model);
-                            const string optimizationReport="Full-quality fitting master retained. Optimize CHR0 size is available at export.";
+                            string optimizationReport="Full-quality fitting master retained. Only bit-exact storage choices are prepared here. Use Optimize CHR0 size for further reduction; ordinary native Export writes the current animation.";
                             string proofPath=Path.Combine(stage,"candidate-"+Guid.NewGuid().ToString("N")+".chr0");result.Export(proofPath);
                             using(var decoded=NodeFactory.FromFile(null,proofPath) as CHR0Node)
                                 if(decoded==null||decoded.FrameCount!=source.FrameCount||decoded.Loop!=source.Loop||NativeControlSnapshot.Capture(result,result.Children.Select(c=>c.Name)).ContentKey!=NativeControlSnapshot.Capture(decoded,decoded.Children.Select(c=>c.Name)).ContentKey)throw new InvalidDataException("Native fit did not fresh-reopen with its exact keys, tangents and flags. No result was added.");
+                            // The numerical fit is already proven. Storage-only
+                            // choices must preserve that same finished master;
+                            // no lossy export policy is applied to authoring data.
+                            using(var compact=NativeAnimationOptimization.PrepareExactStorageCopy(result,stage,fitCancellation.Token))
+                            {
+                                var numeric=result;result=compact.Candidate;compact.Candidate=null;numeric.Dispose();
+                                optimizationReport+="\r\n"+compact.Report;
+                            }
+                            result.Export(proofPath);
+                            using(var decoded=NodeFactory.FromFile(null,proofPath) as CHR0Node)
+                                if(decoded==null||NativeAnimationOptimization.SourceContentKey(decoded)!=NativeAnimationOptimization.SourceContentKey(result)||NativeAnimationOptimization.StorageKey(decoded)!=NativeAnimationOptimization.StorageKey(result))throw new InvalidDataException("The fitted storage copy did not retain its exact master and complete native payloads. No result was added.");
                             // Carry only actual unchanged pair tuples from the
                             // frozen attack. Reference/fitted/unknown pairs do
                             // not acquire writer provenance by resemblance.

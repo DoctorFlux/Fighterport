@@ -1,5 +1,23 @@
 # Fighterport
 
+29 October 2026 **preview.61-payload-aware-preparation** completes its bounded
+increment: 3,450 checks / 11 admitted background runs and 60 fresh UI images
+covered by actual inspection and exact reviewed-image hash continuity. Retarget
+source-key/interpolated preparation uses shared actual-byte packing against the
+same finished target and strict cumulative limits. Fitting preserves imported
+plans and packs its editable master only bit-exactly. Raw visual contexts avoid
+live motion rebuilds and preserve terminal payloads/dirty/backing state. Unsaved
+texture/palette/additional-model or changed visual contexts need saving first.
+Ordinary Save stays exact and right-click Export stays native without analysis.
+The actual UI case is 83,864 → 81,140 bytes; do not substitute the separate
+bone-key 26.79% saving. Full viewer, original Next, all weights, protected source-
+local roots and Undo remain. See [acceptance](docs/CHR0_PAYLOAD_ACCEPTANCE_2026-10-29.md)
+and [notes](docs/CHR0_PAYLOAD_NOTES_2026-10-29.md). The launcher selects
+`Fighterport-payload61/native1`. ONE G1/M2 remains incomplete; no next increment
+is promoted. DoctorFlux source-only public main/background testing remain.
+Physical input/DPI, human usability, general contacts, external editors/plugins,
+Melee and games stay unverified. Earlier checkpoints are historical.
+
 29 October 2026 **preview.60-native-animation-export** completes its bounded
 correction: 806 checks / eight admitted background runs and 26 actually inspected
 UI PNGs. Ordinary native animation-list Export uses the unchanged BrawlCrate

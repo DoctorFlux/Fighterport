@@ -54,6 +54,9 @@ namespace BrawlCrate.Studio
         // Spread the existing native work budget across tighter scalar
         // proposals instead of restoring most of the rig on the first one.
         public int ReductionAttemptLimit { get; set; } = 8;
+        // Creation workflows can search less without relaxing the quality
+        // contract or increasing the shared native/scalar work ceilings.
+        public int CompactCandidateAttemptLimit { get; set; } = 24;
     }
 
     // Operation-owned aggregate for sequential quality attempts. These are the

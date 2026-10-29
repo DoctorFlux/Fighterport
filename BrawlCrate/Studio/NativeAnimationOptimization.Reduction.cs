@@ -116,6 +116,7 @@ namespace BrawlCrate.Studio
                 TargetBones = source.TargetBones?.ToArray(), ProtectedBones = source.ProtectedBones?.ToArray(), ExactBones = source.ExactBones?.ToArray(),
                 MandatoryFrames = source.MandatoryFrames?.ToArray(), FitJoinFrames = source.FitJoinFrames?.ToArray(), ProbeFrames = source.ProbeFrames?.ToArray(),
                 BindPoseCleanupBones = source.BindPoseCleanupBones?.ToArray(), DeferSizeValidation = source.DeferSizeValidation, Budget = budget,
-                ReferenceSamples=source.ReferenceSamples, ReductionAttemptLimit=source.ReductionAttemptLimit };
+                ReferenceSamples=source.ReferenceSamples, ReductionAttemptLimit=source.ReductionAttemptLimit,
+                CompactCandidateAttemptLimit=source.CompactCandidateAttemptLimit };
     }
 }

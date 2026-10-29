@@ -132,12 +132,18 @@ internal static partial class Program
         using (var source = CompactFixture(20, 3, new[] { 0, 4, 4, 8 }, i => new[] { 1.123f, 2.234f, 2.234f, 3.456f }[i], i => i < 2 ? .1234567f : .2234567f))
         {
             var entry = (CHR0EntryNode)source.Children[0];
-            var choices = NativeCompactAnimationStorage.CreateAlternatives(entry, 1, false, false, new int[0], 1, true, new int[0]);
+            var sides = entry.KeyArrays[3].Entries.Where(k => k._index == 4).ToArray();
+            var writerPair = new NativeGeneratedPairEvidence(entry, 3, sides[0], sides[1]);
+            Check(writerPair.Eligible && writerPair.SameContext(entry) && writerPair.Matches(sides[0], sides[1]),
+                "Bounded compact fixture freezes exact authority for its procedurally authored continuous pair");
+            var choices = NativeCompactAnimationStorage.CreateAlternatives(entry, 1, false, false, new int[0], 1, true, new int[0],
+                CancellationToken.None, new[] { writerPair.Site() });
             Check(choices.Length > 0 && choices.All(p => p.Curves[0].Frames.SequenceEqual(new[] { 0, 4, 4, 8 })),
-                "Bounded compact storage retains both continuous body sides while offering smaller decoded tangent coefficients");
+                "Bounded compact storage retains both reviewed continuous body sides while offering smaller decoded tangent coefficients");
             Check(NativeCompactAnimationStorage.CreateAlternatives(entry, 1, true, true, new int[0], 1, true, new int[0]).Length == 0 &&
-                NativeCompactAnimationStorage.CreateAlternatives(entry, 1, false, false, new int[0], 1).Length == 0,
-                "Exact roots and the strict quality profile retain the original continuous paired tangent bits");
+                NativeCompactAnimationStorage.CreateAlternatives(entry, 1, false, false, new int[0], 1).Length == 0 &&
+                NativeCompactAnimationStorage.CreateAlternatives(entry, 1, false, false, new int[0], 1, true, new int[0]).Length == 0,
+                "Exact roots and unreviewed strict or Small file proposals retain the original continuous paired tangent bits");
             NativeCompactAnimationStorage.ApplyGroup(source, choices[0]);
             string path = Path.Combine(stage, "bounded-continuous-pair.chr0"); source.ExportChecked(path);
             using (var decoded = NodeFactory.FromFile(null, path) as CHR0Node)

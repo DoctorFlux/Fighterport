@@ -1,5 +1,52 @@
 ﻿# Current milestone M2 — simpler native workspace
 
+29 October — **preview.61 payload-aware preparation** completes its bounded
+increment within the same incomplete G1/M2. Starting commit:
+`c92410bbf8a42af7d355b61248aa14e39404655e`. Complete the bounded source-key
+retarget/fitting preparation correction using actual native storage costs.
+The supplied Sonic and Mario exports have fewer target entries, but the target
+stores explicit paired I12 rows where the source often stores compact L1/I4
+payloads. Identical visible keyed frames are not identical stored bytes.
+
+Keep the complete native previewer, original Next numerical result/reference,
+all skin weights, protected source-local controls, fitting joins, native Undo,
+exact ordinary Save and historical recipes. Preserve imported compact payloads
+through fitting before any edits, and offer only bit-identical I4/I6 plans to
+the finished editable fitting master. Qualify source-key retarget storage and
+the shared optimizer against the same finished target master with existing
+continuous scalar and cumulative native quality gates. Use independent copies,
+fresh serialization/reopen, complete flags/metadata/storage checks and measured
+file/resource bytes. Retain the smaller qualified reference after failure or no
+useful saving. No tolerance relaxation, model/weight edits, automatic lossy Save,
+new mode or project-format migration is authorized.
+
+Ordinary right-click Export retains preview.60's native picker/current-animation
+behavior and runs no optimization analysis. Explicit optimization remains the
+place for further error-bounded reduction. See
+[payload audit and implementation notes](../CHR0_PAYLOAD_NOTES_2026-10-29.md).
+Qualification: **3,450 checks / 11 admitted background runs**, with all 60 fresh
+UI PNGs covered by actual inspection and exact reviewed-image hash continuity.
+The actual UI export measures 83,864 → 81,140 bytes; direct bone-key output
+measures 135,468 → 99,172 with identical decoded tuples. The remaining gap is not
+hidden: no fixed compression ratio or global optimum is claimed. Both authentic
+directions and shared optimizer/export/lifecycle gates pass without relaxed
+limits. Two independent accountants agree across 26 old/new paths; all seven
+final results exactly match those audited bytes.
+
+Fitting preview staging also stops rebuilding live motion containers, preserving
+compact payloads, terminal samples and dirty/backing state. Bounded raw visual
+contexts preserve native ancestry and overlay the current MDL0. Dirty texture/
+palette/additional-model or changed visual contexts require saving first. Mixed
+context tests preserve 33 authentic L1 channels and verify clean/dirty synthetic
+palette behavior. The stale guard, full viewer, Next, weights, roots and Undo
+remain intact. See [acceptance](../CHR0_PAYLOAD_ACCEPTANCE_2026-10-29.md).
+
+The launcher selects `Fighterport-payload61/native1`. Publish source only to
+public Fighterport/main with DoctorFlux attribution. ONE G1/M2 remains incomplete;
+no next increment is promoted. Physical input/DPI, human usability, general
+contacts, external editors/plugins, Melee and games remain unverified. Earlier
+checkpoints below are historical.
+
 29 October — **preview.60 native animation export** completes its bounded correction
 within the same incomplete G1/M2. Starting commit:
 `80353b8c3a605229f9c1890bf6ba222ca4450f08`. The user explicitly requests ordinary

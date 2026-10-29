@@ -4,6 +4,7 @@ using BrawlCrate.Studio.Retargeting;
 using BrawlCrate.UI;
 using BrawlLib.SSBB.ResourceNodes;
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -140,14 +141,74 @@ internal static partial class Program
                 Call(form,"AddSelectedBatchReviewClip");Call(form,"MarkBatchReview");var approval=ReviewRows(form).Single();Check(ReviewApproved(approval),"Current PAC member review binds to its own fitting recipe");
                 var frozen=typeof(ModelForm).GetMethod("FreezeOwnedWorkspaceExport",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).Invoke(form,new object[]{owner,source,false,null});
                 var second=siblings.Keys.Single(c=>c.Name=="AttackHi3");string secondBefore=SetNativeContent(second),secondEntry="root"+BrawlLibrarySource.Resources(second.RootNode).Single(p=>ReferenceEquals(p.Item1,second)).Item2.Substring(1),secondName=second.Name,secondResult=null;
-                second.Name=source.Name;editor.SelectedCHR0=second;editor.SetFrame(5);await SimpleControlsReady(form);
+                NativeFittingPreviewSnapshotChecks(args[0],second,output);
+                async Task SelectNativeMember(CHR0Node member,int at)
+                {
+                    var row=editor.leftPanel.listAnims.Items.Cast<ListViewItem>().Single(item=>ReferenceEquals(item.Tag,member));
+                    foreach(ListViewItem item in editor.leftPanel.listAnims.Items)if(!ReferenceEquals(item,row))item.Selected=false;
+                    row.Selected=true;editor.SetFrame(at);await SimpleControlsReady(form);
+                    await Wait(()=>ReferenceEquals(editor.SelectedCHR0,member)&&ReferenceEquals(Field(form,"_loadedControlModel"),model)&&
+                        ReferenceEquals(Field(form,"_loadedControlClip"),member)&&(string)Field(form,"_loadedControlKey")== (string)Call(form,"ControlKey")&&
+                        !(bool)Field(form,"_controlBusy")&&!(bool)Field(form,"_controlSetupQueued"));
+                }
+                second.Name=source.Name;await SelectNativeMember(second,5);
+                string frozenSecondControlKey=(string)Call(form,"ControlKey");
+                var secondDiagnostics=new List<object>();var diagnosticJson=new System.Web.Script.Serialization.JavaScriptSerializer{MaxJsonLength=64*1024*1024};
+                string NativeIdentity(CHR0Node member)=>member==null?null:BrawlLibrarySource.Resources(member.RootNode).Single(p=>ReferenceEquals(p.Item1,member)).Item2;
+                string SecondNativeState()=>diagnosticJson.Serialize(new{Content=NativeAnimationOptimization.SourceContentKey(second),Storage=NativeAnimationOptimization.StorageKey(second),
+                    second.IsDirty,second.IsBranch,second.HasChanged,Backing=SharedOptimizationBacking(second),RootBacking=SharedOptimizationBacking(second.RootNode),RootDirty=second.RootNode.IsDirty,RootBranch=second.RootNode.IsBranch});
+                var previewReferenceRoots=editor.ModelPanel._resourceList.Select(r=>r.RootNode).Distinct().Where(r=>r!=model.RootNode).ToArray();
+                int visualPreviewReferences=previewReferenceRoots.Count(r=>NativeFittingPreviewSnapshot.HasTextureDependencies(r));
+                int pureMotionReferences=previewReferenceRoots.Length-visualPreviewReferences;
+                int rootSnapshotsBefore=form.TransitionRootSnapshotExports,rootOpensBefore=form.TransitionRootSnapshotOpens;
+                string secondNativeBefore=SecondNativeState();
+                void UnchangedSecondNative(string phase)=>Check(SecondNativeState()==secondNativeBefore,phase+" retains the duplicate-name source's exact native content, storage, backing, dirty and branch state");
+                void RecordSecondFitState(string phase,TransitionFitDialog dialog=null)
+                {
+                    var displayed=dialog==null?null:(CHR0Node)Field(dialog,"source");
+                    string sourceContent=NativeAnimationOptimization.SourceContentKey(second),sourceStorage=NativeAnimationOptimization.StorageKey(second);
+                    bool sourceDirty=second.IsDirty,sourceBranch=second.IsBranch;
+                    string snapshotPath=Path.Combine(output,phase+"-second.chr0");
+                    using(var independent=NativeAnimationOptimization.CopySource(second))independent.ExportChecked(snapshotPath);
+                    string afterSnapshotContent=NativeAnimationOptimization.SourceContentKey(second),afterSnapshotStorage=NativeAnimationOptimization.StorageKey(second);
+                    bool afterSnapshotDirty=second.IsDirty,afterSnapshotBranch=second.IsBranch;
+                    string modelHash=(string)Call(form,"NativeControlHash",model,".mdl0");
+                    string afterModelHashContent=NativeAnimationOptimization.SourceContentKey(second),afterModelHashStorage=NativeAnimationOptimization.StorageKey(second);
+                    string sourceHash=(string)Call(form,"NativeControlHash",second,".chr0");
+                    secondDiagnostics.Add(new{Phase=phase,ModelHash=modelHash,SourceHash=sourceHash,
+                        SourceContentKey=sourceContent,SourceStorageKey=sourceStorage,SourceIsDirty=sourceDirty,SourceIsBranch=sourceBranch,
+                        IndependentSnapshot=Path.GetFileName(snapshotPath),IndependentSnapshotSha256=FighterProject.HashFile(snapshotPath),
+                        AfterSnapshotContentKey=afterSnapshotContent,AfterSnapshotStorageKey=afterSnapshotStorage,
+                        AfterSnapshotIsDirty=afterSnapshotDirty,AfterSnapshotIsBranch=afterSnapshotBranch,
+                        AfterModelHashContentKey=afterModelHashContent,AfterModelHashStorageKey=afterModelHashStorage,
+                        AfterSourceHashContentKey=NativeAnimationOptimization.SourceContentKey(second),AfterSourceHashStorageKey=NativeAnimationOptimization.StorageKey(second),
+                        AfterSourceHashIsDirty=second.IsDirty,AfterSourceHashIsBranch=second.IsBranch,ControlKey=(string)Call(form,"ControlKey"),
+                        FrozenControlKey=frozenSecondControlKey,ControlState=(string)Call(form,"ControlState",frozenSecondControlKey),
+                        Provenance=diagnosticJson.Serialize(new{owner.Retarget,TransitionFit=(NativeTransitionFit)Call(form,"TransitionRecipeFor",owner,second)}),
+                        SelectedIdentity=NativeIdentity(editor.SelectedCHR0),SelectedIsSecond=ReferenceEquals(editor.SelectedCHR0,second),
+                        SelectedIsFirst=ReferenceEquals(editor.SelectedCHR0,source),DialogSourceIdentity=NativeIdentity(displayed),
+                        DialogSourceIsSecond=ReferenceEquals(displayed,second),LoadedKey=(string)Field(form,"_loadedControlKey"),
+                        LoadedIsSecond=ReferenceEquals(Field(form,"_loadedControlClip"),second),Frame=editor.CurrentFrame,
+                        FinalSourceContentKey=NativeAnimationOptimization.SourceContentKey(second),StorageKey=NativeAnimationOptimization.StorageKey(second),
+                        SourceDirty=second.IsDirty,SourceBranch=second.IsBranch,SourceHasChanged=second.HasChanged,
+                        RootDirty=second.RootNode.IsDirty,RootBranch=second.RootNode.IsBranch,NativeState=SecondNativeState(),
+                        VisualPreviewReferences=visualPreviewReferences,PureMotionReferences=pureMotionReferences,
+                        RootSnapshotDelta=form.TransitionRootSnapshotExports-rootSnapshotsBefore,RootOpenDelta=form.TransitionRootSnapshotOpens-rootOpensBefore});
+                    File.WriteAllText(Path.Combine(output,"fit-duplicate-member-state.json"),diagnosticJson.Serialize(secondDiagnostics));
+                }
+                RecordSecondFitState("before-open");
                 bool secondFinished=false;Exception secondFailure=null;
                 form.TransitionFitReady=async window=>
                 {
                     try
                     {
+                        RecordSecondFitState("shown",window);
+                        UnchangedSecondNative("Opening the native fitting previews");
+                        Check(form.TransitionRootSnapshotExports-rootSnapshotsBefore==1+visualPreviewReferences&&form.TransitionRootSnapshotOpens-rootOpensBefore==2+visualPreviewReferences,
+                            "Fitting snapshots only the target and "+visualPreviewReferences+" visual references; "+pureMotionReferences+" pure-motion reference roots are excluded");
                         var choices=SimpleControl<ComboBox>(window,"transition_exit");choices.SelectedItem=choices.Items.OfType<TransitionClipChoice>().Single(c=>c.External&&c.Key.StartsWith("viewer:")&&c.Clip.Name=="Wait1");
-                        SimpleControl<CheckBox>(window,"transition_binding").Checked=true;await(Task)Call(window,"PrepareFit");
+                        SimpleControl<CheckBox>(window,"transition_binding").Checked=true;RecordSecondFitState("before-prepare",window);await(Task)Call(window,"PrepareFit");RecordSecondFitState("after-prepare",window);
+                        UnchangedSecondNative("Preparing the duplicate-name fit");
                         Check(window.Candidate!=null&&window.ReadOptions().Name==source.Name,"An identically named sibling prepares against its own native identity: "+SimpleControl<TextBox>(window,"transitionReport").Text);
                         secondResult=SetNativeContent(window.Candidate);SimpleControl<Button>(window,"applyTransition").PerformClick();
                     }
@@ -159,7 +220,7 @@ internal static partial class Program
                 Call(form,"SyncBatchReview");Check(ReviewApproved(approval),"A sibling's fitting recipe does not invalidate the unchanged member's review approval");
                 ((Action)frozen.GetType().GetField("Validate",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Public).GetValue(frozen))();((IDisposable)frozen).Dispose();
                 Check(true,"A frozen explicitly owned export remains current when only a sibling fit changes");
-                editor.SelectedCHR0=source;editor.SetFrame(frameBefore);await SimpleControlsReady(form);editor.Undo();await SimpleControlsReady(form);
+                await SelectNativeMember(source,frameBefore);editor.Undo();await SimpleControlsReady(form);
                 Check(ReferenceEquals(editor.SelectedCHR0,source)&&editor.CurrentFrame==frameBefore&&SetNativeContent(source)==resultContent&&owner.ClipTransitionFits.Count==1,"Cross-clip Undo restores the sibling while preserving current selection and the first fitted member");
                 editor.Redo();await SimpleControlsReady(form);Check(owner.ClipTransitionFits.Count==2&&SetNativeContent(source)==resultContent&&SetNativeContent(second)==secondResult,"Cross-clip Redo restores both exact fitted members and independent receipts");
                 second.Name=secondName;secondResult=SetNativeContent(second);

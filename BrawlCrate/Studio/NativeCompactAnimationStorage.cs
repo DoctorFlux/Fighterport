@@ -75,7 +75,7 @@ namespace BrawlCrate.Studio
         // bounds. Fit joins are distinct from explicit exact mandatory knots.
         public static NativeCompactStorageGroup[] CreateAlternatives(CHR0EntryNode entry, int group,
             bool exactOnly, bool exactGroup, int[] mandatoryFrames, double lengthScale, bool smallFile, int[] fitJoinFrames,
-            CancellationToken token = default(CancellationToken))
+            CancellationToken token = default(CancellationToken), NativeGeneratedPairSite[] reviewedGeneratedPairs = null)
         {
             if (entry == null || group < 0 || group > 2) throw new ArgumentException("A native storage proposal requires one exact SRT group.");
             token.ThrowIfCancellationRequested();
@@ -95,6 +95,39 @@ namespace BrawlCrate.Studio
             double valueLimit = small ? group == 0 ? .0001 : group == 1 ? .1 : .002 :
                 group == 0 ? .00001 : group == 1 ? .01 : Math.Min(.0002, .0001 * lengthScale);
             double derivativeLimit = group == 1 ? small ? .1 : .05 : valueLimit;
+            if ((reviewedGeneratedPairs?.Length ?? 0) > MaximumKeys)
+                throw new InvalidDataException("Reviewed native generated-pair proposals exceed the operation budget.");
+            // These sites grant proposal permission only. They do not prove
+            // continuous equivalence or cumulative target quality, which the
+            // complete freshly decoded candidate must establish independently.
+            // Pair permission is deliberately separate from SmallFile and its
+            // positive-zero policy. Unknown/authored/discontinuous sides stay
+            // exact even when another site on this channel is writer-reviewed.
+            var reviewedPairs = Enumerable.Range(0, 3).Select(axis => new HashSet<float>()).ToArray();
+            if (!exact && reviewedGeneratedPairs != null)
+            {
+                var claimCounts = new Dictionary<(int Channel, int Time), int>();
+                foreach (var site in reviewedGeneratedPairs)
+                {
+                    token.ThrowIfCancellationRequested();
+                    if (site == null || !string.Equals(site.Bone, entry.Name, StringComparison.Ordinal) ||
+                        site.Channel < group * 3 || site.Channel >= group * 3 + 3 || !Finite(site.Frame) || site.Frame < 0 || Bits(site.Frame) == int.MinValue) continue;
+                    var key = (site.Channel, Bits(site.Frame));
+                    claimCounts[key] = claimCounts.ContainsKey(key) ? 2 : 1;
+                }
+                var claims = new HashSet<(int Channel, int Time)>(claimCounts.Where(p => p.Value == 1).Select(p => p.Key));
+                for (int axis = 0; axis < 3; axis++)
+                    foreach (var knot in arrays[axis].GroupBy(k => Bits(k._index)))
+                    {
+                        token.ThrowIfCancellationRequested();
+                        if (!claims.Contains((group * 3 + axis, knot.Key))) continue;
+                        var sides = knot.ToArray();
+                        if (sides.Length == 2 && Bits(sides[0]._value) == Bits(sides[1]._value) &&
+                            sides.All(k => Finite(k._index) && Finite(k._value) && Finite(k._tangent) &&
+                                Bits(k._index) != int.MinValue && Bits(k._value) != int.MinValue && Bits(k._tangent) != int.MinValue))
+                            reviewedPairs[axis].Add(sides[0]._index);
+                    }
+            }
             var result = new List<NativeCompactStorageGroup>();
             foreach (AnimDataFormat format in new[] { AnimDataFormat.I4, AnimDataFormat.I6 })
             {
@@ -103,7 +136,7 @@ namespace BrawlCrate.Studio
                 for (int axis = 0; axis < 3; axis++)
                 {
                     var keys = arrays[axis]; if (keys.Length <= 1) continue;
-                    var curve = TryCurve(keys, format, exact, mandatory, valueLimit, derivativeLimit, small, small && group != 0, token);
+                    var curve = TryCurve(keys, format, exact, mandatory, valueLimit, derivativeLimit, small, small && group != 0, reviewedPairs[axis], token);
                     if (curve == null) { accepted = false; break; }
                     curves[axis] = curve; before += 8 + keys.Length * 12; after += curve.ByteCount;
                     var values = curve.Values; var tangents = curve.Tangents;
@@ -377,7 +410,8 @@ namespace BrawlCrate.Studio
         }
 
         private static IndexedCHR0CurveStorage TryCurve(KeyframeEntry[] keys, AnimDataFormat format, bool exact,
-            HashSet<int> mandatory, double valueLimit, double derivativeLimit, bool zeroAlignedGrid, bool allowPositiveZero, CancellationToken token)
+            HashSet<int> mandatory, double valueLimit, double derivativeLimit, bool zeroAlignedGrid, bool allowPositiveZero,
+            HashSet<float> reviewedPairedFrames, CancellationToken token)
         {
             double frameLimit = format == AnimDataFormat.I4 ? 255 : 1023.96875; int valueMaximum = format == AnimDataFormat.I4 ? 4095 : 65535;
             int tangentMinimum = format == AnimDataFormat.I4 ? -2048 : -32768, tangentMaximum = format == AnimDataFormat.I4 ? 2047 : 32767;
@@ -434,7 +468,7 @@ namespace BrawlCrate.Studio
                         // slopes may use bounded compact coefficients; jumps,
                         // protected controls and mandatory knots stay exact.
                         bool strict = exact || mandatory.Any(frame => frame == keys[i]._index) || discontinuities.Contains(keys[i]._index)
-                            || !allowPositiveZero && pairedFrames.Contains(keys[i]._index);
+                            || pairedFrames.Contains(keys[i]._index) && !reviewedPairedFrames.Contains(keys[i]._index);
                         if (!Allowed(keys[i]._value, decodedValues[i], strict, valueLimit, allowPositiveZero) || !Allowed(keys[i]._tangent, decodedTangents[i], strict, derivativeLimit, allowPositiveZero)) { valid = false; break; }
                         error = Math.Max(error, Math.Abs((double)keys[i]._value - decodedValues[i]) / Math.Max(valueLimit, double.Epsilon));
                         error = Math.Max(error, Math.Abs((double)keys[i]._tangent - decodedTangents[i]) / Math.Max(derivativeLimit, double.Epsilon));

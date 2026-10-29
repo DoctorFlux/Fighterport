@@ -127,35 +127,76 @@ namespace BrawlCrate.Studio.Retargeting
                 try
                 {
                     progress?.Invoke(92, mode==RetargetKeyframeMode.Interpolated?"Verifying interpolated curves against the complete dense motion...":"Verifying source-seeded curves against the complete dense motion...");
-                    using (var verified = NativeAnimationOptimization.Prepare(model, dense, wire.Tracks,
-                        new NativeAnimationOptimizationOptions { ExactOnly = false, LengthScale = length,
+                    var options = new NativeAnimationOptimizationOptions { ExactOnly = false, LengthScale = length,
                             TargetBones = target.Bones.Select(b => b.Name).ToArray(), ExactBones = controls.ToArray(),
                             AllowGeneratedPairReduction = !preservePairs, GeneratedPairSites = attemptPairs,
-                            BindPoseCleanupBones = wire.BindOmissions, Budget = nativeBudget, ProbeFrames = proof.Probes.ToArray() }, folder, token))
+                            BindPoseCleanupBones = wire.BindOmissions, Budget = nativeBudget, ProbeFrames = proof.Probes.ToArray(),
+                            CompactCandidateAttemptLimit = 6 };
+                    using (var verified = NativeAnimationOptimization.Prepare(model, dense, wire.Tracks, options, folder, token))
                     {
+                        // Source markers constrain curve preparation, but do not
+                        // choose native payload storage. Pack the verified target
+                        // copy under the SAME cumulative target-space limits.
+                        // Its precise candidate is also the actual byte ceiling;
+                        // the donor is never a compression/size reference.
+                        NativeAnimationOptimizationResult packed = null;
+                        string storageNote = "";
+                        try
+                        {
+                            progress?.Invoke(95, "Checking native curve payloads against the finished target motion...");
+                            var frozenPrecise = verified.Candidate ?? dense;
+                            packed = NativeAnimationOptimization.PrepareCompact(model, dense, frozenPrecise, verified,
+                                options, folder, (decoded, cancellation) => System.Threading.Tasks.Task.FromResult(
+                                    QualityStorageCertificate(dense, frozenPrecise, decoded, proof, length, controls,
+                                        attemptPairs, wire.BindOmissions)), token).GetAwaiter().GetResult();
+                        }
+                        catch (InvalidDataException error) when (error.Data.Contains("OptimizationQuality") ||
+                            error.Data.Contains("OptimizationBudget") || error.Data.Contains("OptimizationSize"))
+                        {
+                            // A failed packing proposal cannot discard the
+                            // already independently verified precise result.
+                            storageNote = "Native payload search retained the verified precise candidate: " + error.Message + " ";
+                        }
+                        try
+                        {
+                        var final = packed ?? verified;
+                        bool storageApproximation = final.ContentKey != verified.ContentKey;
                         report.SourceSeedKeys = wire.SeedKeys;
-                        var candidate = verified.Candidate == null ? NativeAnimationOptimization.Copy(dense) : verified.Candidate;
-                        verified.Candidate = null;
+                        var candidate = final.Candidate == null ? NativeAnimationOptimization.Copy(dense) : final.Candidate;
+                        final.Candidate = null;
                         report.AddedQualityKeys = Math.Max(0, Count(candidate) - wire.SeedKeys);
                         report.ScalarCertified = report.QualityVerified = true; report.ScalarCertificateWork = proof.Work;
                         report.MaximumCertifiedScaleError = wire.Value[0]; report.MaximumCertifiedEulerError = wire.Value[1];
                         report.MaximumCertifiedTranslationError = wire.Value[2];
                         report.MaximumCertifiedScaleDerivativeError = wire.Derivative[0]; report.MaximumCertifiedEulerDerivativeError = wire.Derivative[1];
                         report.MaximumCertifiedTranslationDerivativeError = wire.Derivative[2];
+                        if (storageApproximation)
+                        {
+                            // These are conservative certified ceilings for the
+                            // cumulative decoded candidate, not the earlier
+                            // precise candidate's now-stale measured maxima.
+                            report.MaximumCertifiedScaleError = report.MaximumCertifiedScaleDerivativeError = .00001;
+                            report.MaximumCertifiedEulerError = .01; report.MaximumCertifiedEulerDerivativeError = .05;
+                            report.MaximumCertifiedTranslationError = report.MaximumCertifiedTranslationDerivativeError = Math.Min(.0002, .0001 * length);
+                        }
                         report.RestoredTargetTracks = wire.RestoredTracks.ToArray(); report.RestoredTargetChannels = wire.RestoredChannels.ToArray();
                         report.OmittedTargetTracks = wire.BindOmissions;
                         report.DenseFallback = NativeAnimationOptimization.ContentKey(candidate) == report.DenseContent;
-                        report.Samples=verified.Samples;report.BoneVisits=nativeBudget.BoneVisits;report.VertexVisits=nativeBudget.VertexVisits;
-                        report.MaximumEulerError=verified.MaximumEulerError;report.MaximumOrientationError=verified.MaximumOrientationError;
-                        report.MaximumScaleError=verified.MaximumScaleError;report.MaximumLocalTranslationError=verified.MaximumLocalTranslationError;
-                        report.MaximumWorldBoneError=verified.MaximumWorldBoneError;report.MaximumSkinError=verified.MaximumSkinError;
-                        report.WorstFrame=verified.WorstFrame;report.WorstBone=verified.WorstBone;
+                        report.Samples=final.Samples;report.BoneVisits=nativeBudget.BoneVisits;report.VertexVisits=nativeBudget.VertexVisits;
+                        report.MaximumEulerError=final.MaximumEulerError;report.MaximumOrientationError=final.MaximumOrientationError;
+                        report.MaximumScaleError=final.MaximumScaleError;report.MaximumLocalTranslationError=final.MaximumLocalTranslationError;
+                        report.MaximumWorldBoneError=final.MaximumWorldBoneError;report.MaximumSkinError=final.MaximumSkinError;
+                        report.WorstFrame=final.WorstFrame;report.WorstBone=final.WorstBone;
                         report.QualityNotes = (report.QualityNotes ?? "") +
                             (preservePairs ? "The fifth bounded attempt retained complete original paired channels and accepted a conservative storage baseline before dense fallback; strict quality thresholds and the shared verification budget were unchanged. " : "") +
                             "Continuous raw Hermite value/derivative certificates and independent native cumulative checks passed. " +
                             (proof.Limited ? "Scalar proof budget was exhausted; uncertain spans retain their exact dense keys. " : "") +
-                            "The world/basis distance combines native position and L-scaled forward-basis errors; the legacy separate MaximumWorldBasisError field is not measured or claimed in v2. Native verification: " + verified.Report;
+                            "The world/basis distance combines native position and L-scaled forward-basis errors; the legacy separate MaximumWorldBasisError field is not measured or claimed in v2. " +
+                            (storageApproximation ? "Certified scalar report fields are the unchanged cumulative strict ceilings; native maxima below are observed separately. " : "") +
+                            storageNote + "Native verification and actual-byte payload search: " + final.Report;
                         return candidate;
+                        }
+                        finally { packed?.Dispose(); }
                     }
                 }
                 catch (InvalidDataException error) when (error.Data.Contains("OptimizationQuality") || error.Data.Contains("OptimizationBudget") || error.Data.Contains("OptimizationSize"))
