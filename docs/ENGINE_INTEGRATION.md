@@ -1,5 +1,30 @@
 ﻿# Native Next integration
 
+Preview.60 separates ordinary native animation export from optimization. The
+unchanged LeftPanel SaveFileDialog/callback now publishes a source-aware copy of
+the exact requested current CHR0 via native serialization/fresh decode and atomic
+publication. No saved policy, geometry context, worker or preparation form is
+used, and no MDL0 is required. This preserves explicitly applied current content
+instead of selecting a retained optimization baseline. Ownership, busy/draft,
+stale/current content, source/library/working-file and destination guards remain.
+
+Native Maya export keeps the original virtual converter and its model chooser;
+the independent candidate retains its .anim suffix during staging. Cancellation
+returns without publication, and text conversion is not binary-decoded as CHR0.
+A null-by-default internal seam lets background tests call the real converter
+with an explicitly chosen model; physical picker behavior remains unverified.
+Ordinary PAC insertion omits automatic optimization but keeps the existing frozen
+target/protection context and adapter's full CHR0/template/sibling validation.
+Active-target replacement during template choice is rejected explicitly.
+
+Explicit optimization/export-copy and workspace verified/set/slot policies keep
+their own preparation/quality boundaries. The original complete optimizer test
+workload can also run as Exact/Bounded/Apply segments under unchanged work/time
+and quality ceilings; receipts require all three, and the earlier combined
+timeout remains excluded. See [acceptance](NATIVE_ANIMATION_EXPORT_ACCEPTANCE_2026-10-29.md)
+and [notes](NATIVE_ANIMATION_EXPORT_NOTES_2026-10-29.md). No solver, codec, viewer,
+root, skin-weight, native Undo or project-format replacement is introduced.
+
 Preview.59 changes the fresh native UI session's output default to Source channel
 keys. The actual Use on This Model action, temporary sources, saved game/library
 sources and batch share that field; explicit Dense/bone/channel/Interpolated

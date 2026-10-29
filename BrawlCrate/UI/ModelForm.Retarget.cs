@@ -275,18 +275,18 @@ namespace BrawlCrate.UI
                 modelEditControl1.StopAnim(); FinishControlCurveEdit();
                 using (var frozen = FreezeOwnedWorkspaceExport(asset, clip, false))
                 {
-                    var settings = new NativeExportOptimizationPreferences().Read();
-                    PrepareWorkspaceExportWithProgress(frozen, settings, this);
                     void Validate()
                     {
+                        if (!ReferenceEquals(modelEditControl1.TargetModel, target))
+                            throw new InvalidOperationException("The native target changed while choosing the motion template. Export again from the current target.");
                         frozen.Validate(); ProtectVerifiedExport(destination);
                         if (FighterProject.HashFile(template) != templateHash) throw new IOException("The target motion template changed. Export again from its current contents.");
                     }
                     Validate();
-                    BrawlRetargeter.ExportMotionPac(template, destination, target, frozen.Candidate, Validate, frozen.PreparedEncodedSha256, null);
+                    BrawlRetargeter.ExportMotionPac(template, destination, target, frozen.Candidate, Validate, null, null);
                     RecordLibraryExport(node, destination);
                     _fighterStatus.Text = "Exported verified " + Path.GetFileName(destination) + " · " + new FileInfo(destination).Length +
-                        " container bytes · CHR0 " + frozen.MasterBytes + " → " + frozen.ExportBytes + " bytes · " + frozen.EffectiveExportPolicy + " · master and template preserved";
+                        " container bytes · current animation and template preserved. No optimization was run.";
                 }
             }
             return true;

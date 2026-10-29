@@ -1,5 +1,37 @@
 ﻿# Current milestone M2 — simpler native workspace
 
+29 October — **preview.60 native animation export** completes its bounded correction
+within the same incomplete G1/M2. Starting commit:
+`80353b8c3a605229f9c1890bf6ba222ca4450f08`. The user explicitly requests ordinary
+right-click Export to behave like BrawlCrate, without automatic optimization or
+the preparation window. This supersedes prior automatic-policy behavior at the
+native export boundary, not the explicit optimizer/export-copy tool.
+
+Keep the original native save picker and CHR0/Maya ANIM filters. Export the exact
+current animation through an independent native copy; preserve source/working
+file protections, ownership, atomic publication, native CHR0 decode and Undo.
+Do not require or infer a saved target model to export an ordinary native clip.
+Retain the original Maya converter/model chooser and normal cancellation; do not
+binary-decode its text output as CHR0. Ordinary PAC insertion likewise preserves
+the current animation without implicit reduction, retaining template/rig/sibling
+guards. Explicit optimizer, verified workspace/set and native-slot policies stay
+separate. Qualification: **806 checks / eight admitted private-desktop runs**, all
+26 fresh UI PNGs actually inspected. The actual post-picker callback performs
+zero optimization prepares/geometry checks with ErrorBounded/Thorough saved.
+Current/sibling/no-model exports, exact root/weight/Undo/storage preservation,
+dirty target independence, Maya conversion/cancel/failure and protected/failed
+writes pass. Native format/PAC, lifecycle and all explicit optimizer assertions
+pass; Exact/Bounded/Apply workload segments retain original ceilings and each
+ten-minute limit after the earlier combined timeout was excluded.
+
+See [acceptance](../NATIVE_ANIMATION_EXPORT_ACCEPTANCE_2026-10-29.md) and
+[notes](../NATIVE_ANIMATION_EXPORT_NOTES_2026-10-29.md). The launcher selects
+`Fighterport-nativeexport60/native1`. ONE G1/M2 remains incomplete; no next
+increment is promoted. Publish source only to public Fighterport/main with
+DoctorFlux attribution. Physical native picker/input, monitor DPI, human
+usability, general contacts, external Maya/editor acceptance, Melee and games
+remain unverified. Earlier checkpoints are historical.
+
 29 October — **preview.59 source-timed Use on This Model** completes its bounded
 increment within the same incomplete G1/M2. Starting commit:
 `c02f426f6eb3df162cd1b0e24fabbf4d659a7b70`. Correct the ordinary button route:

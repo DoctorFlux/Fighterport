@@ -408,28 +408,61 @@ namespace BrawlCrate.UI
             }
         }
 
+        // The native animation menu exports the current document, not a newly
+        // optimized result or the retained pre-optimization authoring baseline.
+        // Null uses BrawlCrate's virtual writer, including its native Maya model
+        // chooser. Background verification may supply that same native converter
+        // with an explicitly selected model, without driving an OS file picker.
+        internal Action<CHR0Node, string> NativeAnimationConversionWriter;
+
         private bool TryExportOwnedAnimationCopy(ResourceNode node, string destination)
         {
-            if (!(node is CHR0Node clip) || !string.Equals(Path.GetExtension(destination), ".chr0", StringComparison.OrdinalIgnoreCase) ||
+            string extension = Path.GetExtension(destination);
+            if (!(node is CHR0Node clip) ||
+                !(string.Equals(extension, ".chr0", StringComparison.OrdinalIgnoreCase) || string.Equals(extension, ".anim", StringComparison.OrdinalIgnoreCase)) ||
                 !OwnsFighterRoot(clip)) return false;
-            var model = modelEditControl1.TargetModel as MDL0Node;
-            var asset = RegisteredFighterAssets().SingleOrDefault(a => _fighterRoots.TryGetValue(a.Id, out var owner) && ReferenceEquals(owner, clip.RootNode));
-            // A generic resource-tree export cannot invent the intended model.
-            // Sibling retarget results have their exact target rig recorded.
-            bool qualified = model != null && (ReferenceEquals(clip, modelEditControl1.TargetAnimation) ||
-                asset?.Retarget != null && asset.RigIdentity == BrawlCrate.Studio.Retargeting.BrawlRetargeter.SkeletonFingerprint(model));
-            if (qualified) RequireSavedAnimationExportTarget(model);
             modelEditControl1.StopAnim(); FinishControlCurveEdit();
-            using (var frozen = qualified ? FreezeOwnedWorkspaceExport(asset, clip, false) : FreezeOwnedReferenceExport(asset, clip))
+            using (var frozen = FreezeOwnedReferenceExport(RegisteredAnimationOwner(clip), clip))
             {
-                ProtectVerifiedExport(Path.GetFullPath(destination));
                 CaptureWorkspaceExportDestination(frozen, destination);
-                var settings = new NativeExportOptimizationPreferences().Read();
-                if (qualified) PrepareWorkspaceExportWithProgress(frozen, settings, this);
-                else PrepareReferenceExportSnapshot(frozen, settings);
-                ExportWorkspaceSnapshot(frozen, destination);
+                if (string.Equals(extension, ".chr0", StringComparison.OrdinalIgnoreCase))
+                {
+                    ExportWorkspaceSnapshot(frozen, destination);
+                    ShowNativeAnimationExportStatus(destination);
+                }
+                else ExportNativeAnimationConversion(frozen, destination);
             }
             return true;
+        }
+
+        private void ExportNativeAnimationConversion(Chr0ExportSnapshot frozen, string destination)
+        {
+            destination = Path.GetFullPath(destination);
+            string temporary = Path.Combine(Path.GetDirectoryName(destination), "." + Guid.NewGuid().ToString("N") + ".anim");
+            try
+            {
+                frozen.Validate(); ProtectVerifiedExport(destination);
+                if (NativeAnimationConversionWriter != null) NativeAnimationConversionWriter(frozen.Candidate, temporary);
+                else frozen.Candidate.ExportChecked(temporary);
+                // The native Maya converter owns its model chooser. Cancel is
+                // a normal return with no output, not a failed CHR0 decode.
+                if (!File.Exists(temporary)) return;
+                if (new FileInfo(temporary).Length == 0) throw new InvalidDataException("The native animation converter produced an empty file. Existing destination was kept.");
+                frozen.Validate(); ProtectVerifiedExport(destination);
+                string current = File.Exists(destination) ? FighterProject.HashFile(destination) : null;
+                if (current != frozen.DestinationHash) throw new IOException("Destination changed during export. Existing file was kept.");
+                if (current == null) File.Move(temporary, destination);
+                else File.Replace(temporary, destination, null);
+                RecordLibraryExport(frozen.Clip, destination);
+                ShowNativeAnimationExportStatus(destination);
+            }
+            finally { if (File.Exists(temporary)) File.Delete(temporary); }
+        }
+
+        private void ShowNativeAnimationExportStatus(string destination)
+        {
+            _fighterStatus.Text = "Exported " + Path.GetFileName(destination) + " · " + new FileInfo(destination).Length + " bytes.";
+            _fighterStatus.ToolTipText = _fighterStatus.AccessibleDescription = "Animation exported through the native writer. No optimization was run.";
         }
 
         private Chr0ExportSnapshot FreezeOwnedReferenceExport(FighterAsset asset, CHR0Node clip)

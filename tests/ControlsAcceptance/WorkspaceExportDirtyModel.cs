@@ -147,10 +147,18 @@ internal static partial class Program
             form.OptimizationReady = null;
             Reject("Single current export freeze", () => { using (var unused = (IDisposable)Call(form, "FreezeWorkspaceExport")) { } });
             Reject("Explicit member export freeze", () => { using (var unused = (IDisposable)Call(form, "FreezeOwnedWorkspaceExport", asset, clip, false, null)) { } });
-            Reject("Protection-context freeze", () => Call(form, "FreezeExportOptimizationContext", model, asset, clip));
+            Reject("Protection-context freeze", () => Call(form, "FreezeExportOptimizationContext", model, asset, clip, null));
             Reject("Reviewed set before approval validation", () => { using (var unused = (IDisposable)Call(form, "FreezeWorkspaceSet")) { } });
             Reject("Native slot before status/hash", () => Call(form, "ExportGameSlot", slot.Id, destination));
-            Reject("Owned native resource export", () => Call(form, "TryExportOwnedAnimationCopy", clip, destination));
+            string ordinary = Path.Combine(output, "ordinary-native-dirty-target.chr0");
+            string ordinaryState = State(); int ordinaryPrepares = form.OptimizationPrepares, ordinaryChecks = form.OptimizationNativeChecks;
+            Check((bool)Call(form, "TryExportOwnedAnimationCopy", clip, ordinary), "Ordinary native animation export does not require a saved target model");
+            using (var decoded = NodeFactory.FromFile(null, ordinary) as CHR0Node)
+                Check(decoded != null && NativeAnimationOptimization.SourceContentKey(decoded) == NativeAnimationOptimization.SourceContentKey(clip) &&
+                    NativeAnimationOptimization.StorageKey(decoded) == NativeAnimationOptimization.StorageKey(clip),
+                    "Dirty-target ordinary native export retains the exact current animation rather than optimizing against a model");
+            Check(State() == ordinaryState && model.IsDirty && form.OptimizationPrepares == ordinaryPrepares && form.OptimizationNativeChecks == ordinaryChecks,
+                "Ordinary native export preserves unsaved model backing/fields/flags, native history and constraints without optimization");
             Reject("Direct workspace export", () => form.ExportSimpleWorkspaceResult(destination));
             Check(!File.Exists(destination), "Early dirty-model rejections publish no animation file");
 

@@ -71,10 +71,36 @@ internal static partial class Program
     static async Task WorkspaceOptimizationExportCopy(string[] args, string output)
     {
         if (!PrivateDesktop) throw new InvalidOperationException("Standalone export-copy qualification requires the private desktop.");
+        string segment = "Complete";
+        int segmentAt = Array.IndexOf(args, "--workspace-optimization-segment");
+        if (segmentAt >= 0)
+        {
+            if (segmentAt + 1 >= args.Length || !new[] { "Exact", "Bounded", "Apply" }.Contains(args[segmentAt + 1]))
+                throw new ArgumentException("Choose Exact, Bounded or Apply for the explicit standalone test segment.");
+            segment = args[segmentAt + 1];
+        }
+        bool runExact = segment == "Complete" || segment == "Exact", runBounded = segment == "Complete" || segment == "Bounded",
+            runApply = segment == "Complete" || segment == "Apply";
+        var completedSegments = new List<string>();
+        void SegmentEvidence(bool passed) => File.WriteAllText(Path.Combine(output, "standalone-segment-evidence.json"), new JavaScriptSerializer().Serialize(new {
+            Segment = segment, SegmentPassed = passed, CompleteCase = segment == "Complete", CompleteWorkflow = passed && segment == "Complete",
+            IncludesExact = runExact, IncludesBounded = runBounded, IncludesApply = runApply, PassedSegments = completedSegments,
+            RequiredOtherSegments = segment == "Complete" ? new string[0] : new[] { "Exact", "Bounded", "Apply" }.Where(item => item != segment).ToArray(),
+            Claim = segment == "Complete" ? "Original complete standalone workflow." : "Explicit partial workload; all three admitted segments are required for complete workflow qualification."
+        }));
+        SegmentEvidence(false);
         string previousPreferences = Environment.GetEnvironmentVariable("FIGHTERPORT_EXPORT_PREFERENCES_ROOT");
         string previousLibrary = Environment.GetEnvironmentVariable("FIGHTERPORT_LIBRARY_ROOT");
         Environment.SetEnvironmentVariable("FIGHTERPORT_EXPORT_PREFERENCES_ROOT", Path.Combine(output, "isolated-export-settings"));
         Environment.SetEnvironmentVariable("FIGHTERPORT_LIBRARY_ROOT", Path.Combine(output, "isolated-library"));
+        if (segment == "Apply")
+        {
+            // Complete reaches Apply with the preceding Bounded/Thorough
+            // request persisted. Recreate that context for the isolated part.
+            var preferences = new NativeExportOptimizationPreferences();
+            preferences.Save(new NativeExportOptimizationSettings { Policy = NativeExportOptimizationPolicy.ErrorBounded, SearchEffort = NativeExportSearchEffort.Thorough });
+            if (preferences.LastError != null) throw new InvalidOperationException("Could not initialize the isolated Apply segment's original policy/effort context.");
+        }
         var originals = new[] { args[0], args[1] }.Distinct().ToDictionary(path => path, FighterProject.HashFile);
         var captures = new List<string>();
         var form = new ModelForm();
@@ -203,7 +229,9 @@ internal static partial class Program
                 Call(form, "SetWorkspaceTextSize", 100); Unchanged("layout-only diagnostic"); return;
             }
 
-            string cancelledDestination = Path.Combine(output, "cancelled-copy.chr0");
+            string cancelledDestination = Path.Combine(output, "cancelled-copy.chr0"), exported = Path.Combine(output, "standalone-verified-copy.chr0");
+            if (runExact)
+            {
             await Open(async window =>
             {
                 var policy = SimpleControl<ComboBox>(window, "exportOptimizationPolicy");
@@ -264,7 +292,6 @@ internal static partial class Program
             });
             Unchanged("cancelled export chooser");
 
-            string exported = Path.Combine(output, "standalone-verified-copy.chr0");
             await Open(async window =>
             {
                 SimpleControl<ComboBox>(window, "exportOptimizationPolicy").SelectedIndex = 0;
@@ -280,10 +307,17 @@ internal static partial class Program
                         "Standalone published CHR0 independently retains every prepared time/value/tangent/flag/metadata/storage identity");
             });
             Unchanged("successful independent export");
+            completedSegments.Add("Exact"); SegmentEvidence(false);
+            }
 
+            if (runBounded)
+            {
             await Open(async window =>
             {
                 SimpleControl<ComboBox>(window, "exportOptimizationPolicy").SelectedIndex = 1;
+                // Complete inherits Thorough from the preceding Exact effort
+                // change. Standalone Bounded recreates that same search choice.
+                if (segment == "Bounded") SimpleControl<ComboBox>(window, "exportOptimizationEffort").SelectedIndex = (int)NativeExportSearchEffort.Thorough;
                 var limits = window.ReadExportSettings(); limits.Validate();
                 Check(limits.Policy == NativeExportOptimizationPolicy.ErrorBounded && limits.IsApprovedProfile, "Standalone bounded attempt explicitly requests the unchanged approved ceilings");
                 CheckOptionsNavigation(window);
@@ -294,13 +328,21 @@ internal static partial class Program
                 File.WriteAllText(Path.Combine(output, "standalone-bounded-analysis.txt"), window.PreparedReport);
             });
             Unchanged("bounded analysis or explicit fallback");
+            completedSegments.Add("Bounded"); SegmentEvidence(false);
+            }
             OptimizationCheckUntouchedBytes(form, clip, siblings, "standalone export-copy workflow", Path.Combine(output, "standalone-unchanged-siblings.json"));
             Check(originals.All(item => FighterProject.HashFile(item.Key) == item.Value), "Standalone Analyze, preview, cancellation and export preserve all supplied original files");
             File.WriteAllText(Path.Combine(output, "standalone-export-copy-evidence.json"), new JavaScriptSerializer().Serialize(new {
-                Captures = captures, Export = exported, ExportBytes = new FileInfo(exported).Length, OriginalInputHashes = originals,
+                Captures = captures, Segment = segment, CompleteCase = segment == "Complete", Export = runExact ? exported : null,
+                ExportBytes = runExact ? new FileInfo(exported).Length : 0, OriginalInputHashes = originals,
                 MasterNativeSha256 = content, MasterStorage = storage, Identity = identity, NativeUndo = undo, NativeRedo = redo,
                 SharedOffscreenRenderer = true, ActiveDesktopCapture = false, OSInputInjected = false, PhysicalInputAndDpiVerified = false }));
-            await WorkspaceOptimizationApplyCurrent(form, clip, output, originals);
+            if (runApply)
+            {
+                await WorkspaceOptimizationApplyCurrent(form, clip, output, originals);
+                completedSegments.Add("Apply");
+            }
+            SegmentEvidence(true);
         }
         finally
         {

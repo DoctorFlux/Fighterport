@@ -1,5 +1,22 @@
 # Fighterport
 
+29 October 2026 **preview.60-native-animation-export** completes its bounded
+correction: 806 checks / eight admitted background runs and 26 actually inspected
+UI PNGs. Ordinary native animation-list Export uses the unchanged BrawlCrate
+picker and exact current clip without saved optimization policy, worker/geometry
+analysis or preparation window. CHR0 snapshot/decode/atomic/source protections
+remain; ordinary export does not require a saved model. Native Maya conversion
+and cancellation remain, without binary CHR0 reopen. Ordinary PAC output keeps
+target/template/sibling gates without automatic optimization. Explicit optimizer,
+workspace/set/slot policies, full viewer, original Next, all weights, root policy,
+Undo and exact Save remain. See [acceptance](docs/NATIVE_ANIMATION_EXPORT_ACCEPTANCE_2026-10-29.md)
+and [notes](docs/NATIVE_ANIMATION_EXPORT_NOTES_2026-10-29.md). The launcher selects
+`Fighterport-nativeexport60/native1`. ONE G1/M2 remains incomplete and no next
+increment is promoted. DoctorFlux source-only public main and background tests
+remain. Physical input/pickers, monitor DPI, human usability, general contacts,
+external editors/plugins, Melee and games stay unverified. Earlier checkpoints
+are historical; automatic native-export policy behavior is superseded here.
+
 29 October 2026 **preview.59-source-timed-use-on-model** completes its bounded
 increment: 3,209 checks / seven admitted private-desktop runs and 36 actually
 inspected UI PNGs. Fresh UI sessions now default Use on This Model to Source
