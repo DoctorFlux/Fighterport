@@ -1,6 +1,6 @@
 # Preview.63 — native write-path qualification record
 
-Status: **bounded qualification complete; launcher verified; parent source publication pending**.
+Status: **bounded qualification complete; launcher verified; source published**.
 This remains a bounded increment within the ONE incomplete G1/M2. Starting
 commit: `d82c3f709b6d8526d11243bc0d4b6be98b75f9ad`. No L4 proposal is activated.
 
@@ -201,12 +201,19 @@ desktops. No active-desktop input or screenshot was used.
 
 ## Remaining gates
 
-Parent-owned source-only publication and contributor verification remain the
-final delivery steps. The parent has successfully run
+The qualified implementation was published as
+[`7261bf211e4958a4663fbbf0ca93b8a3be5f2254`](https://github.com/DoctorFlux/Fighterport/commit/7261bf211e4958a4663fbbf0ca93b8a3be5f2254)
+to public `DoctorFlux/Fighterport/main`. GitHub returned that exact main head,
+DoctorFlux as author/committer and associated author account, and DoctorFlux as
+the sole listed contributor (56 contributions at this publication check).
+There is no coauthor trailer. Assets, generated binaries, captures, settings and
+ignored proposals are excluded. This documentation receipt does not change the
+qualified native source or binaries.
+
+The parent has successfully run
 `Start-FighterPort.ps1 -Check`: it resolves `artifacts/Fighterport-write63/native1`
 and `2.0.0-preview.63-write-path-cleanup`, verifies the application/native hashes
-above, and launches no application. Source publication/contributor verification
-remain parent-owned. Qualification work is idle;
+above, and launches no application. Qualification work is idle;
 no further native source/build/capture change is required for this increment.
 Keep native-one-key negative-control losses and the I12 FrameScale/runtime
 limitation visible. Retain failed candidate fallbacks and unchanged quality
@@ -225,4 +232,4 @@ generic one-key negative control remain explicitly open in the diagnosis.
 Physical input, monitor DPI, human usability, general contact quality, external
 editor versions, Melee/new destinations and in-game acceptance remain unverified.
 DoctorFlux attribution and source-only public `DoctorFlux/Fighterport/main`
-publication/contributor checks are final parent-owned delivery steps.
+publication/contributor checks were performed as recorded above.

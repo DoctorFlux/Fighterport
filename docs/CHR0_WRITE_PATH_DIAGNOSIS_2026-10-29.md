@@ -719,7 +719,7 @@ its dumped root/member byte slice and unchanged asset hashes, and generated
 the 12 + 12 PAC standalone comparisons described above. `final-candidate` is
 a report context label; no report infers broader acceptance from that label.
 
-## Remaining workflow / retarget acceptance — pending
+## Workflow acceptance and remaining retarget gap
 
 The later raw-dictionary/partial-Undo correction and its complete current-build
 qualification supersede the **tested-binary pins**, not the recorded observations,
@@ -741,11 +741,19 @@ Protection-qualified constant cleanup remains a separate opportunity in
 finished target masters; the same-marker sampled-versus-indexed and paired-side
 costs still require their own implementation and unchanged quality gates.
 
-Record the published source commit and complete affected save/edit/Undo,
-retarget/fitting/contact/export/container regressions before promoting broader
-workflow acceptance. Compare finished targets against their unchanged
-full-quality target master and preserve existing root/all-skin-weight, terminal,
-metadata and exact-protection contracts. The parent will append those measured
-results and the precise acceptance decision. Physical input, human usability,
+The bounded correction is qualified in the
+[acceptance record](CHR0_WRITE_PATH_ACCEPTANCE_2026-10-29.md): 6,718 fresh pinned
+checks in 13 private-desktop runs, 2,047 separately identified prior checks
+admitted by source continuity, 55 Python tests, 1,902 renderer checks, 41 covered
+workflow PNGs and all 308 decoded GIF frames actually inspected. Fresh final
+runs include ordinary export after native Undo/Redo, fitting references,
+contact authoring, project lifecycle and PAC output. Source-only implementation
+[`7261bf211e4958a4663fbbf0ca93b8a3be5f2254`](https://github.com/DoctorFlux/Fighterport/commit/7261bf211e4958a4663fbbf0ca93b8a3be5f2254)
+was published with verified DoctorFlux attribution to public Fighterport/main.
+
+This accepts the measured write-path/Exact boundary, not the entire retarget
+payload gap or an unapplied sampled-codec proposal. Further candidates must use
+the same finished target master and unchanged root/all-skin-weight, terminal,
+metadata and exact-protection contracts. Physical input, human usability,
 monitor DPI, broad contact quality, independently tested game/editor versions
 and actual game acceptance remain separate and unverified here.
