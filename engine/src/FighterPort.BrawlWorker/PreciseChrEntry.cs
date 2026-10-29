@@ -14,17 +14,10 @@ internal sealed unsafe class PreciseChrEntry : CHR0EntryNode
     // policy changes; key collections and all exposed semantic flags survive.
     public static void Promote(CHR0Node clip)
     {
-        foreach(CHR0EntryNode source in clip.Children.ToArray())
-        {
-            if(source is PreciseChrEntry)continue;
-            var precise=new PreciseChrEntry{Name=source.Name,UseModelScale=source.UseModelScale,UseModelRotate=source.UseModelRotate,
-                UseModelTranslate=source.UseModelTranslate,ScaleCompensateApply=source.ScaleCompensateApply,
-                ScaleCompensateParent=source.ScaleCompensateParent,ClassicScaleOff=source.ClassicScaleOff};
-            var keys=typeof(CHR0EntryNode).GetField("_keyframes",BindingFlags.NonPublic|BindingFlags.Instance)
-                ??throw new NotSupportedException("Pinned CHR0 key collection field is unavailable.");
-            keys.SetValue(precise,source.Keyframes);
-            int index=source.Index;source.Remove();clip.InsertChild(precise,index);
-        }
+        // Use the same immutable imported-group policy as the application.
+        // Edited/generated groups retain the precise I12 fallback; promoting
+        // one edited clip must not expand every untouched imported stream.
+        PreciseCHR0EntryNode.Promote(clip);
     }
     static FieldInfo Field(string name)=>typeof(CHR0EntryNode).GetField(name,BindingFlags.NonPublic|BindingFlags.Instance)??throw new NotSupportedException("Pinned CHR0 writer field unavailable: "+name);
     public override int OnCalculateSize(bool force)

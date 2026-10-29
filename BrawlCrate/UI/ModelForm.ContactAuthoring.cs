@@ -23,10 +23,20 @@ namespace BrawlCrate.UI
             string stage=Path.Combine(_controlStage,"contact-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(stage);var roots=new List<ResourceNode>();AnimationControlClient client=null;
             try
             {
-                string modelPath=Path.Combine(stage,"model.mdl0"),motionPath=Path.Combine(stage,"source.chr0");model.Export(modelPath);source.Export(motionPath);
-                ResourceNode Copy(ResourceNode root,string name){string extension=Path.GetExtension(root.FilePath);if(string.IsNullOrEmpty(extension))extension=".brres";string path=Path.Combine(stage,name+extension);root.Export(path);var copy=NodeFactory.FromFile(null,path)??throw new InvalidDataException("Native preview copy failed.");roots.Add(copy);return copy;}
+                string modelPath=Path.Combine(stage,"model.mdl0"),motionPath=Path.Combine(stage,"source.chr0");model.Export(modelPath);
+                using(var snapshot=NativeAnimationOptimization.CopySource(source))snapshot.ExportChecked(motionPath);
+                var rootSnapshots=new Dictionary<ResourceNode,string>();
+                ResourceNode Copy(ResourceNode root,string name)
+                {
+                    if(!rootSnapshots.TryGetValue(root,out var path))
+                    {
+                        string extension=Path.GetExtension(root.FilePath);if(string.IsNullOrEmpty(extension))extension=".brres";path=Path.Combine(stage,name+extension);
+                        NativeFittingPreviewSnapshot.WriteRawContext(root,path,model,modelPath);rootSnapshots.Add(root,path);
+                    }
+                    var copy=NativeFittingPreviewSnapshot.OpenContext(root,path,model,modelPath);roots.Add(copy);return copy;
+                }
                 IEnumerable<ResourceNode> Walk(ResourceNode root){yield return root;foreach(var child in root.Children)foreach(var node in Walk(child))yield return node;}
-                ResourceNode a=Copy(model.RootNode,"before"),b=Copy(model.RootNode,"after");var am=Walk(a).OfType<MDL0Node>().Single(m=>NativeControlHash(m,".mdl0")==modelHash);var bm=Walk(b).OfType<MDL0Node>().Single(m=>NativeControlHash(m,".mdl0")==modelHash);var references=modelEditControl1.ModelPanel._resourceList.Select(r=>r.RootNode).Distinct().Where(r=>r!=model.RootNode).Select((r,i)=>Copy(r,"reference-"+i)).ToArray();
+                ResourceNode a=Copy(model.RootNode,"before"),b=Copy(model.RootNode,"after");var am=Walk(a).OfType<MDL0Node>().Single(m=>NativeControlHash(m,".mdl0")==modelHash);var bm=Walk(b).OfType<MDL0Node>().Single(m=>NativeControlHash(m,".mdl0")==modelHash);var references=modelEditControl1.ModelPanel._resourceList.Select(r=>r.RootNode).Distinct().Where(r=>r!=model.RootNode&&NativeFittingPreviewSnapshot.HasTextureDependencies(r)).Select((r,i)=>Copy(r,"reference-"+i)).ToArray();
                 string preparedOptions=null,copiedState=null;CHR0Node prepared=null;NativeContactBake metadata=null;
                 using(var window=new ContactBakeDialog(a,am,b,bm,source,setup.Chains.Where(c=>c.Reviewed).Select(c=>setup.BoneNames[c.Effector]).ToArray(),modelEditControl1.ModelPanel.CurrentViewport,references))
                 {
@@ -43,6 +53,7 @@ namespace BrawlCrate.UI
                         try
                         {
                             candidate.Name=source.Name+(options.Action=="Release"?" (released)":" (contact)");
+                            PreciseCHR0EntryNode.Promote(candidate);
                             foreach(var track in reply.Tracks)
                             {
                                 if(!CanEditBodyBone(track.Bone))continue;

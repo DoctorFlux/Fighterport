@@ -1,5 +1,25 @@
 # Fighterport
 
+29 October 2026 **preview.63-write-path-cleanup** qualifies its bounded native
+write-path increment in the ONE incomplete G1/M2. Fresh pinned qualification:
+6,718 checks / 13 private-desktop runs; 2,047 prior retarget checks are separately
+admitted through recorded source continuity, not presented as fresh runs.
+Python checks: 55. Fresh renderer checks: 1,902; 41 workflow PNGs and all 308
+decoded GIF frames have actual-view or explicitly recorded image-hash continuity.
+Application/worker promotion retains imported compact groups and opaque CHR0
+scaling metadata; single-entry Undo preserves untouched raw dictionary bounds.
+Explicit authoring releases only obsolete changed-group plans; Undo restores
+original storage. Ordinary Save/export remain exact without automatic analysis.
+The retargeted payload gap remains open: the actual Use button is still 81,140
+bytes. Equal key times do not imply equal encoding/payload. See
+[diagnosis](docs/CHR0_WRITE_PATH_DIAGNOSIS_2026-10-29.md) and
+[acceptance](docs/CHR0_WRITE_PATH_ACCEPTANCE_2026-10-29.md).
+Launcher: `Fighterport-write63/native1`. Full viewer, original Next, all weights,
+source-local roots and native Undo remain. Further sampled-codec work stays in
+ignored, unapplied proposals. DoctorFlux source-only public main/background tests
+remain; contact/game/Melee/editor/input/DPI/human gates are not closed here.
+Earlier records follow.
+
 29 October 2026 **preview.62-chr0-forensics** qualifies its bounded slice in the
 ONE incomplete G1/M2: 5,739 native checks + 42 Python tests; 16 zero-difference
 native comparisons; 60 fresh UI images covered by actual inspection/hash

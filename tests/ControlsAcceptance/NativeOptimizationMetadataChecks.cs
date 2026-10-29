@@ -47,12 +47,12 @@ internal static partial class Program
                 // Optimizer Copy/ContentKey never receive permission to do this.
                 source.Export(rewritten);
                 byte[] original = MetadataRaw(source.UncompressedSource), working = MetadataRaw(source.WorkingUncompressed);
-                Check(MetadataRead32(original, scaling) == 1 && MetadataRead32(working, scaling) == 0 && MetadataRead32(File.ReadAllBytes(rewritten), scaling) == 0,
-                    "Native metadata: upstream v" + version + " rebuilding proves Working normalization differs from retained original scaling bytes");
+                Check(MetadataRead32(original, scaling) == 1 && MetadataRead32(working, scaling) == 1 && MetadataRead32(File.ReadAllBytes(rewritten), scaling) == 1,
+                    "Native metadata: v" + version + " rebuilding retains opaque original scaling in both Working and serialized headers");
                 Check(MetadataUnsupported(() => { using (var copy = NativeAnimationOptimization.Copy(source)) { } }) &&
                     MetadataUnsupported(() => NativeAnimationOptimization.ContentKey(source)) && original.SequenceEqual(MetadataRaw(source.UncompressedSource)) &&
                     working.SequenceEqual(MetadataRaw(source.WorkingUncompressed)) && FighterProject.HashFile(opaquePath) == originalHash,
-                    "Native metadata: v" + version + " original opaque scaling remains blocked after its Working header has normalized");
+                    "Native metadata: v" + version + " opaque scaling remains outside target optimization qualification despite correct byte retention");
             }
         }
 

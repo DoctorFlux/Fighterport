@@ -85,15 +85,15 @@ internal static partial class Program
             }
             using(var source=NodeFactory.FromFile(null,path) as CHR0Node)
             {
-                source.SignalPropertyChange();string upstream=Path.Combine(stage,"upstream-normalized-v"+rawVersion+".chr0");source.Export(upstream);
+                source.SignalPropertyChange();string upstream=Path.Combine(stage,"native-preserved-v"+rawVersion+".chr0");source.Export(upstream);
                 string before=NativeAnimationOptimization.SourceContentKey(source);
                 string output=Path.Combine(stage,"preserved-after-normalization-v"+rawVersion+".chr0");
                 using(var copy=NativeAnimationOptimization.CopySource(source))copy.ExportChecked(output);
                 using(var decoded=NodeFactory.FromFile(null,output) as CHR0Node)
-                    Check(decoded!=null&&MetadataRead32(File.ReadAllBytes(upstream),rawVersion==4?0x24:0x28)==0&&
+                    Check(decoded!=null&&source.NativeScalingRule==2&&MetadataRead32(File.ReadAllBytes(upstream),rawVersion==4?0x24:0x28)==2&&
                         MetadataRead32(File.ReadAllBytes(output),rawVersion==4?0x24:0x28)==2&&
                         NativeAnimationOptimization.SourceContentKey(decoded)==before&&FighterProject.HashFile(path)==originalHash,
-                        "Source snapshot retains authentic original scaling after legacy Working metadata normalized without overwriting source bytes / v"+rawVersion);
+                        "Native rebuild and independent source snapshot retain original opaque scaling metadata without overwriting source bytes / v"+rawVersion);
             }
         }
         string unknown=Path.Combine(stage,"unsupported-rule.chr0");var unsupported=File.ReadAllBytes(Path.Combine(stage,"source-v4-rule0.chr0"));unsupported[0x27]=3;File.WriteAllBytes(unknown,unsupported);

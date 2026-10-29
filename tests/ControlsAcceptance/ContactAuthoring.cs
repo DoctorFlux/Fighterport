@@ -16,6 +16,29 @@ internal static partial class Program
         var source=editor._openedFiles.SelectMany(Walk).OfType<CHR0Node>().First(c=>c.Name=="Wait1");editor.leftPanel.listAnims.SelectedItems.Clear();foreach(ListViewItem row in editor.leftPanel.listAnims.Items)row.Selected=ReferenceEquals(row.Tag,source);editor.SetFrame(7);editor.FrameFighterModel();await Wait(()=>!(bool)Field(form,"_controlBusy")&&!(bool)Field(form,"_controlSetupQueued"));var setup=await Await<ControlReply>(Call(form,"LoadControls"));var chain=setup.Chains.First(c=>c.Reviewed&&c.Role=="Hand.L");string effector=setup.BoneNames[chain.Effector];var model=(MDL0Node)editor.TargetModel;
         var upper=model._linker.BoneCache.Single(b=>b.Name==setup.BoneNames[chain.Root]).Matrix.GetPoint();var end=model._linker.BoneCache.Single(b=>b.Name==effector).Matrix.GetPoint();float[] offset={(upper._x-end._x)*.01f,(upper._y-end._y)*.01f,(upper._z-end._z)*.01f};
         string sourceHash=(string)Call(form,"NativeControlHash",source,".chr0"),modelHash=(string)Call(form,"NativeControlHash",model,".mdl0");Exception failure=null;bool done=false;int count=project.Animations.Count;
+        // Opening/scrubbing/cancelling contact preview must not rebuild the
+        // selected authoring animation or any containing native owner. Compare
+        // raw buffers independently from decoded live curves and storage plans;
+        // no assumption is made that resource aliases share the same buffer.
+        var previewOwners=editor._openedFiles.Concat(new ResourceNode[]{source,source.RootNode,model.RootNode}).Distinct().ToArray();
+        var previewGuard=ContactCapturePreviewOwners(previewOwners);int previewFrame=editor.CurrentFrame;
+        bool cancelDone=false;
+        form.ContactBakeReady=window=>
+        {
+            try
+            {
+                ContactCheckPreviewOwners(previewGuard,"Open contact preview");
+                Check(window.SourceView.Model!=model&&window.TargetView.Model!=model,"Opening contact preview uses independent existing-rig model owners");
+                ((TrackBar)window.Controls.Find("contactFrame",true).Single()).Value=Math.Min(8,source.FrameCount);
+                window.Close();
+            }
+            catch(Exception error){failure=error;window.Close();}
+            finally{cancelDone=true;}
+        };
+        await (Task)Call(form,"ShowContactPlacement");await Wait(()=>cancelDone);if(failure!=null)throw failure;
+        ContactCheckPreviewOwners(previewGuard,"Cancelled contact preview");
+        Check(ReferenceEquals(editor.SelectedCHR0,source)&&ReferenceEquals(editor.TargetModel,model)&&editor.CurrentFrame==previewFrame,"Cancelled contact preview preserves exact native selection, target and playhead");
+        Check(project.Animations.Count==count,"Opening and cancelling contact preview creates no project animation");
         form.ContactBakeReady=async window=>
         {
             try
@@ -82,5 +105,29 @@ internal static partial class Program
         string released=Path.Combine(output,"released.chr0");form.ExportFighterResource(released);form.SaveFighterProject(Path.Combine(output,"released-slots.fpstudio"));using(var fresh=FighterProject.Open(Path.Combine(output,"released-slots.fpstudio")))Check(fresh.GameSlotProfiles.Single().Entries.Length==project.GameSlotProfiles[0].Entries.Length&&fresh.AnimationSlots.Single(s=>s.Id=="Wait1").AnimationKey!=null,"Game slot profile and reviewed assignment survive fresh native project reopening");
         Check((string)Call(form,"NativeControlHash",source,".chr0")==sourceHash&&(string)Call(form,"NativeControlHash",model,".mdl0")==modelHash&&hashes.All(p=>FighterProject.HashFile(p.Key)==p.Value),"Contact placement, release and game profiles preserve source bytes and native deform data");
         ((AnimationControlClient)Field(form,"_controlEngine")).Dispose();project.Dispose();BrawlCrate.UI.Model_Previewer.ModelEditControl.ModelEditControl.Instances.Remove(editor);form.Dispose();GC.Collect();GC.WaitForPendingFinalizers();await ControlGizmos(modelPath,released,output);
+    }
+    sealed class ContactPreviewOwnerGuard
+    {
+        public ResourceNode Owner;
+        public string Content,Storage,Backing;
+        public bool Dirty;
+    }
+    static ContactPreviewOwnerGuard[] ContactCapturePreviewOwners(ResourceNode[] owners)
+        => owners.Select(owner=>new ContactPreviewOwnerGuard{Owner=owner,Content=ContactPreviewContent(owner,false),
+            Storage=ContactPreviewContent(owner,true),Backing=Chr0ForensicBackingHash(owner),Dirty=owner.IsDirty}).ToArray();
+    static string ContactPreviewContent(ResourceNode owner,bool storage)
+    {
+        // Includes every already-owned native animation, in native traversal
+        // order, so an untouched sibling cannot silently change during staging.
+        string content=string.Join("|",Walk(owner).OfType<CHR0Node>().Select(clip=>WritePathIdentity(clip)+":"+
+            (storage?NativeAnimationOptimization.StorageKey(clip):NativeAnimationOptimization.SourceContentKey(clip))));
+        return WritePathHash(System.Text.Encoding.UTF8.GetBytes(content));
+    }
+    static void ContactCheckPreviewOwners(ContactPreviewOwnerGuard[] before,string phase)
+    {
+        Check(before.All(item=>ContactPreviewContent(item.Owner,false)==item.Content),phase+" preserves selected/source and every owned sibling native animation coefficient and metadata");
+        Check(before.All(item=>ContactPreviewContent(item.Owner,true)==item.Storage),phase+" preserves every owned native animation storage plan");
+        Check(before.All(item=>item.Owner.IsDirty==item.Dirty),phase+" preserves every original native root dirty state");
+        Check(before.All(item=>Chr0ForensicBackingHash(item.Owner)==item.Backing),phase+" preserves original WorkingUncompressed buffers without relying on aliases");
     }
 }

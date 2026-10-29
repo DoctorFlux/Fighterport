@@ -1,5 +1,23 @@
 # Fighterport master plan
 
+29 October 2026 **preview.63-write-path-cleanup** completes its bounded increment
+inside the ONE incomplete G1/M2. Actual per-entry/SRT byte accounting explains
+the retargeted gap: equal marker times can store compact samples or much larger
+indexed values/tangents. Shared application/worker promotion retains untouched
+imported plans and opaque scaling metadata. Dictionary-bounded capture survives
+single-entry native Undo; explicit authoring and compression remain distinct.
+Qualification: 6,718 fresh pinned native checks / 13 private-desktop runs, plus
+2,047 separately identified source-continuity checks; 55 Python tests; 1,902
+renderer checks; 41 covered workflow PNGs and 308 actually inspected decoded GIF
+frames. See [acceptance](CHR0_WRITE_PATH_ACCEPTANCE_2026-10-29.md) and
+[diagnosis](CHR0_WRITE_PATH_DIAGNOSIS_2026-10-29.md). The actual retarget button
+still exports 81,140 bytes; this does not close the primary compression gap.
+Launcher: `Fighterport-write63/native1`. Full viewer, original Next, roots, all
+weights, Undo and exact ordinary Save/export remain. Compact export-copy
+proposals are still quarantined, unapplied and unqualified. DoctorFlux source-only
+public main/background testing remain; broader M2/contact/editor/runtime/Melee,
+physical input/DPI and human gates stay open. No other increment is promoted.
+
 29 October 2026 **preview.62-chr0-forensics** completes a bounded slice inside the
 ONE incomplete G1/M2: independent byte/flag/codec accounting, explicit arithmetic
 profiles, exact native coefficient/terminal corroboration, and conservative

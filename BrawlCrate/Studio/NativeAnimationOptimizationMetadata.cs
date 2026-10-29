@@ -12,8 +12,9 @@ namespace BrawlCrate.Studio
     {
         private static readonly UTF8Encoding MetadataUtf8 = new UTF8Encoding(false, true);
 
-        // Qualification boundary only: the legacy reader/writer does not retain
-        // these opaque modes. Never rebuild the source to discover its metadata.
+        // Qualification boundary only: retaining an opaque mode in the native
+        // reader/writer does not qualify its target transform semantics. Never
+        // rebuild the source to discover its metadata.
         public static unsafe void ValidateMetadata(CHR0Node source)
             => ValidateMetadataPolicy(source, false);
 

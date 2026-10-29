@@ -56,15 +56,17 @@ internal static partial class Program
         var resources = BrawlLibrarySource.Resources(selected.RootNode).Where(pair => !ReferenceEquals(pair.Item1, selected) &&
             (pair.Item1 is NW4RAnimationNode || pair.Item1 is MDL0Node || pair.Item1 is TEX0Node || pair.Item1 is PLT0Node)).ToArray();
         if (resources.Length > 4096) throw new InvalidDataException("The untouched-resource fixture exceeds its 4096 first-class native-resource verification budget.");
+        var budget=new ReadOnlyChr0AuditBudget();
         return resources.ToDictionary(pair => "root" + pair.Item2.Substring(1) + "|" + pair.Item1.GetType().Name,
-            pair => (string)Call(form, "NativeControlHash", pair.Item1, "." + pair.Item1.ResourceFileType.ToString().ToLowerInvariant()), StringComparer.Ordinal);
+            pair => pair.Item1 is CHR0Node sibling?ReadOnlyChr0SiblingHash(sibling,budget):
+                (string)Call(form, "NativeControlHash", pair.Item1, "." + pair.Item1.ResourceFileType.ToString().ToLowerInvariant()), StringComparer.Ordinal);
     }
 
     static void OptimizationCheckUntouchedBytes(ModelForm form, CHR0Node selected, Dictionary<string, string> expected, string phase, string reportPath)
     {
         var actual = OptimizationUntouchedBytes(form, selected);
         string mismatch = expected.Where(pair => !actual.TryGetValue(pair.Key, out var value) || value != pair.Value).Select(pair => pair.Key).FirstOrDefault();
-        Check(actual.Count == expected.Count && mismatch == null, "Fresh export bytes retain all " + expected.Count + " untouched first-class native motion resources at " + phase + (mismatch == null ? "" : "; mismatch " + mismatch));
+        Check(actual.Count == expected.Count && mismatch == null, "Read-only CHR0 state/declared resource blocks and native bytes retain all " + expected.Count + " untouched first-class motion resources at " + phase + (mismatch == null ? "" : "; mismatch " + mismatch));
         File.WriteAllText(reportPath, new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(actual));
     }
 

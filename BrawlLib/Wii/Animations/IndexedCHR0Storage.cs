@@ -205,6 +205,19 @@ namespace BrawlLib.Wii.Animations
 
     public sealed class IndexedCHR0EntryStorage
     {
+        // A write boundary distinguishes an edited native curve from an
+        // unbounded imported payload. This is a same-native interpolation
+        // qualification, not a new dense codec or runtime compatibility claim.
+        public sealed class WriteCapture
+        {
+            public IndexedCHR0EntryStorage Storage { get; }
+            public bool Accepted { get; }
+            public bool UsesDenseI12Fallback { get; }
+            public string Diagnostic { get; }
+            internal WriteCapture(IndexedCHR0EntryStorage storage, bool accepted, bool fallback, string diagnostic)
+            { Storage = storage; Accepted = accepted; UsesDenseI12Fallback = fallback; Diagnostic = diagnostic; }
+        }
+
         private readonly IndexedCHR0CurveStorage[] curves;
         public IndexedCHR0EntryStorage(IndexedCHR0CurveStorage[] channels)
         {
@@ -255,13 +268,36 @@ namespace BrawlLib.Wii.Animations
             return any;
         }
 
+        // Native CHR0 child entries normally have a zero-length DataSource;
+        // their tables/payloads are bounded by the complete resource/map owner.
+        // A leaf length is therefore neither proof nor disproof of ownership.
+        private static unsafe bool HasOwnerBytes(ResourceNode node, byte* pointer, long count)
+        {
+            if (pointer == null || count < 0) return false;
+            ulong address = new UIntPtr(pointer).ToUInt64();
+            bool Contains(DataSource source)
+            {
+                byte* start; long length;
+                if (source.Map != null && source.Map.Address != null && source.Map.Length > 0)
+                { start = (byte*)source.Map.Address; length = source.Map.Length; }
+                else { start = (byte*)source.Address; length = source.Length; }
+                if (start == null || length < 1) return false;
+                ulong begin = new UIntPtr(start).ToUInt64();
+                return address >= begin && address - begin <= (ulong)length && (ulong)count <= (ulong)length - (address - begin);
+            }
+            var seen = new HashSet<ResourceNode>();
+            for (var owner = node; owner != null && seen.Add(owner); owner = owner.Parent)
+                if (Contains(owner.UncompressedSource) || Contains(owner.WorkingUncompressed)) return true;
+            return false;
+        }
+
         public static unsafe bool HasEncodedDenseRotation(CHR0EntryNode entry)
         {
             if (entry is PreciseCHR0EntryNode precise)
                 return precise.IndexedStorage != null && Enumerable.Range(3, 3).Any(c => precise.IndexedStorage[c] != null && precise.IndexedStorage[c].IsDense);
             if (entry == null) return false;
             var source = entry.WorkingUncompressed;
-            if (source.Address == null || source.Length < 8) return false;
+            if (!HasOwnerBytes(entry, (byte*)source.Address, 8)) return false;
             byte* p = (byte*)source.Address + 4;
             AnimationCode code = (uint)p[0] << 24 | (uint)p[1] << 16 | (uint)p[2] << 8 | p[3];
             var format = code.GetFormat(1);
@@ -269,7 +305,100 @@ namespace BrawlLib.Wii.Animations
                 (format == AnimDataFormat.L1 || format == AnimDataFormat.L2 || format == AnimDataFormat.L4);
         }
 
-        public static unsafe IndexedCHR0EntryStorage Capture(CHR0EntryNode entry)
+        // Strict source adoption remains unchanged: every imported dense axis
+        // must match. In particular, this never invents a missing terminal.
+        public static IndexedCHR0EntryStorage Capture(CHR0EntryNode entry) => CaptureCore(entry, false);
+
+        public static unsafe WriteCapture CaptureForWrite(CHR0EntryNode entry)
+        {
+            if (entry is PreciseCHR0EntryNode precise)
+            {
+                var storage=precise.IndexedStorage;
+                if(storage==null||!Enumerable.Range(3,3).Any(c=>storage[c]?.IsDense==true)||storage.MatchesGroup(entry.Keyframes,1))
+                    return new WriteCapture(storage, true, false, "Explicit precise storage policy retained, including null.");
+                var owner=entry.Parent as CHR0Node;
+                if(owner==null||owner.Version!=4&&owner.Version!=5||owner.Loop||entry.Keyframes.Loop||owner.NativeScalingRule<0||owner.NativeScalingRule>2||
+                    owner.FrameCount<1||owner.FrameCount!=entry.Keyframes.FrameLimit||!precise.StorageAdoptionContextMatches)
+                    return RejectWrite("precise sampled-plan timing, flags or adoption context changed");
+                return ValidateDenseInteriorWrite(entry,storage,owner.FrameCount,precise.StorageAdoptionFixedRotationMatches);
+            }
+            var matched = Capture(entry);
+            if (matched != null || !HasEncodedDenseRotation(entry))
+                return new WriteCapture(matched, true, false, "Matching imported groups retained; other native groups use precise I12.");
+            var clip = entry?.Parent as CHR0Node;
+            var source = clip?.WorkingUncompressed ?? default(DataSource);
+            var raw = entry?.WorkingUncompressed ?? default(DataSource);
+            if (clip == null || source.Length < 0x28 || !HasOwnerBytes(clip, (byte*)source.Address, 0x28) || !HasOwnerBytes(entry, (byte*)raw.Address, 8))
+                return RejectWrite("complete native owner/header is unavailable");
+            byte* header = (byte*)source.Address; byte* start = (byte*)raw.Address;
+            uint Read32(byte* p) => (uint)p[0] << 24 | (uint)p[1] << 16 | (uint)p[2] << 8 | p[3];
+            int version = unchecked((int)Read32(header + 8)), frameOffset = version == 4 ? 0x1c : 0x20;
+            if (version != 4 && version != 5 || source.Length < (version == 4 ? 0x28 : 0x2c) ||
+                !HasOwnerBytes(clip, header, version == 4 ? 0x28 : 0x2c))
+                return RejectWrite("original version/header is unsupported");
+            int frames = header[frameOffset] << 8 | header[frameOffset + 1];
+            uint loop = Read32(header + frameOffset + 4), scaling = Read32(header + frameOffset + 8);
+            if (frames < 1 || clip.Version != version || clip.FrameCount != frames || loop != 0 || clip.Loop ||
+                entry.Keyframes.FrameLimit != frames || entry.Keyframes.Loop || scaling > 2 || scaling != unchecked((uint)clip.NativeScalingRule))
+                return RejectWrite("timing, loop or opaque scaling metadata changed; only unchanged non-loop native timing/metadata is eligible");
+            AnimationCode code = Read32(start + 4);
+            if (entry.UseModelScale != code.UseModelScale || entry.UseModelRotate != code.UseModelRot || entry.UseModelTranslate != code.UseModelTrans ||
+                entry.ScaleCompensateApply != code.ScaleCompApply || entry.ScaleCompensateParent != code.ScaleCompParent || entry.ClassicScaleOff != code.ClassicScaleOff)
+                return RejectWrite("native transform/scale-compensation flags changed");
+            // CaptureCore independently bounds every original stream against
+            // the complete owner and neighboring tables before accepting any
+            // mismatch. Existing unbounded/gapped terminal layouts still fail.
+            var original = CaptureCore(entry, true);
+            if (original == null) return RejectWrite("the complete original sampled payload cannot be bounded or decoded");
+            int rotationCell = code.GetExists(0) ? code.GetIsIsotropic(0) ? 1 : 3 : 0;
+            return ValidateDenseInteriorWrite(entry,original,frames,channel=>
+            {
+                var current=entry.KeyArrays[channel].Entries.ToArray();int at=8+(rotationCell+channel-3)*4;
+                return code.GetIsFixed(channel)&&HasOwnerBytes(entry,start+at,4)&&current.Length==1&&
+                    IndexedCHR0CurveStorage.Bits(current[0]._index)==0&&IndexedCHR0CurveStorage.Bits(current[0]._tangent)==0&&
+                    IndexedCHR0CurveStorage.Bits(current[0]._value)==unchecked((int)Read32(start+at));
+            });
+        }
+
+        private static WriteCapture RejectWrite(string reason) => new WriteCapture(null, false, false,
+            "Edited imported sampled rotation is unavailable: " + reason + ". Original payload and document remain unchanged.");
+
+        // Both a raw imported owner and an explicitly adopted immutable plan
+        // use this same held-terminal/final-tuple proof before I12 fallback.
+        private static WriteCapture ValidateDenseInteriorWrite(CHR0EntryNode entry,IndexedCHR0EntryStorage original,int frames,Func<int,bool> fixedAxisMatches)
+        {
+            for (int axis = 0; axis < 3; axis++)
+            {
+                int channel = 3 + axis;
+                var curve = original[channel];
+                var current = entry.KeyArrays[channel].Entries.ToArray();
+                if (current.Any(k => float.IsNaN(k._index) || float.IsInfinity(k._index) || k._index < 0 || k._index >= frames ||
+                    float.IsNaN(k._value) || float.IsInfinity(k._value) || float.IsNaN(k._tangent) || float.IsInfinity(k._tangent)))
+                    return RejectWrite("edited rotation contains an invalid native numeric value or time");
+                if (curve==null)
+                {
+                    if(!fixedAxisMatches(channel))return RejectWrite("a fixed rotation axis changed its original endpoint context");
+                    continue;
+                }
+                if (curve == null || !curve.IsDense || curve.NativeSampleCount != frames || curve.EncodedSampleCount != frames + 1)
+                    return RejectWrite("an original rotation axis has no complete N+1 sampled context");
+                var values = curve.EncodedValues;
+                if (IndexedCHR0CurveStorage.Bits(values[frames]) != IndexedCHR0CurveStorage.Bits(values[frames - 1]))
+                    return RejectWrite("the original hidden terminal sample is not an exact held endpoint");
+                var times = curve.Times; var nativeValues = curve.Values; var tangents = curve.Tangents;
+                var final = Enumerable.Range(0, times.Length).Where(i => times[i] >= frames - 1).ToArray();
+                var actual = current.Where(k => k._index >= frames - 1).ToArray();
+                if (actual.Length != final.Length || final.Where((i, n) =>
+                    IndexedCHR0CurveStorage.Bits(actual[n]._index) != IndexedCHR0CurveStorage.Bits(times[i]) ||
+                    IndexedCHR0CurveStorage.Bits(actual[n]._value) != IndexedCHR0CurveStorage.Bits(nativeValues[i]) ||
+                    IndexedCHR0CurveStorage.Bits(actual[n]._tangent) != IndexedCHR0CurveStorage.Bits(tangents[i])).Any())
+                    return RejectWrite("the final projected rotation tuple/side changed");
+            }
+            return new WriteCapture(original, true, true,
+                "Bounded interior-only sampled rotation edit: matching groups retain imported payloads; changed rotation uses precise I12. Original non-loop held terminal and final projected tuples are unchanged. Same-native interpolation only; general runtime compatibility is unverified.");
+        }
+
+        private static unsafe IndexedCHR0EntryStorage CaptureCore(CHR0EntryNode entry, bool includeUnmatchedDense)
         {
             if (entry == null) return null;
             var data = entry.WorkingUncompressed;
@@ -292,22 +421,81 @@ namespace BrawlLib.Wii.Animations
             // curve starts and entry tables. Unknown gaps are not assumed to be
             // disposable padding, and an ambiguous imported layout is not adopted.
             var curveStarts = new SortedSet<ulong>(); var tables = new List<Tuple<ulong, ulong>>();
+            byte* nativeResource = null; ulong nativeResourceEnd = 0, nativeUserDataBoundary = 0; int nativeVersion = 0;
             if (clip != null && code.GetExists(1) && (code.GetFormat(1) == AnimDataFormat.L1 || code.GetFormat(1) == AnimDataFormat.L2 || code.GetFormat(1) == AnimDataFormat.L4))
-            foreach (var sibling in clip.Children.OfType<CHR0EntryNode>())
             {
-                byte* siblingStart = (byte*)sibling.WorkingUncompressed.Address;
-                if (siblingStart == null || !Contains(siblingStart, 8)) return null;
-                AnimationCode siblingCode = Raw32(siblingStart + 4); int cells = 0;
-                for (int g = 0; g < 3; g++) if (siblingCode.GetExists(g)) cells += g == 0 && siblingCode.GetIsIsotropic(g) ? 1 : 3;
-                if (!Contains(siblingStart, 8 + cells * 4)) return null;
-                ulong address = new UIntPtr(siblingStart).ToUInt64(); tables.Add(Tuple.Create(address, address + (ulong)(8 + cells * 4)));
-                int cellIndex = 0;
-                for (int g = 0; g < 3; g++) if (siblingCode.GetExists(g))
+                // Native Undo may replace only the edited managed entry with
+                // an unbacked precise node. The immutable raw dictionary still
+                // owns all original tables/curve boundaries; managed siblings
+                // are not a reliable description of that original layout.
+                // Read only a fully bounded v4/v5 dictionary, and require this
+                // raw entry to belong to it. Mixed/unrepresented maps fail.
+                nativeResource = (byte*)clip.WorkingUncompressed.Address;
+                if (!Contains(nativeResource, 0x28) || Raw32(nativeResource) != 0x43485230) return null;
+                uint version = Raw32(nativeResource + 8), resourceLength = Raw32(nativeResource + 4);
+                nativeVersion = unchecked((int)version);
+                int headerLength = version == 4 ? 0x28 : version == 5 ? 0x2c : 0;
+                if (headerLength == 0 || resourceLength < headerLength || !Contains(nativeResource, resourceLength)) return null;
+                ulong resourceAddress = new UIntPtr(nativeResource).ToUInt64();
+                if (resourceAddress > ulong.MaxValue - resourceLength) return null;
+                nativeResourceEnd = resourceAddress + resourceLength;
+                bool ResourceContains(byte* pointer, long bytes)
                 {
-                    int axes = g == 0 && siblingCode.GetIsIsotropic(g) ? 1 : 3;
-                    for (int a = 0; a < axes; a++, cellIndex++) if (!siblingCode.GetIsFixed(g * 3 + a))
-                        curveStarts.Add(new UIntPtr(siblingStart + unchecked((int)Raw32(siblingStart + 8 + cellIndex * 4))).ToUInt64());
+                    ulong address = new UIntPtr(pointer).ToUInt64();
+                    return bytes >= 0 && address >= resourceAddress && address - resourceAddress <= resourceLength &&
+                        (ulong)bytes <= resourceLength - (address - resourceAddress) && Contains(pointer, bytes);
                 }
+                if (nativeVersion == 5)
+                {
+                    int relative = unchecked((int)Raw32(nativeResource + 0x14));
+                    if (relative < 0) return null;
+                    if (relative > 0)
+                    {
+                        if (relative < headerLength || (long)relative + 0x1c > resourceLength) return null;
+                        byte* userData = nativeResource + relative;
+                        int length = unchecked((int)Raw32(userData)), groupLength = unchecked((int)Raw32(userData + 4)), userCount = unchecked((int)Raw32(userData + 8));
+                        if (length < 0x1c || !ResourceContains(userData, length) || groupLength < 0x18 || userCount < 0 ||
+                            0x18L + 0x10L * userCount > groupLength || 4L + groupLength > length) return null;
+                        nativeUserDataBoundary = resourceAddress + (ulong)relative;
+                        tables.Add(Tuple.Create(nativeUserDataBoundary, nativeUserDataBoundary + (ulong)length));
+                    }
+                }
+                int groupOffset = unchecked((int)Raw32(nativeResource + 0x10));
+                if (groupOffset < headerLength || (long)groupOffset + 0x18 > resourceLength) return null;
+                byte* dictionary = nativeResource + groupOffset;
+                int count = unchecked((int)Raw32(dictionary + 4)), dictionaryLength = unchecked((int)Raw32(dictionary));
+                int countOffset = version == 4 ? 0x1e : 0x22;
+                int declaredCount = nativeResource[countOffset] << 8 | nativeResource[countOffset + 1];
+                if (count < 1 || count != declaredCount || dictionaryLength < 0x18 ||
+                    0x18L + 0x10L * count > dictionaryLength || !ResourceContains(dictionary, dictionaryLength)) return null;
+                tables.Add(Tuple.Create(resourceAddress, resourceAddress + (ulong)headerLength));
+                tables.Add(Tuple.Create(resourceAddress + (ulong)groupOffset, resourceAddress + (ulong)groupOffset + (ulong)dictionaryLength));
+                bool foundEntry = false;
+                for (int index = 0; index < count; index++)
+                {
+                    long entryOffset = (long)groupOffset + unchecked((int)Raw32(dictionary + 0x18 + index * 0x10 + 0x0c));
+                    if (entryOffset < headerLength || entryOffset + 8 > resourceLength) return null;
+                    byte* siblingStart = nativeResource + entryOffset;
+                    AnimationCode siblingCode = Raw32(siblingStart + 4); int cells = 0;
+                    for (int g = 0; g < 3; g++) if (siblingCode.GetExists(g)) cells += g == 0 && siblingCode.GetIsIsotropic(g) ? 1 : 3;
+                    if (!ResourceContains(siblingStart, 8 + cells * 4)) return null;
+                    ulong address = new UIntPtr(siblingStart).ToUInt64();
+                    if (tables.Any(t => address < t.Item2 && address + (ulong)(8 + cells * 4) > t.Item1)) return null;
+                    tables.Add(Tuple.Create(address, address + (ulong)(8 + cells * 4)));
+                    if (siblingStart == start) foundEntry = true;
+                    int cellIndex = 0;
+                    for (int g = 0; g < 3; g++) if (siblingCode.GetExists(g))
+                    {
+                        int axes = g == 0 && siblingCode.GetIsIsotropic(g) ? 1 : 3;
+                        for (int a = 0; a < axes; a++, cellIndex++) if (!siblingCode.GetIsFixed(g * 3 + a))
+                        {
+                            long curveOffset = entryOffset + unchecked((int)Raw32(siblingStart + 8 + cellIndex * 4));
+                            if (curveOffset < headerLength || curveOffset >= resourceLength) return null;
+                            curveStarts.Add(resourceAddress + (ulong)curveOffset);
+                        }
+                    }
+                }
+                if (!foundEntry) return null;
             }
             for (int group = 0; group < 3; group++)
             {
@@ -331,16 +519,8 @@ namespace BrawlLib.Wii.Animations
                     {
                         ulong address = new UIntPtr(encoded).ToUInt64();
                         ulong next = curveStarts.FirstOrDefault(p => p > address);
-                        var source = clip.WorkingUncompressed;
-                        if (source.Address == null) continue;
-                        ulong resourceStart = new UIntPtr((byte*)source.Address).ToUInt64(), resourceEnd = resourceStart + (ulong)source.Length;
-                        if (resourceEnd > address && (next == 0 || resourceEnd < next)) next = resourceEnd;
-                        if (clip.Version == 5 && Contains((byte*)source.Address, 0x18))
-                        {
-                            int relative = unchecked((int)Raw32((byte*)source.Address + 0x14));
-                            if (relative > 0)
-                            { ulong userData = resourceStart + (ulong)relative; if (userData > address && (next == 0 || userData < next)) next = userData; }
-                        }
+                        if (nativeResourceEnd > address && (next == 0 || nativeResourceEnd < next)) next = nativeResourceEnd;
+                        if (nativeVersion == 5 && nativeUserDataBoundary > address && (next == 0 || nativeUserDataBoundary < next)) next = nativeUserDataBoundary;
                         // Imported resources may end on the last sample byte,
                         // before physical-file alignment. Preserve that exact
                         // payload extent; newly generated plans stay aligned.
@@ -353,7 +533,7 @@ namespace BrawlLib.Wii.Animations
                     var bytes = new byte[length]; for (int i = 0; i < length; i++) bytes[i] = encoded[i];
                     var curve = dense ? IndexedCHR0CurveStorage.FromEncodedDense(format, bytes, clip.FrameCount + (clip.Loop ? 1 : 0), count) :
                         IndexedCHR0CurveStorage.FromEncoded(format, bytes);
-                    if (curve == null || !curve.Matches(entry.KeyArrays[channel])) continue;
+                    if (curve == null || !(dense && includeUnmatchedDense) && !curve.Matches(entry.KeyArrays[channel])) continue;
                     if (axes == 1)
                     { for (int component = 0; component < 3; component++) if (curve.Matches(entry.KeyArrays[component])) curves[component] = curve; }
                     else curves[channel] = curve;

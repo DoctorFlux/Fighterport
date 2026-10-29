@@ -21,6 +21,11 @@ namespace BrawlLib.SSBB.ResourceNodes
         public override Type[] AllowedChildTypes => new Type[] {typeof(CHR0EntryNode)};
         public override int[] SupportedVersions => new int[] {4, 5};
         public override string Tag => "CHR0";
+        // Opaque CHR0 metadata. Retention does not imply that a nonzero mode is
+        // qualified for the application's target optimization/evaluation path.
+        private int _nativeScalingRule;
+        [Browsable(false)]
+        public int NativeScalingRule => _nativeScalingRule;
 
         public CHR0Node()
         {
@@ -100,6 +105,7 @@ namespace BrawlLib.SSBB.ResourceNodes
                 CHR0v5* header = Header5;
                 _numFrames = header->_numFrames;
                 _loop = header->_loop != 0;
+                _nativeScalingRule = header->_scalingRule;
 
                 if (_name == null)
                 {
@@ -127,6 +133,7 @@ namespace BrawlLib.SSBB.ResourceNodes
                 CHR0v4_3* header = Header4_3;
                 _numFrames = header->_numFrames;
                 _loop = header->_loop != 0;
+                _nativeScalingRule = header->_scalingRule;
 
                 if (_name == null)
                 {
@@ -270,12 +277,14 @@ namespace BrawlLib.SSBB.ResourceNodes
             {
                 CHR0v5* header = (CHR0v5*) address;
                 *header = new CHR0v5(_version, length, _numFrames, Children.Count, _loop);
+                header->_scalingRule = _nativeScalingRule;
                 group = header->Group;
             }
             else
             {
                 CHR0v4_3* header = (CHR0v4_3*) address;
                 *header = new CHR0v4_3(_version, length, _numFrames, Children.Count, _loop);
+                header->_scalingRule = _nativeScalingRule;
                 group = header->Group;
             }
 

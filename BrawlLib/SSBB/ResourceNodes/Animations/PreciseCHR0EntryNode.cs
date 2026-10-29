@@ -40,6 +40,21 @@ public sealed unsafe class PreciseCHR0EntryNode : CHR0EntryNode
         }
     }
     private SerializationPlan _serializationPlan;
+    private sealed class StorageAdoptionContext
+    {
+        internal readonly IndexedCHR0EntryStorage Storage;
+        internal readonly int Flags, FrameLimit, Version, ScalingRule;
+        internal readonly bool Loop;
+        internal readonly int[][] FixedRotation;
+        internal StorageAdoptionContext(PreciseCHR0EntryNode entry, IndexedCHR0EntryStorage storage,CHR0Node owner)
+        {
+            Storage=storage;Flags=entry.SemanticFlags();FrameLimit=entry.Keyframes.FrameLimit;Loop=entry.Keyframes.Loop;
+            Version=owner?.Version??0;ScalingRule=owner?.NativeScalingRule??-1;
+            FixedRotation=Enumerable.Range(3,3).Select(channel=>storage[channel]==null
+                ?entry.KeyArrays[channel].Entries.Take(2).SelectMany(key=>new[]{Bits(key._index),Bits(key._value),Bits(key._tangent)}).ToArray():null).ToArray();
+        }
+    }
+    private StorageAdoptionContext _storageAdoption;
     private static int Bits(float value)=>BitConverter.ToInt32(BitConverter.GetBytes(value),0);
     private int SemanticFlags()=>(UseModelScale?1:0)|(UseModelRotate?2:0)|(UseModelTranslate?4:0)|(ScaleCompensateApply?8:0)|(ScaleCompensateParent?16:0)|(ClassicScaleOff?32:0);
     private bool ExactIsotropicScale()
@@ -53,6 +68,20 @@ public sealed unsafe class PreciseCHR0EntryNode : CHR0EntryNode
         return true;
     }
     public IndexedCHR0EntryStorage IndexedStorage { get; private set; }
+    private void AttachStorage(IndexedCHR0EntryStorage storage,CHR0Node owner=null)
+    {
+        IndexedStorage=storage;_storageAdoption=storage!=null&&Enumerable.Range(3,3).Any(c=>storage[c]?.IsDense==true)?new StorageAdoptionContext(this,storage,owner??Parent as CHR0Node):null;
+    }
+    internal bool StorageAdoptionContextMatches => _storageAdoption!=null&&ReferenceEquals(_storageAdoption.Storage,IndexedStorage)&&
+        _storageAdoption.Flags==SemanticFlags()&&_storageAdoption.FrameLimit==Keyframes.FrameLimit&&_storageAdoption.Loop==Keyframes.Loop&&
+        Parent is CHR0Node owner&&owner.Version==_storageAdoption.Version&&owner.NativeScalingRule==_storageAdoption.ScalingRule;
+    internal bool StorageAdoptionFixedRotationMatches(int channel)
+    {
+        var expected=_storageAdoption?.FixedRotation[channel-3];
+        var actual=KeyArrays[channel].Entries.SelectMany(key=>new[]{Bits(key._index),Bits(key._value),Bits(key._tangent)}).ToArray();
+        return expected!=null&&expected.Length<=3&&actual.SequenceEqual(expected)&&
+            (expected.Length==0||expected[0]==0&&expected[2]==0);
+    }
     public static IndexedCHR0EntryStorage CaptureStorage(CHR0EntryNode entry)
     {
         // An explicit precise policy, including null after native Undo, is
@@ -61,6 +90,8 @@ public sealed unsafe class PreciseCHR0EntryNode : CHR0EntryNode
         var precise = entry as PreciseCHR0EntryNode;
         return precise != null ? precise.IndexedStorage : IndexedCHR0EntryStorage.Capture(entry);
     }
+    public static IndexedCHR0EntryStorage.WriteCapture CaptureStorageForWrite(CHR0EntryNode entry)
+        => IndexedCHR0EntryStorage.CaptureForWrite(entry);
 
     // Explicit immutable storage plans are separate from the curve coefficients.
     // A mismatched plan is ignored by the writer, preserving I12 as the default.
@@ -75,7 +106,7 @@ public sealed unsafe class PreciseCHR0EntryNode : CHR0EntryNode
             if (parent == null) throw new InvalidOperationException("Storage policy requires an owned native animation entry.");
             entry.Remove(); parent.InsertChild(precise, index);
         }
-        precise.IndexedStorage = storage; precise.SignalPropertyChange(); return precise;
+        precise.AttachStorage(storage); precise.SignalPropertyChange(); return precise;
     }
 
     private static PreciseCHR0EntryNode MakePrecise(CHR0EntryNode source)
@@ -91,16 +122,30 @@ public sealed unsafe class PreciseCHR0EntryNode : CHR0EntryNode
     // policy changes; key collections and all exposed semantic flags survive.
     public static void Promote(CHR0Node clip)
     {
-        foreach(CHR0EntryNode source in clip.Children.ToArray())
+        // Resolve every imported payload while the complete original owner and
+        // its neighboring offsets still exist. A changed group fails Matches
+        // and uses I12; unrelated matching groups retain their original bytes.
+        // A precise entry's explicit policy (including null after Undo) remains
+        // authoritative and must never re-adopt a stale backing payload.
+        var imported=clip.Children.OfType<CHR0EntryNode>()
+            .Select(entry=>new { Entry=entry, Capture=CaptureStorageForWrite(entry) }).ToArray();
+        var unavailable=imported.FirstOrDefault(item=>!item.Capture.Accepted);
+        if(unavailable!=null)
+            throw new InvalidOperationException(unavailable.Capture.Diagnostic+" Save was stopped before replacing native entries.");
+        foreach(var item in imported)
         {
+            var source=item.Entry;
             if(source is PreciseCHR0EntryNode)continue;
             var precise=MakePrecise(source);
+            precise.AttachStorage(item.Capture.Storage,clip);
             int index=source.Index;source.Remove();clip.InsertChild(precise,index);
         }
     }
     static FieldInfo Field(string name)=>typeof(CHR0EntryNode).GetField(name,BindingFlags.NonPublic|BindingFlags.Instance)??throw new NotSupportedException("Pinned CHR0 writer field unavailable: "+name);
     public override int OnCalculateSize(bool force)
     {
+        var capture=CaptureStorageForWrite(this);
+        if(!capture.Accepted)throw new InvalidOperationException(capture.Diagnostic);
         base.OnCalculateSize(force);var code=(AnimationCode)Field("_code").GetValue(this);int bytes=0;
         // The legacy heuristic compares only scale times/values, which can
         // merge different Hermite functions or signed-zero data. This precise

@@ -1,5 +1,37 @@
 ﻿# Current milestone M2 — simpler native workspace
 
+29 October — **preview.63 native write-path diagnosis and exact cleanup**
+qualifies its bounded increment within the ONE incomplete G1/M2. Start:
+`d82c3f709b6d8526d11243bc0d4b6be98b75f9ad`. Actual original/no-edit/one-key/
+worker/retarget/fitting comparisons identify per-entry and SRT payload growth;
+the historical revision is not invented as an inspected local object. Shared
+promotion now preserves imported compact groups and opaque scaling metadata.
+Raw-dictionary capture preserves untouched siblings through single-entry Undo;
+explicit authoring can replace obsolete changed-group plans without using that
+reset to bypass compression's frozen-master protections.
+
+Acceptance: **6,718 fresh pinned checks / 13 private-desktop runs**, plus 2,047
+separately identified prior checks admitted by source continuity; **55 Python
+tests**, 1,902 renderer checks, 41 workflow PNGs covered by actual viewing/exact
+hash continuity, and **308 actually inspected decoded GIF frames**. Safe Exact
+constant/redundant cleanup is qualified with compact search disabled. The real
+83,064-byte up-air Exact case remains unchanged under unknown protections.
+See [acceptance](../CHR0_WRITE_PATH_ACCEPTANCE_2026-10-29.md) and
+[diagnosis](../CHR0_WRITE_PATH_DIAGNOSIS_2026-10-29.md).
+
+The primary retargeted payload gap remains open: direct/actual-button Sonic
+down-air on Mario is 69,848 / 81,140 bytes; supplied Mario up-air on Sonic is
+83,064 / 105,816 bytes for bone/channel timing. Donors are storage context,
+never compression quality references. Further compact-copy proposals remain
+ignored, unapplied and unqualified; evaluate them only after this accepted
+write-path boundary, against the same finished target and unchanged protections,
+quality/work limits, serialization/reopen and native geometry gates. No fixed
+saving or global optimum is promised. Launcher: `Fighterport-write63/native1`.
+Full viewer, original Next, all roots/weights/binds, native Undo, exact ordinary
+Save/export and background-only testing remain. Broader contact/editor/runtime/
+Melee, physical input/DPI and human acceptance stay open. No other increment,
+mode, editor, project-format change or competing milestone is promoted here.
+
 29 October — **preview.62-chr0-forensics** completes its bounded increment inside
 the ONE incomplete G1/M2. Starting commit:
 `01ce42bdea068c0aab83dc7c03a9e0f854a1ad34`. Independent v4/v5 byte/flag/codec/

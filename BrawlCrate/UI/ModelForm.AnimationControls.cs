@@ -339,11 +339,24 @@ namespace BrawlCrate.UI
             }
             internal static void Apply(CHR0Node clip,ControlTrack[] tracks)
             {
-                if(clip==null)return;foreach(var track in tracks){var node=clip.Children.OfType<CHR0EntryNode>().SingleOrDefault(n=>n.Name==track.Bone)??clip.CreateEntry(track.Bone);Write(node,track.Channels);if(track.Channels.Take(3).Any(c=>c.Length>0))node.UseModelScale=false;if(track.Channels.Skip(3).Take(3).Any(c=>c.Length>0))node.UseModelRotate=false;if(track.Channels.Skip(6).Take(3).Any(c=>c.Length>0))node.UseModelTranslate=false;}PreciseCHR0EntryNode.Promote(clip);clip.SignalPropertyChange();
+                if(clip==null)return;PreciseCHR0EntryNode.Promote(clip);foreach(var track in tracks){var node=clip.Children.OfType<CHR0EntryNode>().SingleOrDefault(n=>n.Name==track.Bone)??clip.CreateEntry(track.Bone);Write(node,track.Channels);if(track.Channels.Take(3).Any(c=>c.Length>0))node.UseModelScale=false;if(track.Channels.Skip(3).Take(3).Any(c=>c.Length>0))node.UseModelRotate=false;if(track.Channels.Skip(6).Take(3).Any(c=>c.Length>0))node.UseModelTranslate=false;}PreciseCHR0EntryNode.Promote(clip);clip.SignalPropertyChange();
             }
             internal static void Write(CHR0EntryNode node,ControlKey[][] channels)
             {
+                var storage=PreciseCHR0EntryNode.CaptureStorage(node);
                 for(int i=0;i<9;i++){var array=node.KeyArrays[i];while(array.KeyCount>0)array.Remove(array.Entries.First()._index);foreach(var k in channels[i])node.SetKeyframe(i,k.Frame,k.Value,true,true)._tangent=k.Tangent;}node.Keyframes.PreserveInterpolation=true;node.SignalPropertyChange();
+                // This is an explicit authoring boundary, not compression of
+                // the previous motion. New FK/IK/contact/fitting curves define
+                // a new full-quality master; their old payload cannot overwrite
+                // the edit. Keep every unchanged S/R/T plan. Undo restores the
+                // frozen original plan after writing its original tuples.
+                if(node is PreciseCHR0EntryNode&&storage!=null)
+                {
+                    var retained=new BrawlLib.Wii.Animations.IndexedCHR0CurveStorage[9];
+                    for(int group=0;group<3;group++)if(storage.MatchesGroup(node.Keyframes,group))
+                        for(int axis=0;axis<3;axis++)retained[group*3+axis]=storage[group*3+axis];
+                    PreciseCHR0EntryNode.RestoreStorage(node,retained.Any(curve=>curve!=null)?new BrawlLib.Wii.Animations.IndexedCHR0EntryStorage(retained):null);
+                }
             }
         }
     }

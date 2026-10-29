@@ -31,6 +31,24 @@ internal static partial class Program
             "Native Export fixture retains saved Error-bounded/Thorough preferences to prove ordinary export ignores them");
         var form = new ModelForm(); var files = new List<object>();
         bool preparationWindow = false;
+        string diagnosticPhase = "setup";
+        int diagnosticExceptions = 0;
+        // The real callback deliberately displays caught user-facing errors.
+        // Record a bounded first-chance trace before that modal boundary so
+        // background failures remain diagnosable without desktop interaction.
+        EventHandler<System.Runtime.ExceptionServices.FirstChanceExceptionEventArgs> diagnostic = (sender, error) => {
+            try
+            {
+                string detail = error.Exception.ToString();
+                if (detail.IndexOf("BrawlCrate.UI.ModelForm", StringComparison.Ordinal) < 0 ||
+                    System.Threading.Interlocked.Increment(ref diagnosticExceptions) > 16) return;
+                if (detail.Length > 8192) detail = detail.Substring(0, 8192);
+                lock (files) File.AppendAllText(Path.Combine(output, "native-export-first-chance.log"),
+                    DateTime.UtcNow.ToString("o") + " | " + diagnosticPhase + "\r\n" + detail + "\r\n");
+            }
+            catch { } // Diagnostic I/O never replaces or suppresses the actual exception.
+        };
+        AppDomain.CurrentDomain.FirstChanceException += diagnostic;
         using (var observer = new Timer { Interval = 20 })
         {
             observer.Tick += (s, e) => preparationWindow |= Application.OpenForms.Cast<Form>().Any(window => window.Name == "workspaceExportPreparation");
@@ -77,10 +95,49 @@ internal static partial class Program
                         label + ": ordinary native Export opens no optimization progress window and performs zero optimization/geometry analysis");
                     Check(preferences.Read().StableKey == bounded.StableKey, label + ": ordinary Export does not rewrite explicit optimizer preferences");
                 }
+                void PolicyDiagnostic(string phase)
+                {
+                    var entries = clip.Children.OfType<CHR0EntryNode>().Select(entry => {
+                        var precise = entry as PreciseCHR0EntryNode;
+                        var capture = PreciseCHR0EntryNode.CaptureStorageForWrite(entry);
+                        return new {
+                            entry.Name, Type = entry.GetType().FullName, ParentIsFixture = ReferenceEquals(entry.Parent, clip),
+                            WorkingBytes = entry.WorkingUncompressed.Length, OriginalBytes = entry.UncompressedSource.Length,
+                            WorkingAddress = ((IntPtr)entry.WorkingUncompressed.Address).ToInt64(), OriginalAddress = ((IntPtr)entry.UncompressedSource.Address).ToInt64(),
+                            entry.IsDirty, entry.IsBranch, entry.UseModelScale, entry.UseModelRotate, entry.UseModelTranslate,
+                            entry.ScaleCompensateApply, entry.ScaleCompensateParent, entry.ClassicScaleOff,
+                            entry.Keyframes.FrameLimit, entry.Keyframes.Loop,
+                            ExplicitPrecisePolicy = precise != null, ExplicitNullPolicy = precise != null && precise.IndexedStorage == null,
+                            CaptureAccepted = capture.Accepted, capture.Diagnostic,
+                            Groups = Enumerable.Range(0, 3).Select(group => new {
+                                Group = group, RetainedMatches = precise?.IndexedStorage?.MatchesGroup(entry.Keyframes, group) ?? false,
+                                Curves = Enumerable.Range(group * 3, 3).Select(channel => precise?.IndexedStorage?[channel]?.ContentKey).ToArray()
+                            }).ToArray()
+                        };
+                    }).ToArray();
+                    File.WriteAllText(Path.Combine(output, "native-export-policy-" + phase + ".json"),
+                        new JavaScriptSerializer { MaxJsonLength = 1024 * 1024 }.Serialize(new {
+                            Phase = phase, SelectedIsFixture = ReferenceEquals(editor.SelectedCHR0, clip),
+                            SelectedName = editor.SelectedCHR0?.Name, FixtureName = clip.Name,
+                            FixtureIdentity = OptimizationNativeIdentity(clip),
+                            SelectedIdentity = editor.SelectedCHR0 == null ? null : OptimizationNativeIdentity(editor.SelectedCHR0),
+                            FixtureParentType = clip.Parent?.GetType().FullName, RootType = clip.RootNode.GetType().FullName,
+                            ClipWorkingBytes = clip.WorkingUncompressed.Length, ClipOriginalBytes = clip.UncompressedSource.Length,
+                            ClipWorkingAddress = ((IntPtr)clip.WorkingUncompressed.Address).ToInt64(), ClipOriginalAddress = ((IntPtr)clip.UncompressedSource.Address).ToInt64(),
+                            RootWorkingBytes = clip.RootNode.WorkingUncompressed.Length, RootOriginalBytes = clip.RootNode.UncompressedSource.Length,
+                            RootWorkingAddress = ((IntPtr)clip.RootNode.WorkingUncompressed.Address).ToInt64(), RootOriginalAddress = ((IntPtr)clip.RootNode.UncompressedSource.Address).ToInt64(),
+                            clip.IsDirty, clip.IsBranch, clip.FrameCount, clip.Loop, clip.Version, clip.NativeScalingRule,
+                            Frame = editor.CurrentFrame, Undo = editor._undoSaves.Count, Redo = editor._redoSaves.Count,
+                            Entries = entries, Scope = "Read-only diagnostic; no Export, Rebuild, storage adoption, solving or acceptance inference."
+                        }));
+                }
                 void Publish(CHR0Node member, string path, string label)
                 {
+                    diagnosticPhase = label;
+                    File.AppendAllText(Path.Combine(output, "native-export-phases.log"), DateTime.UtcNow.ToString("o") + " | begin " + label + "\r\n");
                     string state = State(), expected = NativeAnimationOptimization.SourceContentKey(member), storage = NativeAnimationOptimization.StorageKey(member);
                     nativeExport(member, path);
+                    File.AppendAllText(Path.Combine(output, "native-export-phases.log"), DateTime.UtcNow.ToString("o") + " | returned " + label + "\r\n");
                     Check(File.Exists(path), label + ": actual native animation-list callback writes its chosen CHR0");
                     using (var reopened = NodeFactory.FromFile(null, path) as CHR0Node)
                         Check(reopened != null && NativeAnimationOptimization.SourceContentKey(reopened) == expected &&
@@ -93,9 +150,10 @@ internal static partial class Program
                 }
 
                 string destination = Path.Combine(output, "native-current-before-save.chr0");
+                PolicyDiagnostic("before-first-export");
                 Publish(clip, destination, "Current edited animation");
-                editor.Undo(); await SimpleControlsReady(form); Check(LifecycleContent(clip) == pristine, "Native body Undo works immediately after ordinary Export");
-                editor.Redo(); await SimpleControlsReady(form); Check(LifecycleContent(clip) == edited, "Native body Redo works immediately after ordinary Export");
+                editor.Undo(); PolicyDiagnostic("after-undo-sync"); await SimpleControlsReady(form); PolicyDiagnostic("after-undo-ready"); Check(LifecycleContent(clip) == pristine, "Native body Undo works immediately after ordinary Export");
+                editor.Redo(); PolicyDiagnostic("after-redo-sync"); await SimpleControlsReady(form); PolicyDiagnostic("after-redo-ready"); Check(LifecycleContent(clip) == edited, "Native body Redo works immediately after ordinary Export");
                 Publish(clip, destination, "Existing destination already confirmed by native picker");
                 var sibling = Walk(clip.RootNode).OfType<CHR0Node>().First(item => !ReferenceEquals(item, clip) && item.Name == "Fall");
                 Publish(sibling, Path.Combine(output, "native-nonselected-fall.chr0"), "Explicit owned sibling export without temporary selection");
@@ -174,6 +232,7 @@ internal static partial class Program
             }
             finally
             {
+                AppDomain.CurrentDomain.FirstChanceException -= diagnostic;
                 form.NativeAnimationConversionWriter = null;
                 observer.Stop(); SimpleDisposeForm(form);
                 Environment.SetEnvironmentVariable("FIGHTERPORT_EXPORT_PREFERENCES_ROOT", previousPreferences);

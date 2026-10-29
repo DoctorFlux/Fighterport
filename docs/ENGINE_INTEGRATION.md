@@ -1,5 +1,40 @@
 ﻿# Native Next integration
 
+Preview.63 traces actual original, edited, worker, retarget and fitting bytes.
+The retargeted gap is primarily curve payload: identical visible key times can
+represent compact sampled streams or much larger indexed value/tangent rows.
+The independent read-only storage comparator reports every entry/SRT group,
+physical stream allocation, fixed slots, dictionary/strings and padding. Donor
+storage is context; the finished full-quality target remains the quality reference.
+See [write-path diagnosis](CHR0_WRITE_PATH_DIAGNOSIS_2026-10-29.md).
+
+Application and worker promotion share the owned precise writer. Before replacing
+any entries, promotion captures and validates imported group plans against their
+complete native owner/map; zero-length child DataSources are normal. Matching
+payloads survive. Changed groups retain I12 fallback only when their required
+terminal context can be preserved. A sampled rotation edit needs unchanged native
+timing/flags, an exact held terminal and unchanged final tuple sides; unknown
+tails fail explicitly. Precise adoption context and the size pass enforce the same
+contract, including promote-before-edit. Explicit null storage after Undo remains
+authoritative. This is same-native authoring qualification, not a universal game
+or external-editor guarantee.
+
+The existing owned FK/IK, fitting and contact snapshot writer is an explicit
+authoring boundary. It releases stale plans for changed whole S/R/T groups and
+retains bit-matching groups, defining the new full-quality master before any
+compression. Original reference snapshots remain immutable; Undo restores their
+complete original plans after restoring keys and flags. The optimizer does not
+use this authoring reset to bypass a frozen master's terminal or contact rules.
+
+CHR0 v4/v5 now retain their opaque scaling-rule header on rebuild. Unchanged rules
+0–2 may survive source/authoring snapshots; nonzero rules still do not qualify
+for target optimization. Native Save and ordinary right-click Export introduce
+no lossy search. Contact previews stage independent motion and raw visual contexts
+instead of rebuilding the live archive. Core Exact constant/redundant Hermite
+cleanup is measured separately with compact search disabled; this does not assert
+that every retarget/fitting/contact route now runs the Core reducer. Unknown
+protection context and terminal behavior retain conservative fallbacks.
+
 Preview.62 adds independent read-only CHR0 byte/flag/codec accounting and exact
 native coefficient/terminal corroboration. Quantizer arithmetic is explicitly
 profiled; exact single rounding matches the inspected native x86 corpus, while

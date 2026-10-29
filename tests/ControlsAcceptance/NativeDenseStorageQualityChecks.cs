@@ -71,10 +71,27 @@ internal static partial class Program
             entry = PreciseCHR0EntryNode.RestoreStorage(entry, new IndexedCHR0EntryStorage(channels));
             clip.FrameCount = 8;
             Check(!immutable.Matches(entry.KeyArrays[3]), "Dense implicit-timing guard rejects a previously matching payload after the native duration grows");
-            string expected = NativeAnimationOptimization.ContentKey(clip), file = Path.Combine(stage, "duration-edit-precise-fallback.chr0"); clip.ExportChecked(file);
+            string expected = NativeAnimationOptimization.ContentKey(clip), file = Path.Combine(stage, "duration-edit-precise-fallback.chr0");
+            string storageBefore=NativeAnimationOptimization.StorageKey(clip);var ownerBefore=clip.Children.ToArray();
+            var retainedBefore=((PreciseCHR0EntryNode)entry).IndexedStorage;bool dirtyBefore=clip.IsDirty,rejected=false;
+            try{clip.ExportChecked(file);}catch(InvalidOperationException error){rejected=error.Message.Contains("adoption context changed");}
+            Check(rejected&&!File.Exists(file)&&NativeAnimationOptimization.ContentKey(clip)==expected&&
+                NativeAnimationOptimization.StorageKey(clip)==storageBefore&&clip.Children.SequenceEqual(ownerBefore)&&clip.IsDirty==dirtyBefore&&
+                ReferenceEquals(((PreciseCHR0EntryNode)entry).IndexedStorage,retainedBefore)&&immutable.EncodedValues[3]==7,
+                "Dense duration edit with a distinct hidden terminal is rejected before automatic export publication, preserving authored curves, ownership, dirty state and immutable original payload");
+            // Explicitly clearing an owned storage policy remains the existing
+            // authoring API. It is not automatic optimization or evidence that
+            // the original hidden terminal survived the duration change.
+            PreciseCHR0EntryNode.RestoreStorage(entry,null);clip.ExportChecked(file);
             using (var decoded = NodeFactory.FromFile(null, file) as CHR0Node)
                 Check(NativeAnimationOptimization.ContentKey(decoded) == expected && DenseReadCompletePayloads(File.ReadAllBytes(file)).Length == 0,
-                    "Dense duration edit exports its authored native keys through precise fallback rather than emitting too few dense samples under a larger header");
+                    "Explicit dense policy reset exports the current authored native keys as I12 after a duration edit; it does not claim retention of the old hidden terminal");
+            File.WriteAllText(Path.Combine(stage,"duration-edit-policy-boundary.json"),new JavaScriptSerializer().Serialize(new
+            {
+                AutomaticExportRejected=true,OriginalHiddenTerminal=7,OriginalPayloadUnchanged=immutable.EncodedValues[3]==7,
+                ExplicitPolicyReset=true,AuthoredNativeContentReopened=true,
+                Limitation="Automatic save/export does not qualify a duration or loop change against a distinct imported hidden terminal. Explicit RestoreStorage(entry,null) is an existing internal authoring reset that exports the current projected keys; it is not a terminal-preserving optimization or a new user workflow."
+            }));
         }
         using (var clip = DenseOwnedClip(3, false, 4, immutable))
         {
