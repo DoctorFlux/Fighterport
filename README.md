@@ -2,7 +2,12 @@
 
 This is the public unified source repository at https://github.com/DoctorFlux/Fighterport.
 It imports the BrawlCrate-based Next preview.14 source and integrated owned engine;
-the current implementation is **preview.43-apply-current-fit**.
+the current implementation is **preview.62-chr0-forensics**.
+See the [CHR0 format map](docs/CHR0_BINARY_FORMAT.md) and
+[current qualification](docs/CHR0_FORENSICS_ACCEPTANCE_2026-10-29.md).
+Independent and native decoders agree under the recorded arithmetic profile.
+The large authentic size gap remains unresolved; this increment does not claim
+a compression fix or game acceptance.
 See the [current-animation fitting acceptance](docs/APPLY_CURRENT_FIT_ACCEPTANCE_2026-10-27.md),
 [recovery setup acceptance](docs/RECOVERY_SETUP_ACCEPTANCE_2026-10-26.md),
 [fitting reference acceptance](docs/FITTING_REFERENCES_ACCEPTANCE_2026-10-26.md),

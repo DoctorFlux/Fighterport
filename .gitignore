@@ -166,5 +166,9 @@ local.settings.json
 !engine/licenses/packages/**
 tests/**/Generated/
 
+# Independent CHR0 audit tooling.
+__pycache__/
+*.py[cod]
+
 # Local supplied Word plan; the authoritative specification is checked in as Markdown.
 docs/FighterPort_V2_Source_Bound_Universal_Animation_Library_Master_Plan.docx

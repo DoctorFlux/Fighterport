@@ -1,5 +1,23 @@
 ﻿# Native Next integration
 
+Preview.62 adds independent read-only CHR0 byte/flag/codec accounting and exact
+native coefficient/terminal corroboration. Quantizer arithmetic is explicitly
+profiled; exact single rounding matches the inspected native x86 corpus, while
+the historical separate-binary32 API default remains disclosed. No native
+decoder or universal game/JIT interpretation is substituted.
+
+Source-key preparation retains its existing qualified baseline before at most
+four complete wire compositions. Typed failures follow actual ancestry/branches;
+fresh decoded coefficients must match original Dense-certified wires. Cumulative
+native quality and shared budgets still govern; only strictly smaller complete
+files/non-increasing resource blocks replace the baseline. No primary authentic
+improvement is claimed. Save, ordinary right-click Export, full viewer, original
+Next, all weights, source-owned roots, Undo and project formats are unchanged.
+Unknown FrameScale/runtime semantics and potential sharing/dense proposals remain
+unqualified. See [format map](CHR0_BINARY_FORMAT.md),
+[write-path findings](CHR0_FORENSICS_NOTES_2026-10-29.md) and
+[acceptance](CHR0_FORENSICS_ACCEPTANCE_2026-10-29.md).
+
 Preview.61 makes prepared animation storage use the shared actual-byte native
 packing boundary. Source-key/interpolated retarget preparation first qualifies
 its precise candidate, then tries indexed I4/I6 copies against both that byte

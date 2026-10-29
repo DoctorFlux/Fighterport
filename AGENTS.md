@@ -1,5 +1,21 @@
 # Fighterport
 
+29 October 2026 **preview.62-chr0-forensics** qualifies its bounded slice in the
+ONE incomplete G1/M2: 5,739 native checks + 42 Python tests; 16 zero-difference
+native comparisons; 60 fresh UI images covered by actual inspection/hash
+continuity; four inspected side GIFs (308 decoded frames). Explicit arithmetic
+profiles resolve the observed rounding discrepancy without a tolerance. The
+supplied Mario PAC/up-air replaces the older reverse demonstration. Primary real
+sizes do not improve further: the actual button remains 81,140 bytes. Do not
+claim the gap is fixed. The supplied up-air's canonical snapshot changes 17 I12
+FrameScale words by one ULP; runtime significance remains unqualified, and its
+GIF uses exact supplied bytes. Full viewer, Next, all weights, root policy,
+Undo, exact Save and plain native Export remain. Launcher:
+`Fighterport-curve62/native1`. See [acceptance](docs/CHR0_FORENSICS_ACCEPTANCE_2026-10-29.md)
+and [format map](docs/CHR0_BINARY_FORMAT.md). DoctorFlux source-only public main
+and background testing remain. Broader compression, contacts, external editors,
+games/Melee, input/DPI and human acceptance stay open. Earlier records follow.
+
 29 October 2026 **preview.61-payload-aware-preparation** completes its bounded
 increment: 3,450 checks / 11 admitted background runs and 60 fresh UI images
 covered by actual inspection and exact reviewed-image hash continuity. Retarget

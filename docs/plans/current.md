@@ -1,5 +1,40 @@
 ﻿# Current milestone M2 — simpler native workspace
 
+29 October — **preview.62-chr0-forensics** completes its bounded increment inside
+the ONE incomplete G1/M2. Starting commit:
+`01ce42bdea068c0aab83dc7c03a9e0f854a1ad34`. Independent v4/v5 byte/flag/codec/
+terminal accounting and exact native coefficient comparisons are implemented.
+Pinned BrawlCrate/RiiStudio evidence remains distinct from runtime claims. The
+explicit single-round arithmetic profile resolves every observed mismatch
+without a tolerance or a silent default switch.
+
+Qualification: **5,739 native checks + 42 Python tests**, plus 1,902 renderer
+checks / four GIFs / 308 actually inspected decoded frames. All 16 independent/
+native comparisons have zero bit differences. All 60 fresh workflow PNGs are
+covered by inspection or exact reviewed-image continuity. The primary reverse
+demonstration uses the supplied Mario PAC and exact 13,608-byte up-air source.
+Its canonical snapshot changes 17 I12 FrameScale words by one ULP; all other
+bytes agree. Runtime significance remains unqualified; its GIF uses exact input.
+
+Selective per-bone preparation first retains the established qualified result,
+then accepts only fully certified smaller candidates under the same finished
+target and shared budgets. The independent pulse improves 508 → 504 bytes.
+**Neither primary authentic case improves further**: the actual button remains
+81,140 bytes; supplied up-air on Sonic is 83,064 / 105,816 bytes for bone/channel
+timing. The large real gap remains unresolved. Stream sharing/new dense-codec
+proposals are unimplemented opportunities requiring complete writing, quality
+and compatibility evidence. No global minimum or fixed saving is claimed.
+
+The launcher selects `Fighterport-curve62/native1`. Full native viewer, original
+Next, all weights, source-local roots, Undo, exact Save and plain right-click
+Export remain; no new mode/editor/project format appears. DoctorFlux source-only
+public main and background tests remain. See
+[acceptance](../CHR0_FORENSICS_ACCEPTANCE_2026-10-29.md),
+[format map](../CHR0_BINARY_FORMAT.md) and
+[findings](../CHR0_FORENSICS_NOTES_2026-10-29.md).
+Broader compression, contacts, games/Melee, physical input/DPI and human usability
+remain open within G1/M2. No other increment is promoted.
+
 29 October — **preview.61 payload-aware preparation** completes its bounded
 increment within the same incomplete G1/M2. Starting commit:
 `c92410bbf8a42af7d355b61248aa14e39404655e`. Complete the bounded source-key

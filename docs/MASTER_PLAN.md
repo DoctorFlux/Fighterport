@@ -1,5 +1,20 @@
 # Fighterport master plan
 
+29 October 2026 **preview.62-chr0-forensics** completes a bounded slice inside the
+ONE incomplete G1/M2: independent byte/flag/codec accounting, explicit arithmetic
+profiles, exact native coefficient/terminal corroboration, and conservative
+selective preparation are implemented. Qualification: 5,739 native checks +
+42 Python tests; 16 exact comparisons; 60 reviewed/identical fresh UI images;
+four inspected GIFs (308 decoded frames). The primary reverse case uses the
+supplied Mario PAC/up-air. Primary file sizes do not improve further; the actual
+button remains 81,140 bytes. No compression fix or game acceptance is claimed.
+Full viewer, original Next, all weights, roots, Undo, exact Save and plain native
+Export remain. See [acceptance](CHR0_FORENSICS_ACCEPTANCE_2026-10-29.md),
+[format map](CHR0_BINARY_FORMAT.md) and [current plan](plans/current.md).
+Launcher: `Fighterport-curve62/native1`. DoctorFlux source-only public main and
+background testing remain; broader compression, contacts, runtime/editor/Melee,
+input/DPI and human acceptance stay open. No other increment is promoted.
+
 29 October 2026 **preview.61-payload-aware-preparation** completes its bounded
 increment in the ONE incomplete G1/M2: 3,450 checks / 11 admitted private-desktop
 runs and 60 reviewed fresh UI images. Shared packing uses actual complete bytes

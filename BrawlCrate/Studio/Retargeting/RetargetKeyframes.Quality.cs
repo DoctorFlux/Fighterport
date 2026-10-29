@@ -98,7 +98,8 @@ namespace BrawlCrate.Studio.Retargeting
             if(mode==RetargetKeyframeMode.Interpolated)
                 report.QualityNotes="Native Hermite target spans are selected independently of donor key schedules, even when the donor has a key on every frame. Exact protected controls, unknown paired sides, signed zeros and required terminal behavior remain. ";
             var sourceTracks = sourceClip.Children.OfType<CHR0EntryNode>().ToDictionary(t => t.Name, StringComparer.Ordinal);
-            QualityWire lastWire = null;
+            QualityWire lastWire = null, coarseWire = null;
+            InvalidDataException coarseFailure = null;
             foreach (double precision in length > 0 ? new[] { 1d, .5, .25, .125, 0d } : new[] { 0d })
             {
                 token.ThrowIfCancellationRequested();
@@ -124,6 +125,7 @@ namespace BrawlCrate.Studio.Retargeting
                 var attemptPairs = preservePairs ? new NativeGeneratedPairSite[0] : generatedPairs;
                 var wire = QualityTracks(result, target, sourceTracks, mode, controls, attemptPairs, preservePairs ? 1 : precision, length, proof);
                 lastWire = wire;
+                if (coarseWire == null) coarseWire = wire;
                 try
                 {
                     progress?.Invoke(92, mode==RetargetKeyframeMode.Interpolated?"Verifying interpolated curves against the complete dense motion...":"Verifying source-seeded curves against the complete dense motion...");
@@ -159,17 +161,24 @@ namespace BrawlCrate.Studio.Retargeting
                         }
                         try
                         {
-                        var final = packed ?? verified;
-                        bool storageApproximation = final.ContentKey != verified.ContentKey;
-                        report.SourceSeedKeys = wire.SeedKeys;
+                        var heldBaseline = packed ?? verified;
+                        string selectiveNote;
+                        using (var selective = PrepareSelectiveQuality(model, dense, coarseWire, wire, coarseFailure,
+                            heldBaseline, controls, generatedPairs, length, proof, nativeBudget, folder, token, progress,
+                            out selectiveNote))
+                        {
+                        var final = selective?.Result ?? heldBaseline;
+                        var finalWire = selective?.Wire ?? wire;
+                        bool storageApproximation = selective?.StorageApproximation ?? (final.ContentKey != verified.ContentKey);
+                        report.SourceSeedKeys = finalWire.SeedKeys;
                         var candidate = final.Candidate == null ? NativeAnimationOptimization.Copy(dense) : final.Candidate;
                         final.Candidate = null;
-                        report.AddedQualityKeys = Math.Max(0, Count(candidate) - wire.SeedKeys);
+                        report.AddedQualityKeys = Math.Max(0, Count(candidate) - finalWire.SeedKeys);
                         report.ScalarCertified = report.QualityVerified = true; report.ScalarCertificateWork = proof.Work;
-                        report.MaximumCertifiedScaleError = wire.Value[0]; report.MaximumCertifiedEulerError = wire.Value[1];
-                        report.MaximumCertifiedTranslationError = wire.Value[2];
-                        report.MaximumCertifiedScaleDerivativeError = wire.Derivative[0]; report.MaximumCertifiedEulerDerivativeError = wire.Derivative[1];
-                        report.MaximumCertifiedTranslationDerivativeError = wire.Derivative[2];
+                        report.MaximumCertifiedScaleError = finalWire.Value[0]; report.MaximumCertifiedEulerError = finalWire.Value[1];
+                        report.MaximumCertifiedTranslationError = finalWire.Value[2];
+                        report.MaximumCertifiedScaleDerivativeError = finalWire.Derivative[0]; report.MaximumCertifiedEulerDerivativeError = finalWire.Derivative[1];
+                        report.MaximumCertifiedTranslationDerivativeError = finalWire.Derivative[2];
                         if (storageApproximation)
                         {
                             // These are conservative certified ceilings for the
@@ -179,8 +188,8 @@ namespace BrawlCrate.Studio.Retargeting
                             report.MaximumCertifiedEulerError = .01; report.MaximumCertifiedEulerDerivativeError = .05;
                             report.MaximumCertifiedTranslationError = report.MaximumCertifiedTranslationDerivativeError = Math.Min(.0002, .0001 * length);
                         }
-                        report.RestoredTargetTracks = wire.RestoredTracks.ToArray(); report.RestoredTargetChannels = wire.RestoredChannels.ToArray();
-                        report.OmittedTargetTracks = wire.BindOmissions;
+                        report.RestoredTargetTracks = finalWire.RestoredTracks.ToArray(); report.RestoredTargetChannels = finalWire.RestoredChannels.ToArray();
+                        report.OmittedTargetTracks = finalWire.BindOmissions;
                         report.DenseFallback = NativeAnimationOptimization.ContentKey(candidate) == report.DenseContent;
                         report.Samples=final.Samples;report.BoneVisits=nativeBudget.BoneVisits;report.VertexVisits=nativeBudget.VertexVisits;
                         report.MaximumEulerError=final.MaximumEulerError;report.MaximumOrientationError=final.MaximumOrientationError;
@@ -193,14 +202,16 @@ namespace BrawlCrate.Studio.Retargeting
                             (proof.Limited ? "Scalar proof budget was exhausted; uncertain spans retain their exact dense keys. " : "") +
                             "The world/basis distance combines native position and L-scaled forward-basis errors; the legacy separate MaximumWorldBasisError field is not measured or claimed in v2. " +
                             (storageApproximation ? "Certified scalar report fields are the unchanged cumulative strict ceilings; native maxima below are observed separately. " : "") +
-                            storageNote + "Native verification and actual-byte payload search: " + final.Report;
+                            storageNote + selectiveNote + "Native verification and actual-byte payload search: " + final.Report;
                         return candidate;
+                        }
                         }
                         finally { packed?.Dispose(); }
                     }
                 }
                 catch (InvalidDataException error) when (error.Data.Contains("OptimizationQuality") || error.Data.Contains("OptimizationBudget") || error.Data.Contains("OptimizationSize"))
                 {
+                    if (ReferenceEquals(wire, coarseWire) && error.Data.Contains("OptimizationQuality")) coarseFailure = error;
                     report.QualityNotes = (report.QualityNotes ?? "") + (preservePairs ? "Conservative paired-channel baseline" : "Precision " + precision.ToString("G", CultureInfo.InvariantCulture)) + ": " + error.Message + "\r\n";
                     if (error.Data.Contains("OptimizationBudget")) break;
                 }
