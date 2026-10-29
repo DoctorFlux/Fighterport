@@ -26,7 +26,8 @@ namespace BrawlCrate.Studio.Retargeting
             // A supported head or arm can require torso articulation even when
             // the donor's trunk itself is slightly above the ground.
             int[] allJoints=active.SelectMany(c=>JointControls(pose.Rig,c.Key))
-                .Concat(new[]{"pelvis","spine","chest","neck"}.Select(r=>pose.Rig.Roles[r])).Distinct().OrderBy(i=>i).ToArray();
+                .Concat(new[]{"pelvis","spine","chest","neck"}.Select(r=>pose.Rig.Roles[r]))
+                .Where(j=>plan.Mapping.Any(m=>m.TargetIndex==j)).Distinct().OrderBy(i=>i).ToArray();
             var digits=new HashSet<int>(pose.Rig.Roles.Where(r=>r.Key.Contains(".finger") || r.Key.EndsWith(".toe",StringComparison.Ordinal)).Select(r=>r.Value));
             int[] joints=allJoints.Where(j=>!digits.Contains(j)).ToArray();
             int count=3+joints.Length*3;

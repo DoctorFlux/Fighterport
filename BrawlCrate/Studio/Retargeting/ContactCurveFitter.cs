@@ -12,7 +12,7 @@ namespace BrawlCrate.Studio.Retargeting
         // Integer keys cannot represent the quaternion solver exactly between keys.
         // Refine their shared native tangents against skinned contact heights, with
         // a pose penalty and bounded displacement. Keys, duration and root stay intact.
-        private static void FitContactCurves(BrawlRig target,CHR0Node output,ContactMotion contacts,int last,CancellationToken cancellation,Action<int,string> progress)
+        private static void FitContactCurves(BrawlRig target,CHR0Node output,ContactMotion contacts,int last,CancellationToken cancellation,Action<int,string> progress,ISet<int> mappedTargets)
         {
             if(!contacts.FloorEnabled || last==0)return;
             var sampler=new DenseCurveSampler(target,output,last);
@@ -110,7 +110,9 @@ namespace BrawlCrate.Studio.Retargeting
                         for(int channel=3;channel<6;channel++)variables.Add(Tuple.Create(role.Value,channel));
                 if(roles.Any(r=>!r.EndsWith(".hand",StringComparison.Ordinal)&&!r.EndsWith(".foot",StringComparison.Ordinal)))
                     foreach(string role in new[]{"pelvis","spine","chest","neck"})for(int channel=3;channel<6;channel++)variables.Add(Tuple.Create(target.Rig.Roles[role],channel));
-                var baseControls=variables.Distinct().ToArray();
+                // Optional target-only helpers must retain native local rest;
+                // contact fitting cannot create a new source correspondence.
+                var baseControls=variables.Where(v=>mappedTargets.Contains(v.Item1)).Distinct().ToArray();
                 var controls=Enumerable.Range(key,keyCount).SelectMany(k=>baseControls.Select(v=>Tuple.Create(v.Item1,v.Item2,k))).ToArray();
                 var tangents=controls.Select(v=>sampler.Keys[v.Item1][v.Item2][v.Item3]).ToArray();
                 float[] original=tangents.Select(t=>t._tangent).ToArray();

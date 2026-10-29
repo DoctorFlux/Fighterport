@@ -81,11 +81,30 @@ namespace BrawlCrate.UI
             var provenance = ReviewClipRecipe(asset, clip);
             if (asset?.Retarget != null && rig != asset.RigIdentity)
                 throw new InvalidOperationException("The target rig changed. Review the animation on its original target before export.");
-            var context = FreezeExportOptimizationContext(target, asset, clip);
+            var retained = CurrentOptimizationBaseline(target, asset, clip);
+            var context = FreezeExportOptimizationContext(target, asset, clip, retained?.Baseline);
             // Keep the immutable full-quality master apart from any export-only
             // reduction. Repeated policy changes always start from this master.
-            var copy = NativeAnimationOptimization.CopySource(clip);
-            return new Chr0ExportSnapshot { Clip = clip, ExpectedContent = ExportContent(copy), Candidate = copy, Master = copy, MasterContent = ExportContent(copy), Optimization = context, Validate = () => {
+            var copy = NativeAnimationOptimization.CopySource(retained?.Baseline ?? clip);
+            // A plain native export writes the actual current document. Only
+            // explicit optimization consumes the retained full-quality master.
+            // Keeping these independent also prevents Save/export from silently
+            // undoing a user's explicit current-animation Apply.
+            CHR0Node currentCopy = null;
+            try { currentCopy = retained?.Baseline == null ? copy : NativeAnimationOptimization.CopySource(clip); }
+            catch { copy.Dispose(); throw; }
+            if (retained != null)
+            {
+                context.GeneratedPairSites = retained.GeneratedPairSites;
+                if (retained.Baseline != null)
+                    context.GeneratedPairReport += "\r\nReusing the original full-quality session baseline after explicit Apply; approximation does not accumulate.";
+                else
+                {
+                    context.BoundedUnavailable += "; original full-quality session baseline was evicted; only Exact cleanup/reference of the current result is available until reopen or an explicit authored edit";
+                    context.GeneratedPairSites = new NativeGeneratedPairSite[0];
+                }
+            }
+            return new Chr0ExportSnapshot { Clip = clip, ExpectedContent = ExportContent(currentCopy), Candidate = currentCopy, Master = copy, MasterContent = ExportContent(copy), Optimization = context, Validate = () => {
                 RequireSavedAnimationExportTarget(target);
                 if (Busy() || !ReferenceEquals(project, _fighterProject) || !Registered() ||
                     !ReferenceEquals(target, modelEditControl1.TargetModel) || requireSelection && !ReferenceEquals(clip, modelEditControl1.TargetAnimation) ||

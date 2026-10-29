@@ -50,7 +50,9 @@ namespace BrawlCrate.UI
 
         internal void InitializeFighterProject(FighterProject project)
         {
-            _fighterProject = project ?? throw new ArgumentNullException(nameof(project));
+            if (project == null) throw new ArgumentNullException(nameof(project));
+            if (!ReferenceEquals(_fighterProject, project)) ClearOptimizationBaseline();
+            _fighterProject = project;
             _fighterDirty = string.IsNullOrEmpty(project.ManifestPath) &&
                 (project.RegisteredAssets().Any() || project.AnimationControls.Any() || project.Name != "New Fighter");
             ClientSize = new Size(1320, 850);

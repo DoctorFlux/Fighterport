@@ -37,6 +37,9 @@ namespace BrawlCrate.Studio.Retargeting
         public RetargetKeyframeMode KeyframeMode { get; internal set; }
         public RetargetKeyframeReport KeyframeReport { get; internal set; }
         public string OptimizationReport { get; internal set; }
+        // Session evidence for the output adapter, not a second bone mapping or
+        // a project-format change. These native bones remain in the target model.
+        public string[] OmittedTargetBones { get; internal set; } = new string[0];
         internal NativeGeneratedPairEvidence[] GeneratedPairEvidence { get; set; } = new NativeGeneratedPairEvidence[0];
         internal string GeneratedPairRigKey { get; set; }
         // Kept only for the explicit, read-only sparse-result review. The live
@@ -404,7 +407,7 @@ namespace BrawlCrate.Studio.Retargeting
                         Vector3 euler = mappedTargets.Contains(bone)&&local.Rotation!=target.Rig.Joints[bone].Bind.Rotation
                             ? EulerNear(local.Rotation,previous==null?(Vector3?)null:previous[bone])
                             : Vector(target.Bones[bone].BindState.Rotate);
-                        if (previous != null) euler = ContinuousEuler(euler, previous[bone]);
+                        if (previous != null && mappedTargets.Contains(bone)) euler = ContinuousEuler(euler, previous[bone]);
                         angles[bone] = euler;
                         frame[bone] = new[] {local.Scale.X, local.Scale.Y, local.Scale.Z, euler.X, euler.Y, euler.Z,
                             local.Translation.X, local.Translation.Y, local.Translation.Z};
@@ -432,9 +435,10 @@ namespace BrawlCrate.Studio.Retargeting
                         }
                     }
                 }
-                FitContactCurves(target,output,result.Contacts,last,cancellation,progress);
+                FitContactCurves(target,output,result.Contacts,last,cancellation,progress,mappedTargets);
                 PreserveMotionControls(plan,clip,output,source,target,last);
                 BakeAdaptiveNativeMaster(source,target,clip,result,correction,last,values,samplesPerFrame,cancellation,progress);
+                RestrictOutputToSharedBones(result,target,cancellation);
                 // The original dense solver, contact fit and source-owned
                 // controls above remain the reference. Sparse storage is an
                 // explicit, separately measured representation of that result.

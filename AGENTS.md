@@ -1,5 +1,22 @@
 # Fighterport
 
+29 October 2026 **preview.57-shared-tracks-current-optimization** completes its
+bounded increment: 2,470 checks / five admitted private-desktop runs and 22
+actually inspected UI PNGs. Original Next output omits target-only entries in
+Dense and both source-key layouts, using reviewed source/target mappings rather
+than name guesses. Mario WaistNb is absent in the authentic Sonic transfer.
+Mapped corrections, native hierarchy/binds/all weights and root ownership remain.
+Optimize adds explicit Apply to current animation with one native Undo command;
+plain Save/export retain that applied document, and repeated optimization uses
+the original session baseline. Eviction permits Exact while blocking further
+approximation. Full previewer, quality limits and historical recipes remain.
+See [acceptance](docs/SHARED_TRACKS_CURRENT_OPTIMIZATION_ACCEPTANCE_2026-10-29.md).
+The launcher selects `Fighterport-shared57/native2`. ONE G1/M2 remains incomplete;
+no new increment is promoted. DoctorFlux source-only public main and background
+testing remain. Physical input/DPI, human usability, general contacts, external
+editor/plugin, Melee and game acceptance stay unverified. Earlier checkpoints
+are historical.
+
 28 October 2026 **preview.56-constrained-span-refitting** completes its bounded
 source increment: 5,763 checks / 13 admitted runs, 50 inspected native UI PNGs,
 316 inspected GIF frames / 40 sheets and an eight-file independent byte audit.

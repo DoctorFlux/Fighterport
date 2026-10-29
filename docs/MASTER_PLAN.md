@@ -1,5 +1,23 @@
 # Fighterport master plan
 
+29 October 2026 **preview.57-shared-tracks-current-optimization** completes its
+bounded increment within the ONE incomplete G1/M2. Final retarget entries require
+an actual source/target mapping; target-only bones stay unanimated with native
+parent inheritance. Both authentic directions, Dense and both source-key modes
+pass, including exact root checks. Explicit optimizer Apply edits the same CHR0
+in one native Undo command; unchanged quality limits, original baselines and
+fresh native verification remain. Plain export/Save retain the applied document.
+There are 2,470 passed checks / five admitted private-desktop runs, 22 inspected
+native UI PNGs and a separate eight-file dictionary-membership check. Two earlier
+failed runs and their corrections remain excluded evidence. See
+[acceptance](SHARED_TRACKS_CURRENT_OPTIMIZATION_ACCEPTANCE_2026-10-29.md) and the
+sole [current plan](plans/current.md). The launcher selects
+`Fighterport-shared57/native2`. Full previewer, original Next, authentic binds/all
+weights and historical recipes remain. No new increment or game adapter is
+promoted. Source-only DoctorFlux/public main and background testing remain;
+physical input/DPI, human usability, general contacts, external-editor/plugin,
+Melee and game acceptance stay unverified. Earlier checkpoints follow.
+
 28 October 2026 **preview.56-constrained-span-refitting** completes its bounded
 increment within the ONE incomplete G1/M2. Generic generated-curve span/tangent
 refitting is integrated into the existing explicit Error-bounded export path;

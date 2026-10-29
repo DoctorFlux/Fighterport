@@ -17,9 +17,11 @@ namespace BrawlCrate.Studio
         internal readonly FittingModelView SourceView, TargetView;
         internal Func<bool, Task<CHR0Node>> Prepare;
         internal Action<bool, CHR0Node> Apply;
+        internal Action<bool, CHR0Node> ApplyCurrent;
         internal Action CancelWork;
         internal string PreparedReport, PreparedSummary;
         internal bool PreparedCanApply;
+        internal bool PreparedCanApplyCurrent;
         internal bool Busy { get; private set; }
         internal CHR0Node Candidate { get; private set; }
 
@@ -31,6 +33,7 @@ namespace BrawlCrate.Studio
         readonly Label identity, modeHint, summary;
         readonly Button analyze = new Button { Name = "optimizeAnalyze", Text = "Optimize", AutoSize = true };
         readonly Button apply = new Button { Name = "optimizeApply", Text = "Export optimized copy…", AutoSize = true, Enabled = false };
+        readonly Button applyCurrent = new Button { Name = "optimizeApplyCurrent", Text = "Apply to current animation", AutoSize = true, Enabled = false };
         readonly Button cancel = new Button { Name = "optimizationCancel", Text = "Cancel optimization", AutoSize = true, Enabled = false, Visible = false };
         readonly Button close = new Button { Name = "optimizationClose", Text = "Close", AutoSize = true };
         readonly Button details = new Button { Name = "optimizationDetails", Text = "Show details", AutoSize = true };
@@ -92,10 +95,11 @@ namespace BrawlCrate.Studio
 
             footer = new FlowLayoutPanel { Name = "optimizationActions", Dock = DockStyle.Fill, AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = true, Margin = Padding.Empty };
-            footer.Controls.AddRange(new Control[] { analyze, cancel, apply, close });
-            analyze.AccessibleDescription = "Prepare an independent result for this exact current target animation. The authoring animation remains unchanged; only a separately verified export copy is published.";
+            footer.Controls.AddRange(new Control[] { analyze, cancel, apply, applyCurrent, close });
+            analyze.AccessibleDescription = "Prepare an independent result for this exact current target animation. Review it before exporting a copy or explicitly applying it with native Undo.";
             cancel.AccessibleDescription = "Cancel the pending optimization and keep the editable animation unchanged.";
             apply.AccessibleDescription = "Export the prepared independent CHR0 copy. The current animation and native Undo remain unchanged.";
+            applyCurrent.AccessibleDescription = "Replace this exact current animation with the verified result in one native Undo command. Save keeps the applied changes. The original session baseline prevents repeated approximation.";
             details.AccessibleDescription = "Show measured key counts, native byte sizes, errors, protections and tracks absent from the target that will be omitted from the export copy.";
 
             layout = new TableLayoutPanel { Name = "optimizationLayout", Dock = DockStyle.Fill, ColumnCount = 1,
@@ -118,6 +122,7 @@ namespace BrawlCrate.Studio
             analyze.Click += async (s, e) => await Analyze();
             cancel.Click += (s, e) => CancelAnalysis();
             apply.Click += (s, e) => ApplyPrepared();
+            applyCurrent.Click += (s, e) => ApplyPrepared(true);
             close.Click += (s, e) => Close();
             details.Click += (s, e) => ToggleDetails();
             frame.ValueChanged += (s, e) => ShowFrame();
@@ -186,7 +191,7 @@ namespace BrawlCrate.Studio
                 preparedSmallFile = analyzingSmallFile;
                 preparedCompact = analyzingCompact;
                 TargetView.Heading.Text = "Decoded optimized export copy · read-only";
-                summary.Text = PreparedSummary ?? "Optimization ready. Compare the original and result, then export a separate copy. The master and native Undo stay unchanged.";
+                summary.Text = PreparedSummary ?? "Optimization ready. Review the decoded result, then export a copy or apply to the current animation with Undo.";
                 report.Text = PreparedReport ?? "Analysis prepared. No detailed measurements were supplied.";
                 ShowFrame();
             }
@@ -222,15 +227,16 @@ namespace BrawlCrate.Studio
             }
         }
 
-        void ApplyPrepared()
+        void ApplyPrepared(bool toCurrent = false)
         {
-            if (Busy || Candidate == null || !PreparedCanApply) return;
+            if (Busy || Candidate == null || !PreparedCanApply || toCurrent && !PreparedCanApplyCurrent) return;
             Stop();
             try
             {
                 if (preparedHighQuality != ReadHighQuality() || preparedSmallFile != ReadSmallFile() || preparedCompact != ReadCompactStorage()) throw new InvalidOperationException("The optimization settings changed. Analyze again.");
-                if (Apply == null) throw new InvalidOperationException("Exporting the optimized copy is unavailable.");
-                Apply(preparedHighQuality, Candidate);
+                var action = toCurrent ? ApplyCurrent : Apply;
+                if (action == null) throw new InvalidOperationException(toCurrent ? "Applying to the current animation is unavailable." : "Exporting the optimized copy is unavailable.");
+                action(preparedHighQuality, Candidate);
                 DialogResult = DialogResult.OK;
                 Close();
             }
@@ -261,6 +267,7 @@ namespace BrawlCrate.Studio
             analyze.Visible = !value;
             analyze.Enabled = play.Enabled = frame.Enabled = exportOptions.Enabled = !value;
             apply.Enabled = !value && Candidate != null && PreparedCanApply;
+            applyCurrent.Enabled = !value && Candidate != null && PreparedCanApply && PreparedCanApplyCurrent;
             if (value && startFocus) cancel.Focus();
             if (!value && restoreFocus) analyze.Focus();
         }
@@ -273,7 +280,9 @@ namespace BrawlCrate.Studio
             Candidate = null;
             old?.Dispose();
             PreparedCanApply = false;
+            PreparedCanApplyCurrent = false;
             apply.Enabled = false;
+            applyCurrent.Enabled = false;
             TargetView.Heading.Text = "Original animation · no result prepared";
         }
 

@@ -1,5 +1,38 @@
 ﻿# Current milestone M2 — simpler native workspace
 
+29 October — **preview.57 shared retarget tracks and current-animation Apply**
+completes its bounded increment within the same incomplete G1/M2. Starting
+commit: `04b133fab04d46be8ace01af0e5e56d5c0588cd7`. Retargeted output omits
+target-only bones without an authentic source/target mapping; reviewed equivalent
+bones and valid mapped body-proportion corrections remain. Native hierarchy,
+binds, skin weights, original Next and source-owned motion controls are unchanged.
+Do not create animated bind tracks for unmapped target helpers. Pruning must not
+silently discard non-bind solver/contact motion.
+
+The existing optimizer keeps independent Analyze/export and adds explicit
+**Apply to current animation**. The same verified native candidate replaces the
+same owned CHR0 member in one native Undo command, preserving identity, selection,
+frame, camera, siblings and historical recipes. Save commits only an explicitly
+applied result. Session-only original baselines prevent repeated approximation;
+stale dependencies, failed work or cancellation must not mutate the document.
+Exact/Error-bounded limits, fresh native/whole-model validation and conservative
+fallbacks remain. No extra mode, project-format change or automatic loss is added.
+
+Qualification: **2,470 passed checks / five admitted private-desktop runs**,
+22 actually inspected native UI PNGs and eight independently read standalone
+CHR0 dictionaries. Both authentic AttackAirLw directions and all three retarget
+layouts omit target-only entries; Mario WaistNb is absent in the forward output.
+Current Apply adds one native command, retains exact Undo/Redo/storage and an
+original session baseline, survives plain export/project reopen, and falls back
+to Exact after eviction without cumulative loss. Two earlier failed runs are
+excluded and their fixture/export fixes remain recorded. See
+[acceptance](../SHARED_TRACKS_CURRENT_OPTIMIZATION_ACCEPTANCE_2026-10-29.md).
+The launcher selects `Fighterport-shared57/native2`; publish verified source only
+to public Fighterport/main with DoctorFlux attribution. ONE G1/M2 remains
+incomplete and no new increment is promoted.
+Physical input/DPI, human usability, general contacts, external-editor/plugin,
+Melee and game acceptance remain unverified. Earlier checkpoints are historical.
+
 28 October — **preview.56 constrained span/tangent refitting** completes its
 bounded increment within this same incomplete G1/M2. Starting commit:
 `ba51c74ad0a4a73f9a52ef669913af6c4e328910`. A generic offline Hermite

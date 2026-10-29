@@ -1,5 +1,20 @@
 ﻿# Native Next integration
 
+Preview.57 restricts final original-Next retarget tracks to its authentic mapping;
+target-only bind rows exist only inside dense preparation and are proved before
+omission. Both optional source-key layouts share the pruned result. Mapped body
+corrections and reviewed differently named equivalents remain.
+
+The standalone optimizer adds explicit Apply to current animation alongside
+independent export. It restores the same verified native candidate, including
+storage/order, through one native Undo command. An object-keyed session baseline
+feeds subsequent qualified exports/optimization, preventing cumulative loss;
+evicted originals force Exact fallback without blocking safe Exact export.
+Persisted per-clip controls/recipes/rig evidence govern baseline reuse, never
+transient displayed pins. Ordinary Save is still an exact document save; an
+explicit Apply deliberately changes that document. See the
+[preview.57 acceptance record](SHARED_TRACKS_CURRENT_OPTIMIZATION_ACCEPTANCE_2026-10-29.md).
+
 Preview.56 adds offline span/tangent proposals to that same explicit export-copy
 boundary. Core's additive `EnableSpanRefitting` defaults false for existing
 callers; qualified Error-bounded requests enable it. Exact, authoring, retarget

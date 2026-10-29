@@ -136,7 +136,7 @@ internal static partial class Program
                         var report = SimpleControl<TextBox>(window, "optimizationReport");
                         if (report.Visible != details) SimpleControl<Button>(window, "optimizationDetails").PerformClick();
                         window.PerformLayout(); window.SourceView.ShownFrame(); window.TargetView.ShownFrame();
-                        foreach (string name in new[] { "optimizationIdentity", "exportOptimizationPolicy", "exportOptimizationLimits", "optimizeAnalyze", "optimizeApply", "optimizationClose", "optimizationDetails", "optimizationFrame" })
+                        foreach (string name in new[] { "optimizationIdentity", "exportOptimizationPolicy", "exportOptimizationLimits", "optimizeAnalyze", "optimizeApply", "optimizeApplyCurrent", "optimizationClose", "optimizationDetails", "optimizationFrame" })
                         {
                             var control = SimpleDescendants(window).Single(c => c.Name == name);
                             var bounds = window.RectangleToClient(control.RectangleToScreen(control.ClientRectangle));
@@ -149,8 +149,8 @@ internal static partial class Program
                         Check(!details || report.Visible && report.ClientSize.Height > 0, "Standalone details remain available without replacing the native previews");
                         CheckCollapsedExportOptions(window, "Standalone " + width + "/" + text + "/details=" + details);
                         Check(SimpleControl<FlowLayoutPanel>(window, "optimizationActions").Controls.OfType<Button>().Where(b => b.Visible).Select(b => b.Name)
-                            .SequenceEqual(new[] { "optimizeAnalyze", "optimizeApply", "optimizationClose" }),
-                            "Standalone idle footer has only Optimize, Export optimized copy and Close at " + width + "/" + text);
+                            .SequenceEqual(new[] { "optimizeAnalyze", "optimizeApply", "optimizeApplyCurrent", "optimizationClose" }),
+                            "Standalone idle footer exposes Optimize, Export optimized copy, explicit Apply to current animation and Close at " + width + "/" + text);
                         string file = "standalone-" + width + "-" + text + (details ? "-details" : "") + ".png";
                         await CaptureOptimization(window, Path.Combine(output, file)); captures.Add(file);
                         if (!details)
@@ -210,7 +210,9 @@ internal static partial class Program
                 Check(policy.Items.Count == 2 && policy.SelectedIndex == 0 && !window.ReadHighQuality() && window.Candidate == null &&
                     SimpleControl<Button>(window, "optimizeApply").Text.Contains("Export") && SimpleControl<Button>(window, "optimizeAnalyze").Text == "Optimize" &&
                     SimpleControl<Button>(window, "optimizeAnalyze").Visible && !SimpleControl<Button>(window, "optimizationCancel").Visible,
-                    "Standalone dialog starts with two explicit export policies, Exact selected and no live Apply action");
+                    "Standalone dialog starts with two explicit policies, Exact selected, and independently named export/current-animation actions");
+                Check(!SimpleControl<Button>(window, "optimizeApplyCurrent").Enabled,
+                    "Apply to current animation is disabled until an independent native result is prepared");
                 Check(!ReferenceEquals(window.SourceView.Model, model) && !ReferenceEquals(window.TargetView.Model, model) &&
                     !ReferenceEquals(window.SourceView.Model, window.TargetView.Model), "Standalone previews own independent native models");
                 var originalPrepare = window.Prepare;
@@ -245,8 +247,8 @@ internal static partial class Program
                 Call(form, "SetWorkspaceTextSize", 100); window.ApplyTextSize();
                 CheckOptionsNavigation(window);
                 var effort = SimpleControl<ComboBox>(window, "exportOptimizationEffort"); effort.SelectedIndex = effort.SelectedIndex == 0 ? 1 : 0;
-                Check(window.Candidate == null && !SimpleControl<Button>(window, "optimizeApply").Enabled,
-                    "Changing standalone search effort invalidates the prepared copy without changing quality limits");
+                Check(window.Candidate == null && !SimpleControl<Button>(window, "optimizeApply").Enabled && !SimpleControl<Button>(window, "optimizeApplyCurrent").Enabled,
+                    "Changing standalone search effort invalidates both export and current Apply without changing quality limits");
                 await window.Analyze(); Check(window.Candidate != null && window.PreparedCanApply, "Standalone reanalysis prepares the new explicit settings from the same master");
                 using (var tampered = NativeAnimationOptimization.CopySource(window.Candidate))
                 {
@@ -298,6 +300,7 @@ internal static partial class Program
                 Captures = captures, Export = exported, ExportBytes = new FileInfo(exported).Length, OriginalInputHashes = originals,
                 MasterNativeSha256 = content, MasterStorage = storage, Identity = identity, NativeUndo = undo, NativeRedo = redo,
                 SharedOffscreenRenderer = true, ActiveDesktopCapture = false, OSInputInjected = false, PhysicalInputAndDpiVerified = false }));
+            await WorkspaceOptimizationApplyCurrent(form, clip, output, originals);
         }
         finally
         {

@@ -16,6 +16,7 @@ internal static partial class Program
         using(var root=NodeFactory.FromFile(null,args[0]))
         {
             var model=Walk(root).OfType<MDL0Node>().OrderByDescending(m=>m.NumVertices).First();
+            SharedRetargetTrackChecks(model,output);
             SourceKeysProcedural(model,output);
             SourceKeyQualityChecks(model,output);
             NativeSourceKeyFallbackChecks(model);
@@ -183,6 +184,9 @@ internal static partial class Program
             using(var original=BrawlRetargeter.Bake(source,target,clip,false,groundMode:GroundContactMode.Airborne))
             using(var explicitDense=BrawlRetargeter.Bake(source,target,clip,false,groundMode:GroundContactMode.Airborne,keyframeMode:RetargetKeyframeMode.Dense))
             {
+                Check(original.Animation.Children.All(e=>original.Plan.Mapping.Any(m=>m.Target==e.Name))&&
+                    original.OmittedTargetBones.All(n=>original.Animation.FindChild(n,false)==null),
+                    "Authentic dense Next output excludes target-only native bone entries before either source-key projection");
                 Check(NativeAnimationOptimization.ContentKey(original.Animation)==NativeAnimationOptimization.ContentKey(explicitDense.Animation)&&original.KeyframeReport==null&&original.DenseAnimation==null,
                     "Authentic retargeting: explicit/default Dense retain the original native Next curves without a projection or review receipt");
                 foreach(var mode in new[]{RetargetKeyframeMode.SourceBoneTimes,RetargetKeyframeMode.SourceChannelTimes})
@@ -196,6 +200,7 @@ internal static partial class Program
                     foreach(var entry in result.Animation.Children.OfType<CHR0EntryNode>())
                     {
                         Check(target.Bones.Any(b=>b.Name==entry.Name),"Authentic "+mode+": output track belongs to the exact target: "+entry.Name);
+                        Check(result.Plan.Mapping.Any(m=>m.Target==entry.Name),"Authentic "+mode+": output track has an actual corresponding source bone: "+entry.Name);
                         if(controls.Contains(entry.Name))
                         {SourceKeysSameTrack((CHR0EntryNode)original.Animation.FindChild(entry.Name,false),entry,"Authentic "+mode+": own-source protected control "+entry.Name);continue;}
                         var map=result.Plan.Mapping.SingleOrDefault(m=>m.Target==entry.Name);var input=map==null?null:(CHR0EntryNode)clip.FindChild(map.Source,false);

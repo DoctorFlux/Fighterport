@@ -147,7 +147,7 @@ namespace BrawlCrate.UI
             return reasons.Distinct(StringComparer.Ordinal).ToArray();
         }
 
-        private FrozenExportOptimizationContext FreezeExportOptimizationContext(MDL0Node model, FighterAsset asset, CHR0Node clip)
+        private FrozenExportOptimizationContext FreezeExportOptimizationContext(MDL0Node model, FighterAsset asset, CHR0Node clip, CHR0Node evaluationMaster = null)
         {
             RequireSavedAnimationExportTarget(model);
             var json = new JavaScriptSerializer { MaxJsonLength = 32 * 1024 * 1024, RecursionLimit = 200 };
@@ -156,7 +156,7 @@ namespace BrawlCrate.UI
             string review = Review();
             bool known = ReadExportProtectionDetails(model, controls, out bool constrained, out var exactBones, out string sourceMotionBone);
             var reasons = new List<string>();
-            reasons.AddRange(ExportNativeSemanticLimitations(model, clip));
+            reasons.AddRange(ExportNativeSemanticLimitations(model, evaluationMaster ?? clip));
             if (!known) reasons.Add("complete persisted controls, exact native fingerprints and reviewed body/motion roles are unavailable");
             // Absolute pin/contact acceptance is distinct from small relative
             // curve error. Until replayed independently, keep the reference exact.

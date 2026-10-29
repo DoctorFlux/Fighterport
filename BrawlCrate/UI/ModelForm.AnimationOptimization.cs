@@ -40,9 +40,11 @@ namespace BrawlCrate.UI
             internal string ModelContent, Protection, ProtectionHash, OutputContent, OutputStorage, BaselineHash, Report, MarkerReport;
             internal long BaselineKeys, BaselineBytes, LastUse;
             internal bool HighQuality, SmallFile, CompactStorage;
+            internal NativeGeneratedPairSite[] GeneratedPairSites = new NativeGeneratedPairSite[0];
             private static long TextBytes(string value) => value == null ? 0 : checked(2L * value.Length);
-            internal long MarkerBytes => TextBytes(ModelContent) + TextBytes(ProtectionHash) + TextBytes(OutputContent) + TextBytes(OutputStorage) + TextBytes(BaselineHash) + TextBytes(MarkerReport);
-            internal long RetainedBytes => BaselineBytes + TextBytes(ModelContent) + TextBytes(Protection) + TextBytes(ProtectionHash) + TextBytes(OutputContent) + TextBytes(OutputStorage) + TextBytes(BaselineHash) + TextBytes(Report) + (ReferenceEquals(Report, MarkerReport) ? 0 : TextBytes(MarkerReport));
+            private long PairBytes => GeneratedPairSites.Sum(p => 24L + TextBytes(p.Bone));
+            internal long MarkerBytes => TextBytes(ModelContent) + TextBytes(ProtectionHash) + TextBytes(OutputContent) + TextBytes(OutputStorage) + TextBytes(BaselineHash) + TextBytes(MarkerReport) + PairBytes;
+            internal long RetainedBytes => BaselineBytes + TextBytes(ModelContent) + TextBytes(Protection) + TextBytes(ProtectionHash) + TextBytes(OutputContent) + TextBytes(OutputStorage) + TextBytes(BaselineHash) + TextBytes(Report) + (ReferenceEquals(Report, MarkerReport) ? 0 : TextBytes(MarkerReport)) + PairBytes;
             internal void Evict()
             {
                 Baseline?.Dispose(); Baseline = null; BaselineKeys = BaselineBytes = 0;
@@ -132,12 +134,14 @@ namespace BrawlCrate.UI
             => PrepareOptimizationCacheMode(key, previous, original, modelContent, protection, outputContent, outputStorage, quality, false, compact, report, stage);
 
         private OptimizationCacheCommit PrepareOptimizationCacheMode(OptimizationCacheKey key, OptimizationSessionBaseline previous,
-            CHR0Node original, string modelContent, string protection, string outputContent, string outputStorage, bool quality, bool smallFile, bool compact, string report, string stage)
+            CHR0Node original, string modelContent, string protection, string outputContent, string outputStorage, bool quality, bool smallFile, bool compact, string report, string stage,
+            NativeGeneratedPairSite[] generatedPairSites = null)
         {
             var pending = new OptimizationSessionBaseline { Project = key.Project, Model = key.Model, Clip = key.Clip,
                 ModelContent = modelContent, Protection = protection, ProtectionHash = OptimizationTextHash(protection), OutputContent = outputContent,
                 OutputStorage = outputStorage, HighQuality = quality, SmallFile = smallFile, CompactStorage = compact, Report = report, LastUse = ++_optimizationCacheClock,
-                BaselineHash = previous?.BaselineHash ?? NativeAnimationOptimization.ContentKey(original) };
+                BaselineHash = previous?.BaselineHash ?? NativeAnimationOptimization.ContentKey(original),
+                GeneratedPairSites = (generatedPairSites ?? new NativeGeneratedPairSite[0]).Select(p => new NativeGeneratedPairSite { Bone = p.Bone, Channel = p.Channel, Frame = p.Frame }).ToArray() };
             try
             {
                 pending.MarkerReport = "This unchanged clip retains its original session baseline identity, but its native snapshot was evicted under the shared 2000000-key / 256 MiB session cache budget.\r\n" +
@@ -183,6 +187,90 @@ namespace BrawlCrate.UI
             foreach (var entry in commit.Evictions) entry.Evict();
             commit.Replaced?.Dispose();
             _optimizationBaselines = commit.Entries; _optimizationBaseline = commit.Pending; commit.Pending = null;
+        }
+
+        // Session ownership is keyed by the actual clip member, never its name.
+        // Undo/navigation do not discard the retained original; a genuinely
+        // changed authored result or protection context establishes a new input.
+        private string OptimizationProtectionState(MDL0Node model, FighterAsset asset, CHR0Node clip)
+        {
+            var recipe = ReviewClipRecipe(asset, clip);
+            return new JavaScriptSerializer { MaxJsonLength = 64 * 1024 * 1024, RecursionLimit = 200 }.Serialize(new {
+                Controls = ExportControlState(asset, clip), Recipe = new { recipe.Scalars, recipe.Text },
+                Coordinates = ReviewedFighterCoordinates(model)
+            });
+        }
+
+        private OptimizationSessionBaseline CurrentOptimizationBaseline(MDL0Node model, FighterAsset asset, CHR0Node clip)
+        {
+            if (!_optimizationBaselines.TryGetValue(new OptimizationCacheKey(_fighterProject, model, clip), out var entry) ||
+                entry.ModelContent != NativeControlHash(model, ".mdl0") ||
+                entry.ProtectionHash != OptimizationTextHash(OptimizationProtectionState(model, asset, clip)) ||
+                entry.OutputContent != NativeAnimationOptimization.SourceContentKey(clip) || entry.OutputStorage != NativeAnimationOptimization.StorageKey(clip)) return null;
+            entry.LastUse = ++_optimizationCacheClock; _optimizationBaseline = entry;
+            return entry;
+        }
+
+        private static Action<CHR0Node> CaptureOptimizationState(CHR0Node clip, string[] names)
+        {
+            var snapshot = NativeControlSnapshot.Capture(clip, names);
+            var order = clip.Children.OfType<CHR0EntryNode>().Select(e => new { e.Name, e.Keyframes.FrameLimit, e.Keyframes.Loop }).ToArray();
+            string expected = snapshot.ContentKey, storage = NativeAnimationOptimization.StorageKey(clip);
+            return target => {
+                snapshot.Restore(target); PreciseCHR0EntryNode.Promote(target);
+                for (int i = 0; i < order.Length; i++)
+                {
+                    var item = order[i]; var entry = target.Children.OfType<CHR0EntryNode>().Single(e => e.Name == item.Name);
+                    entry.Keyframes.FrameLimit = item.FrameLimit; entry.Keyframes.Loop = item.Loop;
+                    if (entry.Index != i) { entry.Remove(); target.InsertChild(entry, i); }
+                }
+                if (NativeControlSnapshot.Capture(target, names).ContentKey != expected || NativeAnimationOptimization.StorageKey(target) != storage)
+                    throw new InvalidDataException("The current animation transaction did not restore exact native content and storage.");
+            };
+        }
+
+        private void ApplyCurrentOptimization(Chr0ExportSnapshot prepared, CHR0Node source, MDL0Node model, FighterAsset asset,
+            string stage, NativeExportOptimizationSettings settings)
+        {
+            prepared.Validate();
+            if (_workspaceBusy || _controlBusy || _controlSetupQueued || _retargetBusy || _pinGesture != null || _curvePending || modelEditControl1.AwaitingRedoSave)
+                throw new InvalidOperationException("Finish the current native edit before applying optimization.");
+            string output = NativeAnimationOptimization.SourceContentKey(prepared.Candidate), outputStorage = NativeAnimationOptimization.StorageKey(prepared.Candidate);
+            if (output == NativeAnimationOptimization.SourceContentKey(source) && outputStorage == NativeAnimationOptimization.StorageKey(source)) return;
+            string protection = OptimizationProtectionState(model, asset, source);
+            var previous = CurrentOptimizationBaseline(model, asset, source);
+            var names = source.Children.Concat(prepared.Candidate.Children).Select(e => e.Name).Distinct(StringComparer.Ordinal).ToArray();
+            var undo = CaptureOptimizationState(source, names); var redo = CaptureOptimizationState(prepared.Candidate, names);
+            using (var cache = PrepareOptimizationCacheMode(new OptimizationCacheKey(_fighterProject, model, source), previous,
+                previous != null && previous.Baseline == null ? null : prepared.Master,
+                NativeControlHash(model, ".mdl0"), protection, output, outputStorage,
+                prepared.EffectiveExportPolicy.StartsWith("ErrorBounded", StringComparison.Ordinal), true, true, prepared.OptimizationReport, stage,
+                prepared.Optimization.GeneratedPairSites))
+            {
+                void Restore(Action<CHR0Node> snapshot)
+                {
+                    bool restoring = _restoringCurve; _restoringCurve = true;
+                    try
+                    {
+                        snapshot(source);
+                        if (ReferenceEquals(modelEditControl1.SelectedCHR0, source))
+                        {
+                            modelEditControl1.UpdateModel(); modelEditControl1.RefreshControlCurveTarget();
+                            modelEditControl1.InterpolationEditor?.RootChanged(); modelEditControl1.KeyframePanel?.UpdateKeyframes();
+                            _curveBefore = _curveTarget?.Parent is CHR0Node curve ? NativeControlSnapshot.Capture(curve, new[] { _curveTarget.Name }) : null;
+                        }
+                        InvalidateControls(); MarkFighterChanged();
+                    }
+                    finally { _restoringCurve = restoring; }
+                }
+                prepared.Validate();
+                try { Restore(redo); }
+                catch { Restore(undo); throw; }
+                modelEditControl1.RecordEditorCommand(() => Restore(undo), () => Restore(redo));
+                CommitOptimizationCache(cache);
+            }
+            modelEditControl1.ModelPanel.Invalidate();
+            _fighterStatus.Text = "Optimization applied to " + source.Name + ". Save keeps it; Undo restores the previous animation. The original session baseline is retained.";
         }
 
         private static void WriteOptimizationPreviewRoot(ResourceNode root, string destination, CancellationToken token)
@@ -276,7 +364,8 @@ namespace BrawlCrate.UI
                                 frozen=FreezeWorkspaceExport();frozen.PreferenceWarning=preferences.LastError;_activeSingleExport=frozen;_workspaceBusy=true;UpdateFighterStatus();OptimizationPrepares++;
                                 // The exact same admission, curve/codec search,
                                 // fit/contact gates and fresh native decoder used
-                                // by single/set/slot export. No live Apply path.
+                                // by single/set/slot export. Explicit current Apply
+                                // consumes this same independently verified copy.
                                 await PrepareOptimizedExportSnapshot(frozen,settings,token);
                                 token.ThrowIfCancellationRequested();Current();frozen.Validate();
                                 if(window.ReadExportSettings().StableKey!=uiSettingsKey)throw new InvalidOperationException("Optimization settings changed during Analyze. Analyze again.");
@@ -286,10 +375,12 @@ namespace BrawlCrate.UI
                                 long afterKeys=prepared.Candidate.Children.OfType<CHR0EntryNode>().Sum(entry=>entry.KeyArrays.Sum(channel=>(long)channel.KeyCount));
                                 bool saving=prepared.ExportBytes<prepared.MasterBytes;
                                 window.PreparedCanApply=true;
+                                window.PreparedCanApplyCurrent = NativeAnimationOptimization.SourceContentKey(source) != NativeAnimationOptimization.SourceContentKey(prepared.Candidate) ||
+                                    NativeAnimationOptimization.StorageKey(source) != NativeAnimationOptimization.StorageKey(prepared.Candidate);
                                 window.PreparedSummary="Keys "+beforeKeys+" → "+afterKeys+" · native CHR0 "+prepared.MasterBytes+" → "+prepared.ExportBytes+
-                                    " bytes · "+prepared.EffectiveExportPolicy+". "+(saving?"Review the decoded copy, then export.":"No useful size reduction; the verified reference copy is retained.");
+                                    " bytes · "+prepared.EffectiveExportPolicy+". "+(saving?"Review the decoded result, then export or apply with Undo.":"No useful size reduction; the verified reference copy is retained.");
                                 window.PreparedReport="Finished target master SHA-256: "+OptimizationTextHash(ExportContent(prepared.Master))+"\r\n"+
-                                    prepared.OptimizationReport+"\r\n"+prepared.ByteReport+"\r\nThe editable master, native Undo, recipes and source resources remain unchanged.";
+                                    prepared.OptimizationReport+"\r\n"+prepared.ByteReport+"\r\nAnalyze/export leave the document unchanged. Apply to current animation is explicit and uses one native Undo command; recipes and original source resources remain unchanged.";
                                 return NativeAnimationOptimization.CopySource(prepared.Candidate);
                             }
                             finally
@@ -306,6 +397,14 @@ namespace BrawlCrate.UI
                             // The prepared snapshot retains its own frozen
                             // settings, fit admission and all stale guards.
                             ExportFrozenPreparedOptimization(prepared,window);
+                            OptimizationApplies++;UpdateFighterStatus();
+                        };
+                        window.ApplyCurrent=(quality,candidate)=>
+                        {
+                            Current();
+                            if(prepared==null||preparedSettings!=window.ReadExportSettings().StableKey||preparedContent!=ExportContent(candidate))
+                                throw new InvalidOperationException("Analyze the current animation again before applying.");
+                            ApplyCurrentOptimization(prepared,source,model,asset,stage,window.ReadExportSettings());
                             OptimizationApplies++;UpdateFighterStatus();
                         };
                         window.Shown+=(sender,args)=>OptimizationReady?.Invoke(window);
