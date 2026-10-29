@@ -10,19 +10,19 @@ using System.Web.Script.Serialization;
 
 internal static partial class Program
 {
-    static Task NativeSourceKeys(string[] args,string output)
+    static async Task NativeSourceKeys(string[] args,string output)
     {
         if(!PrivateDesktop)throw new InvalidOperationException("Source-key qualification requires the private desktop.");
         using(var root=NodeFactory.FromFile(null,args[0]))
         {
             var model=Walk(root).OfType<MDL0Node>().OrderByDescending(m=>m.NumVertices).First();
             SharedRetargetTrackChecks(model,output);
+            await NativeInterpolatedKeys(model,output);
             SourceKeysProcedural(model,output);
             SourceKeyQualityChecks(model,output);
             NativeSourceKeyFallbackChecks(model);
         }
         if(args.Contains("--retarget-source"))SourceKeysAuthentic(args,output);
-        return Task.CompletedTask;
     }
 
     static void SourceKeysProcedural(MDL0Node model,string output)
@@ -137,7 +137,7 @@ internal static partial class Program
                     authored.Keyframes.SetFrameValue(c,at,at,true)._tangent=last==0?0:1;
                     target.Keyframes.SetFrameValue(c,at,rig.Bones[body].BindState[c]+at,true)._tangent=last==0?0:1;
                 }
-                foreach(var mode in new[]{RetargetKeyframeMode.SourceBoneTimes,RetargetKeyframeMode.SourceChannelTimes})
+                foreach(var mode in new[]{RetargetKeyframeMode.SourceBoneTimes,RetargetKeyframeMode.SourceChannelTimes,RetargetKeyframeMode.Interpolated})
                 using(var result=new RetargetResult{Animation=NativeAnimationOptimization.Copy(tinyDense),Plan=plan})
                 {
                     RetargetKeyframes.Prepare(result,rig,rig,tinySource,mode,CancellationToken.None,null);
@@ -189,7 +189,7 @@ internal static partial class Program
                     "Authentic dense Next output excludes target-only native bone entries before either source-key projection");
                 Check(NativeAnimationOptimization.ContentKey(original.Animation)==NativeAnimationOptimization.ContentKey(explicitDense.Animation)&&original.KeyframeReport==null&&original.DenseAnimation==null,
                     "Authentic retargeting: explicit/default Dense retain the original native Next curves without a projection or review receipt");
-                foreach(var mode in new[]{RetargetKeyframeMode.SourceBoneTimes,RetargetKeyframeMode.SourceChannelTimes})
+                foreach(var mode in new[]{RetargetKeyframeMode.SourceBoneTimes,RetargetKeyframeMode.SourceChannelTimes,RetargetKeyframeMode.Interpolated})
                 using(var result=BrawlRetargeter.Bake(source,target,clip,false,groundMode:GroundContactMode.Airborne,keyframeMode:mode))
                 {
                     SourceKeyArtifactExport(result.DenseAnimation,Path.Combine(output,"source-keys-authentic-"+mode+"-dense.chr0"));
@@ -209,7 +209,7 @@ internal static partial class Program
                                 "Authentic source channel seeds survive unless their whole raw constant function has proved fixed storage: "+entry.Name+" / "+c);
                     }
                     bool exactIdentity=result.KeyframeReport.DenseFallback&&result.KeyframeReport.DenseContent==result.KeyframeReport.ResultContent;
-                    Check((exactIdentity||result.KeyframeReport.VertexVisits>0&&result.KeyframeReport.Samples>=clip.FrameCount)&&result.KeyframeReport.Version=="source-key-quality-v2"&&
+                    Check((exactIdentity||result.KeyframeReport.VertexVisits>0&&result.KeyframeReport.Samples>=clip.FrameCount)&&result.KeyframeReport.Version==(mode==RetargetKeyframeMode.Interpolated?RetargetKeyframes.InterpolatedVersion:"source-key-quality-v2")&&
                         result.KeyframeReport.ScalarCertified&&result.KeyframeReport.QualityVerified&&result.KeyframeReport.MaximumEulerError<=.01&&result.KeyframeReport.MaximumOrientationError<=.01,
                         "Authentic "+mode+": full native skin/pose drift obeys the frozen quality gate and remains separate from universal contact claims");
                     File.WriteAllText(Path.Combine(output,"source-keys-authentic-"+mode+".json"),new JavaScriptSerializer{MaxJsonLength=1024*1024}.Serialize(result.KeyframeReport));

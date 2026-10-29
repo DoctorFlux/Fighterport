@@ -16,9 +16,18 @@ internal static partial class Program
     {
         if(!PrivateDesktop)throw new InvalidOperationException("Source-key workspace qualification requires the private desktop.");
         string donor=args[Array.IndexOf(args,"--retarget-source")+1],name=args[Array.IndexOf(args,"--clip")+1];
+        const string sourceFingerprint="c3813c2db05d2fee9eb43222432dd6ac62395ffd2d02ade940bf6b81499444aa";
+        const string targetFingerprint="87b3134758d85871c2f5fadb1bd84332fcac9f252df7da82738a024cad68f0e9";
         string libraryBefore=Environment.GetEnvironmentVariable("FIGHTERPORT_LIBRARY_ROOT");Environment.SetEnvironmentVariable("FIGHTERPORT_LIBRARY_ROOT",Path.Combine(output,"isolated-library"));
+        string exportPreferencesBefore=Environment.GetEnvironmentVariable("FIGHTERPORT_EXPORT_PREFERENCES_ROOT");
+        Environment.SetEnvironmentVariable("FIGHTERPORT_EXPORT_PREFERENCES_ROOT",Path.Combine(output,"isolated-export-settings"));
         var originalFiles=new[]{args[0],args[1],donor}.Distinct().ToDictionary(p=>p,FighterProject.HashFile);
-        var project=FighterProject.Create("Source-key retarget workspace qualification");var form=new ModelForm();Action<Form> cancelWork=null;
+        var project=FighterProject.Create("Source-key retarget workspace qualification");
+        // This aerial key-layout fixture supplies no reviewed floor/support
+        // context. Match the native numerical case explicitly; this is not a
+        // product default or permission to relax interpolation/root limits.
+        project.GroundMode=GroundContactMode.Airborne;
+        var form=new ModelForm();Action<Form> cancelWork=null;
         try
         {
             form.InitializeFighterProject(project);form.Show();form.ClientSize=new Size(1700,950);
@@ -28,24 +37,40 @@ internal static partial class Program
             foreach(ListViewItem item in editor.leftPanel.listAnims.Items)item.Selected=ReferenceEquals(item.Tag,clip);editor.SelectedCHR0=clip;
             await GameLibraryWait(() => !(bool)Field(form,"_controlBusy") && !(bool)Field(form,"_controlSetupQueued"), "Source-key native controls did not settle.", 120);await Await<ControlReply>(Call(form,"LoadControls"));
             var rig=BrawlRetargeter.Capture((MDL0Node)editor.TargetModel);editor.SelectedBone=rig.Bones[rig.Rig.Roles["pelvis"]];editor.SetFrame(Math.Min(3,clip.FrameCount));editor.UpdateModel();editor.FrameFighterModel();
+            // These pins identify the independently admitted local fixtures,
+            // never production character/action rules. Review every proposed
+            // structural role through the actual dialog before any work/review
+            // cancellation test; an unhandled warning modal is not a Bake.
+            SonicReviewNativeMapping(form,(MDL0Node)editor.TargetModel,targetFingerprint,output,"target");
+            using(var sourceRoot=NodeFactory.FromFile(null,donor))
+            {
+                var sourceModels=Walk(sourceRoot).OfType<MDL0Node>().Where(model=>BrawlRetargeter.SkeletonFingerprint(model)==sourceFingerprint).ToArray();
+                Check(sourceModels.Length==1,"Source-key workspace identifies exactly the independently sealed donor rig before binding review");
+                SonicReviewNativeMapping(form,sourceModels.Single(),sourceFingerprint,output,"source");
+            }
             if(args.Contains("--dirty-source-keys")||Environment.GetEnvironmentVariable("FIGHTERPORT_TEST_DIRTY_SOURCE_KEYS")=="1")
             {await SourceKeysDirtySnapshot(form,clip,donor,output);return;}
             Check((RetargetKeyframeMode)Field(form,"_retargetKeyframeMode")==RetargetKeyframeMode.Dense,"Fresh workspace retains original Dense Next as its session default");
-            var nativeBefore=NativeAnimationOptimization.ContentKey(clip);int count=project.Animations.Count;var witness=new GameLibraryDocument(form);
+            // Imported donor metadata remains authentic even when its scaling
+            // rule is outside the generated target writer's qualification.
+            // Output/provenance checks below deliberately keep ContentKey.
+            var nativeBefore=NativeAnimationOptimization.SourceContentKey(clip);int count=project.Animations.Count;var witness=new GameLibraryDocument(form);
             void SelectMode(RetargetKeyframeMode mode)
             {
                 using(var modal=Modal("Retarget Options",window=>
                 {
                     var keys=SimpleControl<ComboBox>(window,"retargetKeyframeMode");
-                    Check(keys.Items.Count==3,"Retarget Options exposes Dense, Source bone keys and Source channel keys");
+                    Check(keys.Items.Count==4&&keys.Items[(int)RetargetKeyframeMode.Interpolated].ToString().Contains("Interpolated"),
+                        "Retarget Options retains Dense and both source-key layouts and adds explicit Interpolated keys");
                     keys.SelectedIndex=(int)mode;SimpleControl<Button>(window,"retargetOptionsApply").PerformClick();
                 }))Call(form,"ShowFighterRetargetOptions");
             }
-            SelectMode(RetargetKeyframeMode.SourceBoneTimes);witness.CheckPreserved("session-only retarget key choice");
+            SelectMode(RetargetKeyframeMode.Interpolated);witness.CheckPreserved("session-only interpolated retarget choice");
             editor.ModelPanel.Focus();
             bool cancelledReview=false;
-            form.RetargetKeyframeReviewReady=window=>{cancelledReview=true;SimpleControl<Button>(window,"sourceKeysCancel").PerformClick();};
-            Check(form.RetargetFighterAnimation(donor)==null&&cancelledReview&&project.Animations.Count==count,"Cancelling the prepared sparse comparison imports no animation");
+            form.RetargetKeyframeReviewReady=window=>{cancelledReview=true;Check(SimpleControl<TextBox>(window,"sourceKeysReport").Text.Contains("Donor key times are not retained as mandatory target keys."),
+                "Interpolated cancellation review identifies interpolation without imposing the donor's dense key schedule");SimpleControl<Button>(window,"sourceKeysCancel").PerformClick();};
+            Check(form.RetargetFighterAnimation(donor)==null&&cancelledReview&&project.Animations.Count==count,"Cancelling the prepared interpolated comparison imports no animation");
             Check(editor.ModelPanel.ContainsFocus,"Cancelling source-key review restores the invoking native viewport focus");
             witness.CheckPreserved("cancelled sparse result review");await GameLibraryWait(() => !(bool)Field(form,"_controlBusy") && !(bool)Field(form,"_controlSetupQueued"), "Source-key native controls did not settle.", 120);
 
@@ -64,7 +89,7 @@ internal static partial class Program
             Check(stale&&project.Animations.Count==count,"A changed key policy during review rejects publication of the complete stale result");
             witness.CheckPreserved("stale source-key review");await GameLibraryWait(() => !(bool)Field(form,"_controlBusy") && !(bool)Field(form,"_controlSetupQueued"), "Source-key native controls did not settle.", 120);
 
-            foreach(var mode in new[]{RetargetKeyframeMode.SourceBoneTimes,RetargetKeyframeMode.SourceChannelTimes})
+            foreach(var mode in new[]{RetargetKeyframeMode.SourceBoneTimes,RetargetKeyframeMode.SourceChannelTimes,RetargetKeyframeMode.Interpolated})
             {
                 SelectMode(mode);Exception failure=null;bool reviewed=false;
                 form.RetargetKeyframeReviewReady=async raw=>
@@ -74,6 +99,19 @@ internal static partial class Program
                     {
                         Check(!SimpleControl<Button>(window,"sourceKeysUse").Enabled&&SimpleControl<TextBox>(window,"sourceKeysReport").Text.Contains("Dense solver contact statistics remain historical"),
                             mode+": actual motion review is required and dense contact claims stay historical");
+                        if(mode==RetargetKeyframeMode.Interpolated)
+                        {
+                            var measured=SimpleControl<TextBox>(window,"sourceKeysReport").Text;
+                            Check(window.ResultView.Heading.Text.Contains("Interpolated keys")&&
+                                measured.Contains("Donor key times are not retained as mandatory target keys.")&&measured.Contains("native Hermite interpolation"),
+                                "Interpolated review names the actual layout and explains motion-guarded interpolation independently of donor key density");
+                            int hashes=FighterProject.DiagnosticFileHashes,opens=AnimationLibrary.DiagnosticOpens,bakes=BrawlRetargeter.DiagnosticBakes;
+                            var scrub=SimpleControl<TrackBar>(window,"sourceKeysFrame");scrub.Value=Math.Min(2,scrub.Maximum);
+                            var playback=SimpleControl<Button>(window,"sourceKeysPlay");playback.PerformClick();await Task.Delay(120);playback.PerformClick();
+                            Check(FighterProject.DiagnosticFileHashes==hashes&&AnimationLibrary.DiagnosticOpens==opens&&BrawlRetargeter.DiagnosticBakes==bakes,
+                                "Interpolated scrub/playback evaluates prepared native curves without loading, hashing or solving");
+                            witness.CheckPreserved("interpolated native-only preview scrub/playback");
+                        }
                         var play=SimpleControl<Button>(window,"sourceKeysPlay");play.Focus();
                         Check((bool)Call(window,"ProcessCmdKey",default(Message),Keys.F6)&&SimpleControl<TextBox>(window,"sourceKeysReport").Focused,
                             mode+": application F6 routing enters the measured report without injected OS input");
@@ -110,8 +148,17 @@ internal static partial class Program
                     mode+": published independent revision uses the exact bytes that passed native comparison");
                 Check(asset.Retarget.DenseReferenceStatistics!=null&&!asset.Retarget.FloorContactsEnabled&&!NativeTransitionContacts.HasBakedSupport(asset),
                     mode+": changed sparse curves cannot inherit dense baked-support qualification");
+                Check(editor.SelectedCHR0.Children.All(entry=>asset.Retarget.Mapping.Any(binding=>binding.Target==entry.Name)),
+                    mode+": every published native track still belongs to an authentic source/target mapping");
+                if(mode==RetargetKeyframeMode.Interpolated)
+                    Check(asset.Retarget.ReadKeyframeReport().Version=="interpolated-key-quality-v1"&&
+                        asset.Retarget.ReadKeyframeReport().ScalarCertified&&asset.Retarget.ReadKeyframeReport().QualityVerified,
+                        "Interpolated provenance has its own versioned continuous scalar/native motion qualification");
                 await GameLibraryWait(() => !(bool)Field(form,"_controlBusy") && !(bool)Field(form,"_controlSetupQueued"), "Source-key native controls did not settle.", 120);
-                string file=Path.Combine(output,"sourcekeys-"+mode+".chr0");form.ExportFighterResource(file);
+                // This check qualifies the exact published retarget layout.
+                // Native resource export can intentionally optimize an export
+                // copy under its own policy and is separately qualified.
+                string file=Path.Combine(output,"sourcekeys-"+mode+".chr0");form.ExportSimpleWorkspaceResult(file);
                 using(var decoded=NodeFactory.FromFile(null,file) as CHR0Node)Check(decoded!=null&&NativeAnimationOptimization.ContentKey(decoded)==asset.Retarget.ReadKeyframeReport().ResultContent,
                     mode+": precise export independently reopens with exact sparse content and protected control layout");
                 string manifest=Path.Combine(output,"sourcekeys-"+mode+".fpstudio");form.SaveFighterProject(manifest);
@@ -122,6 +169,8 @@ internal static partial class Program
                         Check(saved.Retarget.KeyframeMode==mode&&NativeAnimationOptimization.ContentKey(Walk(savedRoot).OfType<CHR0Node>().Single())==saved.Retarget.ReadKeyframeReport().ResultContent,
                             mode+": project Save/reopen keeps exact curves, chosen layout and bounded historical native comparison");
                 }
+                if(mode==RetargetKeyframeMode.Interpolated)
+                    await InterpolatedNativeBodyUndo(form,asset);
                 // Return to the exact donor registration through the existing
                 // native import Undo; no additional undo owner is introduced.
                 Call(form,"UndoFighterImport");await GameLibraryWait(() => !(bool)Field(form,"_controlBusy") && !(bool)Field(form,"_controlSetupQueued"), "Source-key native controls did not settle.", 120);
@@ -130,15 +179,45 @@ internal static partial class Program
                 await GameLibraryWait(() => !(bool)Field(form,"_controlBusy") && !(bool)Field(form,"_controlSetupQueued"), "Source-key native controls did not settle.", 120);editor.SetFrame(Math.Min(3,clip.FrameCount));
                 witness=new GameLibraryDocument(form);
             }
-            Check(NativeAnimationOptimization.ContentKey(clip)==nativeBefore&&originalFiles.All(pair=>FighterProject.HashFile(pair.Key)==pair.Value),
+            Check(NativeAnimationOptimization.SourceContentKey(clip)==nativeBefore&&originalFiles.All(pair=>FighterProject.HashFile(pair.Key)==pair.Value),
                 "Source-key workspace operations preserve exact original donor curves and every source file");
-            File.WriteAllText(Path.Combine(output,"source-key-boundaries.json"),new JavaScriptSerializer().Serialize(new{PrivateDesktop,OSInputInjected=false,ScreenCopied=false,PhysicalInput=false,GameAcceptance=false}));
+            File.WriteAllText(Path.Combine(output,"source-key-boundaries.json"),new JavaScriptSerializer().Serialize(new{PrivateDesktop,
+                GroundMode=project.GroundMode.ToString(),SourceRig=sourceFingerprint,TargetRig=targetFingerprint,NativeBindingDialogsReviewed=true,
+                PlainRetargetLayoutExport=true,ExportOptimizationPreferencesIsolated=true,
+                Scope="Aerial key-layout, native curve and workflow qualification with frozen-rig binding review; Auto floor/support and unreviewed mapping are not qualified",
+                OSInputInjected=false,ScreenCopied=false,PhysicalInput=false,GameAcceptance=false}));
         }
         finally
         {
             if(cancelWork!=null)form.RetargetDialogReady-=cancelWork;form.RetargetKeyframeReviewReady=null;
             if(!form.IsDisposed){Call(form,"SetWorkspaceTextSize",100);SimpleDisposeForm(form);}project.Dispose();Environment.SetEnvironmentVariable("FIGHTERPORT_LIBRARY_ROOT",libraryBefore);
+            Environment.SetEnvironmentVariable("FIGHTERPORT_EXPORT_PREFERENCES_ROOT",exportPreferencesBefore);
         }
+    }
+    static async Task InterpolatedNativeBodyUndo(ModelForm form,FighterAsset asset)
+    {
+        var editor=form.FighterEditor;var current=editor.SelectedCHR0;var target=(MDL0Node)editor.TargetModel;
+        await SimpleControlsReady(form);var setup=await Await<ControlReply>(Call(form,"LoadControls"));
+        string bodyName=setup.BoneNames[setup.Roles.Single(role=>role.Role=="Hips").Bone.Value];
+        editor.SelectedBone=target.AllBones.Single(bone=>bone.Name==bodyName);editor.SetFrame(Math.Min(3,current.FrameCount));editor.UpdateModel();
+        string before=NativeAnimationOptimization.ContentKey(current),storage=NativeAnimationOptimization.StorageKey(current),recipe=LegacyReviewRecipe(asset);
+        string rootBefore=RecoveryKeys(current,asset.Retarget.ReadKeyframeReport().ProtectedControls);
+        int frame=editor.CurrentFrame,cursor=editor._saveIndex;
+        var field=editor.CHR0Editor._transBoxes[3];field.Text=(editor.SelectedBone.FrameState._rotate._x+1.25f).ToString();Call(field,"Apply");await SimpleControlsReady(form);
+        string edited=NativeAnimationOptimization.ContentKey(current);
+        Check(edited!=before&&editor._saveIndex==cursor+1&&ReferenceEquals(editor.SelectedCHR0,current)&&ReferenceEquals(editor.TargetModel,target),
+            "Interpolated native result remains body-editable through one existing command without replacing its document or target");
+        Check(RecoveryKeys(current,asset.Retarget.ReadKeyframeReport().ProtectedControls)==rootBefore&&LegacyReviewRecipe(asset)==recipe,
+            "Body editing an interpolated result retains exact source-owned controls and its historical retarget recipe");
+        editor.Undo();await SimpleControlsReady(form);
+        Check(NativeAnimationOptimization.ContentKey(current)==before&&NativeAnimationOptimization.StorageKey(current)==storage&&editor.CurrentFrame==frame,
+            "Native Undo restores interpolated values, tangents, flags, storage and playhead exactly");
+        editor.Redo();await SimpleControlsReady(form);
+        Check(NativeAnimationOptimization.ContentKey(current)==edited&&RecoveryKeys(current,asset.Retarget.ReadKeyframeReport().ProtectedControls)==rootBefore,
+            "Native Redo restores the body edit on the interpolated clip without rerunning retargeting");
+        editor.Undo();await SimpleControlsReady(form);
+        Check(NativeAnimationOptimization.ContentKey(current)==before&&NativeAnimationOptimization.StorageKey(current)==storage&&LegacyReviewRecipe(asset)==recipe,
+            "Final body Undo leaves the originally qualified interpolated result and recipe intact before native import Undo");
     }
     static async Task CaptureSourceKeys(RetargetKeyframeReviewDialog window,string path)
     {
@@ -193,7 +272,7 @@ internal static partial class Program
                     Check(!((CHR0EntryNode)decoded.FindChild(entry.Name,false)).KeyArrays[3].Entries.Select(k=>k._index).SequenceEqual(times.Select(frame => (float)frame)),
                         "Independent legacy writer would replace this dirty sparse source schedule before retargeting");
             }
-            string original=NativeAnimationOptimization.ContentKey(clip);bool dirty=clip.IsDirty,branch=clip.IsBranch,entryDirty=entry.IsDirty;
+            string original=NativeAnimationOptimization.SourceContentKey(clip);bool dirty=clip.IsDirty,branch=clip.IsBranch,entryDirty=entry.IsDirty;
             var witness=new GameLibraryDocument(form);bool reviewed=false;Exception failure=null;
             typeof(ModelForm).GetField("_retargetKeyframeMode",Private).SetValue(form,RetargetKeyframeMode.SourceChannelTimes);
             form.RetargetKeyframeReviewReady=raw=>
@@ -215,7 +294,7 @@ internal static partial class Program
             if(failure!=null)throw failure;
             Check(cancelled&&reviewed,"Dirty ordinary source reaches a verified sparse review and cancellation adds no revision");
             witness.CheckPreserved("dirty ordinary source precise snapshot and cancelled review");
-            Check(NativeAnimationOptimization.ContentKey(clip)==original&&clip.IsDirty==dirty&&clip.IsBranch==branch&&entry.IsDirty==entryDirty&&!entry.Keyframes.PreserveInterpolation,
+            Check(NativeAnimationOptimization.SourceContentKey(clip)==original&&clip.IsDirty==dirty&&clip.IsBranch==branch&&entry.IsDirty==entryDirty&&!entry.Keyframes.PreserveInterpolation,
                 "Dirty ordinary source snapshot preserves exact live curves, codec preference, native dirty/branch state and native Undo");
         }
     }

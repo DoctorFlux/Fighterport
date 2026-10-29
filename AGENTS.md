@@ -1,5 +1,22 @@
 # Fighterport
 
+29 October 2026 **preview.58-interpolated-animation-keys** completes its bounded
+increment: 3,170 checks / seven admitted background runs and 48 actually inspected
+native UI PNGs. Interpolated keys is an optional existing-dropdown retarget mode
+independent of donor schedules, including every-frame donors. Original Next
+Dense/default and both requested source schedules remain. Native Hermite body
+fixtures use 17 → 2 keys in retargeting and the optimizer; full fixture bytes
+measure 1,088 → 516 with exact protected roots. The optimizer's bounded guided
+span search finds non-dyadic spans missed before, under unchanged proofs/caps.
+Full previewer, all weights, native Undo, shared-only tracks and current Apply
+remain. See [acceptance](docs/INTERPOLATED_KEYS_ACCEPTANCE_2026-10-29.md) and
+[search notes](docs/INTERPOLATION_SEARCH_NOTES_2026-10-29.md). The launcher selects
+`Fighterport-interpolation58/native1`. ONE G1/M2 remains incomplete; no new
+increment is promoted. Background-only testing and DoctorFlux source-only public
+main remain. Physical input/DPI, human usability, general contacts, unqualified
+runtime scale semantics, external-editor/plugin, Melee and game acceptance stay
+unverified. Earlier checkpoints are historical.
+
 29 October 2026 **preview.57-shared-tracks-current-optimization** completes its
 bounded increment: 2,470 checks / five admitted private-desktop runs and 22
 actually inspected UI PNGs. Original Next output omits target-only entries in

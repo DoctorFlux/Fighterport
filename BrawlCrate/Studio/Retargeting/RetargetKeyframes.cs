@@ -13,7 +13,7 @@ namespace BrawlCrate.Studio.Retargeting
 {
     // Dense is zero so projects and callers written before these optional
     // representations retain the original Next behavior.
-    public enum RetargetKeyframeMode { Dense, SourceBoneTimes, SourceChannelTimes }
+    public enum RetargetKeyframeMode { Dense, SourceBoneTimes, SourceChannelTimes, Interpolated }
 
     public sealed class RetargetKeyframeReport
     {
@@ -64,15 +64,17 @@ namespace BrawlCrate.Studio.Retargeting
         internal void Validate()
         {
             bool Hash(string s) => s!=null&&s.Length==64&&s.All(c=>c>='0'&&c<='9'||c>='a'&&c<='f');
-            if((Version!="source-key-layout-v1"&&Version!="source-key-quality-v2")||Mode==RetargetKeyframeMode.Dense||!Enum.IsDefined(typeof(RetargetKeyframeMode),Mode)||
+            bool interpolation=Mode==RetargetKeyframeMode.Interpolated;
+            bool quality=Version=="source-key-quality-v2"||Version==RetargetKeyframes.InterpolatedVersion;
+            if((Version!="source-key-layout-v1"&&!quality)||interpolation!=(Version==RetargetKeyframes.InterpolatedVersion)||Mode==RetargetKeyframeMode.Dense||!Enum.IsDefined(typeof(RetargetKeyframeMode),Mode)||
                 DenseKeys<0||DenseKeys>2000000||ResultKeys<0||ResultKeys>2000000||DenseBytes<1||ResultBytes<1||
-                !Hash(DenseContent)||!Hash(ResultContent)||!Hash(VerifiedSha256)||Samples<0||Samples>100000||Samples==0&&(Version!="source-key-quality-v2"||!DenseFallback||ResultContent!=DenseContent)||
+                !Hash(DenseContent)||!Hash(ResultContent)||!Hash(VerifiedSha256)||Samples<0||Samples>100000||Samples==0&&(!quality||!DenseFallback||ResultContent!=DenseContent)||
                 BoneVisits<0||BoneVisits>10000000||VertexVisits<0||VertexVisits>1000000000||PairedKnots<0||PairedKnots>2000000||
                 new[]{MaximumEulerError,MaximumOrientationError,MaximumScaleError,MaximumLocalTranslationError,MaximumWorldBoneError,
                     MaximumWorldBasisError,MaximumSkinError,WorstFrame}.Any(v=>double.IsNaN(v)||double.IsInfinity(v)||v<0)||
                 (WorstBone?.Length??0)>256||new[]{ProtectedControls,OmittedSourceTracks,OmittedTargetChannels,OmittedTargetTracks}.Any(a=>a==null||a.Length>65536||a.Any(s=>string.IsNullOrEmpty(s)||s.Length>512)))
                 throw new InvalidDataException("Invalid source-key retarget comparison receipt.");
-            if(Version=="source-key-quality-v2")
+            if(quality)
             {
                 double translation=LengthScale>0?Math.Min(.0002,.0001*LengthScale):0;
                 if(!ScalarCertified||!QualityVerified||SourceSeedKeys<0||SourceSeedKeys>2000000||AddedQualityKeys<0||AddedQualityKeys>2000000||SourceSeedKeys+AddedQualityKeys!=ResultKeys||
@@ -94,11 +96,12 @@ namespace BrawlCrate.Studio.Retargeting
         public string Describe()
         {
             string N(double value)=>value.ToString("G7",CultureInfo.InvariantCulture);
-            if(Version=="source-key-quality-v2")return
-                (Mode==RetargetKeyframeMode.SourceBoneTimes?"Source bone keys":"Source channel keys")+
-                " — source-seeded target curves with motion guards. Necessary target axes, bones and keys are retained.\r\n"+
+            bool interpolation=Mode==RetargetKeyframeMode.Interpolated;
+            if(Version=="source-key-quality-v2"||Version==RetargetKeyframes.InterpolatedVersion)return
+                RetargetKeyframes.ModeLabel(Mode)+
+                (interpolation?" — native Hermite interpolation with motion guards. Donor key times are not retained as mandatory target keys. Necessary target axes, bones and keys are retained; protected motion controls remain exact.\r\n":" — source-seeded target curves with motion guards. Necessary target axes, bones and keys are retained.\r\n")+
                 "Keys: "+DenseKeys+" → "+ResultKeys+". Fresh CHR0 bytes: "+DenseBytes+" → "+ResultBytes+".\r\n"+
-                "Source/end/protected seeds after exact constant cleanup: "+SourceSeedKeys+"; quality keys added: "+AddedQualityKeys+
+                (interpolation?"Required endpoint/protected seeds after exact constant cleanup: ":"Source/end/protected seeds after exact constant cleanup: ")+SourceSeedKeys+"; quality keys added: "+AddedQualityKeys+
                 "; attempts: "+QualityAttempts+"; rational scalar proof work: "+ScalarCertificateWork+"/2000000.\r\n"+
                 "Continuous raw Hermite bounds: Euler ≤ "+N(MaximumCertifiedEulerError)+"°, scale ≤ "+N(MaximumCertifiedScaleError)+
                 ", translation component ≤ "+N(MaximumCertifiedTranslationError)+"; derivatives/frame ≤ "+N(MaximumCertifiedEulerDerivativeError)+
@@ -113,7 +116,7 @@ namespace BrawlCrate.Studio.Retargeting
                 (OmittedSourceTracks.Length==0?"":"Unmapped source tracks omitted: "+string.Join(", ",OmittedSourceTracks)+".\r\n")+
                 (OmittedTargetTracks.Length==0?"":"Independently proved bind-constant target tracks omitted: "+string.Join(", ",OmittedTargetTracks)+".\r\n")+
                 (QualityNotes??"")+"\r\nContinuous scalar certificates and sampled cumulative native geometry are separate claims. Dense solver contact statistics remain historical; no universal contact, PAC/container or actual game acceptance is established.";
-            return (Mode==RetargetKeyframeMode.SourceBoneTimes?"Source bone keys":"Source channel keys")+
+            return RetargetKeyframes.ModeLabel(Mode)+
                 " — retargeted values, source key layout; poses between keys can differ.\r\n"+
                 "Keys: "+DenseKeys+" → "+ResultKeys+". Fresh precise CHR0 bytes: "+DenseBytes+" → "+ResultBytes+".\r\n"+
                 "Compared against the frozen original dense Next result, using "+Samples+" complete native pose/skin samples.\r\n"+
@@ -133,15 +136,28 @@ namespace BrawlCrate.Studio.Retargeting
 
     internal static partial class RetargetKeyframes
     {
+        internal const string InterpolatedVersion="interpolated-key-quality-v1";
+        internal static string ModeLabel(RetargetKeyframeMode mode)
+        {
+            switch(mode)
+            {
+                case RetargetKeyframeMode.Dense:return "Dense Next";
+                case RetargetKeyframeMode.SourceBoneTimes:return "Source bone keys";
+                case RetargetKeyframeMode.SourceChannelTimes:return "Source channel keys";
+                case RetargetKeyframeMode.Interpolated:return "Interpolated keys";
+                default:throw new ArgumentOutOfRangeException(nameof(mode));
+            }
+        }
         static readonly string[] Channels={"SX","SY","SZ","RX","RY","RZ","TX","TY","TZ"};
         internal static void Prepare(RetargetResult result,BrawlRig source,BrawlRig target,CHR0Node sourceClip,
             RetargetKeyframeMode mode,CancellationToken token,Action<int,string> progress)
         {
             token.ThrowIfCancellationRequested();
+            if(mode==RetargetKeyframeMode.Dense||!Enum.IsDefined(typeof(RetargetKeyframeMode),mode))throw new ArgumentOutOfRangeException(nameof(mode));
             var dense=result.Animation;
             if(Count(dense)>2000000||Count(sourceClip)>2000000)throw new InvalidDataException("Source-key preparation exceeds the two-million-key operation limit.");
             ValidateDenseInput(dense,token);
-            var report=new RetargetKeyframeReport {Version="source-key-quality-v2",Mode=mode,DenseKeys=Count(dense),DenseContent=NativeAnimationOptimization.ContentKey(dense),
+            var report=new RetargetKeyframeReport {Version=mode==RetargetKeyframeMode.Interpolated?InterpolatedVersion:"source-key-quality-v2",Mode=mode,DenseKeys=Count(dense),DenseContent=NativeAnimationOptimization.ContentKey(dense),
                 ProtectedControls=result.Plan.TargetMotionControls.Select(i=>target.Bones[i].Name).ToArray(),OmittedSourceTracks=result.IgnoredSourceBones.ToArray()};
             CHR0Node candidate=null,decoded=null;
             string folder=Path.Combine(Path.GetTempPath(),"Fighterport-sourcekeys-"+Guid.NewGuid().ToString("N"));

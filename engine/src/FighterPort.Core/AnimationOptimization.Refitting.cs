@@ -35,11 +35,25 @@ public static partial class AnimationOptimization
                 var ends = new SortedSet<int>(Comparer<int>.Create((a, b) => b.CompareTo(a)));
                 if (rights.Count > 0) ends.Add(rights.Count - 1);
                 for (int size = 32; size >= 2; size /= 2) if (size <= rights.Count) ends.Add(size - 1);
-                foreach (int end in ends)
+                var tried = new HashSet<int>();
+                int guided = 0;
+                while (ends.Count > 0)
                 {
+                    int end = ends.Min; ends.Remove(end);
+                    if (!tried.Add(end)) continue;
                     int right = rights[end];
                     if (!state.AllowsSpan(left, right) || !context.CanRemoveInterior(left, right)) continue;
-                    if (TryRefitSpan(context, left, right, budget)) { left = right; accepted = true; break; }
+                    if (TryRefitSpan(context, left, right, budget, guided < 4, out int split))
+                    { left = right; accepted = true; break; }
+                    // Failure is not assumed monotonic in span length. A
+                    // sampled error witness only suggests another retained
+                    // native endpoint; it does not accept a curve or discard
+                    // other endpoints. Continuous baseline proof still decides.
+                    if (split >= 0 && guided < 4)
+                    {
+                        int index = rights.IndexOf(split);
+                        if (index >= 1 && index < end && !tried.Contains(index) && ends.Add(index)) guided++;
+                    }
                 }
                 if (!accepted) left = state.Next[left];
             }
@@ -105,8 +119,9 @@ public static partial class AnimationOptimization
 
     static int NativeRows(Key key, bool newlyFitted) => newlyFitted && Bits(key.InTangent) != Bits(key.OutTangent) ? 2 : 1;
 
-    static bool TryRefitSpan(RefitContext context, int left, int right, Budget budget)
+    static bool TryRefitSpan(RefitContext context, int left, int right, Budget budget, bool guideFailure, out int split)
     {
+        split = -1;
         var state = context.State;
         bool freeLeft = !context.Locked(left), freeRight = !context.Locked(right);
         if (!freeLeft && !freeRight) return false;
@@ -149,7 +164,14 @@ public static partial class AnimationOptimization
                 best = (candidateA, candidateB, value, speed, nextRows, score);
             if (score == 0 && nextRows == 2) break;
         }
-        if (best is not { } accepted) return false;
+        if (best is not { } accepted)
+        {
+            if (guideFailure && RoundSlope(chord, a.OutTangent, state.SpeedBound, freeLeft, out float am)
+                && RoundSlope(chord, b.InTangent, state.SpeedBound, freeRight, out float bm))
+                split = InterpolationSplit(state, left, right,
+                    freeLeft ? context.Left(left, am) : a, freeRight ? context.Right(right, bm) : b, budget);
+            return false;
+        }
         // No proposal mutates the working graph until all interval proofs pass.
         state.RefitChanged[left] |= accepted.A != a; state.RefitChanged[right] |= accepted.B != b;
         state.Keys[left] = accepted.A; state.Keys[right] = accepted.B;
@@ -161,6 +183,49 @@ public static partial class AnimationOptimization
         state.ValueError = Math.Max(state.ValueError, accepted.Value); state.SpeedError = Math.Max(state.SpeedError, accepted.Speed);
         state.RefitSpans++;
         return true;
+    }
+
+    // Find an interpolation-error witness of a failed long span, then choose
+    // the closest eligible current native knot. The low-cost double samples
+    // are proposal hints only. Values AND derivatives include paired-side
+    // behavior by visiting each nonzero original polynomial independently.
+    static int InterpolationSplit(ChannelState state, int left, int right, Key a, Key b, Budget budget)
+    {
+        double worst = -1, frame = double.NaN;
+        for (int i = left; i < right; i++)
+        {
+            var p = state.Original.Keys[i]; var q = state.Original.Keys[i + 1];
+            if (!(q.Frame > p.Frame)) continue;
+            foreach (double fraction in new[] { 0d, .25, .5, .75, 1 })
+            {
+                budget.Charge(1);
+                double time = p.Frame + (q.Frame - p.Frame) * fraction;
+                var source = RefittingPolynomial(p, q, time); var candidate = RefittingPolynomial(a, b, time);
+                double score = Math.Max(Math.Abs(source.Value - candidate.Value) / state.ValueBound,
+                    Math.Abs(source.Speed - candidate.Speed) / state.SpeedBound);
+                if (double.IsFinite(score) && score > worst) { worst = score; frame = time; }
+            }
+        }
+        int selected = -1; double distance = double.PositiveInfinity;
+        for (int i = state.Next[left]; i >= 0 && i != right; i = state.Next[i])
+        {
+            budget.Charge(1);
+            if (state.Keys[i].Frame <= a.Frame || state.Keys[i].Frame >= b.Frame) continue;
+            // A right endpoint uses the incoming side of a native pair.
+            if (state.Previous[i] >= 0 && state.Keys[state.Previous[i]].Frame == state.Keys[i].Frame) continue;
+            double d = Math.Abs(state.Keys[i].Frame - frame);
+            if (d < distance) { distance = d; selected = i; }
+        }
+        return selected;
+    }
+
+    static (double Value, double Speed) RefittingPolynomial(Key a, Key b, double frame)
+    {
+        double dt = b.Frame - a.Frame, u = (frame - a.Frame) / dt;
+        double c0 = a.Value, c1 = dt * a.OutTangent;
+        double c2 = 3 * ((double)b.Value - a.Value) - dt * (2 * (double)a.OutTangent + b.InTangent);
+        double c3 = 2 * ((double)a.Value - b.Value) + dt * ((double)a.OutTangent + b.InTangent);
+        return (c0 + u * (c1 + u * (c2 + u * c3)), (c1 + u * (2 * c2 + u * 3 * c3)) / dt);
     }
 
     static bool RoundSlope(double proposed, float original, double tolerance, bool free, out float value)

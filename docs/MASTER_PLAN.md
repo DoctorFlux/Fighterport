@@ -1,5 +1,25 @@
 # Fighterport master plan
 
+29 October 2026 **preview.58-interpolated-animation-keys** completes its bounded
+increment within the ONE incomplete G1/M2. Optional Interpolated keys reduces
+native target curves independently of an every-frame donor schedule; original
+Next Dense/default and both source-key contracts remain. Standalone optimization
+also gains bounded guided Hermite spans without changing saved quality limits,
+Exact semantics or shared work caps. Both actual native paths prove 17 → 2 body
+keys in the cubic/linear fixture; complete bytes measure 1,088 → 516 while root
+tuples remain exact. Authentic forward Interpolated equals the existing channel
+result here; no universal saving or global minimum is claimed. There are 3,170
+checks / seven admitted runs and 48 inspected native UI PNGs, including review,
+native body Undo, Apply and Save/reopen. See
+[acceptance](INTERPOLATED_KEYS_ACCEPTANCE_2026-10-29.md),
+[search notes](INTERPOLATION_SEARCH_NOTES_2026-10-29.md) and the sole
+[current plan](plans/current.md). The launcher selects
+`Fighterport-interpolation58/native1`. Full previewer, all weights, source-owned
+motion, shared tracks and exact ordinary Save remain. No new increment/adapter
+is promoted. DoctorFlux source-only public main and background testing remain;
+physical input/DPI, human usability, broad contacts, unqualified runtime scale
+semantics, external-editor/plugin, Melee and games stay unverified.
+
 29 October 2026 **preview.57-shared-tracks-current-optimization** completes its
 bounded increment within the ONE incomplete G1/M2. Final retarget entries require
 an actual source/target mapping; target-only bones stay unanimated with native

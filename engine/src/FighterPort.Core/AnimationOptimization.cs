@@ -92,7 +92,7 @@ public sealed record AnimationOptimizationResult(BoneTrack[] Tracks, string[] Re
 // span is compared to the immutable input, not to a previously reduced curve.
 public static partial class AnimationOptimization
 {
-    public const string Version = "native-hermite-rational-span-refit-2";
+    public const string Version = "native-hermite-rational-guided-refit-3";
     public const int MaximumInputKeys = 2_000_000;
 
     public static AnimationOptimizationResult Optimize(AnimationClip baseline,

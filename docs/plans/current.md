@@ -1,5 +1,41 @@
 ﻿# Current milestone M2 — simpler native workspace
 
+29 October — **preview.58 interpolated animation keys** completes its bounded
+increment within the same incomplete G1/M2. Starting commit:
+`b288f1a8dbf8da35ba1a21db6b8d4aab24baef93`. Source animations may key every
+frame; the new optional Interpolated keys retarget representation is independent
+of that donor schedule and retains only native Hermite knots required by the
+finished target's checked motion. Original Next Dense remains the default and
+both requested source-key modes keep their schedule contracts. Shared mapped
+membership, authentic hierarchy/binds/all skin weights and exact source-owned
+root curves remain. New curves require fresh native decode, cumulative motion
+checks, explicit review, actual bytes and safe Dense fallback under existing
+limits. Do not equate fewer keys with guaranteed smaller files or game acceptance.
+
+Improve the standalone optimizer's constrained Hermite search where feasible
+non-dyadic spans are missed, using bounded error-witness endpoint proposals.
+Only original-baseline continuous scalar proofs and final decoded native gates
+can accept them. Exact remains proved-only; existing saved errors/work caps,
+paired/sign/scale protections, contacts and fitting joins remain binding. Apply
+to current and independent export use the same implementation/session baseline.
+
+Qualification: **3,170 passed checks / seven admitted background runs**, including
+Core 235, native optimizer 568, authentic directions 661/971, UI 230, current
+Apply 468 and lifecycle 37. All 48 fresh native UI PNGs were actually inspected.
+Every-frame cubic/linear body fixtures use 17 → 2 keys through both paths;
+the full fixture measures 1,088 → 516 native bytes with exact protected roots.
+The guided-search counterexample finds four native rows instead of six under
+unchanged limits. Authentic forward Interpolated matches the existing channel
+result's size; no universal additional saving is claimed. Failed/unattended
+harness runs remain excluded and corrected without weakening motion gates.
+See [acceptance](../INTERPOLATED_KEYS_ACCEPTANCE_2026-10-29.md) and
+[search notes](../INTERPOLATION_SEARCH_NOTES_2026-10-29.md).
+The launcher selects `Fighterport-interpolation58/native1`. ONE G1/M2 remains
+incomplete and no next increment is promoted. Source-only publication uses
+public Fighterport/main with DoctorFlux attribution; physical input/DPI,
+human usability, universal contacts, other runtime semantics, Melee and games
+remain separate unverified work. Earlier checkpoints are historical.
+
 29 October — **preview.57 shared retarget tracks and current-animation Apply**
 completes its bounded increment within the same incomplete G1/M2. Starting
 commit: `04b133fab04d46be8ace01af0e5e56d5c0588cd7`. Retargeted output omits

@@ -1,5 +1,23 @@
 ﻿# Native Next integration
 
+Preview.58 adds Interpolated keys to the existing retarget dropdown. It uses
+endpoint-first native Hermite reduction independent of donor schedules, so a
+donor key on every frame is not a required target knot. Original Next Dense and
+both source-key schedule contracts remain. The existing strict retarget scalar,
+native decode, cumulative geometry, root and size gates validate each result;
+uncertain/protected curves remain dense. New receipt version
+`interpolated-key-quality-v1` is coupled to this additive mode, using existing
+provenance fields and explicit review. It does not inherit dense contact claims.
+
+The shared optimizer's Core version `native-hermite-rational-guided-refit-3`
+adds bounded error-witness endpoint proposals for missed non-dyadic spans.
+Samples propose only; immutable-original continuous rational proofs and final
+native gates decide. Exact/error/work caps, paired/sign/scale protection, fitting
+joins and source-owned roots retain their contracts. Every-frame cubic/linear
+fixtures reduce 17 → 2 body keys in both paths; actual sizes and the distinct
+authentic outcomes are recorded in [acceptance](INTERPOLATED_KEYS_ACCEPTANCE_2026-10-29.md)
+and [search notes](INTERPOLATION_SEARCH_NOTES_2026-10-29.md).
+
 Preview.57 restricts final original-Next retarget tracks to its authentic mapping;
 target-only bind rows exist only inside dense preparation and are proved before
 omission. Both optional source-key layouts share the pruned result. Mapped body

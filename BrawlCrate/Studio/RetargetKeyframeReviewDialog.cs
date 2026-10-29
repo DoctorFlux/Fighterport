@@ -31,13 +31,15 @@ namespace BrawlCrate.Studio
             RetargetResult prepared,ModelPanelViewport viewer,int initialFrame,string project)
         {
             dense=prepared.DenseAnimation??throw new ArgumentException("A frozen dense Next reference is required.");candidate=prepared.Animation;
-            Name="retargetKeyframeReview";Text="Review source-key retargeting";Font=WorkspaceAppearance.Font;AutoScaleMode=AutoScaleMode.None;
+            Name="retargetKeyframeReview";Text="Review retarget keyframes";Font=WorkspaceAppearance.Font;AutoScaleMode=AutoScaleMode.None;
             ClientSize=new Size(1060,730);MinimumSize=new Size(760,610);StartPosition=FormStartPosition.CenterParent;ShowInTaskbar=false;
             identity=new Label{Name="sourceKeysIdentity",Text=project+" · "+resultModel.Name+" · "+candidate.Name+" · "+candidate.FrameCount+" frames",AutoSize=true,Font=WorkspaceAppearance.BoldFont};
-            hint=new Label{Name="sourceKeysHint",Text="Compare the changed curves before adding a target animation. Source key layout does not guarantee identical motion.",AutoSize=true};
+            hint=new Label{Name="sourceKeysHint",Text=prepared.KeyframeMode==RetargetKeyframeMode.Interpolated?
+                "Fewer native Hermite keys are checked against the finished dense Next result, independently of the donor key schedule. Review the measured motion before adding it.":
+                "Compare the changed curves before adding a target animation. Source key layout does not guarantee identical motion.",AutoSize=true};
             AccessibleDescription="F6 and Shift+F6 move between read-only native previews, timeline, measured report and review actions. Escape cancels without adding an animation.";
             DenseView=new FittingModelView(denseModel,denseRoot,"Original dense Next · read-only",true,viewer){Dock=DockStyle.Fill};
-            ResultView=new FittingModelView(resultModel,resultRoot,prepared.KeyframeMode==RetargetKeyframeMode.SourceBoneTimes?"Source bone keys · prepared result":"Source channel keys · prepared result",false,viewer){Dock=DockStyle.Fill};
+            ResultView=new FittingModelView(resultModel,resultRoot,RetargetKeyframes.ModeLabel(prepared.KeyframeMode)+" · prepared result",false,viewer){Dock=DockStyle.Fill};
             DenseView.Heading.Height=ResultView.Heading.Height=Math.Max(38,Font.Height*2+12);
             views=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=2};views.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,50));views.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,50));views.Controls.Add(DenseView,0,0);views.Controls.Add(ResultView,1,0);
             frame=new TrackBar{Name="sourceKeysFrame",Dock=DockStyle.Fill,Minimum=1,Maximum=dense.FrameCount,Value=Math.Max(1,Math.Min(dense.FrameCount,initialFrame)),TickStyle=TickStyle.None,AccessibleName="Retarget review frame"};
@@ -46,7 +48,7 @@ namespace BrawlCrate.Studio
             var review=new CheckBox{Name="sourceKeysReviewed",Text="I reviewed the motion differences",AutoSize=true};
             var use=new Button{Name="sourceKeysUse",Text="Use this result",AutoSize=true,Enabled=false,DialogResult=DialogResult.OK};
             var cancel=new Button{Name="sourceKeysCancel",Text="Cancel",AutoSize=true,DialogResult=DialogResult.Cancel};
-            use.AccessibleDescription="Add this independently measured source-key result. Dense contact statistics do not validate its changed curves. Save the project afterward.";
+            use.AccessibleDescription="Add this independently measured retarget key layout. Dense contact statistics do not validate its changed curves. Save the project afterward.";
             review.CheckedChanged+=(s,e)=>use.Enabled=review.Checked;
             actions=new FlowLayoutPanel{Dock=DockStyle.Fill,AutoSize=true,WrapContents=true};actions.Controls.AddRange(new Control[]{review,use,cancel});
             layout=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=1,RowCount=6,Padding=new Padding(8)};

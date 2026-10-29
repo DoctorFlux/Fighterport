@@ -91,6 +91,8 @@ namespace BrawlCrate.Studio.Retargeting
             report.LengthScale = length;
             var proof = new QualityProofBudget(token);
             var controls = new HashSet<string>(report.ProtectedControls, StringComparer.Ordinal);
+            if(mode==RetargetKeyframeMode.Interpolated)
+                report.QualityNotes="Native Hermite target spans are selected independently of donor key schedules, even when the donor has a key on every frame. Exact protected controls, unknown paired sides, signed zeros and required terminal behavior remain. ";
             var sourceTracks = sourceClip.Children.OfType<CHR0EntryNode>().ToDictionary(t => t.Name, StringComparer.Ordinal);
             QualityWire lastWire = null;
             foreach (double precision in length > 0 ? new[] { 1d, .5, .25, .125, 0d } : new[] { 0d })
@@ -115,7 +117,7 @@ namespace BrawlCrate.Studio.Retargeting
                 lastWire = wire;
                 try
                 {
-                    progress?.Invoke(92, "Verifying source-seeded curves against the complete dense motion...");
+                    progress?.Invoke(92, mode==RetargetKeyframeMode.Interpolated?"Verifying interpolated curves against the complete dense motion...":"Verifying source-seeded curves against the complete dense motion...");
                     using (var verified = NativeAnimationOptimization.Prepare(model, dense, wire.Tracks,
                         new NativeAnimationOptimizationOptions { ExactOnly = false, LengthScale = length,
                             TargetBones = target.Bones.Select(b => b.Name).ToArray(), ExactBones = controls.ToArray(),
@@ -179,6 +181,7 @@ namespace BrawlCrate.Studio.Retargeting
             RetargetKeyframeMode mode, HashSet<string> controls, double precision, double length, QualityProofBudget proof)
         {
             var wire = new QualityWire(); var output = new List<ControlTrack>(); var omitted = new List<string>();
+            bool interpolated=mode==RetargetKeyframeMode.Interpolated;
             var targetBones = target.Bones.ToDictionary(b => b.Name, StringComparer.Ordinal);
             long planned = 0;
             foreach (var entry in result.Animation.Children.OfType<CHR0EntryNode>())
@@ -190,16 +193,16 @@ namespace BrawlCrate.Studio.Retargeting
                 var mapping = result.Plan.Mapping.SingleOrDefault(m => m.Target == entry.Name);
                 CHR0EntryNode source = null;
                 if (mapping != null) sourceTracks.TryGetValue(mapping.Source, out source);
-                if (!exact && source == null) wire.RestoredTracks.Add(entry.Name);
-                float[] union = source == null ? new float[0] : source.KeyArrays.SelectMany(a => a.Entries.GroupBy(k => k._index)
+                if (!interpolated && !exact && source == null) wire.RestoredTracks.Add(entry.Name);
+                float[] union = interpolated || source == null ? new float[0] : source.KeyArrays.SelectMany(a => a.Entries.GroupBy(k => k._index)
                     .Select(g => new { Frame = g.Key, Count = g.Count() })).GroupBy(k => k.Frame).OrderBy(g => g.Key)
                     .SelectMany(g => Enumerable.Repeat(g.Key, g.Max(k => k.Count))).ToArray();
                 var channels = new ControlKey[9][];var seedFrames=new float[9][];
                 for (int channel = 0; channel < 9; channel++)
                 {
-                    float[] seeds = exact || source == null ? new float[0] : mode == RetargetKeyframeMode.SourceBoneTimes ? union :
+                    float[] seeds = exact || interpolated || source == null ? new float[0] : mode == RetargetKeyframeMode.SourceBoneTimes ? union :
                         source.KeyArrays[channel].Entries.Select(k => k._index).ToArray();
-                    if (!exact && seeds.Length == 0 && entry.KeyArrays[channel].KeyCount > 0)
+                    if (!interpolated && !exact && seeds.Length == 0 && entry.KeyArrays[channel].KeyCount > 0)
                         wire.RestoredChannels.Add(entry.Name + " " + Channels[channel]);
                     channels[channel] = QualityCurve(entry.KeyArrays[channel], seeds, channel, exact, precision, length, proof,
                         out float[] actualSeeds, out double value, out double derivative);

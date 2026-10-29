@@ -8,6 +8,7 @@ internal static class SpanRefittingChecks
     public static void Run(Action<bool, string> check)
     {
         AnalyticOpportunity(check);
+        GuidedInterpolationOpportunity(check);
         AdjacentSpanSides(check);
         Protections(check);
         PairedSidesAndLoop(check);
@@ -111,6 +112,87 @@ internal static class SpanRefittingChecks
         check(exact.Report.AcceptedRefitSpans == 0 && exact.Report.RefitTangents == 0
             && exact.Tracks.SelectMany(t => t.Channels.OfType<Curve>()).All(c => c.Keys.All(k => Bits(k.InTangent, .98f) && Bits(k.OutTangent, .98f))),
             "Refitting: enabling the search never turns Exact into approximate tangent generation");
+    }
+
+    static Curve PiecewiseDense(int corner = 5) => new(Enumerable.Range(0, 17).SelectMany(i => {
+        float value = i <= corner ? i : corner + (i - corner) * .25f;
+        return i == corner ? new[] { new Key(i, value, .98f, .98f), new Key(i, value, .245f, .245f) }
+            : new[] { new Key(i, value, i < corner ? .98f : .245f, i < corner ? .98f : .245f) };
+    }).ToArray());
+
+    static void GuidedInterpolationOpportunity(Action<bool, string> check)
+    {
+        var source = PiecewiseDense(); var clip = Clip(Track("detail", 3, source));
+        var settings = Bounds() with { GeneratedPairSites = [new("detail", 3, 5)] };
+        string frozen = JsonSerializer.Serialize(clip, ProjectStore.Json);
+        // Constructive solution, independent of the search: two straight spans
+        // with different native paired slopes at the nondyadic frame5 boundary.
+        // Each source unit piece differs from its line by delta*u(1-u)(1-2u).
+        // First region delta=1-.98f; second delta=.25-.245f. The maxima are
+        // delta*sqrt(3)/18 in value and delta in derivative. No integer-only or
+        // shortest-quaternion argument is used to establish this opportunity.
+        var constructed = new Curve([new(0, 0, 1, 1), new(5, 5, 1, 1),
+            new(5, 5, .25f, .25f), new(16, 7.75f, .25f, .25f)]);
+        double delta = Math.Max(1d - .98f, .25d - .245f);
+        check(delta * Math.Sqrt(3) / 18 < settings.EulerValueBoundDegrees && delta < settings.EulerSpeedBoundDegreesPerFrame
+            && Withheld(source, constructed).Value <= delta * Math.Sqrt(3) / 18 + 1e-12
+            && Withheld(source, constructed).Speed <= delta + 1e-12,
+            "Guided interpolation: independent unit-polynomial extrema establish a legal four-native-row solution around a non-dyadic derivative corner");
+        check(AnimationOptimization.CertifyCandidate(clip, [Track("detail", 3, constructed)], settings, targetBoneNames: ["detail"]).Accepted,
+            "Guided interpolation: the independent constructive spans certify continuously against every original polynomial and both paired sides");
+        var result = AnimationOptimization.Optimize(clip, ["detail"], settings); var output = Output(result);
+        check(NativeRows(output) == 4 && output.Keys.Select(k => k.Frame).SequenceEqual(new[] { 0d, 5d, 5d, 16d })
+            && result.Report.AcceptedRefitSpans >= 2,
+            "Guided interpolation: failed-span witnesses recover frame5 and four native rows; the starting powers-only search retained six rows at 0,2,4,5,5,16");
+        var actual = Withheld(source, output);
+        check(actual.Value <= settings.EulerValueBoundDegrees && actual.Speed <= settings.EulerSpeedBoundDegreesPerFrame
+            && AnimationOptimization.CertifyCandidate(clip, result.Tracks, settings, targetBoneNames: ["detail"]).Accepted
+            && frozen == JsonSerializer.Serialize(clip, ProjectStore.Json),
+            "Guided interpolation: withheld double-polynomial samples and complete rational proof remain separate, within bounds and immutable");
+
+        foreach (int corner in new[] { 6, 9, 10, 11, 12, 13 })
+        {
+            var curve = PiecewiseDense(corner); var input = Clip(Track("detail", 3, curve));
+            var limits = Bounds() with { GeneratedPairSites = [new("detail", 3, corner)] };
+            var fitted = AnimationOptimization.Optimize(input, ["detail"], limits);
+            check(NativeRows(Output(fitted)) == 4
+                && AnimationOptimization.CertifyCandidate(input, fitted.Tracks, limits, targetBoneNames: ["detail"]).Accepted,
+                "Guided interpolation: an independently varied corner location uses certified native spans without frame-index exceptions: " + corner);
+        }
+
+        var fractional = source with { Keys = source.Keys.Select(k => k with { Frame = k.Frame * .5 + 2.125,
+            InTangent = k.InTangent * 2, OutTangent = k.OutTangent * 2 }).ToArray() };
+        var fractionalClip = Clip(Track("detail", 3, fractional));
+        var fractionalSettings = Bounds() with { GeneratedPairSites = [new("detail", 3, 4.625)] };
+        var fractionalResult = AnimationOptimization.Optimize(fractionalClip, ["detail"], fractionalSettings);
+        var fractionalError = Withheld(fractional, Output(fractionalResult));
+        check(NativeRows(Output(fractionalResult)) == 4 && fractionalError.Value <= fractionalSettings.EulerValueBoundDegrees
+            && fractionalError.Speed <= fractionalSettings.EulerSpeedBoundDegreesPerFrame
+            && AnimationOptimization.CertifyCandidate(fractionalClip, fractionalResult.Tracks, fractionalSettings, targetBoneNames: ["detail"]).Accepted,
+            "Guided interpolation: shifted binary-fractional knot times and per-frame derivatives receive the same continuous native-time checks");
+
+        var exact = AnimationOptimization.Optimize(clip, ["detail"], settings with { Mode = AnimationOptimizationMode.Exact });
+        var root = AnimationOptimization.Optimize(clip, ["detail"], settings with { ExactOnlyBones = ["detail"] });
+        check(exact.Report.AcceptedRefitSpans == 0 && root.Report.AcceptedRefitSpans == 0
+            && Output(exact).Keys.SequenceEqual(source.Keys) && Output(root).Keys.SequenceEqual(source.Keys),
+            "Guided interpolation: neither Exact nor exact source-owned control channels enter error-guided approximation");
+        var unknown = AnimationOptimization.Optimize(clip, ["detail"], Bounds());
+        check(Output(unknown).Keys.Where(k => k.Frame == 5).SequenceEqual(source.Keys.Where(k => k.Frame == 5))
+            && AnimationOptimization.CertifyCandidate(clip, unknown.Tracks, Bounds(), targetBoneNames: ["detail"]).Accepted,
+            "Guided interpolation: an error witness cannot grant unknown authored pairs permission to change their sides or tangents");
+
+        foreach (var limited in new[] { settings with { MaximumWork = 600 }, settings with { MaximumWork = 1200 },
+            settings with { MaximumCandidateSpans = 4 }, settings with { MaximumCandidateSpans = 8 } })
+        {
+            var partial = AnimationOptimization.Optimize(clip, ["detail"], limited);
+            check(partial.Report.Work <= limited.MaximumWork && partial.Report.CandidateSpans <= limited.MaximumCandidateSpans
+                && AnimationOptimization.CertifyCandidate(clip, partial.Tracks, settings, targetBoneNames: ["detail"]).Accepted
+                && frozen == JsonSerializer.Serialize(clip, ProjectStore.Json),
+                "Guided interpolation: hint work shares existing ceilings and any partial result fully certifies without mutating its master");
+        }
+        var repeated = AnimationOptimization.Optimize(clip, ["detail"], settings);
+        check(Output(result).Keys.SequenceEqual(Output(repeated).Keys) && JsonSerializer.Serialize(result.Report) == JsonSerializer.Serialize(repeated.Report),
+            "Guided interpolation: identical input gives deterministic endpoint hints, native coefficients and complete work receipts");
     }
 
     static void Protections(Action<bool, string> check)

@@ -65,12 +65,13 @@ namespace BrawlCrate.UI
                 mode.Items.AddRange(new object[]{"Auto — detect source contact evidence","Grounded — analyze floor contacts","Airborne — keep floor correction off","Source contacts — preserve small lifts"});
                 mode.SelectedIndex=(int)_fighterProject.GroundMode;
                 var keys=new ComboBox{Name="retargetKeyframeMode",AccessibleName="Retarget keyframes",DropDownStyle=ComboBoxStyle.DropDownList,Dock=DockStyle.Fill};
-                keys.Items.AddRange(new object[]{"Dense Next (default)","Source bone keys","Source channel keys"});keys.SelectedIndex=(int)_retargetKeyframeMode;
-                keys.AccessibleDescription="Dense keeps original Next. Source bone keys start from each source bone's combined key times. Source channel keys start from individual channel times. Both add target axes and keys where needed to pass the motion checks, then show a measured review.";
+                keys.Items.AddRange(new object[]{"Dense Next (default)","Source bone keys","Source channel keys","Interpolated keys"});keys.SelectedIndex=(int)_retargetKeyframeMode;
+                keys.AccessibleDescription="Dense keeps original Next. Source bone/channel keys start from donor schedules. Interpolated keys may replace even a source key on every frame with fewer native Hermite keys, after motion checks. Protected source-owned controls remain exact in every mode.";
                 var hint=new Label{Name="retargetKeyframeHint",AutoSize=true,Dock=DockStyle.Fill};
                 Action update=()=>hint.Text=keys.SelectedIndex==0?"Original Next: complete target-space motion, baked at every frame. Playback reads saved native keys; no solver runs.":
                     keys.SelectedIndex==1?"Start with each source bone's combined key times. Add target keys where needed to preserve motion; review the verified result before adding it.":
-                    "Start with individual source channel times. Keep needed target axes and add keys where motion needs them; the final counts can differ from the source.";
+                    keys.SelectedIndex==2?"Start with individual source channel times. Keep needed target axes and add keys where motion needs them; the final counts can differ from the source.":
+                    "Use fewer native Hermite keys where they reproduce the finished Next motion, even when the source keys every frame. Donor key times are not required; review the measured result.";
                 keys.SelectedIndexChanged+=(s,e)=>update();update();
                 var apply=new Button{Name="retargetOptionsApply",Text="Apply",DialogResult=DialogResult.OK,AutoSize=true};
                 var cancel=new Button{Text="Cancel",DialogResult=DialogResult.Cancel,AutoSize=true};
@@ -224,7 +225,7 @@ namespace BrawlCrate.UI
             text.AppendLine(p.FloorContactsEnabled ? "Ground contact samples: " + p.PlantedFootSamples + " feet · " + p.PlantedHandSamples + " hands · " + p.PlantedBodySamples + " body · " + p.LockedContactSamples + " stationary locks" : "Floor correction disabled for this motion.");
             text.AppendLine("Solver contact residual: " + p.MaximumContactResidual.ToString("0.000") + " · Pelvis adjustment: " + p.MaximumPelvisCorrection.ToString("0.000") + " units");
             }
-            else text.AppendLine("Changed source-key curves have no qualified contact paths. Original dense reference contact residual: "+p.DenseReferenceStatistics.MaximumContactResidual.ToString("0.000")+" (historical only).");
+            else text.AppendLine("Changed key-layout curves have no qualified contact paths. Original dense reference contact residual: "+p.DenseReferenceStatistics.MaximumContactResidual.ToString("0.000")+" (historical only).");
             text.AppendLine("Target-only helpers keep their own bind transforms. Root motion is baked and follows in preview.");
             text.AppendLine("Body/skeletal channels only. Facial, material and visibility motions are not transferred.");
             text.AppendLine("Inspect the generated motion and contacts before use; native saving does not establish game or general motion-quality acceptance.");

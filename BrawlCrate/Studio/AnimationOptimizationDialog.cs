@@ -290,7 +290,7 @@ namespace BrawlCrate.Studio
         {
             modeHint.Visible = false;
             modeHint.Text = string.Empty;
-            modeHint.AccessibleDescription = "Optimize a separate native export copy. Exact is the default; Error-bounded requires verified protections. " +
+            modeHint.AccessibleDescription = "Use fewer native Hermite keys where interpolation reproduces the motion, even when the input keys every frame. Review before exporting a copy or explicitly applying with Undo. Exact is the default; Error-bounded requires verified protections. " +
                 "Up to 0.1° rotation, 0.002 translation and 0.0001 scale; root motion and pin/contact protections stay exact. Details report the actual result.";
             AccessibleDescription = modeHint.AccessibleDescription + " Advanced shows the saved limits and search effort. F6 and Shift+F6 move between settings, native previews, playback, report and export actions.";
         }
