@@ -1,5 +1,24 @@
 # Fighterport
 
+29 October 2026 **preview.59-source-timed-use-on-model** completes its bounded
+increment: 3,209 checks / seven admitted private-desktop runs and 36 actually
+inspected UI PNGs. Fresh UI sessions now default Use on This Model to Source
+channel keys; explicit Dense/bone/channel/Interpolated choices remain. Original
+Next Dense reference/API/legacy-provenance defaults are unchanged. Exact frozen
+writer-pair evidence permits source-seeded group reduction under unchanged
+scalar/native/size/work gates; unknown pairs, signed zeros, protected motion,
+joins and all skin coefficients retain their contracts. Actual-button sparse
+0/16 output leaves frames 1–15 interpolated; authentic forward channel output
+measures 115,016 → 74,060 bytes against the same prior representation. Necessary
+target repair keys remain. See [acceptance](docs/SOURCE_TIMED_USE_ON_MODEL_ACCEPTANCE_2026-10-29.md)
+and [notes](docs/SOURCE_TIMED_USE_ON_MODEL_NOTES_2026-10-29.md). The launcher selects
+`Fighterport-sourcekeys59/native1`. ONE G1/M2 remains incomplete; no new increment
+is promoted. Full previewer, original Next, native Undo, exact Save, background
+testing and DoctorFlux source-only public main remain. Physical input/DPI, human
+usability, universal contacts, unqualified runtime scale semantics, external
+editor/plugin, Melee and games stay unverified. Earlier defaults/checkpoints are
+historical.
+
 29 October 2026 **preview.58-interpolated-animation-keys** completes its bounded
 increment: 3,170 checks / seven admitted background runs and 48 actually inspected
 native UI PNGs. Interpolated keys is an optional existing-dropdown retarget mode

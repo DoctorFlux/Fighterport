@@ -236,8 +236,9 @@ internal static partial class Program
                         SonicReviewNativeMapping(form, donor, sourceFingerprint, diagnostics, "source");
                         donor.ExportChecked(donorSnapshot);
                     }
+                    UseModelSelectMode(form, RetargetKeyframeMode.Dense);
                     Check((RetargetKeyframeMode)Field(form, "_retargetKeyframeMode") == RetargetKeyframeMode.Dense,
-                        "Stage 2 retains the normal original Next mode without a source-key option");
+                        "Stage 2 explicitly selects the original full-quality Dense Next comparison master");
                     var resultAsset = form.RetargetFighterAnimation(donorSnapshot);
                     Check(resultAsset != null && resultAsset.Retarget.Algorithm == HumanoidRetargeter.Algorithm && resultAsset.Retarget.KeyframeMode == RetargetKeyframeMode.Dense,
                         "Stage 2 imports the original Next full-quality target result in its existing native transaction");

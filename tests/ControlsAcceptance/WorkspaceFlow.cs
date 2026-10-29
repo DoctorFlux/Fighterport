@@ -273,6 +273,7 @@ internal static partial class Program
                 SimpleControl<Button>(form, "workspacePrimaryAction").PerformClick();
                 Check(FlowStage(form, "Preview"), "Target Continue returns to Preview through the visible primary action");
 
+                UseModelSelectMode(form, RetargetKeyframeMode.Dense);
                 bool solverSeen = false;
                 using (OnRetargetReady(form, dialog => solverSeen = true))
                     SimpleControl<Button>(form, "workspacePrimaryAction").PerformClick();

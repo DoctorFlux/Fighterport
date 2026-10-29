@@ -119,6 +119,7 @@ internal static partial class Program
                     Check(FlowStage(form,"Target")&&ReferenceEquals(editor.ModelPanel,originalViewport)&&ReferenceEquals(editor.rightPanel,originalBones)&&ReferenceEquals(editor.leftPanel,originalAnimations),"Target loading retains the full original native editor controls: "+scenario);
                     journal.Step(scenario,"Continue to Preview and fix",()=>SimpleControl<Button>(form,"workspacePrimaryAction").PerformClick());
                     Check(FlowStage(form,"Preview"),"Target Continue reaches Preview through the ordinary primary action: "+scenario);
+                    UseModelSelectMode(form, RetargetKeyframeMode.Dense);
                     journal.Step(scenario,"Preview transfer with original Next",()=>
                     {
                         using(OnRetargetReady(form,dialog=>retargetDialogs++))SimpleControl<Button>(form,"workspacePrimaryAction").PerformClick();

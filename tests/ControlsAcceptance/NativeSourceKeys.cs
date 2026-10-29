@@ -20,6 +20,7 @@ internal static partial class Program
             await NativeInterpolatedKeys(model,output);
             SourceKeysProcedural(model,output);
             SourceKeyQualityChecks(model,output);
+            NativePairedSourceKeyChecks(model,output);
             NativeSourceKeyFallbackChecks(model);
         }
         if(args.Contains("--retarget-source"))SourceKeysAuthentic(args,output);
@@ -213,6 +214,7 @@ internal static partial class Program
                         result.KeyframeReport.ScalarCertified&&result.KeyframeReport.QualityVerified&&result.KeyframeReport.MaximumEulerError<=.01&&result.KeyframeReport.MaximumOrientationError<=.01,
                         "Authentic "+mode+": full native skin/pose drift obeys the frozen quality gate and remains separate from universal contact claims");
                     File.WriteAllText(Path.Combine(output,"source-keys-authentic-"+mode+".json"),new JavaScriptSerializer{MaxJsonLength=1024*1024}.Serialize(result.KeyframeReport));
+                    SourceKeyAuthenticGapEvidence(clip,original,result,output);
                 }
             }
             Check(NativeAnimationOptimization.SourceContentKey(clip)==before&&hashes.All(pair=>FighterProject.HashFile(pair.Key)==pair.Value),

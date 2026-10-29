@@ -43,6 +43,9 @@ internal static partial class Program
         library.Register(BrawlLibrarySource.Prepare(new LibraryRegistration{ModelPath=donor,ModelKey=inspected.ResourceKey,MotionPath=motion,Character="Supplied donor",GameVersion="Supplied fixture",BuildEvidence="Local user supplied fixtures; native workflow acceptance only",ApproveAssociation=true}));
         var project=FighterProject.Create("Native batch fitting");var form=new ModelForm();form.InitializeFighterProject(project);form.Show();Call(form,"ImportFighterModel",args[0]);
         await Task.Delay(150);await Wait(()=>!(bool)Field(form,"_controlBusy")&&!(bool)Field(form,"_controlSetupQueued"));
+        // These batch/contact regressions retain their exact original Next
+        // reference. The new source-pane default is tested through its button.
+        UseModelSelectMode(form, RetargetKeyframeMode.Dense);
         Call(form,"BuildLibraryPane");form.GetType().GetField("_library",Private).SetValue(form,library);((TextBox)Field(form,"_librarySearch")).Text="Wait";((Timer)Field(form,"_librarySearchTimer")).Stop();
         if(args.Contains("--workspace-batch-review")||args.Contains("--workspace-set-export")||args.Contains("--workspace-loop-inspection"))
         {

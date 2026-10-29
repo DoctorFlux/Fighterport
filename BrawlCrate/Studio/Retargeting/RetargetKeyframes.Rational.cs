@@ -39,7 +39,7 @@ namespace BrawlCrate.Studio.Retargeting
             return true;
         }
 
-        static bool QualitySpan(KeyframeEntry[] keys, int left, int right, double valueLimit, double speedLimit, bool scale,
+        static bool QualitySpan(KeyframeEntry[] keys, int left, int right, HashSet<float> continuousPairs, double valueLimit, double speedLimit, bool scale,
             QualityProofBudget proof, out double valueError, out double speedError)
         {
             valueError = speedError = 0;
@@ -54,7 +54,15 @@ namespace BrawlCrate.Studio.Retargeting
             {
                 if (!proof.Charge(8)) return false;
                 var a = keys[i]; var b = keys[i + 1];
-                if (b._index <= a._index) return false;
+                if (b._index == a._index)
+                {
+                    // Only this exact writer-proven C0 pair can be interior.
+                    // Both one-sided derivatives are still checked as the
+                    // endpoints of the adjacent positive-duration intervals.
+                    if (!continuousPairs.Contains(a._index) || !SameBits(a._value, b._value)) return false;
+                    continue;
+                }
+                if (b._index < a._index) return false;
                 if (proof.Probes.Count < 10000)
                 {
                     proof.Probe(a._index);

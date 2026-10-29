@@ -34,6 +34,9 @@ internal static partial class Program
             var mode=SimpleControl<ComboBox>(dialog,"retargetGroundMode");
             Check(mode.Enabled&&mode.Items.Count==4&&mode.Visible&&mode.Width>200,"Next's four ground-contact modes remain usable beside the additive keyframe option");
             mode.SelectedIndex=(int)GroundContactMode.SourceContacts;CaptureDialog(dialog,output,"retarget-options.png");
+            // This regression compares original Next's exact Dense reference;
+            // the actual source-key default is qualified by UseModelKeys.
+            SimpleControl<ComboBox>(dialog,"retargetKeyframeMode").SelectedIndex=(int)RetargetKeyframeMode.Dense;
             SimpleControl<Button>(dialog,"retargetOptionsApply").PerformClick();
         }))Call(form,"ShowFighterRetargetOptions");
         Check(project.GroundMode==GroundContactMode.SourceContacts,"Retarget Options applies the native project setting");project.GroundMode=GroundContactMode.Auto;

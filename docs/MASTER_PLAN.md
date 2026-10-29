@@ -1,5 +1,24 @@
 # Fighterport master plan
 
+29 October 2026 **preview.59-source-timed-use-on-model** completes its bounded
+increment within the ONE incomplete G1/M2: 3,209 checks / seven admitted private-
+desktop runs, with all 36 fresh UI PNGs inspected. The ordinary source button
+defaults to source channel timing in fresh UI sessions. Exact generated-pair
+evidence now allows removal of redundant target rows under existing native
+Hermite/cumulative/size/work gates. Authored/unknown pairs, signed zeros, roots,
+contacts/joins, all weights, native Undo and exact Save retain their protections.
+Source seeds and necessary target repairs are distinguished; the actual sparse
+button case uses only 0/16 body knots. Authentic forward channel storage measures
+74,060 bytes versus the same preview.58 result's 115,016; reverse measures 111,320
+versus 115,820. Original Next Dense reference/API/default provenance and all
+explicit choices remain. See [acceptance](SOURCE_TIMED_USE_ON_MODEL_ACCEPTANCE_2026-10-29.md),
+[notes](SOURCE_TIMED_USE_ON_MODEL_NOTES_2026-10-29.md) and the sole
+[current plan](plans/current.md). The launcher selects
+`Fighterport-sourcekeys59/native1`. No next increment/adapter is promoted.
+Background verification and DoctorFlux source-only public main remain. Physical
+input/DPI, human usability, broad contacts, unqualified runtime semantics,
+external-editor/plugin, Melee and game acceptance stay unverified.
+
 29 October 2026 **preview.58-interpolated-animation-keys** completes its bounded
 increment within the ONE incomplete G1/M2. Optional Interpolated keys reduces
 native target curves independently of an every-frame donor schedule; original

@@ -41,6 +41,9 @@ namespace BrawlCrate.UI
             NextCommand(_nextAnimationMenu, "nextAddSourceToLibrary", "Add loaded source to library", AddSessionSourceToLibrary);
             NextCommand(_nextAnimationMenu, "nextPreviewLibraryOriginal", "Preview library original", PreviewLibraryOriginal);
             NextCommand(_nextAnimationMenu, "nextOpenLibraryTarget", "Open library model + animation", OpenLibraryAsTarget);
+            var retargetOptions = NextCommand(_nextAnimationMenu, "nextRetargetOptions", "Retarget options...", ShowFighterRetargetOptions);
+            retargetOptions.ToolTipText = "Choose source channel, source bone, interpolated or Dense Next keys for Use on This Model and other retarget actions.";
+            retargetOptions.AccessibleDescription = retargetOptions.ToolTipText;
             _nextAnimationMenu.DropDownItems.Add(new ToolStripSeparator());
             NextCommand(_nextAnimationMenu, "nextReviewResults", "Review results...", OpenBatchReview);
             NextCommand(_nextAnimationMenu, "nextCompareSource", "Compare recorded source", OpenLinkedComparison);
@@ -101,6 +104,8 @@ namespace BrawlCrate.UI
                 if (item is ToolStripSeparator) continue;
                 if (item.Name == "nextOptimizeAnimation")
                 { item.Enabled = !busy && target && modelEditControl1.TargetAnimation is BrawlLib.SSBB.ResourceNodes.CHR0Node selected && OwnsFighterRoot(selected) && SelectedFighterAsset()?.Retarget?.ReviewDraft != true; continue; }
+                if (item.Name == "nextRetargetOptions")
+                { item.Enabled = !busy && target; continue; }
                 if (item.Name == "nextAddSourceToLibrary")
                 { item.Enabled = !busy && _sessionSourceLibrary != null && ReferenceEquals(_library, _sessionSourceLibrary); continue; }
                 if (item.Name == "nextPreviewLibraryOriginal" || item.Name == "nextOpenLibraryTarget")

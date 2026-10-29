@@ -81,6 +81,7 @@ internal static partial class Program
                 int reads=BrawlDiscImage.DiagnosticNativeReads,opens=AnimationLibrary.DiagnosticOpens;
                 SimpleControl<Button>(form,"libraryOriginalPlay").PerformClick();await Task.Delay(150);Call(form,"PauseSourceOperation");
                 Check(reads==BrawlDiscImage.DiagnosticNativeReads&&opens==AnimationLibrary.DiagnosticOpens,"Original source playback retains prepared disc data without loading more packages");
+                UseModelSelectMode(form, RetargetKeyframeMode.Dense);
                 bool transferred=false;
                 using(Modal("Skeleton Mapping",dialog=>{
                     var grid=dialog.Controls.OfType<DataGridView>().Single();

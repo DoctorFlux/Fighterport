@@ -485,6 +485,7 @@ internal static partial class Program
                 string expectedPath = Path.Combine(output, "expected-selected-costume.chr0");
                 using (var source = library.Open(item.Clip.Id, selected.ModelId))
                 using (var expected = BrawlRetargeter.Bake(source.Model, target, source.Animation, groundMode: form.FighterProject.GroundMode)) expected.Animation.Export(expectedPath);
+                UseModelSelectMode(form, RetargetKeyframeMode.Dense);
                 int count = form.FighterProject.Animations.Count;
                 using (OnRetargetReady(form, dialog => { })) SimpleControl<Button>(form, "libraryUseOnTarget").PerformClick();
                 await SimpleControlsReady(form);

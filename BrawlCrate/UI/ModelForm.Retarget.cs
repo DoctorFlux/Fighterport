@@ -65,7 +65,7 @@ namespace BrawlCrate.UI
                 mode.Items.AddRange(new object[]{"Auto — detect source contact evidence","Grounded — analyze floor contacts","Airborne — keep floor correction off","Source contacts — preserve small lifts"});
                 mode.SelectedIndex=(int)_fighterProject.GroundMode;
                 var keys=new ComboBox{Name="retargetKeyframeMode",AccessibleName="Retarget keyframes",DropDownStyle=ComboBoxStyle.DropDownList,Dock=DockStyle.Fill};
-                keys.Items.AddRange(new object[]{"Dense Next (default)","Source bone keys","Source channel keys","Interpolated keys"});keys.SelectedIndex=(int)_retargetKeyframeMode;
+                keys.Items.AddRange(new object[]{"Dense Next","Source bone keys","Source channel keys (default)","Interpolated keys"});keys.SelectedIndex=(int)_retargetKeyframeMode;
                 keys.AccessibleDescription="Dense keeps original Next. Source bone/channel keys start from donor schedules. Interpolated keys may replace even a source key on every frame with fewer native Hermite keys, after motion checks. Protected source-owned controls remain exact in every mode.";
                 var hint=new Label{Name="retargetKeyframeHint",AutoSize=true,Dock=DockStyle.Fill};
                 Action update=()=>hint.Text=keys.SelectedIndex==0?"Original Next: complete target-space motion, baked at every frame. Playback reads saved native keys; no solver runs.":
@@ -94,6 +94,7 @@ namespace BrawlCrate.UI
                     _fighterProject.GroundMode=(GroundContactMode)mode.SelectedIndex;
                     _retargetKeyframeMode=(RetargetKeyframeMode)keys.SelectedIndex;
                     if(groundChanged)MarkFighterChanged();UpdateFighterStatus();
+                    if(_libraryPane!=null)UpdateLibrarySelection();
                 }
             }
         }

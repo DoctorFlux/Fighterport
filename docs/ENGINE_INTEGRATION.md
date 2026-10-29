@@ -1,5 +1,32 @@
 ﻿# Native Next integration
 
+Preview.59 changes the fresh native UI session's output default to Source channel
+keys. The actual Use on This Model action, temporary sources, saved game/library
+sources and batch share that field; explicit Dense/bone/channel/Interpolated
+choices remain. The original Next reference bake, Dense enum/API/legacy-receipt
+default and forced reference operations are unchanged. Animation now exposes the
+existing retarget options even for a model-only target; existing library details,
+tooltip and successful-import status identify the chosen representation.
+
+The source-seeded reducer freezes exact generated-pair evidence from the new
+bake before registry publication. Only unique matching rig/context/ordered-bit
+continuous sites may disappear. Time groups keep all surviving sides; spans use
+outgoing-left/incoming-right tangents and certify every original positive-time
+interval and both one-sided derivatives. Any unknown pair or signed zero retains
+its complete channel. The internal AllowGeneratedPairReduction permission is
+separate from SmallFile and tangent refitting, defaults false, and retains all
+exact/protected/mandatory/join guards. No shared BrawlLib codec is changed.
+
+Source schedule knots remain seeds; target-space corrections may require repair
+keys. Four grouped candidates share existing strict scalar/native/work ceilings;
+the fifth slot can retain complete paired channels under those same gates before
+exact Dense fallback. Cumulative geometry checks can reject an otherwise valid
+scalar proposal; they are not relaxed to obtain smaller files. Native byte counts
+and fresh decode remain decisive. See
+[implementation notes](SOURCE_TIMED_USE_ON_MODEL_NOTES_2026-10-29.md) and
+[acceptance](SOURCE_TIMED_USE_ON_MODEL_ACCEPTANCE_2026-10-29.md). The full native
+previewer, all skin weights, source-owned roots, Undo and exact Save remain.
+
 Preview.58 adds Interpolated keys to the existing retarget dropdown. It uses
 endpoint-first native Hermite reduction independent of donor schedules, so a
 donor key on every frame is not a required target knot. Original Next Dense and

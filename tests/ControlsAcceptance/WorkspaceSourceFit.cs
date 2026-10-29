@@ -111,6 +111,7 @@ internal static partial class Program
                 await SourceFitSelect(form,item.Clip.Id);
                 SimpleControl<Button>(form,"libraryPreviewOriginal").PerformClick();
                 var displayed=(LibrarySourceLease)Field(form,"_libraryLease");
+            UseModelSelectMode(form, BrawlCrate.Studio.Retargeting.RetargetKeyframeMode.Dense);
                 bool transferred=false;
                 using(OnRetargetReady(form,dialog=>transferred=true))SimpleControl<Button>(form,"libraryUseOnTarget").PerformClick();
                 await SimpleControlsReady(form);

@@ -50,7 +50,7 @@ internal static partial class Program
             }
             if(args.Contains("--dirty-source-keys")||Environment.GetEnvironmentVariable("FIGHTERPORT_TEST_DIRTY_SOURCE_KEYS")=="1")
             {await SourceKeysDirtySnapshot(form,clip,donor,output);return;}
-            Check((RetargetKeyframeMode)Field(form,"_retargetKeyframeMode")==RetargetKeyframeMode.Dense,"Fresh workspace retains original Dense Next as its session default");
+            Check((RetargetKeyframeMode)Field(form,"_retargetKeyframeMode")==RetargetKeyframeMode.SourceChannelTimes,"Fresh workspace uses source channel keys while retaining explicit original Dense Next");
             // Imported donor metadata remains authentic even when its scaling
             // rule is outside the generated target writer's qualification.
             // Output/provenance checks below deliberately keep ContentKey.

@@ -138,6 +138,10 @@ internal static partial class Program
                     SimpleControl<Button>(form, "libraryUseOnTarget").Text == "Use on This Model",
                     "The source library restores Next's familiar preview and transfer command labels");
 
+                // This layout regression retains its original Dense equality
+                // and contact expectations; source-default routing has its own
+                // actual-button acceptance case.
+                UseModelSelectMode(form, RetargetKeyframeMode.Dense);
                 string expectedPath = Path.Combine(output, "independent-next.chr0");
                 using (var source = library.Open(sourceItem.Clip.Id))
                 using (var expected = BrawlRetargeter.Bake(source.Model, target, source.Animation, groundMode: form.FighterProject.GroundMode))

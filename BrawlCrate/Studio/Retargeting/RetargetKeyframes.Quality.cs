@@ -91,6 +91,10 @@ namespace BrawlCrate.Studio.Retargeting
             report.LengthScale = length;
             var proof = new QualityProofBudget(token);
             var controls = new HashSet<string>(report.ProtectedControls, StringComparer.Ordinal);
+            // Bake creates evidence before this projection, but registers the
+            // surviving result only afterwards. Freeze its exact ordered bits
+            // here; neither a matching name nor equal-looking sides suffice.
+            var generatedPairs = FreezeQualityGeneratedPairs(result, model, controls, token);
             if(mode==RetargetKeyframeMode.Interpolated)
                 report.QualityNotes="Native Hermite target spans are selected independently of donor key schedules, even when the donor has a key on every frame. Exact protected controls, unknown paired sides, signed zeros and required terminal behavior remain. ";
             var sourceTracks = sourceClip.Children.OfType<CHR0EntryNode>().ToDictionary(t => t.Name, StringComparer.Ordinal);
@@ -99,9 +103,13 @@ namespace BrawlCrate.Studio.Retargeting
             {
                 token.ThrowIfCancellationRequested();
                 report.QualityAttempts++;
-                // The final attempt is an exact copy. An exhausted proof/native
-                // budget must not leave an unverified approximation available.
-                if (precision == 0)
+                // Use the existing fifth slot for a conservative candidate
+                // before exact identity: preserve every paired channel as in
+                // the prior native path, still allowing exact constants and
+                // independently certified unpaired spans to save storage.
+                // This shares all work/native caps; it is not looser motion.
+                bool preservePairs = precision == 0 && length > 0 && generatedPairs.Length > 0;
+                if (precision == 0 && !preservePairs)
                 {
                     report.DenseFallback = true; report.SourceSeedKeys = DenseSeedCount(dense,lastWire);
                     report.AddedQualityKeys = Math.Max(0, Count(dense) - report.SourceSeedKeys);
@@ -113,7 +121,8 @@ namespace BrawlCrate.Studio.Retargeting
                         (lastWire == null ? "Source seed analysis was skipped because positive finite bind geometry was unavailable. " : "") + "No approximation was published. The legacy separate MaximumWorldBasisError field is not measured or claimed in v2.";
                     return NativeAnimationOptimization.Copy(dense);
                 }
-                var wire = QualityTracks(result, target, sourceTracks, mode, controls, precision, length, proof);
+                var attemptPairs = preservePairs ? new NativeGeneratedPairSite[0] : generatedPairs;
+                var wire = QualityTracks(result, target, sourceTracks, mode, controls, attemptPairs, preservePairs ? 1 : precision, length, proof);
                 lastWire = wire;
                 try
                 {
@@ -121,6 +130,7 @@ namespace BrawlCrate.Studio.Retargeting
                     using (var verified = NativeAnimationOptimization.Prepare(model, dense, wire.Tracks,
                         new NativeAnimationOptimizationOptions { ExactOnly = false, LengthScale = length,
                             TargetBones = target.Bones.Select(b => b.Name).ToArray(), ExactBones = controls.ToArray(),
+                            AllowGeneratedPairReduction = !preservePairs, GeneratedPairSites = attemptPairs,
                             BindPoseCleanupBones = wire.BindOmissions, Budget = nativeBudget, ProbeFrames = proof.Probes.ToArray() }, folder, token))
                     {
                         report.SourceSeedKeys = wire.SeedKeys;
@@ -140,7 +150,9 @@ namespace BrawlCrate.Studio.Retargeting
                         report.MaximumScaleError=verified.MaximumScaleError;report.MaximumLocalTranslationError=verified.MaximumLocalTranslationError;
                         report.MaximumWorldBoneError=verified.MaximumWorldBoneError;report.MaximumSkinError=verified.MaximumSkinError;
                         report.WorstFrame=verified.WorstFrame;report.WorstBone=verified.WorstBone;
-                        report.QualityNotes = (report.QualityNotes ?? "") + "Continuous raw Hermite value/derivative certificates and independent native cumulative checks passed. " +
+                        report.QualityNotes = (report.QualityNotes ?? "") +
+                            (preservePairs ? "The fifth bounded attempt retained complete original paired channels and accepted a conservative storage baseline before dense fallback; strict quality thresholds and the shared verification budget were unchanged. " : "") +
+                            "Continuous raw Hermite value/derivative certificates and independent native cumulative checks passed. " +
                             (proof.Limited ? "Scalar proof budget was exhausted; uncertain spans retain their exact dense keys. " : "") +
                             "The world/basis distance combines native position and L-scaled forward-basis errors; the legacy separate MaximumWorldBasisError field is not measured or claimed in v2. Native verification: " + verified.Report;
                         return candidate;
@@ -148,7 +160,7 @@ namespace BrawlCrate.Studio.Retargeting
                 }
                 catch (InvalidDataException error) when (error.Data.Contains("OptimizationQuality") || error.Data.Contains("OptimizationBudget") || error.Data.Contains("OptimizationSize"))
                 {
-                    report.QualityNotes = (report.QualityNotes ?? "") + "Precision " + precision.ToString("G", CultureInfo.InvariantCulture) + ": " + error.Message + "\r\n";
+                    report.QualityNotes = (report.QualityNotes ?? "") + (preservePairs ? "Conservative paired-channel baseline" : "Precision " + precision.ToString("G", CultureInfo.InvariantCulture)) + ": " + error.Message + "\r\n";
                     if (error.Data.Contains("OptimizationBudget")) break;
                 }
             }
@@ -158,7 +170,7 @@ namespace BrawlCrate.Studio.Retargeting
             report.RestoredTargetChannels = lastWire?.RestoredChannels.ToArray() ?? new string[0];
             report.ScalarCertified = report.QualityVerified = true; report.ScalarCertificateWork = proof.Work;
             report.BoneVisits=nativeBudget.BoneVisits;report.VertexVisits=nativeBudget.VertexVisits;
-            report.QualityNotes = (report.QualityNotes ?? "") + "The complete dense reference was retained when the shared native verification budget was exhausted. The legacy separate MaximumWorldBasisError field is not measured or claimed in v2.";
+            report.QualityNotes = (report.QualityNotes ?? "") + "The complete dense reference was retained after bounded candidates failed or the shared verification budget was exhausted. The legacy separate MaximumWorldBasisError field is not measured or claimed in v2.";
             return NativeAnimationOptimization.Copy(dense);
         }
 
@@ -177,12 +189,43 @@ namespace BrawlCrate.Studio.Retargeting
             return count;
         }
 
+        static NativeGeneratedPairSite[] FreezeQualityGeneratedPairs(RetargetResult result, MDL0Node model,
+            HashSet<string> controls, CancellationToken token)
+        {
+            var evidence = result.GeneratedPairEvidence ?? new NativeGeneratedPairEvidence[0];
+            if (evidence.Length == 0 || evidence.Length > 2000000 || string.IsNullOrEmpty(result.GeneratedPairRigKey) ||
+                !string.Equals(result.GeneratedPairRigKey, NativeGeneratedPairRegistry.TryRigKey(model, token), StringComparison.Ordinal))
+                return new NativeGeneratedPairSite[0];
+            var claims = evidence.Where(e => e != null).GroupBy(e => (e.Bone, e.Channel, e.TimeBits))
+                .Where(g => g.Count() == 1).ToDictionary(g => g.Key, g => g.First());
+            var sites = new List<NativeGeneratedPairSite>();
+            foreach (var entry in result.Animation.Children.OfType<CHR0EntryNode>())
+            {
+                token.ThrowIfCancellationRequested();
+                if (controls.Contains(entry.Name)) continue;
+                for (int channel = 0; channel < 9; channel++)
+                    foreach (var group in entry.KeyArrays[channel].Entries.GroupBy(k => k._index))
+                    {
+                        token.ThrowIfCancellationRequested();
+                        var sides = group.ToArray();
+                        // Ambiguous claims and mismatched context preserve the
+                        // original sides, without quadratic rescans of curves.
+                        if (sides.Length != 2 || !claims.TryGetValue((entry.Name, channel,
+                            BitConverter.ToInt32(BitConverter.GetBytes(group.Key), 0)), out var known) ||
+                            !known.Eligible || !known.SameContext(entry)) continue;
+                        if (known.Matches(sides[0], sides[1])) sites.Add(known.Site());
+                    }
+            }
+            return sites.ToArray();
+        }
+
         static QualityWire QualityTracks(RetargetResult result, BrawlRig target, Dictionary<string, CHR0EntryNode> sourceTracks,
-            RetargetKeyframeMode mode, HashSet<string> controls, double precision, double length, QualityProofBudget proof)
+            RetargetKeyframeMode mode, HashSet<string> controls, NativeGeneratedPairSite[] generatedPairs, double precision, double length, QualityProofBudget proof)
         {
             var wire = new QualityWire(); var output = new List<ControlTrack>(); var omitted = new List<string>();
             bool interpolated=mode==RetargetKeyframeMode.Interpolated;
             var targetBones = target.Bones.ToDictionary(b => b.Name, StringComparer.Ordinal);
+            var pairChannels = generatedPairs.GroupBy(p => (p.Bone, p.Channel)).ToDictionary(g => g.Key, g => new HashSet<float>(g.Select(p => p.Frame)));
             long planned = 0;
             foreach (var entry in result.Animation.Children.OfType<CHR0EntryNode>())
             {
@@ -204,7 +247,8 @@ namespace BrawlCrate.Studio.Retargeting
                         source.KeyArrays[channel].Entries.Select(k => k._index).ToArray();
                     if (!interpolated && !exact && seeds.Length == 0 && entry.KeyArrays[channel].KeyCount > 0)
                         wire.RestoredChannels.Add(entry.Name + " " + Channels[channel]);
-                    channels[channel] = QualityCurve(entry.KeyArrays[channel], seeds, channel, exact, precision, length, proof,
+                    if (!pairChannels.TryGetValue((entry.Name, channel), out var continuousPairs)) continuousPairs = new HashSet<float>();
+                    channels[channel] = QualityCurve(entry.KeyArrays[channel], seeds, continuousPairs, channel, exact, precision, length, proof,
                         out float[] actualSeeds, out double value, out double derivative);
                     seedFrames[channel]=actualSeeds;
                     wire.SeedKeys = checked(wire.SeedKeys + actualSeeds.Length);
@@ -223,7 +267,7 @@ namespace BrawlCrate.Studio.Retargeting
         static bool PositiveZero(float value) => BitConverter.ToInt32(BitConverter.GetBytes(value), 0) == 0;
         static bool NegativeZero(float value) => BitConverter.ToInt32(BitConverter.GetBytes(value), 0) == int.MinValue;
 
-        static ControlKey[] QualityCurve(KeyframeArray original, float[] sourceTimes, int channel, bool exact,
+        static ControlKey[] QualityCurve(KeyframeArray original, float[] sourceTimes, HashSet<float> continuousPairs, int channel, bool exact,
             double precision, double length, QualityProofBudget proof, out float[] seedFrames, out double valueError, out double derivativeError)
         {
             var keys = original.Entries.ToArray(); seedFrames = new float[0]; valueError = derivativeError = 0;
@@ -238,7 +282,10 @@ namespace BrawlCrate.Studio.Retargeting
             var byTime = keys.GroupBy(k => k._index).ToDictionary(g => g.Key, g => g.ToArray());
             foreach (float time in sourceGroups.Keys)
                 if (!byTime.ContainsKey(time)) throw new InvalidDataException("The immutable dense reference lacks a source seed knot at " + time + ".");
-            if (paired || signedZero)
+            // Keep the established conservative contract for an authored or
+            // unknown pair anywhere on this channel, and for signed zeros.
+            // Only wholly understood generated channels enter grouped proof.
+            if (signedZero || byTime.Any(g => g.Value.Length > 1 && !continuousPairs.Contains(g.Key)))
             {
                 var kept = new List<ControlKey>();
                 foreach (var group in keys.GroupBy(k => k._index))
@@ -247,11 +294,29 @@ namespace BrawlCrate.Studio.Retargeting
                     if (sourceGroups.TryGetValue(group.Key, out int count) && count == 2 && sides.Length == 1)
                         kept.Add(CopyQualityKey(group.First()));
                 }
-                seedFrames = kept.Select(k=>k.Frame).ToArray(); return kept.ToArray();
+                seedFrames = kept.Select(k => k.Frame).ToArray(); return kept.ToArray();
             }
-            var retained = new SortedSet<int> { 0, keys.Length - 1 };
-            for (int i = 0; i < keys.Length; i++) if (sourceGroups.ContainsKey(keys[i]._index)) retained.Add(i);
-            seedFrames = retained.Select(i=>keys[i]._index).ToArray();
+            // A time group owns its incoming first and outgoing last side.
+            // Unknown pairs, jumps and IEEE signed zeros were kept above;
+            // known continuous generated pairs may disappear only as a whole.
+            var groups = keys.Select((key, index) => new { key, index }).GroupBy(k => k.key._index)
+                .Select(g => new { Time = g.Key, First = g.First().index, Last = g.Last().index }).ToArray();
+            var retained = new SortedSet<int> { 0, groups.Length - 1 };
+            for (int i = 0; i < groups.Length; i++)
+            {
+                var group = groups[i];
+                if (sourceGroups.ContainsKey(group.Time) || group.First != group.Last && !continuousPairs.Contains(group.Time) ||
+                    Enumerable.Range(group.First, group.Last - group.First + 1).Any(k => NegativeZero(keys[k]._index) || NegativeZero(keys[k]._value) || NegativeZero(keys[k]._tangent)))
+                    retained.Add(i);
+            }
+            ControlKey[] GroupKeys(int index)
+            {
+                var group = groups[index];
+                var sides = Enumerable.Range(group.First, group.Last - group.First + 1).Select(i => CopyQualityKey(keys[i])).ToList();
+                if (sourceGroups.TryGetValue(group.Time, out int count) && count == 2 && sides.Count == 1) sides.Add(CopyQualityKey(keys[group.First]));
+                return sides.ToArray();
+            }
+            seedFrames = retained.SelectMany(GroupKeys).Select(k => k.Frame).ToArray();
             double limit = (channel < 3 ? .00001 : channel < 6 ? .01 : Math.Min(.0002, .0001 * length)) * precision;
             double speed = (channel >= 3 && channel < 6 ? .05 : channel < 3 ? .00001 : Math.Min(.0002, .0001 * length)) * precision;
             bool scaleExact = channel < 3 && !QualitySignedScale(keys, proof);
@@ -261,13 +326,13 @@ namespace BrawlCrate.Studio.Retargeting
             {
                 var span = pending.Pop();
                 if (span.Item2 <= span.Item1 + 1) continue;
-                if (QualitySpan(keys, span.Item1, span.Item2, scaleExact ? 0 : limit, scaleExact ? 0 : speed, channel < 3, proof,
+                if (QualitySpan(keys, groups[span.Item1].Last, groups[span.Item2].First, continuousPairs, scaleExact ? 0 : limit, scaleExact ? 0 : speed, channel < 3, proof,
                     out double value, out double derivative))
                 { valueError = Math.Max(valueError, value); derivativeError = Math.Max(derivativeError, derivative); continue; }
                 int middle = (span.Item1 + span.Item2) / 2; retained.Add(middle);
                 pending.Push(Tuple.Create(span.Item1, middle)); pending.Push(Tuple.Create(middle, span.Item2));
             }
-            return retained.Select(i => CopyQualityKey(keys[i])).ToArray();
+            return retained.SelectMany(GroupKeys).ToArray();
         }
     }
 }

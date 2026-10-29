@@ -29,6 +29,10 @@ namespace BrawlCrate.Studio
         // Operation-owned permission for Core-certified refitting at exact
         // generated pair sites. Unknown/authored sides never inherit it.
         public bool AllowSpanRefitting { get; set; }
+        // A strict-profile caller may remove a whole writer-proven continuous
+        // pair after certifying every original positive-duration interval.
+        // This does not enable tangent refitting or the SmallFile tolerances.
+        public bool AllowGeneratedPairReduction { get; set; }
         public NativeExportOptimizationSettings ExportSettings { get; set; }
         public float[] GeneratedPairFrames { get; set; } = new float[0];
         public NativeGeneratedPairSite[] GeneratedPairSites { get; set; } = new NativeGeneratedPairSite[0];
@@ -379,7 +383,8 @@ namespace BrawlCrate.Studio
                             var required = old.Where(k => k._index == frame).ToArray();
                             if (required.Length == 0) continue;
                             var actual = track.Channels[channel].Where(k => k.Frame == frame).ToArray();
-                            bool generatedReduction = SmallProfile(options) && (generatedFrames.Contains(frame) || generatedSiteKeys.Contains((track.Bone,channel,frame)))
+                            bool generatedReduction = (SmallProfile(options) && generatedFrames.Contains(frame) ||
+                                    (SmallProfile(options) || options.AllowGeneratedPairReduction && !options.ExactOnly) && generatedSiteKeys.Contains((track.Bone,channel,frame)))
                                 && !exactBones.Contains(track.Bone) && !protectedBones.Contains(track.Bone) && !mandatory.Contains(frame) && !fitJoins.Contains(frame)
                                 && required.Length == 2 && actual.Length < 2 && required.All(k => Bits(k._value) == Bits(required[0]._value)
                                     && Bits(k._index) != int.MinValue && Bits(k._value) != int.MinValue && Bits(k._tangent) != int.MinValue)

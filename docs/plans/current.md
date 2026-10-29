@@ -1,5 +1,42 @@
 ﻿# Current milestone M2 — simpler native workspace
 
+29 October — **preview.59 source-timed Use on This Model** completes its bounded
+increment within the same incomplete G1/M2. Starting commit:
+`c02f426f6eb3df162cd1b0e24fabbf4d659a7b70`. Correct the ordinary button route:
+fresh UI sessions use Source channel keys; explicit Dense and the original Next
+reference/API defaults remain available. Show the existing key-layout option in
+Animation and in the library's existing details, without adding another panel.
+Source knot times seed reduction; additional target keys remain only where the
+finished target's established motion/size checks need them. No source-unkeyed
+interval is blindly deleted when body-proportion corrections require repair.
+
+Remove the blanket retention of all-known baker-generated continuous paired
+channels using exact rig/context/ordered-bit evidence and interval/derivative
+proofs. Preserve every side of retained pairs and entire channels containing
+unknown pairs or signed zeros. Typed native admission does not enable tangent
+refitting or relax any error limit. Protect source-local root curves, full skin
+weights, source assets, native Undo and shared mapped track membership.
+Qualification: **3,209 checks / seven admitted private-desktop runs**, with all
+36 fresh UI PNGs actually inspected. The actual button preserves the sparse
+source's 0/16 body knots and uses interpolation between them. Direct authentic
+forward source-channel output measures 6,095 keys / 74,060 bytes versus its
+same-motion dense 20,319 / 227,168; reverse measures 9,239 / 111,320 versus
+17,909 / 188,568. The separate reviewed UI preparation measures 6,912 / 83,864
+versus 21,190 / 237,620. Required target-space repair keys remain. Conservative
+paired-preserving candidates retain previous compact results when the more
+aggressive grouped proposals fail; no motion gate is weakened.
+
+Actual-button cancel/stale/settings, native body Undo, shared optimizer/current
+Apply, retained baseline, exact exports/project reopen, lifecycle and keyboard
+checks pass. See [acceptance](../SOURCE_TIMED_USE_ON_MODEL_ACCEPTANCE_2026-10-29.md)
+and [notes](../SOURCE_TIMED_USE_ON_MODEL_NOTES_2026-10-29.md). The launcher selects
+`Fighterport-sourcekeys59/native1`. ONE G1/M2 remains incomplete and no next
+increment is promoted. Publish verified source only to public Fighterport/main
+with DoctorFlux attribution. Physical input/DPI, human usability, universal
+contacts, unqualified runtime semantics, external editors/plugins, Melee and
+game acceptance remain unverified. Historical checkpoints below retain their
+earlier defaults and outcomes.
+
 29 October — **preview.58 interpolated animation keys** completes its bounded
 increment within the same incomplete G1/M2. Starting commit:
 `b288f1a8dbf8da35ba1a21db6b8d4aab24baef93`. Source animations may key every

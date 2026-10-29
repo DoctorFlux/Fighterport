@@ -27,6 +27,7 @@ namespace BrawlCrate.UI
         private readonly HashSet<TreeNode> _libraryPendingGroups=new HashSet<TreeNode>();
         private Label _libraryPage, _libraryOriginalLabel;
         private Button _libraryUse, _libraryPreview, _libraryRepair, _libraryUndo, _libraryPlay;
+        private ToolTip _libraryRetargetHints;
         private TrackBar _libraryFrame;
         private ModelPanel _libraryViewport;
         private System.Windows.Forms.Timer _libraryTimer, _librarySearchTimer, _libraryPopulateTimer;
@@ -145,6 +146,8 @@ namespace BrawlCrate.UI
             _libraryOpenTarget=LibraryButton("libraryOpenTarget","Open as target",OpenLibraryAsTarget);
             _libraryOpenTarget.AccessibleDescription="Open the selected model, costume and animation in the large editable main preview, with the existing unsaved-change handling.";
             _libraryUse=LibraryButton("libraryUseOnTarget","Use on This Model",UseLibraryOnTarget);
+            _libraryRetargetHints=new ToolTip();_libraryPane.Disposed+=(s,e)=>_libraryRetargetHints.Dispose();
+            UpdateLibraryRetargetHint();
             _libraryRepair=LibraryButton("libraryRepairSource","Repair...",RepairLibrarySource);
             actions.Controls.AddRange(new Control[]{_libraryPreview,_libraryOpenTarget,_libraryUse,_libraryRepair,LibraryButton("libraryBatch","Batch / Fit...",ShowLibraryBatch),LibraryButton("libraryAdvancedFitting","Advanced Fitting...",OpenAdvancedSceneFitting),_sourceAddButton,_libraryUndo});layout.Controls.Add(actions,0,5);
             _libraryOriginalLabel=new Label{Name="libraryOriginalLabel",Text="Original source preview (read-only)",Dock=DockStyle.Fill,AutoEllipsis=true};layout.Controls.Add(_libraryOriginalLabel,0,6);
@@ -186,6 +189,18 @@ namespace BrawlCrate.UI
             switch(state){case LibrarySourceState.Available:return "Available";case LibrarySourceState.SourceChanged:return "Source changed";
                 case LibrarySourceState.NeedsModelAssociation:return "Needs model association";case LibrarySourceState.UnsupportedChannelVersion:return "Unsupported channel/version";default:return "Missing";}
         }
+        private void UpdateLibraryRetargetHint()
+        {
+            if(_libraryUse==null)return;
+            string layout=_retargetKeyframeMode==RetargetKeyframeMode.Dense?"Keep the original Dense Next target keys at every frame.":
+                _retargetKeyframeMode==RetargetKeyframeMode.SourceBoneTimes?"Start from each source bone's combined key times; add keys only where checked target motion needs them.":
+                _retargetKeyframeMode==RetargetKeyframeMode.SourceChannelTimes?"Start from individual source channel key times; add keys only where checked target motion needs them.":
+                "Use fewer native Hermite keys where checked target motion permits, even when the source keys every frame.";
+            string description="Retarget the selected source to the main model using "+RetargetKeyframes.ModeLabel(_retargetKeyframeMode)+". "+layout+
+                " Source-owned motion controls remain exact. Change keyframes in Animation > Retarget options.";
+            if(_libraryUse.AccessibleDescription!=description)
+            {_libraryUse.AccessibleDescription=description;_libraryRetargetHints?.SetToolTip(_libraryUse,description);}
+        }
         private void UpdateLibrarySelection()
         {
             long selectionStart=Stopwatch.GetTimestamp();
@@ -199,12 +214,14 @@ namespace BrawlCrate.UI
             _libraryPreview.Enabled=preview;_libraryUse.Enabled=available&&LibraryCostumeReady&&!SimpleWorkspaceSourceNeedsRepair(item)&&item?.Clip.Channel=="CHR0 skeletal"&&modelEditControl1.TargetModel is MDL0Node;
             _libraryOpenTarget.Enabled=preview&&!SimpleWorkspaceBusy;
             _libraryRepair.Enabled=SimpleWorkspaceSourceNeedsRepair(item)&&!_libraryReplacingTree&&!_librarySearchTimer.Enabled;
-            _libraryDetails.Text=item==null?"One shared library across all fighters. Add an original model and its complete motion set.":
+            UpdateLibraryRetargetHint();
+            _libraryDetails.Text="Retarget keys: "+RetargetKeyframes.ModeLabel(_retargetKeyframeMode)+Environment.NewLine+
+                (item==null?"One shared library across all fighters. Add an original model and its complete motion set.":
                 item.Motion.Game+" · "+item.Motion.GameVersion+" · "+item.Clip.Channel+" v"+item.Clip.NativeVersion+Environment.NewLine+
                 item.Clip.FrameCount+" ticks @ "+item.Clip.TicksPerSecond+" Hz · "+(item.Clip.Loop?"Loop":"No loop")+" · "+(preview&&item.Clip.Channel!="CHR0 skeletal"?"Original native preview; skeletal transfer unavailable":SimpleWorkspaceSourceStateText(item))+Environment.NewLine+
                 "Original: "+(SelectedLibraryCostume?.Name??item.Model?.Name??"Not verified")+" · "+item.Clip.ResourceKey+Environment.NewLine+
                 (item.Clip.AssociationEvidence??item.Clip.AssociationIssue)+Environment.NewLine+
-                (item.Clip.UnboundSourceTracks==null?"":"Native tracks absent on original model (not evaluated): "+item.Clip.UnboundSourceTracks+Environment.NewLine)+"SHA256: "+item.Clip.ResourceSha256;
+                (item.Clip.UnboundSourceTracks==null?"":"Native tracks absent on original model (not evaluated): "+item.Clip.UnboundSourceTracks+Environment.NewLine)+"SHA256: "+item.Clip.ResourceSha256);
             UpdateLibraryFavorite();
             MeasureLibraryUi(7,selectionStart);
             UpdateSimpleWorkspace();
@@ -349,7 +366,7 @@ namespace BrawlCrate.UI
                 RebuildFighterScene();
                 if(result.Contacts.FloorEnabled)modelEditControl1.QueueGroundContactView();else modelEditControl1.QueueFrameFighterModel();
                 MarkFighterChanged();UpdateFighterStatus();
-                _fighterStatus.Text="Added independent target revision: "+source.Animation.Name+" · Original source resolved and verified automatically.";
+                _fighterStatus.Text="Added independent target revision: "+source.Animation.Name+" · "+RetargetKeyframes.ModeLabel(result.KeyframeMode)+" · Original source resolved and verified automatically.";
             }
         }
         private LibrarySourceLease LoadLibrarySource(string clipId)

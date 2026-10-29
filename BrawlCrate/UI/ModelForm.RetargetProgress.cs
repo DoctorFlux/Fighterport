@@ -15,7 +15,7 @@ namespace BrawlCrate.UI
     internal partial class ModelForm
     {
         private bool _retargetBusy;
-        private RetargetKeyframeMode _retargetKeyframeMode;
+        private RetargetKeyframeMode _retargetKeyframeMode=RetargetKeyframeMode.SourceChannelTimes;
         internal event Action<Form> RetargetDialogReady;
         internal Action<Form> RetargetKeyframeReviewReady;
         private RetargetResult BakeWithProgress(MDL0Node source,MDL0Node target,CHR0Node clip)=>BakeWithProgressMode(source,target,clip,null);
