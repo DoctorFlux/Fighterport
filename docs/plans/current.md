@@ -1,5 +1,19 @@
 ﻿# Current milestone M2 — simpler native workspace
 
+30 October - **preview.65.1 retarget trajectory hotfix qualifies its bounded slice**,
+starting `cf2e7a845bdd91ea4e30e77e9442d8fb6421530b`. Actual Sonic AttackS3S -> Mario
+Use/import, both source-key options, native export and project reopen pass. The
+master retains Next's original eighth-frame solved anchors and continuously
+evaluates source FK while transporting generated static-floor body corrections.
+Raw independently solved subframe optima are explicitly a different reference.
+An obsolete overwritten tangent pass is removed; exact A/B bytes agree. Genuine
+unrepresentable intervals refuse early; hierarchy fitting reserves descendant
+headroom. Bounds/work limits, all weights, source-owned roots, Next and viewer
+remain. Final Use takes 26.3/26.8 seconds including existing quality checks;
+dense bake about 1.7 seconds. Both Mario/Snake tilts still refuse; broader earlier
+failures remain open. Preview.66 ledges stays queued in this ONE incomplete M2.
+See [hotfix evidence and limits](../RETARGET_TRAJECTORY_ACCEPTANCE_2026-10-30.md).
+
 30 October — **preview.65 reviewed ground contacts qualifies its bounded slice**,
 starting `2c77c042d3f576f6b52ad6b6f80c7420ef7819f8`. The ONE G1/M2 milestone
 remains incomplete. The full native viewer, original Next, native Undo, all weights,

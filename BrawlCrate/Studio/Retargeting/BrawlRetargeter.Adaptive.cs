@@ -11,7 +11,7 @@ namespace BrawlCrate.Studio.Retargeting
     public static partial class BrawlRetargeter
     {
         private static void BakeAdaptiveNativeMaster(BrawlRig source, BrawlRig target, CHR0Node sourceClip,
-            RetargetResult result, bool correction, int last, List<float[][]> branches, int subdivisions,
+            RetargetResult result, bool correction, int last, List<float[][]> branches,List<AdaptiveRotationPose> solvedSamples,int subdivisions,
             CancellationToken cancellation, Action<int, string> progress)
         {
             var output = result.Animation;
@@ -28,9 +28,15 @@ namespace BrawlCrate.Studio.Retargeting
                 var a = branches[first][bone]; var b = branches[second][bone];
                 return Vector3.Lerp(new Vector3(a[3], a[4], a[5]), new Vector3(b[3], b[4], b[5]), (float)(at - first));
             }
+            RetargetCorrectionTrajectory trajectory=correction&&result.Contacts.FloorEnabled&&result.Contacts.Suspended==null&&result.Contacts.BodySolveIterations>0
+                ?new RetargetCorrectionTrajectory(target.Rig,solvedSamples.ToArray(),subdivisions,editable,
+                    time=>result.Plan.Evaluate(Sample(source,sourceClip,time),false).Pose,Branch,cancellation):null;
             AdaptiveRotationPose SampleMaster(float time)
             {
                 cancellation.ThrowIfCancellationRequested();
+                float index=time*subdivisions;
+                if(index>=0&&index<solvedSamples.Count&&index==Math.Truncate(index))return solvedSamples[(int)index];
+                if(trajectory!=null)return trajectory.Evaluate(time);
                 var posed = correction ? result.Contacts.Evaluate(time) : result.Plan.Evaluate(Sample(source, sourceClip, time), false);
                 return new AdaptiveRotationPose
                 {
@@ -85,7 +91,8 @@ namespace BrawlCrate.Studio.Retargeting
                 " bounded bake work. Maximum sampled world orientation " + bake.MaximumOrientationDegrees.ToString("G7", System.Globalization.CultureInfo.InvariantCulture) +
                 " degrees; local translation " + bake.MaximumTranslationError.ToString("G7", System.Globalization.CultureInfo.InvariantCulture) +
                 "; local scale " + bake.MaximumScaleError.ToString("G7", System.Globalization.CultureInfo.InvariantCulture) +
-                ". Source-owned control curves retained. These bake checks are sampled, not continuous or game acceptance. Export size optimization is separate.";
+                ". Source-owned control curves retained. "+(trajectory==null?"Direct solved-pose reference.":"Correction trajectory: "+RetargetCorrectionTrajectory.Policy+"; every original eighth-frame pose retained; source FK remains continuously evaluated. Raw independent subframe contact optima are not its motion reference.")+
+                " These bake checks are sampled, not continuous or game acceptance. Export size optimization is separate.";
         }
     }
 }

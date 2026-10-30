@@ -14,6 +14,7 @@ internal static partial class Program
         FromToPrecisionChecks();
         RotationSpanPrecisionChecks();
         AdaptiveRotationPrecisionChecks();
+        CorrectionTrajectoryChecks();
         foreach(bool permuted in new[]{false,true})foreach(float units in new[]{.7f,1.9f})
         {
             var source=CoordinateFixture("opaque-source-",1.3f,.41f,5,Quaternion.Normalize(Quaternion.CreateFromAxisAngle(Vector3.UnitZ,.27f)*Quaternion.CreateFromAxisAngle(Vector3.UnitX,-.13f)));

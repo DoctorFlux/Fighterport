@@ -104,6 +104,7 @@ namespace BrawlCrate.Studio.Retargeting
         }
 
         private sealed class WorkExhausted : Exception { }
+        private sealed class UnrepresentableInterval : Exception { }
         private enum ChannelKind { Rotation, Translation, Scale }
         private sealed class EulerAnchor
         {
@@ -135,6 +136,7 @@ namespace BrawlCrate.Studio.Retargeting
             private readonly long maximumWork;
             private readonly Func<long, bool> reserve;
             private readonly bool generatedContinuation;
+            private readonly double[] hierarchyBudgets;
             private readonly Dictionary<int, AdaptiveRotationPose> samples = new Dictionary<int, AdaptiveRotationPose>();
             private readonly Dictionary<long, Quaternion> worlds = new Dictionary<long, Quaternion>();
             private readonly Segment[][] rotations;
@@ -153,6 +155,14 @@ namespace BrawlCrate.Studio.Retargeting
                 this.generatedContinuation = generatedContinuation;
                 rotations = new Segment[parents.Length][];
                 continuations = new List<EulerAnchor>[parents.Length];
+                var levels=new int[parents.Length];
+                for(int bone=0;bone<parents.Length;bone++)levels[bone]=(parents[bone]<0?0:levels[parents[bone]])+(editable[bone]?1:0);
+                int maximumLevel=Math.Max(1,levels.Max());
+                // Reserve headroom for descendant interpolation and native
+                // float reconstruction. Giving every ancestor the entire world
+                // budget leaves a constant child no remaining error allowance;
+                // adding child knots cannot repair that inherited plateau.
+                hierarchyBudgets=levels.Select(level=>orientationTolerance*.99*level/maximumLevel).ToArray();
             }
 
             internal AdaptiveRotationBake Run()
@@ -187,6 +197,7 @@ namespace BrawlCrate.Studio.Retargeting
                     result.Converged = result.UnresolvedIntervals == 0;
                 }
                 catch (WorkExhausted) { result.WorkLimitReached = true; result.Converged = false; }
+                catch (UnrepresentableInterval) { result.Converged = false; }
                 token.ThrowIfCancellationRequested();
                 result.Tracks = tracks.ToArray(); result.Work = work; result.SampleCount = samples.Count; result.NativeKeyUpperBound = keys;
                 return result;
@@ -213,7 +224,7 @@ namespace BrawlCrate.Studio.Retargeting
                 var segment = Fit(bone, first, end, kind);
                 double maximum = Measure(bone, segment, kind);
                 result.LastMeasuredError = maximum;
-                double tolerance = kind == ChannelKind.Rotation ? orientationTolerance : kind == ChannelKind.Translation ? translationTolerance : scaleTolerance;
+                double tolerance = kind == ChannelKind.Rotation ? hierarchyBudgets[bone] : kind == ChannelKind.Translation ? translationTolerance : scaleTolerance;
                 // Original integer poses are contractual, so additional knots
                 // cannot correct an inconsistent inherited parent/frozen root
                 // at either fixed boundary. Report that contradiction rather
@@ -257,6 +268,9 @@ namespace BrawlCrate.Studio.Retargeting
                 if (kind == ChannelKind.Rotation) result.MaximumOrientationDegrees = Math.Max(result.MaximumOrientationDegrees, maximum);
                 else if (kind == ChannelKind.Translation) result.MaximumTranslationError = Math.Max(result.MaximumTranslationError, maximum);
                 else result.MaximumScaleError = Math.Max(result.MaximumScaleError, maximum);
+                // A terminal failed interval already makes the complete
+                // master unavailable. Continuing cannot repair that interval.
+                if(!Finite(maximum)||maximum>tolerance)throw new UnrepresentableInterval();
             }
 
             private Segment Fit(int bone, float first, float end, ChannelKind kind)

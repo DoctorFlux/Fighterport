@@ -1,5 +1,13 @@
 # Fighterport master plan
 
+30 October - preview.65.1 qualifies a bounded Sonic-tilt/Mario retarget hotfix
+within the same incomplete G1/M2. Coherent generated corrections retain original
+Next solved anchors and continuous source FK; source-owned roots/all weights,
+native quality limits, viewer and Undo remain. The real Use path and existing
+own-Wait1/contact recovery regressions pass. Other fractional failures remain;
+preview.66 static ledges is queued. See the sole [current plan](plans/current.md)
+and [acceptance](RETARGET_TRAJECTORY_ACCEPTANCE_2026-10-30.md).
+
 30 October — preview.65 reviewed ground contacts qualifies a **bounded** substep
 of the same incomplete G1/M2, starting at `2c77c042`. Three authentic recoveries
 pass; seven upstream ground failures and the rest of the 18-case acceptance stay

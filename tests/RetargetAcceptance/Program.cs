@@ -12,6 +12,9 @@ internal static partial class Program
         CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
         try
         {
+            if(args.Length==7&&args[0]=="--fractional-probe")return FractionalRetargetProbe(args[1],args[2],args[3],args[4],args[5],args[6]);
+            if(args.Length==7&&args[0]=="--verify-trajectory")return VerifyRetargetTrajectory(args[1],args[2],args[3],args[4],args[5],args[6]);
+            if(args.Length==6&&args[0]=="--compare-contact-proposal")return CompareContactProposal(args[1],args[2],args[3],args[4],args[5]);
             if(args.Length==4 && args[0]=="--motion-controls")return MotionControls(args[1],args[2],args[3]);
             if(args.Length==2 && args[0]=="--local-precision")return LocalPrecisionChecks(args[1]);
             if(args.Length==2 && args[0]=="--coordinate-frames")return CoordinateFrameChecks(args[1]);

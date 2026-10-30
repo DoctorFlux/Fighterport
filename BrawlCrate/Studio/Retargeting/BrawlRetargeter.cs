@@ -364,6 +364,12 @@ namespace BrawlCrate.Studio.Retargeting
         public static RetargetResult Bake(BrawlRig source, BrawlRig target, CHR0Node clip, bool correction = true,
             CancellationToken cancellation=default,Action<int,string> progress=null,GroundContactMode groundMode=GroundContactMode.Auto,
             RetargetKeyframeMode keyframeMode=RetargetKeyframeMode.Dense)
+            =>BakeCore(source,target,clip,correction,cancellation,progress,groundMode,keyframeMode,false);
+
+        // The legacy proposal switch exists solely for independent A/B
+        // verification that its overwritten tangents do not affect the master.
+        internal static RetargetResult BakeCore(BrawlRig source,BrawlRig target,CHR0Node clip,bool correction,
+            CancellationToken cancellation,Action<int,string> progress,GroundContactMode groundMode,RetargetKeyframeMode keyframeMode,bool legacyContactProposal)
         {
             Interlocked.Increment(ref _diagnosticBakes);
             cancellation.ThrowIfCancellationRequested();
@@ -388,7 +394,7 @@ namespace BrawlCrate.Studio.Retargeting
                 cancellation.ThrowIfCancellationRequested();
                 const int samplesPerFrame=8;
                 var values = new List<float[][]>();
-                var orientations = new List<Quaternion[]>();
+                var solvedSamples = new List<AdaptiveRotationPose>();
                 var mappedTargets=new HashSet<int>(plan.Mapping.Select(map=>map.TargetIndex));
                 Vector3[] previous = null;
                 for (int sample = 0; sample <= last * samplesPerFrame; sample++)
@@ -414,7 +420,9 @@ namespace BrawlCrate.Studio.Retargeting
                             local.Translation.X, local.Translation.Y, local.Translation.Z};
                         if (frame[bone].Any(v => !RigMath.Finite(v))) throw new InvalidDataException("The retarget result contains non-finite keys.");
                     }
-                    previous = angles; values.Add(frame); orientations.Add((Quaternion[])posed.Pose.Orientation.Clone());
+                    previous = angles; values.Add(frame);
+                    solvedSamples.Add(new AdaptiveRotationPose{EulerDegrees=angles,WorldRotations=(Quaternion[])posed.Pose.Orientation.Clone(),
+                        LocalRotations=posed.Pose.Local.Select(v=>v.Rotation).ToArray(),Translations=posed.Pose.Local.Select(v=>v.Translation).ToArray(),Scales=posed.Pose.Local.Select(v=>v.Scale).ToArray()});
                 }
                 for (int bone = 0; bone < target.Bones.Length; bone++)
                 {
@@ -436,9 +444,13 @@ namespace BrawlCrate.Studio.Retargeting
                         }
                     }
                 }
-                FitContactCurves(target,output,result.Contacts,last,cancellation,progress,mappedTargets);
+                // This old pass adjusts only mapped integer-key tangents.
+                // The adaptive master below rewrites every mapped body S/R/T
+                // curve from the same solved contact poses; source controls
+                // are independently replaced by PreserveMotionControls.
+                if(legacyContactProposal)FitContactCurves(target,output,result.Contacts,last,cancellation,progress,mappedTargets);
                 PreserveMotionControls(plan,clip,output,source,target,last);
-                BakeAdaptiveNativeMaster(source,target,clip,result,correction,last,values,samplesPerFrame,cancellation,progress);
+                BakeAdaptiveNativeMaster(source,target,clip,result,correction,last,values,solvedSamples,samplesPerFrame,cancellation,progress);
                 RestrictOutputToSharedBones(result,target,cancellation);
                 // The original dense solver, contact fit and source-owned
                 // controls above remain the reference. Sparse storage is an

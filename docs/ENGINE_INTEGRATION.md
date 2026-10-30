@@ -1,5 +1,17 @@
 ﻿# Native Next integration
 
+Preview.65.1 changes offline fractional-master authoring, not the original Next
+solver or shared native codec. Original solved eighth-frame poses are cached;
+static floor body correction uses a named local correction trajectory over
+continuously evaluated authentic source FK. Motion controls, scales and unmapped
+locals are excluded. Independent raw subframe IK optima are explicitly not the
+new inter-anchor reference. Adaptive native Euler fitting keeps existing public
+bounds, reserves ancestor/descendant headroom and refuses terminal contradictions
+early. The old overwritten contact-tangent proposal remains only behind an
+internal A/B verification hook. No work runs on playback. Native Save, export,
+fitting/contact metadata and document ownership remain unchanged. See
+[bounded evidence and remaining failures](RETARGET_TRAJECTORY_ACCEPTANCE_2026-10-30.md).
+
 Preview.65 reviewed ground contacts qualifies its **bounded** slice, starting at
 `2c77c042d3f576f6b52ad6b6f80c7420ef7819f8`. It adds a scoped paused native
 contact boundary, complete versioned support evidence, independent snapshots,

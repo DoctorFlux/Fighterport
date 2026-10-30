@@ -87,7 +87,8 @@ internal static partial class Program
                 using (var project = FighterProject.Create("Actual verified library source to current model — " + mode))
                 using (var form = new ModelForm())
                 {
-                    project.GroundMode = GroundContactMode.Airborne; // No supplied reviewed floor/ledge context.
+                    bool trajectoryCase = args.Contains("--retarget-trajectory-case");
+                    project.GroundMode = trajectoryCase ? GroundContactMode.Auto : GroundContactMode.Airborne;
                     try
                     {
                         form.InitializeFighterProject(project); form.Show(); form.ClientSize = new Size(1700, 950);
@@ -148,6 +149,7 @@ internal static partial class Program
                         // This is the button's exact action. Bypass only its
                         // MessageBox error wrapper so a real failure propagates
                         // without private-desktop input or a hidden modal hang.
+                        var useTimer = System.Diagnostics.Stopwatch.StartNew();
                         try { Call(form, "UseLibraryOnTarget"); }
                         catch (TargetInvocationException error)
                         {
@@ -156,6 +158,7 @@ internal static partial class Program
                         }
                         if (reviewFailure != null) throw reviewFailure;
                         await SimpleControlsReady(form); form.RetargetKeyframeReviewReady = null;
+                        long useMilliseconds = useTimer.ElapsedMilliseconds;
                         var asset = project.Animations.Single(); var clip = editor.SelectedCHR0; var model = editor.TargetModel as MDL0Node;
                         var quality = asset.Retarget?.ReadKeyframeReport();
                         Check(approved && asset.Retarget != null && asset.Retarget.KeyframeMode == mode && quality != null &&
@@ -178,6 +181,27 @@ internal static partial class Program
                         var setup = await Await<ControlReply>(Call(form, "LoadControls"));
                         var roots = (setup.ProtectedMotionBones ?? new int[0]).Select(index => setup.BoneNames[index]).ToArray();
                         Check(roots.Length > 0, "Normal target control setup resolves genuine protected motion controls before export");
+                        if (trajectoryCase)
+                        {
+                            string master = Path.Combine(directory, "finished-target-master.chr0");
+                            form.ExportSimpleWorkspaceResult(master);
+                            string trajectoryContent = NativeAnimationOptimization.SourceContentKey(clip);
+                            using (var reopened = NodeFactory.FromFile(null, master) as CHR0Node)
+                                Check(reopened != null && NativeAnimationOptimization.SourceContentKey(reopened) == trajectoryContent,
+                                    "Actual corrected source-key result independently reopens without native content changes");
+                            File.WriteAllText(Path.Combine(directory, "trajectory-use.json"), json.Serialize(new {
+                                UseMilliseconds = useMilliseconds, Mode = mode.ToString(), GroundMode = project.GroundMode.ToString(),
+                                Quality = quality, NativeContent = trajectoryContent, Bytes = new FileInfo(master).Length,
+                                Roots = roots, MasterSha256 = FighterProject.HashFile(master), PrivateDesktop,
+                                OSInputInjected = false, ScreenCopied = false
+                            }));
+                            await UseModelRoundtrip(form, asset, directory, "trajectory-current-result");
+                            editor.SetFrame(1); editor.FrameFighterModel();
+                            await CaptureWindow(form, Path.Combine(directory, "trajectory-first.png"));
+                            editor.SetFrame(Math.Min(15, clip.FrameCount));
+                            await CaptureWindow(form, Path.Combine(directory, "trajectory-action.png"));
+                            continue;
+                        }
                         if(args.Contains("--reviewed-recovery-case"))
                         {
                             await ReviewedRecoveryCase(form,clip,Required("--target-motion"),directory,args.Contains("--reviewed-ground-after-fit"));

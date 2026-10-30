@@ -1,5 +1,15 @@
 # Fighterport
 
+30 October: **preview.65.1-retarget-trajectory** qualifies the bounded reported
+Sonic AttackS3S -> Mario Use failure within the ONE incomplete G1/M2. Start:
+`cf2e7a845bdd91ea4e30e77e9442d8fb6421530b`. Preserve original Next solved
+anchors, continuous source FK, source-owned roots, all weights and quality/work
+gates. Generated body corrections use an explicit coherent inter-anchor reference;
+do not describe noisy independent subframe solver optima as equivalent to it.
+Actual Use/both source-key paths and existing own-Wait1/contact checks pass;
+other retarget/contact failures remain open. Preview.66 ledges stays queued.
+See [acceptance](docs/RETARGET_TRAJECTORY_ACCEPTANCE_2026-10-30.md).
+
 30 October 2026: **preview.65 reviewed ground contacts qualifies its bounded slice**
 from `2c77c042d3f576f6b52ad6b6f80c7420ef7819f8` in the ONE incomplete G1/M2.
 Preview.66 finite static ledges remains queued. The three authentic passing
