@@ -31,6 +31,8 @@ namespace BrawlCrate.UI
             internal bool ConstraintsAbsent;
             internal NativeGeneratedPairSite[] GeneratedPairSites;
             internal string GeneratedPairReport;
+            internal NativeReviewedContacts Contacts;
+            internal string OriginalSupportJson;
             internal Action Validate;
         }
         private Chr0ExportSnapshot _activeSingleExport;
@@ -154,6 +156,11 @@ namespace BrawlCrate.UI
             string controls = ExportControlState(asset, clip), modelContent = NativeControlHash(model, ".mdl0");
             string Review() => json.Serialize(ReviewedFighterCoordinates(model));
             string review = Review();
+            string contactEvidence=json.Serialize(new{Recipe=ReviewedContactsFor(asset,clip),OriginalSupport=asset.Retarget?.OriginalSupport});
+            var contactRecipe=ReviewedContactsFor(asset,clip);
+            var frozenContacts=contactRecipe==null?null:json.Deserialize<NativeReviewedContacts>(json.Serialize(contactRecipe));
+            frozenContacts?.Validate();
+            string originalSupport=asset.Retarget?.OriginalSupport?.Json==null?null:json.Serialize(asset.Retarget.OriginalSupport);
             bool known = ReadExportProtectionDetails(model, controls, out bool constrained, out var exactBones, out string sourceMotionBone);
             var reasons = new List<string>();
             reasons.AddRange(ExportNativeSemanticLimitations(model, evaluationMaster ?? clip));
@@ -161,6 +168,7 @@ namespace BrawlCrate.UI
             // Absolute pin/contact acceptance is distinct from small relative
             // curve error. Until replayed independently, keep the reference exact.
             if (constrained) reasons.Add("authored pin/contact absolute acceptance has not been independently revalidated for compressed export");
+            if(frozenContacts!=null)reasons.Add("reviewed ground contacts retain Exact export until compressed contact acceptance qualifies");
             string referenceOnly = null; var protectedBones = new string[0];
             bool bakedSupport = NativeTransitionContacts.HasBakedSupport(asset);
             if (bakedSupport)
@@ -189,10 +197,11 @@ namespace BrawlCrate.UI
                 ExactBones = exactBones, ProtectedBones = protectedBones, MandatoryFrames = mandatory.OrderBy(f => f).ToArray(),
                 ProtectedRanges = ranges, ProtectionKnown = known, BoundedUnavailable = string.Join("; ", reasons.Distinct()), ReferenceOnlyReason = referenceOnly, Validate = () => {
                     RequireSavedAnimationExportTarget(model);
-                    if (NativeControlHash(model, ".mdl0") != modelContent || ExportControlState(asset, clip) != controls || Review() != review || _curvePending)
+                    if (NativeControlHash(model, ".mdl0") != modelContent || ExportControlState(asset, clip) != controls || Review() != review || _curvePending ||
+                        json.Serialize(new{Recipe=ReviewedContactsFor(asset,clip),OriginalSupport=asset.Retarget?.OriginalSupport})!=contactEvidence)
                         throw new InvalidOperationException("Export target content, controls or reviewed protections changed. Open Export again.");
                 }, SourceMotionBone = sourceMotionBone, PlainFit = plainFit, ConstraintsAbsent = known && !constrained && !bakedSupport,
-                GeneratedPairSites=generatedPairs,GeneratedPairReport=generatedPairReport };
+                GeneratedPairSites=generatedPairs,GeneratedPairReport=generatedPairReport,Contacts=frozenContacts,OriginalSupportJson=originalSupport };
         }
 
         // One backend for explicit current-clip and reviewed-set exports. No
@@ -309,6 +318,19 @@ namespace BrawlCrate.UI
                     report += "\r\nReference fallback: the fully encoded candidate was larger than the same finished target master.";
                 }
                 token.ThrowIfCancellationRequested(); frozen.Validate();
+                if(context.Contacts!=null)
+                {
+                    var contact=context.Contacts;contact.Validate();
+                    string modelFile=Path.Combine(stage,"contact-target.mdl0"),baseFile=Path.Combine(stage,"contact-original-master.chr0");
+                    context.Target.ExportChecked(modelFile);File.WriteAllBytes(baseFile,Convert.FromBase64String(contact.BaseSnapshot));
+                    var serializer=new JavaScriptSerializer{MaxJsonLength=16*1024*1024,RecursionLimit=200};
+                    using(var client=new AnimationControlClient())
+                    using(token.Register(()=>client.Dispose()))
+                        await client.Send(new{Operation="contact-set-verify-export",Model=modelFile,Motion=qualifiedArtifact,Path=baseFile,State=contact.OriginalState,
+                            ReviewedContactsJson=contact.Context,ReviewedContactProof=serializer.DeserializeObject(contact.Receipt),NativeSupportJson=context.OriginalSupportJson});
+                    token.ThrowIfCancellationRequested();frozen.Validate();
+                    report+="\r\nDecoded export independently rechecked complete reviewed ground patches and approach/hold/release acceptance; Exact policy retained.";
+                }
                 string encodedHash = FighterProject.HashFile(qualifiedArtifact);
                 if (new FileInfo(qualifiedArtifact).Length != actual.FileBytes) throw new InvalidDataException("The prepared export artifact changed during qualification. No output was published.");
                 if (!ReferenceEquals(frozen.Candidate, frozen.Master)) frozen.Candidate.Dispose();

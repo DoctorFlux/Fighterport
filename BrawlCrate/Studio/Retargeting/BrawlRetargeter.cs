@@ -32,6 +32,7 @@ namespace BrawlCrate.Studio.Retargeting
         public int IgnoredSourceTracks { get; internal set; }
         public string[] IgnoredSourceBones { get; internal set; } = new string[0];
         public ContactMotion Contacts { get; internal set; }
+        internal BrawlCrate.Studio.NativeSupportEvidence FrozenSupportEvidence { get; set; }
         public float MaximumContactResidual { get; internal set; }
         public float MaximumPelvisCorrection { get; internal set; }
         public RetargetKeyframeMode KeyframeMode { get; internal set; }

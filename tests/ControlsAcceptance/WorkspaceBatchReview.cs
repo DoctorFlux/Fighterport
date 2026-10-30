@@ -33,12 +33,15 @@ internal static partial class Program
     {
         var probe=new FighterAsset{RigIdentity="Procedural exact rig",Retarget=new RetargetProvenance{
             Timing=new NativeTimingFit{Start=1,End=8,Frames=9},Library=new LibraryClipReference(),DenseReferenceStatistics=new RetargetDenseReferenceStatistics(),
+            OriginalSupport=new NativeSupportEvidence{Ranges=new[]{new NativeSupportRange{Role="first support",BoneName="first reviewed bone",First=1,Last=3,Dependencies=new[]{"body","limb"}},new NativeSupportRange{Role="second support",BoneName="second reviewed bone",First=5,Last=8,Dependencies=new[]{"limb","attachment"}}}},
             IgnoredSourceBones=new[]{"first omitted","second omitted"},Mapping=new List<RetargetBoneBinding>{new RetargetBoneBinding{Role="first",Source="source a",Target="target a"},new RetargetBoneBinding{Role="second",Source="source b",Target="target b"}}},
             TransitionFit=new NativeTransitionFit{Inputs=new[]{new TransitionNativeInput{Role="source",Snapshot="AQID\r\n\"\\",Name="source",AssetId="asset a",Entry="entry a",Sha256="hash a",Samples=9},new TransitionNativeInput{Role="exit",Snapshot="BAUG",Name="exit",AssetId="asset b",Entry="entry b",Sha256="hash b",Samples=8}}}};
-        foreach(var owner in new object[]{probe.Retarget,probe.Retarget.Library,probe.TransitionFit})
+        foreach(var owner in new object[]{probe.Retarget,probe.Retarget.Library,probe.TransitionFit,probe.Retarget.OriginalSupport})
         foreach(var property in owner.GetType().GetProperties().Where(p=>p.PropertyType==typeof(string)))property.SetValue(owner,"Procedural "+property.Name+" \"\\\r\n");
-        string[] expectedRetarget="KeyframeMode KeyframeReceipt DenseReferenceStatistics Timing ReviewDraft EngineReceipt Library Algorithm MotionControlPolicy SourceModelPath SourceModelSha256 SourceRig SourceAnimationId SourceClip FromProfile ToProfile LegScale ArmScale MaximumLimbResidual ClampedLimbSamples FloorContactsEnabled SuspendedSupportEnabled GroundMode PlantedFootSamples PlantedHandSamples PlantedBodySamples LockedContactSamples MaximumContactResidual MaximumPelvisCorrection IgnoredSourceBones Mapping".Split(' ');
+        string[] expectedRetarget="KeyframeMode KeyframeReceipt DenseReferenceStatistics Timing ReviewDraft EngineReceipt Library Algorithm MotionControlPolicy SourceModelPath SourceModelSha256 SourceRig SourceAnimationId SourceClip FromProfile ToProfile LegScale ArmScale MaximumLimbResidual ClampedLimbSamples FloorContactsEnabled SuspendedSupportEnabled GroundMode PlantedFootSamples PlantedHandSamples PlantedBodySamples LockedContactSamples MaximumContactResidual MaximumPelvisCorrection IgnoredSourceBones Mapping OriginalSupport".Split(' ');
         Check(typeof(RetargetProvenance).GetProperties().Select(p=>p.Name).OrderBy(n=>n).SequenceEqual(expectedRetarget.OrderBy(n=>n)),"Compact review projection covers the complete current retarget metadata schema");
+        Check(typeof(NativeSupportEvidence).GetProperties().Select(p=>p.Name).OrderBy(n=>n).SequenceEqual("Version SourceRig TargetRig Frames InitialResultHash Json Sha256 CanonicalHeader UnavailableReason Ranges".Split(' ').OrderBy(n=>n))&&
+            typeof(NativeSupportRange).GetProperties().Select(p=>p.Name).OrderBy(n=>n).SequenceEqual("Role BoneName First Last Dependencies".Split(' ').OrderBy(n=>n)),"Review projection covers every complete original-support field and dependency range");
         Check(typeof(RetargetDenseReferenceStatistics).GetProperties().Select(p=>p.Name).OrderBy(n=>n).SequenceEqual("FloorContactsEnabled SuspendedSupportEnabled PlantedFootSamples PlantedHandSamples PlantedBodySamples LockedContactSamples MaximumContactResidual MaximumPelvisCorrection MaximumLimbResidual ClampedLimbSamples".Split(' ').OrderBy(n=>n)),
             "Review projection covers every historical dense reference statistic");
         var keyframes=new RetargetKeyframeReport{Mode=RetargetKeyframeMode.SourceBoneTimes};
@@ -70,6 +73,16 @@ internal static partial class Program
         }
         Scalars(probe.Retarget,"Retarget.");Scalars(probe.Retarget.Timing,"Timing.");Scalars(probe.Retarget.Library,"Library.");Scalars(probe.TransitionFit,"Transition.");
         Scalars(probe.Retarget.DenseReferenceStatistics,"Dense reference.");Scalars(keyframes,"Source-key report.",refreshKeys);
+        Scalars(probe.Retarget.OriginalSupport,"Original support.");
+        foreach(var range in probe.Retarget.OriginalSupport.Ranges)
+        {
+            Scalars(range,"Original support range.");var dependencies=range.Dependencies;string dependency=dependencies[0];
+            Mutation("support dependency content",()=>dependencies[0]+=" changed",()=>dependencies[0]=dependency);
+            Mutation("support dependency order",()=>range.Dependencies=dependencies.Reverse().ToArray(),()=>range.Dependencies=dependencies);
+        }
+        var support=probe.Retarget.OriginalSupport;var supports=support.Ranges;
+        Mutation("support range order",()=>support.Ranges=supports.Reverse().ToArray(),()=>support.Ranges=supports);
+        Mutation("null complete original support",()=>probe.Retarget.OriginalSupport=null,()=>probe.Retarget.OriginalSupport=support);
         foreach(var property in keyframes.GetType().GetProperties().Where(p=>p.PropertyType==typeof(string[])))
         {
             var values=(string[])property.GetValue(keyframes);string firstValue=values[0];
@@ -97,6 +110,14 @@ internal static partial class Program
         Check(snapshot.Equals(Call(form,"ReviewRecipe",copy)),"Deeply replaced but exactly equal recipe objects retain approval semantics");
         var text=(string[])Field(snapshot,"Text");
         Check(ReferenceEquals(text[0],recipe.EngineReceipt)&&text.Any(t=>ReferenceEquals(t,fit.Inputs[0].Snapshot)),"Large review fields retain exact immutable string identities without JSON copies");
+        var contact=new NativeReviewedContacts();
+        Check(typeof(NativeReviewedContacts).GetProperties().Select(p=>p.Name).OrderBy(n=>n).SequenceEqual("Algorithm ModelHash BaseHash BaseSnapshot OriginalState Context Receipt InitialResultHash".Split(' ').OrderBy(n=>n)),"Review projection covers every reviewed-contact recipe field");
+        foreach(var property in typeof(NativeReviewedContacts).GetProperties())property.SetValue(contact,"Independent contact "+property.Name);
+        var contactSnapshot=Call(form,"ReviewRecipeCore",probe,fit,contact);string contactBefore=new JavaScriptSerializer().Serialize(contact);
+        foreach(var property in typeof(NativeReviewedContacts).GetProperties())
+        {
+            string value=(string)property.GetValue(contact);try{property.SetValue(contact,value+" changed");Check(new JavaScriptSerializer().Serialize(contact)!=contactBefore&&!contactSnapshot.Equals(Call(form,"ReviewRecipeCore",probe,fit,contact)),"Reviewed-contact approval invalidates on exact recipe field: "+property.Name);}finally{property.SetValue(contact,value);}
+        }
     }
     static void ReviewLargeRecipeCases(ModelForm form,FighterAsset asset,object row,string output)
     {

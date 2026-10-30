@@ -56,8 +56,8 @@ namespace BrawlCrate.UI
 
         private FighterAsset ReviewAsset(BatchReviewRow row) => RegisteredFighterAssets().FirstOrDefault(a => a.Id == row.AssetId);
         private BatchReviewRecipe ReviewRecipe(FighterAsset asset)=>ReviewRecipeCore(asset,asset.TransitionFit);
-        private BatchReviewRecipe ReviewClipRecipe(FighterAsset asset,CHR0Node clip)=>ReviewRecipeCore(asset,TransitionRecipeFor(asset,clip));
-        private BatchReviewRecipe ReviewRecipeCore(FighterAsset asset,NativeTransitionFit currentFit)
+        private BatchReviewRecipe ReviewClipRecipe(FighterAsset asset,CHR0Node clip)=>ReviewRecipeCore(asset,TransitionRecipeFor(asset,clip),ReviewedContactsFor(asset,clip));
+        private BatchReviewRecipe ReviewRecipeCore(FighterAsset asset,NativeTransitionFit currentFit,NativeReviewedContacts contacts=null)
         {
             var json = new JavaScriptSerializer { MaxJsonLength = 32 * 1024 * 1024 };
             var text=new List<string>();long retained=0;
@@ -77,7 +77,10 @@ namespace BrawlCrate.UI
                     recipe.Algorithm,recipe.MotionControlPolicy,recipe.SourceModelPath,recipe.SourceModelSha256,recipe.SourceRig,recipe.SourceAnimationId,recipe.SourceClip,
                     recipe.FromProfile,recipe.ToProfile,recipe.LegScale,recipe.ArmScale,recipe.MaximumLimbResidual,recipe.ClampedLimbSamples,
                     recipe.FloorContactsEnabled,recipe.SuspendedSupportEnabled,recipe.GroundMode,recipe.PlantedFootSamples,recipe.PlantedHandSamples,recipe.PlantedBodySamples,
-                    recipe.LockedContactSamples,recipe.MaximumContactResidual,recipe.MaximumPelvisCorrection,recipe.IgnoredSourceBones,recipe.Mapping };
+                    recipe.LockedContactSamples,recipe.MaximumContactResidual,recipe.MaximumPelvisCorrection,recipe.IgnoredSourceBones,recipe.Mapping,
+                    OriginalSupport=recipe.OriginalSupport==null?null:new{recipe.OriginalSupport.Version,recipe.OriginalSupport.SourceRig,recipe.OriginalSupport.TargetRig,
+                        recipe.OriginalSupport.Frames,recipe.OriginalSupport.InitialResultHash,recipe.OriginalSupport.Sha256,recipe.OriginalSupport.UnavailableReason,
+                        Header=Text(recipe.OriginalSupport.CanonicalHeader),Payload=Text(recipe.OriginalSupport.Json),recipe.OriginalSupport.Ranges} };
             }
             object Transition(NativeTransitionFit fit)
             {
@@ -85,7 +88,9 @@ namespace BrawlCrate.UI
                 return new { fit.Algorithm,fit.ModelSha256,Options=Text(fit.Options),Receipt=Text(fit.Receipt),fit.InitialResultSha256,
                     Inputs=fit.Inputs?.Select(input=>input==null?null:new { input.Role,input.AssetId,input.Entry,input.Sha256,Snapshot=Text(input.Snapshot),input.Name,input.Samples }).ToArray() };
             }
-            string scalars=json.Serialize(new { asset.RigIdentity,Recipe=Retarget(asset.Retarget),TransitionFit=Transition(currentFit) });
+            string scalars=json.Serialize(new { asset.RigIdentity,Recipe=Retarget(asset.Retarget),TransitionFit=Transition(currentFit),
+                Contacts=contacts==null?null:new{contacts.Algorithm,contacts.ModelHash,contacts.BaseHash,contacts.InitialResultHash,
+                    Baseline=Text(contacts.BaseSnapshot),State=Text(contacts.OriginalState),Context=Text(contacts.Context),Receipt=Text(contacts.Receipt)} });
             if(retained+scalars.Length>32L*1024*1024)throw new InvalidOperationException("The review recipe exceeds the 32 MiB text budget.");
             BatchReviewRecipeCaptures++;BatchReviewRecipeScalarCharacters+=scalars.Length;BatchReviewRecipeRetainedCharacters+=retained;
             return new BatchReviewRecipe { Scalars=scalars,Text=text.ToArray() };

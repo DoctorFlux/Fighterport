@@ -1,5 +1,37 @@
 ﻿# Current milestone M2 — simpler native workspace
 
+30 October — **preview.65 reviewed ground contacts qualifies its bounded slice**,
+starting `2c77c042d3f576f6b52ad6b6f80c7420ef7819f8`. The ONE G1/M2 milestone
+remains incomplete. The full native viewer, original Next, native Undo, all weights,
+source-owned motion controls and historical retarget/fitting evidence remain.
+
+Suggest → Preview → Apply owns independent snapshots and changes only the current
+clip through one native command. Explicit earlier body review can clear an already
+penetrated recovery boundary without changing the original first pose, authored
+pins/actions, roots or scales. Coherent native-curve projection and an analytically
+bounded reviewed body translation resolve the offline budget failure without
+increasing work/tolerance limits. Failed internal solver trials never become solver
+success; separate complete native authoring/serialization checks qualify candidates.
+
+Fresh acceptance: **769 Core checks**, **1,587 native checks / 16 successful private-
+desktop runs**, **936 renderer assertions**, **66 inspected UI PNGs**, **177 inspected
+half-frame GIF frames**. Snake→Mario DownStandU/D and Mario→Snake DownStandU end at
+the target's own Wait1 frame 1, with no appended idle. Scope/frame/Undo/dirty-state
+rollback, project Save/reopen and Exact export/redecode pass. Contact approximation
+remains unqualified; exports retain Exact fallback and absolute contact replay.
+
+The 18-case baseline and all failed experiments remain. Seven of ten requested
+ground paths still reject upstream (six fractional-retarget, one sampled snapshot).
+No substitute, disabled correction or weaker quality gate is admitted. This does
+not close universal recovery, all-body clearance or the requested complete corpus.
+Preview.66 finite static ledges is **queued, not promoted**. Moving supports, new
+adapters, game/Melee, physical input/DPI and human-usability gates stay open.
+
+Local launcher selects `Fighterport-contacts65/candidate-native` after qualification;
+source-only public main uses DoctorFlux attribution. See
+[acceptance, byte comparisons and retained failures](../REVIEWED_GROUND_CONTACT_ACCEPTANCE_2026-10-30.md)
+and [implementation history](../REVIEWED_CONTACTS_PROGRESS_2026-10-30.md).
+
 30 October — **preview.64 verified compact export copies qualified** inside
 the ONE incomplete G1/M2. Exact start:
 `1c96251bb7d8d4cf3ed54443e1920857942d9ad6`. New whole-R L4 is admitted only

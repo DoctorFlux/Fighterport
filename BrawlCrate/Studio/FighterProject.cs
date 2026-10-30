@@ -286,6 +286,7 @@ namespace BrawlCrate.Studio
                 LockedContactSamples=result.Contacts.LockedSamples,MaximumContactResidual=result.MaximumContactResidual,MaximumPelvisCorrection=result.MaximumPelvisCorrection,
                 IgnoredSourceBones=result.IgnoredSourceBones,Mapping=map,Library=reference};
             generated.Retarget.RecordKeyframeEvidence(result);
+            generated.Retarget.OriginalSupport=NativeSupportEvidence.Capture(result,generated.ContentSha256);
             return generated;
         }
 
@@ -318,13 +319,22 @@ namespace BrawlCrate.Studio
             }
             if(Animations.SelectMany(a=>a.TransitionRecipes()).Sum(f=>(long)(f.Inputs?.Sum(i=>i?.Snapshot?.Length??0)??0))>32L*1024*1024)throw new InvalidDataException("Frozen transition inputs exceed the project review budget.");
             if(Animations.Sum(a=>(long)(a.ContactBake?.BaseSnapshot?.Length??0))>32L*1024*1024)throw new InvalidDataException("Frozen contact originals exceed the project review budget.");
+            if(Animations.SelectMany(a=>a.ReviewedContactRecipes()).Sum(r=>(long)(r.BaseSnapshot?.Length??0)+(r.Context?.Length??0)+(r.OriginalState?.Length??0)+(r.Receipt?.Length??0))>32L*1024*1024)
+                throw new InvalidDataException("Complete reviewed contact context exceeds the project review budget.");
             if(Animations.Sum(a=>(long)(a.Retarget?.KeyframeReceipt?.Length??0))>32L*1024*1024)throw new InvalidDataException("Source-key comparison receipts exceed the project review budget.");
+            if(Animations.Sum(a=>(long)(a.Retarget?.OriginalSupport?.Json?.Length??0)+(a.Retarget?.OriginalSupport?.CanonicalHeader?.Length??0))>32L*1024*1024)
+                throw new InvalidDataException("Complete original support evidence exceeds the project review budget. Keep fewer prepared revisions per project; support timelines are never truncated.");
             foreach (FighterAsset asset in RegisteredAssets())
             {
                 if (asset == null || !Guid.TryParseExact(asset.Id, "N", out _) || !ids.Add(asset.Id))
                     throw new InvalidDataException("The project contains an invalid or duplicate asset identity.");
                 asset.TransitionFit?.Validate();
                 asset.ContactBake?.Validate();
+                asset.ReviewedContacts?.Validate();
+                if(asset.ClipReviewedContacts==null||asset.ClipReviewedContacts.Count>20000||asset.ClipReviewedContacts.Any(c=>c==null||string.IsNullOrEmpty(c.Entry)||c.Entry.Length>32768||c.Recipe==null)||
+                    asset.ClipReviewedContacts.Select(c=>c.Entry).Distinct(StringComparer.Ordinal).Count()!=asset.ClipReviewedContacts.Count)
+                    throw new InvalidDataException("Invalid reviewed contact member identities.");
+                foreach(var contact in asset.ClipReviewedContacts)contact.Recipe.Validate();
                 if (asset.Role != (ReferenceEquals(asset, Model) ? "model" : "animation"))
                     throw new InvalidDataException("An asset has the wrong model or animation role.");
                 if (!ValidHash(asset.SourceSha256) || !ValidHash(asset.ContentSha256) ||
@@ -360,6 +370,9 @@ namespace BrawlCrate.Studio
                         p.PlantedFootSamples<0 || p.PlantedHandSamples<0 || p.PlantedBodySamples<0 || p.LockedContactSamples<0 ||
                         p.PlantedFootSamples>131080 || p.PlantedHandSamples>131080 || p.PlantedBodySamples>524320 || p.LockedContactSamples>786480)
                         throw new InvalidDataException("The retarget provenance is invalid.");
+                    p.OriginalSupport?.Validate();
+                    if(p.OriginalSupport!=null&&(p.OriginalSupport.SourceRig!=p.SourceRig||p.OriginalSupport.TargetRig!=asset.RigIdentity))
+                        throw new InvalidDataException("The original support context lost its exact source/target association.");
                     LocalPath(p.SourceModelPath);
                     if(p.Library!=null)
                     {
@@ -563,11 +576,20 @@ namespace BrawlCrate.Studio
         }
 
         public NativeContactBake ContactBake {get;set;}
+        public NativeReviewedContacts ReviewedContacts {get;set;}
+        [XmlArrayItem("Contact")] public List<NativeClipReviewedContacts> ClipReviewedContacts {get;set;}=new List<NativeClipReviewedContacts>();
+        public bool ShouldSerializeClipReviewedContacts()=>ClipReviewedContacts?.Count>0;
+        public IEnumerable<NativeReviewedContacts> ReviewedContactRecipes()
+        {
+            if(ReviewedContacts!=null)yield return ReviewedContacts;
+            foreach(var item in ClipReviewedContacts??new List<NativeClipReviewedContacts>())if(item?.Recipe!=null)yield return item.Recipe;
+        }
         [XmlIgnore] public string WorkingPath { get; set; }
     }
 
     public sealed class RetargetProvenance
     {
+        public NativeSupportEvidence OriginalSupport {get;set;}
         public Retargeting.RetargetKeyframeMode KeyframeMode {get;set;}
         public string KeyframeReceipt {get;set;}
         public RetargetDenseReferenceStatistics DenseReferenceStatistics {get;set;}

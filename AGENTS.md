@@ -1,5 +1,17 @@
 # Fighterport
 
+30 October 2026: **preview.65 reviewed ground contacts qualifies its bounded slice**
+from `2c77c042d3f576f6b52ad6b6f80c7420ef7819f8` in the ONE incomplete G1/M2.
+Preview.66 finite static ledges remains queued. The three authentic passing
+ground paths do not accept the seven upstream failures or all 18 transfers.
+Promote only the verified .65 source/local package. Preserve the complete viewer, original Next,
+native Undo, source-owned roots, all weights and every existing quality gate.
+Qualification: 769 Core checks, 1,587 native checks/16 successful private-desktop
+runs, 936 renderer assertions, 66 inspected UI PNGs and 177 inspected GIF frames.
+Earlier body correction needs its own unchecked review; original first pose,
+authored pins/actions, roots and all weights remain exact. See
+[acceptance and retained failures](docs/REVIEWED_GROUND_CONTACT_ACCEPTANCE_2026-10-30.md).
+
 30 October 2026 **preview.64-verified-float-storage** qualifies its bounded
 increment inside the ONE incomplete G1/M2. Start:
 `1c96251bb7d8d4cf3ed54443e1920857942d9ad6`. Explicit independent whole-R L4

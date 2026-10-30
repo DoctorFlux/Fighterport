@@ -15,6 +15,8 @@ namespace BrawlCrate.Studio.Retargeting
         private readonly HashSet<string> supportedHands;
         public Vector3 SourceReference {get;}
         public Vector3 TargetReference {get;}
+        internal object CaptureOriginalEvidence()=>new{Version="original-next-suspended-context-1",SourceReference,TargetReference,SourceLeg=sourceLeg,SupportedHands=supportedHands.OrderBy(s=>s,StringComparer.Ordinal).ToArray(),
+            InitialLocal=initial.Local.Select(t=>new{t.Translation,t.Rotation,t.Scale}).ToArray(),InitialWorld=initial.World.ToArray()};
         private SuspendedSupport(HumanoidRetargeter retargeter,RigPose[] poses,string[] hands)
         {
             plan=retargeter;initial=poses[0];

@@ -101,7 +101,7 @@ public static class ContactSolver
     public static int BodyBone(Scene scene,ControlRigSetup setup)
         =>AnimationControls.ResolveBodyBone(scene,setup);
     public static OperationResult<ContactSolution> Solve(Scene scene,EvaluatedPose input,ControlRigSetup setup,
-        IReadOnlyDictionary<int,Transform> edits,ContactPin[] pins,bool adjustBody=false,int iterations=48,bool adaptAutomatic=false,bool broadJoints=false,EvaluatedPose? referencePose=null)
+        IReadOnlyDictionary<int,Transform> edits,ContactPin[] pins,bool adjustBody=false,int iterations=48,bool adaptAutomatic=false,bool broadJoints=false,EvaluatedPose? referencePose=null,bool preserveFeasibleSeed=false,bool initializeChains=true,Action<EvaluatedPose>? onRejectedTrial=null)
     {
         OperationResult<ContactSolution> Fail(string code,string message)=>new(null,[new(code,message)],[]);
         if(setup.SkeletonFingerprint!=AnimationControls.Fingerprint(scene))return Fail("RIG_CHANGED","Contacts belong to a different native skeleton/rest revision.");
@@ -181,7 +181,15 @@ public static class ContactSolver
             }
         }
         // Direct, uniform chains get a deterministic analytic seed and their calibrated bend plane.
-        foreach(var pin in pins)
+        // Offline reviewed trajectories may supply an already feasible,
+        // continuous seed. Restarting analytic IK in that case can jump to a
+        // different redundant-joint solution before the same DLS objective runs.
+        // Existing callers retain their original initialization by default.
+        bool retainSeed=!initializeChains||preserveFeasibleSeed&&pins.All(pin=>
+            ContactGeometry.Residual(pin,pose).Length()<=tolerance&&ContactGeometry.AllowedSurfaceResidual(pin,pose).Length()<=tolerance&&
+            ContactGeometry.Penetration(pin,pose)<=tolerance&&(!pin.HoldRotation||
+                ContactAuthoring.AngleError(PoseGeometry.Rotation(pose.World[pin.Bone]),ContactGeometry.TargetRotation(pin,pose))*MathF.PI/180<=.001f));
+        foreach(var pin in retainSeed?Array.Empty<ContactPin>():pins)
         {
             var chain=setup.Chains.FirstOrDefault(c=>c.Effector==pin.Bone);
             if(chain is null||adaptAutomatic&&pin.SoftSupport||edits.ContainsKey(chain.Root)||edits.ContainsKey(chain.Middle))continue;
@@ -270,7 +278,11 @@ public static class ContactSolver
         {
             float position=pins.Max(pin=>Math.Max(adaptAutomatic&&pin.SoftSupport?0:Math.Max(ContactGeometry.Residual(pin,p).Length(),ContactGeometry.AllowedSurfaceResidual(pin,p).Length()),ContactGeometry.Penetration(pin,p)));
             if(adaptable)position=Math.Max(position,PositionError(pins,p));
-            float rotation=pins.Where(pin=>pin.HoldRotation).Select(pin=>2*MathF.Acos(Math.Clamp(Math.Abs(Quaternion.Dot(PoseGeometry.Rotation(p.World[pin.Bone]),ContactGeometry.TargetRotation(pin,p))),0,1))).DefaultIfEmpty().Max();
+            // A normalized float quaternion need not have an exactly unit
+            // squared length. Raw float dot/acos can report ~.0685 degrees
+            // even for q versus itself. Preserve the SAME .001-radian gate,
+            // measuring the normalized orientations in double precision.
+            float rotation=pins.Where(pin=>pin.HoldRotation).Select(pin=>ContactAuthoring.AngleError(PoseGeometry.Rotation(p.World[pin.Bone]),ContactGeometry.TargetRotation(pin,p))*MathF.PI/180).DefaultIfEmpty().Max();
             return(position,rotation);
         }
         float positionError=0,rotationError=0;int step=0;
@@ -339,7 +351,12 @@ public static class ContactSolver
         pose=Evaluate(feasible??q);(positionError,rotationError)=Errors(pose);
         if(positionError>tolerance||rotationError>.001f)
         {
-            if(clearances.Length>0&&!broadJoints)return Solve(scene,input,setup,edits,pins,adjustBody,iterations,adaptAutomatic,true,referencePose);
+            if(clearances.Length>0&&!broadJoints)return Solve(scene,input,setup,edits,pins,adjustBody,iterations,adaptAutomatic,true,referencePose,preserveFeasibleSeed,initializeChains,onRejectedTrial);
+            // This is an UNVALIDATED proposal, never solver success. Offline
+            // native-curve authoring may independently test it against its
+            // explicit reviewed contract and fresh serialization. Existing
+            // callers and the strict solver failure thresholds are unchanged.
+            onRejectedTrial?.Invoke(pose with{Local=pose.Local.ToArray(),World=pose.World.ToArray(),Skin=pose.Skin.ToArray()});
             var conflicts=pins.Select(p=>$"{p.Role} on '{p.Surface}' [{p.Id}]: position {ContactGeometry.Residual(p,pose).Length():G6}, penetration {ContactGeometry.Penetration(p,pose):G6}");
             return Fail("CONTACT_UNRESOLVED",$"Contact solver did not converge in {step} iterations ({string.Join("; ",conflicts)}); max rotation error {rotationError*180/MathF.PI:G5} degrees. This is not proof of incompatible anatomy. No stretching, automatic release or source edit was applied; review the seed, constraints and permitted body adjustment.");
         }

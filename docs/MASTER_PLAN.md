@@ -1,5 +1,16 @@
 # Fighterport master plan
 
+30 October — preview.65 reviewed ground contacts qualifies a **bounded** substep
+of the same incomplete G1/M2, starting at `2c77c042`. Three authentic recoveries
+pass; seven upstream ground failures and the rest of the 18-case acceptance stay
+open. Explicit earlier body review preserves the first pose, authored pins/actions,
+roots and all weights. 769 Core / 1,587 native checks, 936 renderer assertions,
+66 inspected UI PNGs and 177 inspected GIF frames support local .65 promotion.
+Preview.66 static finite ledges remains queued. See
+[acceptance](REVIEWED_GROUND_CONTACT_ACCEPTANCE_2026-10-30.md),
+[failure history](REVIEWED_CONTACTS_PROGRESS_2026-10-30.md) and the sole
+[current plan](plans/current.md).
+
 30 October 2026 **preview.64-verified-float-storage** completes its bounded
 increment within the ONE incomplete G1/M2. Start:
 `1c96251bb7d8d4cf3ed54443e1920857942d9ad6`. Explicit whole-R L4 copies, early

@@ -1,5 +1,23 @@
 ﻿# Native Next integration
 
+Preview.65 reviewed ground contacts qualifies its **bounded** slice, starting at
+`2c77c042d3f576f6b52ad6b6f80c7420ef7819f8`. It adds a scoped paused native
+contact boundary, complete versioned support evidence, independent snapshots,
+one-command current Apply and post-decode absolute contact rechecks. Existing
+Next mathematics and native authoring ownership remain. Contact objectives,
+iterations and limits remain; orientation error now normalizes both quaternions
+in double precision instead of treating float norm error as physical rotation.
+Native curves retain original-fidelity integer poses and frozen tangents, then
+project failed subframes onto reviewed contacts. Earlier body correction requires
+explicit scope review. An unvalidated failed solver trial remains a strict
+failure; separate complete authoring checks and fresh native decode must admit it.
+The floor-normal translation interval changes reviewed body dependencies only.
+Full foot/sole validation retains every influence. See
+[acceptance](REVIEWED_GROUND_CONTACT_ACCEPTANCE_2026-10-30.md) and
+[implementation/failure history](REVIEWED_CONTACTS_PROGRESS_2026-10-30.md).
+Three authentic ground recoveries qualify; seven upstream ground cases remain
+refused. Preview.66 finite static ledges stays queued. Local launcher selects .65.
+
 Preview.64 qualifies its bounded compact-copy increment on 30 October 2026.
 Explicit Error-bounded preparation alone admits new whole-R L4 sampled from the
 same frozen finished target. Both curve alternatives remain owned; early L4,

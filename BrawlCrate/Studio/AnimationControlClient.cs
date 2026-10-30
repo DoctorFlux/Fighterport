@@ -54,6 +54,8 @@ namespace BrawlCrate.Studio
     public sealed class WorkspaceClipLink {public string Key {get;set;}public string Id {get;set;}}
     internal sealed class ControlReply
     {
+        public string ContactContextJson {get;set;}
+        public ReviewedContactRow[] ContactRanges {get;set;}
         public SceneFittingReply Fitting {get;set;}
         public string OptimizationPath {get;set;}
         public bool Ok {get;set;} public string Error {get;set;} public string State {get;set;}

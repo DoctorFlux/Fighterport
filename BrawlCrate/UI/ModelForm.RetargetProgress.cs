@@ -94,6 +94,14 @@ namespace BrawlCrate.UI
                     {
                         var generated=BrawlRetargeter.Bake(sourceRig,targetRig,clipCopy,true,cancellation.Token,
                             (percent,message)=>((IProgress<Tuple<int,string>>)progress).Report(Tuple.Create(percent,message)),groundMode,keyMode);
+                        try
+                        {
+                            // Capture while the immutable native source owners
+                            // are alive. Import later binds the final target hash
+                            // without sampling disposed donor resources.
+                            cancellation.Token.ThrowIfCancellationRequested();NativeSupportEvidence.Freeze(generated);cancellation.Token.ThrowIfCancellationRequested();
+                        }
+                        catch{generated.Dispose();throw;}
                         // Keep the full-quality editable target master. Size
                         // optimization belongs to an explicit export copy.
                         // Bake carries the full-quality representation receipt.

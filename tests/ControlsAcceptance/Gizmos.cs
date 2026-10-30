@@ -125,9 +125,9 @@ internal static partial class Program
                     var point=form.PointToClient(panel.PointToScreen(Point.Empty));int border=(form.Width-form.ClientSize.Width)/2;graphics.DrawImageUnscaled(modelImage,point.X+border,point.Y+form.Height-form.ClientSize.Height-border);
                 }
             }
-            else if(form is SceneFittingDialog||form is TransitionFitDialog||form is ContactBakeDialog)
+            else if(form is SceneFittingDialog||form is TransitionFitDialog||form is ContactBakeDialog||form is ReviewedContactsDialog)
             {
-                var views=form is SceneFittingDialog fitting?new[]{fitting.SourceView,fitting.TargetView}:form is ContactBakeDialog contact?new[]{contact.SourceView,contact.TargetView}:new[]{((TransitionFitDialog)form).SourceView,((TransitionFitDialog)form).TargetView};
+                var views=form is ReviewedContactsDialog reviewed?new[]{reviewed.SourceView,reviewed.TargetView}:form is SceneFittingDialog fitting?new[]{fitting.SourceView,fitting.TargetView}:form is ContactBakeDialog contact?new[]{contact.SourceView,contact.TargetView}:new[]{((TransitionFitDialog)form).SourceView,((TransitionFitDialog)form).TargetView};
                 foreach(var view in views)
                 {
                     var panel=view.Viewport;panel.Capture();panel.Invalidate();panel.Update();

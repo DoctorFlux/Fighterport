@@ -34,7 +34,7 @@ namespace BrawlCrate.UI
             menu.DropDownItems.Add("Fit start and end...",null,(s,e)=>RunFighterAction(ShowTransitionFit));
             menu.DropDownItems.Add("Transition Fit Details / Frozen References...",null,(s,e)=>RunFighterAction(ShowTransitionFitDetails));
             menu.DropDownItems.Add("Animation Slots / Assign to State...",null,(s,e)=>RunFighterAction(ShowAnimationSlots));
-            menu.DropDownItems.Add("Contact Placement / Release...",null,(s,e)=>OpenContactPlacement());
+            menu.DropDownItems.Add("Fix foot contacts...",null,(s,e)=>OpenReviewedContacts());
             menu.DropDownItems.Add("Review Skeleton Mapping...",null,(s,e)=>RunFighterAction(()=>
             {
                 if(!(modelEditControl1.TargetModel is MDL0Node model))throw new InvalidOperationException("Open a model first.");
@@ -161,6 +161,7 @@ namespace BrawlCrate.UI
                         Mapping = result.Plan.Mapping.Select(m => new RetargetBoneBinding {Role = m.Role, Source = m.Source, Target = m.Target}).ToList()
                     };
                     generated.Retarget.RecordKeyframeEvidence(result);
+                    generated.Retarget.OriginalSupport=NativeSupportEvidence.Capture(result,generated.ContentSha256);
                     ResourceNode root = FighterRoot(generated); // Prove native decoding before changing the visible project.
                     RememberFighterImport();
                     _fighterProject.Animations.Add(generated);

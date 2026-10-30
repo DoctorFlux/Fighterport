@@ -59,7 +59,7 @@ internal static partial class Program
         var originals = new[] { targetFile, sourceFile, donor, fixturePath }.Distinct(StringComparer.OrdinalIgnoreCase)
             .ToDictionary(path => path, FighterProject.HashFile, StringComparer.OrdinalIgnoreCase);
         Check(SameHash(originals[targetFile], fixture.TargetModelSha256) && SameHash(originals[donor], fixture.SourceModelSha256) &&
-            SameHash(originals[sourceFile], fixture.SourceClipSha256), "Actual library fixture preserves the exact external source/model bytes, including the provided up-air rather than its canonical snapshot");
+            SameHash(originals[sourceFile], fixture.SourceClipSha256), "Actual library fixture preserves the exact externally pinned source/model bytes");
         string originalSourceContent;
         using (var original = NodeFactory.FromFile(null, sourceFile) as CHR0Node)
         {
@@ -178,6 +178,11 @@ internal static partial class Program
                         var setup = await Await<ControlReply>(Call(form, "LoadControls"));
                         var roots = (setup.ProtectedMotionBones ?? new int[0]).Select(index => setup.BoneNames[index]).ToArray();
                         Check(roots.Length > 0, "Normal target control setup resolves genuine protected motion controls before export");
+                        if(args.Contains("--reviewed-recovery-case"))
+                        {
+                            await ReviewedRecoveryCase(form,clip,Required("--target-motion"),directory,args.Contains("--reviewed-ground-after-fit"));
+                            continue;
+                        }
                         if (args.Contains("--authentic-l4-apply-current"))
                         {
                             Check(mode == RetargetKeyframeMode.SourceChannelTimes,

@@ -8,12 +8,17 @@ var checks=new List<string>();
 void Check(bool value,string message){if(!value)throw new Exception("FAIL: "+message);checks.Add(message);Console.WriteLine("PASS: "+message);}
 void Near(float actual,float expected,float tolerance,string message)=>Check(Math.Abs(actual-expected)<=tolerance,$"{message} ({actual:G7} / {expected:G7})");
 var dir=Path.GetFullPath(args.FirstOrDefault()??"artifacts/tests");Directory.CreateDirectory(dir);
+int reviewedReplay=Array.IndexOf(args,"--reviewed-contact-replay");
+if(reviewedReplay>=0){await ReviewedContactReplayChecks.Run(args[reviewedReplay+1],dir,!args.Contains("--probe-only"));return 0;}
+int reviewedCached=Array.IndexOf(args,"--reviewed-contact-project-replay");
+if(reviewedCached>=0){await ReviewedContactReplayChecks.RunCached(args[reviewedCached+1],dir);return 0;}
 try
 {
     if(args.Contains("--complete-skin")){await CompleteSkinChecks.Run(args.Skip(Array.IndexOf(args,"--complete-skin")+1).ToArray(),Check);await File.WriteAllTextAsync(Path.Combine(dir,"results.json"),JsonSerializer.Serialize(new{Passed=true,Count=checks.Count,Checks=checks}));return 0;}
     if(args.Contains("--animation-optimization")){AnimationOptimizationChecks.Run(Check);await File.WriteAllTextAsync(Path.Combine(dir,"results.json"),JsonSerializer.Serialize(new{Passed=true,Count=checks.Count,Checks=checks}));return 0;}
     if(args.Contains("--rotation-path")){RotationPathChecks.Run(dir,Check);await File.WriteAllTextAsync(Path.Combine(dir,"results.json"),JsonSerializer.Serialize(new{Passed=true,Count=checks.Count,Checks=checks}));return 0;}
     if(args.Contains("--rotation-native")){int i=Array.IndexOf(args,"--rotation-native");RotationPathChecks.Native(args[i+1],args[i+2],dir,Check);await File.WriteAllTextAsync(Path.Combine(dir,"results.json"),JsonSerializer.Serialize(new{Passed=true,Count=checks.Count,Checks=checks}));return 0;}
+    if(args.Contains("--reviewed-contact-sets")){ReviewedContactSetChecks.Run(Check);await File.WriteAllTextAsync(Path.Combine(dir,"results.json"),JsonSerializer.Serialize(new{Passed=true,Count=checks.Count,Checks=checks}));return 0;}
     if(args.Contains("--contact-authoring")){await ContactAuthoringChecks.RunAsync(dir,Check);await File.WriteAllTextAsync(Path.Combine(dir,"results.json"),JsonSerializer.Serialize(new{Passed=true,Count=checks.Count,Checks=checks}));return 0;}
     if(args.Contains("--contact-slots")){await ContactSlotChecks.RunAsync(dir,Check);await File.WriteAllTextAsync(Path.Combine(dir,"results.json"),JsonSerializer.Serialize(new{Passed=true,Count=checks.Count,Checks=checks}));return 0;}
     if(args.Contains("--boundary-fitting")){await BoundaryFittingChecks.RunAsync(dir,Check);await File.WriteAllTextAsync(Path.Combine(dir,"results.json"),JsonSerializer.Serialize(new{Passed=true,Count=checks.Count,Checks=checks}));return 0;}
