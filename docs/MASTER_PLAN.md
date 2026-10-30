@@ -1,5 +1,25 @@
 # Fighterport master plan
 
+30 October 2026 **preview.64-verified-float-storage** completes its bounded
+increment within the ONE incomplete G1/M2. Start:
+`1c96251bb7d8d4cf3ed54443e1920857942d9ad6`. Explicit whole-R L4 copies, early
+same-budget search and immutable evidence indexing preserve both qualified
+curve alternatives, the same finished target, exact protections, all weights,
+original Next/viewer, native Undo and exact ordinary Save/native Export.
+
+3520 native checks/11 runs, 55 fresh Python tests, 1352 renderer assertions,
+31 covered UI PNGs and 261 reviewed GIF frames qualify this bounded slice.
+Forward 109984/81140B becomes 58256/54308B; fitted 75152B becomes 53004B with
+protected non-L4 fallback. The donor-size gap remains open; reverse up-air
+rejects before optimization at the unchanged corrected-bake gate. See
+[acceptance](CHR0_COMPACT_EXPORT_ACCEPTANCE_2026-10-30.md),
+[benchmark](CHR0_COMPACT_EXPORT_BENCHMARK_2026-10-30.md) and the sole
+[current plan](plans/current.md). Launcher: `Fighterport-float64/native1`.
+Source-only DoctorFlux public-main publication verification is pending parent
+commit/push. No second milestone or new increment is promoted. Broader contact,
+editor/runtime/Melee, input/DPI/human and game gates remain open.
+Earlier qualified checkpoints follow.
+
 29 October 2026 **preview.63-write-path-cleanup** completes its bounded increment
 inside the ONE incomplete G1/M2. Actual per-entry/SRT byte accounting explains
 the retargeted gap: equal marker times can store compact samples or much larger

@@ -1,4 +1,5 @@
 using BrawlLib.SSBB.ResourceNodes;
+using BrawlLib.Wii.Models;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -10,6 +11,33 @@ using System.Threading.Tasks;
 
 namespace BrawlCrate.Studio
 {
+    // Explicit bounded exports alone share this operation-local allowance
+    // across curve alternatives and precision retries. It grants no work or
+    // quality allowance and is never persisted with the document.
+    internal sealed class NativeCompactAttemptBudget
+    {
+        internal const int Limit = 24;
+        internal int Used { get; private set; }
+        internal int Remaining => Limit - Used;
+        private NativeGeneratedPairSite[] evidenceSource;
+        private NativeDensePairEvidenceIndex evidence;
+        internal NativeDensePairEvidenceIndex Evidence(NativeGeneratedPairSite[] source, NativeDenseProofBudget proof, CancellationToken token)
+        {
+            if (evidence != null)
+            {
+                if (!ReferenceEquals(source, evidenceSource) && !((source?.Length ?? 0) == 0 && (evidenceSource?.Length ?? 0) == 0))
+                    throw new InvalidOperationException("Frozen export pair evidence changed between alternatives.");
+                return evidence;
+            }
+            evidence = NativeDensePairEvidenceIndex.Create(source, proof, token); evidenceSource = source; return evidence;
+        }
+        internal void Consume(int attempts)
+        {
+            if (attempts < 0 || attempts > Remaining) throw new InvalidDataException("Compact attempts exceeded their shared operation allowance.");
+            Used += attempts;
+        }
+    }
+
     internal sealed class NativeCompactCurveCertificate
     {
         public bool Accepted { get; set; }
@@ -50,7 +78,8 @@ namespace BrawlCrate.Studio
             CHR0Node retainedBaseline, CHR0Node currentSnapshot, NativeAnimationOptimizationResult verifiedPrecise,
             NativeAnimationOptimizationOptions options, string stageDirectory,
             Func<CHR0Node, CancellationToken, Task<NativeCompactCurveCertificate>> certify,
-            NativeDenseProofBudget denseProofBudget, CancellationToken token = default(CancellationToken))
+            NativeDenseProofBudget denseProofBudget, CancellationToken token = default(CancellationToken),
+            NativeCompactAttemptBudget exportAttempts = null)
         {
             if (modelSnapshot == null || retainedBaseline == null || currentSnapshot == null || verifiedPrecise == null || options == null || certify == null)
                 throw new ArgumentNullException("Compact optimization requires frozen native snapshots, a verified precise result and the independent scalar certifier.");
@@ -59,6 +88,11 @@ namespace BrawlCrate.Studio
             int attemptLimit = options.CompactCandidateAttemptLimit;
             if (attemptLimit < 1 || attemptLimit > MaximumCompactQuantizedAttempts)
                 throw new ArgumentOutOfRangeException(nameof(options.CompactCandidateAttemptLimit));
+            if (exportAttempts != null)
+            {
+                if (!FloatDenseExportEnabled(options)) throw new ArgumentException("A shared export attempt account requires explicit bounded export settings.");
+                attemptLimit = Math.Min(attemptLimit, exportAttempts.Remaining);
+            }
             if (currentSnapshot.Version != 4 && currentSnapshot.Version != 5) throw new NotSupportedException("Compact native storage qualifies Brawl CHR0 v4/v5 only.");
             var bones = modelSnapshot.AllBones.ToArray(); var targetNames = Set(options.TargetBones);
             if (bones.Length == 0 || bones.Length > MaximumBones || !targetNames.SetEquals(bones.Select(b => b.Name)))
@@ -66,6 +100,16 @@ namespace BrawlCrate.Studio
             var baselineKey = ContentKey(retainedBaseline); var currentKey = ContentKey(currentSnapshot); var currentStorage = StorageKey(currentSnapshot);
             var budget = options.Budget ?? new NativeAnimationOptimizationBudget();
             var frozenOptions = CompactOptions(options, options.ProbeFrames, budget);
+            if (FloatDenseExportEnabled(frozenOptions))
+            {
+                var permittedEvidence = FloatDenseExportPairEvidence(frozenOptions);
+                // A refitted alternative may have additional proposal authority
+                // even when the deletion-only option does not. Empty permission
+                // never reuses another alternative's nonempty frozen index.
+                frozenOptions.FloatDenseEvidence = exportAttempts != null && permittedEvidence.Length > 0 ?
+                    exportAttempts.Evidence(permittedEvidence, denseProofBudget, token) :
+                    NativeDensePairEvidenceIndex.Create(permittedEvidence, denseProofBudget, token);
+            }
             var reviewedSites = options.AllowGeneratedPairReduction || options.AllowSpanRefitting ?
                 options.GeneratedPairSites ?? new NativeGeneratedPairSite[0] : new NativeGeneratedPairSite[0];
             if (reviewedSites.Length > MaximumKeys) throw new InvalidDataException("Generated-pair storage evidence exceeds the native operation limit.");
@@ -73,7 +117,7 @@ namespace BrawlCrate.Studio
                 .GroupBy(p => (p.Bone, Group: p.Channel / 3)).ToDictionary(g => g.Key, g => g.ToArray());
             string stage = Path.Combine(Path.GetFullPath(stageDirectory), "compact-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(stage);
             NativeAnimationOptimizationResult best = null; CHR0Node initial = null;
-            int exactGroups = 0, quantizedGroups = 0, attempted = 0, selectiveAttempts = 0; bool stoppedByBudget = false, stoppedByAttemptLimit = false;
+            int exactGroups = 0, quantizedGroups = 0, attempted = 0, selectiveAttempts = 0, floatDenseAttempts = 0; bool stoppedByBudget = false, stoppedByAttemptLimit = false;
             var diagnostics = new StringBuilder();
             try
             {
@@ -114,7 +158,29 @@ namespace BrawlCrate.Studio
                     }
                 }
 
-                if (!options.ExactOnly && !stoppedByBudget)
+                // Give a complete new codec plan a chance before expensive
+                // legacy partition retries consume the shared proof account.
+                // The verified incumbent is retained before every attempt.
+                string earlyFloatDenseStorage = null;
+                if (FloatDenseExportEnabled(frozenOptions) && !stoppedByBudget && attempted < attemptLimit)
+                {
+                    long denseBefore = denseProofBudget.Work, posesBefore = budget.PoseEvaluations;
+                    using (var sampled = await SearchFloatDenseExportStorage(retainedBaseline, best, verifiedPrecise, bones,
+                        modelSnapshot, frozenOptions, stage, certify, currentKey, currentStorage, currentBytes, currentBlock,
+                        1, denseProofBudget, token).ConfigureAwait(false))
+                    {
+                        attempted += sampled.Attempts; floatDenseAttempts += sampled.Attempts;
+                        stoppedByBudget |= sampled.BudgetExhausted;
+                        diagnostics.AppendLine("Early complete L4 prefix: " + sampled.Report);
+                        diagnostics.AppendLine("L4 phase ledger: early; eligible groups=" + sampled.EligibleGroups + "; eligibility complete=" + sampled.EligibilityComplete +
+                            "; complete attempts=" + sampled.Attempts + "; accepted groups=" + sampled.Groups + "; dense work=" + (denseProofBudget.Work - denseBefore) + "; native pose evaluations=" + (budget.PoseEvaluations - posesBefore) + ".");
+                        if (sampled.Result != null)
+                        { best.Dispose(); best = sampled.Result; sampled.Result = null; quantizedGroups += sampled.Groups; }
+                    }
+                    earlyFloatDenseStorage = best.StorageKey;
+                }
+
+                if (!options.ExactOnly && !stoppedByBudget && attempted < attemptLimit)
                 {
                     var strict = Set(options.ExactBones); strict.UnionWith(options.ProtectedBones ?? new string[0]);
                     if (options.SmallFile)
@@ -306,6 +372,29 @@ namespace BrawlCrate.Studio
                     }
                 }
 
+                // Explicit final export copies alone may evaluate new L4.
+                // Keep the qualified indexed/precise winner before any attempt.
+                if (FloatDenseExportEnabled(frozenOptions) && !stoppedByBudget && attempted < attemptLimit &&
+                    (earlyFloatDenseStorage == null || best.StorageKey != earlyFloatDenseStorage))
+                {
+                    long denseBefore = denseProofBudget.Work, posesBefore = budget.PoseEvaluations;
+                    using (var sampled = await SearchFloatDenseExportStorage(retainedBaseline, best, verifiedPrecise, bones,
+                        modelSnapshot, frozenOptions, stage, certify, currentKey, currentStorage, currentBytes, currentBlock,
+                        attemptLimit - attempted, denseProofBudget, token).ConfigureAwait(false))
+                    {
+                        attempted += sampled.Attempts; floatDenseAttempts += sampled.Attempts;
+                        stoppedByBudget |= sampled.BudgetExhausted;
+                        if (!string.IsNullOrEmpty(sampled.Report)) diagnostics.AppendLine(sampled.Report);
+                        diagnostics.AppendLine("L4 phase ledger: remaining composition; eligible groups=" + sampled.EligibleGroups + "; eligibility complete=" + sampled.EligibilityComplete +
+                            "; complete attempts=" + sampled.Attempts + "; accepted groups=" + sampled.Groups + "; dense work=" + (denseProofBudget.Work - denseBefore) + "; native pose evaluations=" + (budget.PoseEvaluations - posesBefore) + ".");
+                        if (sampled.Result != null)
+                        {
+                            best.Dispose(); best = sampled.Result; sampled.Result = null;
+                            quantizedGroups += sampled.Groups;
+                        }
+                    }
+                }
+
                 token.ThrowIfCancellationRequested();
                 if (ContentKey(retainedBaseline) != baselineKey || ContentKey(currentSnapshot) != currentKey || StorageKey(currentSnapshot) != currentStorage)
                     throw new InvalidOperationException("Compact optimization dependencies changed during preparation.");
@@ -317,12 +406,16 @@ namespace BrawlCrate.Studio
                 string scalarReport = best.Report;
                 best.Report = (options.SmallFile && !options.ExactOnly ?
                     "Explicit native storage: guarded L1/L2 rotation and I4/I6 where independently verified; precise I12 fallback. Baked candidates require continuous/native collective gates under both native-Hermite and independent linear interpretations.\r\n" :
+                    FloatDenseExportEnabled(frozenOptions) ?
+                    "Explicit native export-copy storage: guarded L4 rotation and I4/I6 where independently verified; precise I12 fallback per SRT group. Complete physical payloads, native projection and independent linear interpretation retain the same frozen quality/protection gates.\r\n" :
                     "Explicit native indexed storage: I4/I6 where independently verified; precise I12 fallback per SRT group. No dense linear codec or automatic tangent regeneration.\r\n") +
                     (string.IsNullOrEmpty(best.ReductionSelectionReport) ? "" : best.ReductionSelectionReport + "\r\n") +
                     "Lossless packing proposals: " + exactGroups + "; accepted quantized groups: " + quantizedGroups + "; complete quantized batch attempts: " + (attempted - selectiveAttempts) +
                     "; selective cumulative attempts: " + selectiveAttempts + "/" + attemptLimit + ".\r\n" +
                     (attempted > 0 && quantizedGroups == 0 ? "Complete quantized batches were not accepted; the verified lossless/precise fallback was retained.\r\n" : "") +
-                    BuildReport(best, frozenOptions).Replace("Independent I12 decode", options.SmallFile && !options.ExactOnly ? "Independent L1/L2/I4/I6/I12 decode" : "Independent I4/I6/I12 decode") +
+                    BuildReport(best, frozenOptions).Replace("Independent I12 decode", floatDenseAttempts > 0 ? "Independent L1/L2/L4/I4/I6/I12 decode" : options.SmallFile && !options.ExactOnly ? "Independent L1/L2/I4/I6/I12 decode" : "Independent I4/I6/I12 decode") +
+                    (floatDenseAttempts > 0 ? "\r\nExplicit independent export-copy L4 attempts: " + floatDenseAttempts +
+                        ". Original master, saved error limits, exact joins/root/contact protections and shared budgets were retained; no global-optimality claim." : "") +
                     "\r\nContinuous scalar certificate: " + scalarReport +
                     (stoppedByBudget ? "\r\nThe shared operation budget stopped further packing; the returned candidate already passed complete verification." : "") +
                     (stoppedByAttemptLimit ? "\r\nThe bounded storage search reached its attempt limit; the returned candidate already passed complete retained-baseline verification." : "") +
@@ -333,6 +426,7 @@ namespace BrawlCrate.Studio
             }
             finally
             {
+                exportAttempts?.Consume(attempted);
                 initial?.Dispose(); best?.Dispose();
                 if (Directory.Exists(stage)) Directory.Delete(stage, true);
             }
@@ -363,6 +457,7 @@ namespace BrawlCrate.Studio
         {
             denseProofBudget = denseProofBudget ?? new NativeDenseProofBudget();
             token.ThrowIfCancellationRequested(); string expected = ContentKey(proposed), file = Path.Combine(stage, Guid.NewGuid().ToString("N") + ".chr0");
+            var requiredFloatDensePlans = CaptureFloatDenseExportPlans(proposed, baseline);
             CHR0Node decoded = null;
             try
             {
@@ -373,8 +468,12 @@ namespace BrawlCrate.Studio
                     if (!reuseVerifiedPrecise) failure.Data["OptimizationQuality"] = true;
                     throw failure;
                 }
+                // A whole-R fallback can contain no dense output at all.
+                // Validate every frozen NEW L4 claim before consulting HasDense.
+                RequireFloatDenseExportPlans(decoded, requiredFloatDensePlans);
                 bool hasDense = HasDenseStorage(decoded);
                 var denseChanges = new HashSet<string>(StringComparer.Ordinal);
+                var verifiedFloatDenseChannels = new HashSet<string>(StringComparer.Ordinal);
                 var targetNames = new HashSet<string>(bones.Select(b => b.Name), StringComparer.Ordinal);
                 RequireImportedDenseRetention(baseline, decoded, targetNames);
                 if (hasDense)
@@ -396,12 +495,27 @@ namespace BrawlCrate.Studio
                             // Their existing reader semantics are not rewritten.
                             if (previousStorage?[channel]?.ContentKey == curve.ContentKey) continue;
                             denseChanges.Add(entry.Name + "\0" + channel);
-                            string proofKey = original == null ? null : denseProofBudget.ProofKey(original, channel, curve, .1, .1, token);
-                            if (!SmallProfile(options) || original == null ||
-                                proofKey == null ||
-                                !NativeCompactAnimationStorage.DenseLinearWithinBounds(original.KeyArrays[channel].Entries.ToArray(),
-                                    original.KeyArrays[channel], curve.EncodedValues, .1, .1, token, denseProofBudget, proofKey))
-                                throw CompactQualityFailure("A complete baked candidate failed its retained-baseline continuous linear value/derivative gate.");
+                            if (curve.Format == AnimDataFormat.L4)
+                            {
+                                var exact = Set(options.ExactBones); exact.UnionWith(options.ProtectedBones ?? new string[0]);
+                                if (requiredFloatDensePlans == null || !FloatDenseExportEnabled(options) || original == null || exact.Contains(entry.Name) ||
+                                    !NativeCompactAnimationStorage.FloatDenseExportGroupMatches(original, entry) ||
+                                    !NativeCompactAnimationStorage.FloatDenseExportCurveWithin(original, channel, curve,
+                                        (options.MandatoryFrames ?? new int[0]).Concat(options.FitJoinFrames ?? new int[0]).Distinct().ToArray(),
+                                        options.FloatDenseEvidence?.ForBone(entry.Name) ?? FloatDenseExportPairEvidence(options), RotationBound(options), RotationSpeedBound(options), denseProofBudget, token))
+                                    throw CompactQualityFailure("A fresh L4 export copy failed its frozen protection/endpoint/continuous linear gate.");
+                                verifiedFloatDenseChannels.Add(entry.Name + "\0" + channel);
+                            }
+                            else
+                            {
+                                // Existing L1/L2 policy remains unchanged.
+                                string proofKey = original == null ? null : denseProofBudget.ProofKey(original, channel, curve, .1, .1, token);
+                                if (!SmallProfile(options) || original == null ||
+                                    proofKey == null ||
+                                    !NativeCompactAnimationStorage.DenseLinearWithinBounds(original.KeyArrays[channel].Entries.ToArray(),
+                                        original.KeyArrays[channel], curve.EncodedValues, .1, .1, token, denseProofBudget, proofKey))
+                                    throw CompactQualityFailure("A complete baked candidate failed its retained-baseline continuous linear value/derivative gate.");
+                            }
                         }
                     }
                 }
@@ -452,7 +566,7 @@ namespace BrawlCrate.Studio
                             projectionKeys += 2L * storage[channel].EncodedSampleCount - 2 - storage[channel].KeyCount;
                     }
                     if (projectionKeys > MaximumKeys) throw CompactQualityFailure("The complete linear-projection verification exceeds the native key budget.");
-                    using (var projection = NativeCompactAnimationStorage.CreateLinearProjection(Copy(decoded), denseChanges))
+                    using (var projection = NativeCompactAnimationStorage.CreateLinearProjection(Copy(decoded), denseChanges, verifiedFloatDenseChannels))
                     {
                         if (CountKeys(projection) > MaximumKeys) throw CompactQualityFailure("The complete linear-projection verification exceeds the native key budget.");
                         var linear = new NativeAnimationOptimizationResult();
@@ -507,7 +621,7 @@ namespace BrawlCrate.Studio
             var result = new NativeAnimationOptimizationOptions();
             foreach (var property in typeof(NativeAnimationOptimizationOptions).GetProperties(BindingFlags.Public | BindingFlags.Instance))
                 if (property.CanRead && property.CanWrite) property.SetValue(result, property.GetValue(source));
-            result.ProbeFrames = probes ?? new double[0]; result.Budget = budget; return result;
+            result.ProbeFrames = probes ?? new double[0]; result.Budget = budget; result.FloatDenseEvidence = source.FloatDenseEvidence; return result;
         }
         private static bool CompactSmaller(NativeAnimationOptimizationResult candidate, NativeAnimationOptimizationResult current) =>
             candidate.AfterBytes < current.AfterBytes && candidate.CandidateResourceBytes <= current.CandidateResourceBytes;

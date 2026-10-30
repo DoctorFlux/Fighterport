@@ -1,5 +1,25 @@
 # Fighterport
 
+30 October 2026 **preview.64-verified-float-storage** qualifies its bounded
+increment inside the ONE incomplete G1/M2. Start:
+`1c96251bb7d8d4cf3ed54443e1920857942d9ad6`. Explicit independent whole-R L4
+copies preserve both curve alternatives, the same finished master, exact
+protections, all weights/roots, original Next/viewer and native Undo. Ordinary
+Save/right-click Export does not optimize; current Apply is one native command.
+
+Qualification: 3520 native checks/11 runs, 55 fresh Python tests, 1352 renderer
+assertions, 31 covered UI PNGs (22 actual/9 full-byte continuity), and 261 reviewed
+GIF frames/33 sheets/11 full PNGs. Forward masters 109984/81140B export
+58256/54308B; fitted 75152B exports 53004B with zero eligible L4. Reverse up-air
+rejects upstream; no output or correction-disabled workaround is invented.
+See [acceptance](docs/CHR0_COMPACT_EXPORT_ACCEPTANCE_2026-10-30.md) and
+[benchmark](docs/CHR0_COMPACT_EXPORT_BENCHMARK_2026-10-30.md).
+Launcher: qualified `Fighterport-float64/native1`. Source-only DoctorFlux public
+main publication verification is pending parent delivery. Assets/settings/
+captures/binaries remain excluded. Background-only testing stays; broader
+contact/editor/runtime/Melee/input/DPI/human/game gates remain open.
+Earlier qualified records follow.
+
 29 October 2026 **preview.63-write-path-cleanup** qualifies its bounded native
 write-path increment in the ONE incomplete G1/M2. Fresh pinned qualification:
 6,718 checks / 13 private-desktop runs; 2,047 prior retarget checks are separately

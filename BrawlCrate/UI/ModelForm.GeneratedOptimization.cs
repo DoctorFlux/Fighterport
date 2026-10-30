@@ -48,6 +48,10 @@ namespace BrawlCrate.UI
             try
             {
                 long work = 0; int spans = 0;
+                long generationWork = 0, certificateWork = 0;
+                bool orderedExport = compact && exportSettings?.Policy == NativeExportOptimizationPolicy.ErrorBounded;
+                var exportAttempts = orderedExport ? new NativeCompactAttemptBudget() : null;
+                var phaseReports = new List<string>();
                 var budget = new NativeAnimationOptimizationBudget();
                 var referenceSamples = new NativeOptimizationReferenceSamples(validationModel, baseline);
                 // Dense proposals and Core certificates share the
@@ -59,6 +63,16 @@ namespace BrawlCrate.UI
                     work += amount;
                     return true;
                 });
+                void Phase(string name, long scalarBefore, long denseBefore, long samplesBefore, long posesBefore, int attemptsBefore)
+                {
+                    if (!orderedExport || phaseReports.Count >= 128) return;
+                    phaseReports.Add("Export search phase: " + json.Serialize(new { Phase = name,
+                        ScalarWork = work - scalarBefore, DenseWorkIncluded = denseProofBudget.Work - denseBefore,
+                        NativeWitnesses = budget.Samples - samplesBefore, NativePoseEvaluations = budget.PoseEvaluations - posesBefore,
+                        CompleteStorageAttempts = (exportAttempts?.Used ?? 0) - attemptsBefore,
+                        RemainingScalarWork = 2000000 - work, RemainingStorageAttempts = exportAttempts?.Remaining ?? 0,
+                        Scope = "Phase summary deltas; nested certificate charges are included, not added again." }));
+                }
                 var receipts = new Dictionary<NativeAnimationOptimizationResult, OptimizationOutput>();
                 var refitReports = new List<string>();
                 ControlTrack[] exactReductionTracks = null;
@@ -114,6 +128,10 @@ namespace BrawlCrate.UI
                             output.PreRefitTracks != null && (!approximate || output.Report.AcceptedRefitSpans == 0))
                             throw new InvalidDataException("Invalid span-refit proposal receipt.");
                         work += output.Report.Work; spans += output.Report.CandidateSpans;
+                        generationWork += output.Report.Work;
+                        if (orderedExport) phaseReports.Add("Core generation charge: " + json.Serialize(new { Approximate = approximate,
+                            PrecisionScale = precision, ChargedWork = output.Report.Work, output.Report.CandidateSpans,
+                            output.Report.RefitCandidateSpans, output.Report.AcceptedRefitSpans, RemainingScalarWork = 2000000 - work }));
                         refitReports.Add("Span refit metrics: " + json.Serialize(new { PrecisionScale = precision, Approximate = approximate,
                             Candidates = output.Report.RefitCandidateSpans, Certified = output.Report.AcceptedRefitSpans,
                             Tangents = output.Report.RefitTangents, BudgetLimited = output.Report.RefitWorkLimited, LegacyPhaseLimited = output.Report.LegacyPhaseLimited }));
@@ -129,7 +147,7 @@ namespace BrawlCrate.UI
                         // raw-key object graph for every retry.
                         output.Tracks = null;
                         output.PreRefitTracks = null;
-                        var options = new NativeAnimationOptimizationOptions { ExactOnly = !approximate, SmallFile = approximate && smallFile, ExportSettings = exportSettings, GeneratedPairFrames = generatedPairs, GeneratedPairSites = generatedSites, LengthScale = length, OriginalStoredBytes = storedBytes, OriginalStoredResourceBytes = storedResourceBytes,
+                        NativeAnimationOptimizationOptions NewOptions() => new NativeAnimationOptimizationOptions { ExactOnly = !approximate, SmallFile = approximate && smallFile, ExportSettings = exportSettings, GeneratedPairFrames = generatedPairs, GeneratedPairSites = generatedSites, LengthScale = length, OriginalStoredBytes = storedBytes, OriginalStoredResourceBytes = storedResourceBytes,
                             TargetBones = model.AllBones.Select(b => b.Name).ToArray(), ProtectedBones = output.ProtectedBones, ExactBones = output.ExactBones,
                             BindPoseCleanupBones = output.RemovedBindTracks, DeferSizeValidation = compact,
                             MandatoryFrames = approximate && smallFile && !exactFitJoins ? new int[0] : mandatory.ToArray(),
@@ -138,18 +156,8 @@ namespace BrawlCrate.UI
                             // the SAME shared proof/native work budgets. It
                             // does not increase any motion error allowance.
                             ReductionAttemptLimit=exportSettings?.SearchEffort==NativeExportSearchEffort.Thorough?8:2 };
-                        async Task<NativeAnimationOptimizationResult> Verify(ControlTrack[] proposal, string label)
-                        {
-                        options.AllowSpanRefitting = approximate && preRefitTracks != null && ReferenceEquals(proposal, tracks) && output.Report.AcceptedRefitSpans > 0;
-                        OptimizationNativeChecks++;
-                        var verified = await Task.Run(() => approximate
-                            ? NativeAnimationOptimization.PrepareReduction(validationModel, baseline, proposal, exactReductionTracks, options, stage, token)
-                            : NativeAnimationOptimization.Prepare(validationModel, baseline, proposal, options, stage, token), token);
-                        // Reuse the already allocated, independently
-                        // verified Exact wire for partial HQ fallback.
-                        // Its keys remain immutable within this Analyze.
-                        if (!approximate) exactReductionTracks = proposal;
-                        if (compact)
+                        var qualifiedOptions = new Dictionary<NativeAnimationOptimizationResult, NativeAnimationOptimizationOptions>();
+                        async Task<NativeAnimationOptimizationResult> Pack(NativeAnimationOptimizationResult precise, NativeAnimationOptimizationOptions options)
                         {
                             // Packing has its own frozen-baseline
                             // certificate. A rejected approximate
@@ -164,8 +172,6 @@ namespace BrawlCrate.UI
                             options.SmallFile = approximateStorage && smallFile;
                             options.MandatoryFrames = approximateStorage && smallFile && !exactFitJoins ? new int[0] : mandatory.ToArray();
                             options.FitJoinFrames = approximateStorage && smallFile && !exactFitJoins ? mandatory.ToArray() : new int[0];
-                            using (var precise = verified)
-                            {
                                 async Task<NativeCompactCurveCertificate> Certificate(CHR0Node decoded, CancellationToken proofToken)
                                 {
                                     proofToken.ThrowIfCancellationRequested();
@@ -184,19 +190,39 @@ namespace BrawlCrate.UI
                                         if (response.OptimizationPath != certificateOutput || new FileInfo(certificateOutput).Length > 256L * 1024 * 1024) throw new InvalidDataException("Invalid compact scalar proof response.");
                                         var proof = json.Deserialize<OptimizationCertificateOutput>(File.ReadAllText(certificateOutput))?.Certificate;
                                         if (proof == null || proof.Work < 0 || proof.Work > 2000000 - work) throw new InvalidDataException("Invalid shared compact scalar proof budget receipt.");
-                                        work += proof.Work;
+                                        work += proof.Work; certificateWork += proof.Work;
+                                        if (orderedExport && phaseReports.Count < 128) phaseReports.Add("Core certificate charge: " + json.Serialize(new { ChargedWork = proof.Work, proof.Accepted, proof.WorkLimitReached, RemainingScalarWork = 2000000 - work }));
                                         return new NativeCompactCurveCertificate { Accepted = proof.Accepted, BudgetExhausted = proof.WorkLimitReached, FailedBone = proof.FailedBone, FailedChannel = proof.FailedChannel,
                                             ProbeFrames = proof.ProbeFrames ?? new double[0], Report = proof.Reason + "\r\n" + string.Join("\r\n", (proof.Channels ?? new OptimizationChannelInfo[0]).Select(c => c.Bone + " / " + c.Channel + ": continuous value ≤ " + c.CertifiedValueErrorBound.ToString("G6") + "; derivative ≤ " + c.CertifiedSpeedErrorBound.ToString("G6"))) };
                                     }
                                     finally { foreach (string file in new[] { certificateInput, certificateOutput }) if (File.Exists(file)) File.Delete(file); }
                                 }
-                                verified = await Task.Run(() => NativeAnimationOptimization.PrepareCompact(validationModel, baseline, before, precise, options, stage, Certificate, denseProofBudget, token), token);
-                            }
+                            return await Task.Run(() => NativeAnimationOptimization.PrepareCompact(validationModel, baseline, before, precise, options, stage, Certificate, denseProofBudget, token, approximateStorage ? exportAttempts : null), token);
                         }
-                        try { token.ThrowIfCancellationRequested(); current(); verified.Report += "\r\nNative curve alternative: " + label + "."; return verified; }
-                        catch { verified.Dispose(); throw; }
+                        async Task<NativeAnimationOptimizationResult> Verify(ControlTrack[] proposal, string label, bool deferStorage = false)
+                        {
+                            var options = NewOptions();
+                            options.AllowSpanRefitting = approximate && preRefitTracks != null && ReferenceEquals(proposal, tracks) && output.Report.AcceptedRefitSpans > 0;
+                            long scalarBefore = work, denseBefore = denseProofBudget.Work, samplesBefore = budget.Samples, posesBefore = budget.PoseEvaluations;
+                            int attemptsBefore = exportAttempts?.Used ?? 0;
+                            OptimizationNativeChecks++;
+                            NativeAnimationOptimizationResult verified;
+                            try { verified = await Task.Run(() => approximate
+                                ? NativeAnimationOptimization.PrepareReduction(validationModel, baseline, proposal, exactReductionTracks, options, stage, token)
+                                : NativeAnimationOptimization.Prepare(validationModel, baseline, proposal, options, stage, token), token); }
+                            finally { Phase("Native qualification / " + label, scalarBefore, denseBefore, samplesBefore, posesBefore, attemptsBefore); }
+                            if (!approximate) exactReductionTracks = proposal;
+                            if (compact && !deferStorage)
+                            {
+                                using (var precise = verified) verified = await Pack(precise, options);
+                            }
+                            else if (deferStorage) qualifiedOptions.Add(verified, options);
+                            try { token.ThrowIfCancellationRequested(); current(); verified.Report += "\r\nNative curve alternative: " + label + "."; return verified; }
+                            catch { verified.Dispose(); throw; }
                         }
                         NativeAnimationOptimizationResult best = null;
+                        var preciseAlternatives = new List<NativeAnimationOptimizationResult>();
+                        bool deferExportStorage = orderedExport && approximate;
                         var alternativeNotes = new List<string>();
                         InvalidDataException lastFailure = null;
                         try
@@ -208,8 +234,19 @@ namespace BrawlCrate.UI
                                 NativeAnimationOptimizationResult verified = null;
                                 try
                                 {
-                                    verified = await Verify(proposal, label);
+                                    verified = await Verify(proposal, label, deferExportStorage);
                                     alternativeNotes.Add(label + ": fully verified, " + verified.AfterBytes + " bytes / " + verified.AfterKeys + " native keys.");
+                                    if (deferExportStorage)
+                                    {
+                                        // Both independent full-quality proofs
+                                        // precede any codec search. Keep both:
+                                        // a larger I12 result may encode smaller.
+                                        preciseAlternatives.Add(verified);
+                                        if (best == null || verified.AfterBytes < best.AfterBytes || verified.AfterBytes == best.AfterBytes && verified.AfterKeys < best.AfterKeys)
+                                            best = verified;
+                                        verified = null;
+                                        continue;
+                                    }
                                     if (best == null || verified.AfterBytes < best.AfterBytes || verified.AfterBytes == best.AfterBytes && verified.AfterKeys < best.AfterKeys)
                                     { best?.Dispose(); best = verified; verified = null; }
                                 }
@@ -222,11 +259,24 @@ namespace BrawlCrate.UI
                                 finally { verified?.Dispose(); }
                             }
                             if (best == null) throw lastFailure ?? new InvalidDataException("No complete native curve alternative was verified.");
+                            if (deferExportStorage)
+                            {
+                                best = await NativeAnimationOptimizationPreparation.SearchVerifiedExportAlternatives(preciseAlternatives,
+                                    async (precise, cancellation) =>
+                                    {
+                                        long scalarBefore = work, denseBefore = denseProofBudget.Work, samplesBefore = budget.Samples, posesBefore = budget.PoseEvaluations;
+                                        int attemptsBefore = exportAttempts.Used;
+                                        try { return await Pack(precise, qualifiedOptions[precise]); }
+                                        finally { Phase("Deferred codecs / " + precise.AfterBytes + "-byte precise alternative", scalarBefore, denseBefore, samplesBefore, posesBefore, attemptsBefore); }
+                                    }, () => work < 2000000 && exportAttempts.Remaining > 0, alternativeNotes.Add, token);
+                            }
                             best.Report += "\r\n" + string.Join("\r\n", alternativeNotes) +
                                 "\r\nRefit counts describe Core scalar-certified proposals; native restoration, packing and actual-byte selection may retain the deletion-only copy. Both use the same immutable master and cumulative budgets.";
-                            token.ThrowIfCancellationRequested(); current(); receipts.Add(best, output); return best;
+                            token.ThrowIfCancellationRequested(); current(); receipts.Add(best, output);
+                            preciseAlternatives.Remove(best); var completed = best; best = null; return completed;
                         }
-                        catch { best?.Dispose(); throw; }
+                        catch { if (best != null && !preciseAlternatives.Contains(best)) best.Dispose(); throw; }
+                        finally { foreach (var retained in preciseAlternatives) retained.Dispose(); }
                     }
                     finally
                     {
@@ -240,7 +290,13 @@ namespace BrawlCrate.UI
                 try
                 {
                     token.ThrowIfCancellationRequested();current();
-                    return new FrozenOptimizationAnalysis{Choice=choice,Output=choice.Result==null?null:receipts[choice.Result],Budget=budget,Work=work,Spans=spans,RetainedDense=retainedDense,RefitReport=string.Join("\r\n",refitReports)};
+                    if (orderedExport && generationWork + certificateWork + denseProofBudget.Work != work)
+                        throw new InvalidDataException("Export scalar charge ledger did not reconcile with the shared operation allowance.");
+                    string ledger = orderedExport ? "\r\nExport scalar charge ledger: " + json.Serialize(new { CoreGeneration = generationWork,
+                        CoreCertificates = certificateWork, DenseProof = denseProofBudget.Work, Total = work, Limit = 2000000,
+                        CompleteStorageAttempts = exportAttempts.Used, AttemptLimit = NativeCompactAttemptBudget.Limit,
+                        NativeWitnesses = budget.Samples, NativePoseEvaluations = budget.PoseEvaluations }) + "\r\n" + string.Join("\r\n", phaseReports) : "";
+                    return new FrozenOptimizationAnalysis{Choice=choice,Output=choice.Result==null?null:receipts[choice.Result],Budget=budget,Work=work,Spans=spans,RetainedDense=retainedDense,RefitReport=string.Join("\r\n",refitReports)+ledger};
                 }
                 catch{choice.Dispose();throw;}
             }

@@ -57,10 +57,10 @@ namespace BrawlCrate.Studio
         public int AfterBytes { get; internal set; }
         public int ChangedCoefficients { get; internal set; }
         public bool IsExact => ChangedCoefficients == 0;
-        public bool IsDense => Format == AnimDataFormat.L1 || Format == AnimDataFormat.L2;
+        public bool IsDense => Format == AnimDataFormat.L1 || Format == AnimDataFormat.L2 || Format == AnimDataFormat.L4;
     }
 
-    internal static class NativeCompactAnimationStorage
+    internal static partial class NativeCompactAnimationStorage
     {
         private const int MaximumKeys = 2000000;
 
@@ -383,7 +383,8 @@ namespace BrawlCrate.Studio
             right = keys[index + 1]; start = left._index; span = right._index - left._index;
         }
 
-        internal static CHR0Node CreateLinearProjection(CHR0Node independentlyDecoded, HashSet<string> changedChannels)
+        internal static CHR0Node CreateLinearProjection(CHR0Node independentlyDecoded, HashSet<string> changedChannels,
+            HashSet<string> verifiedFloatDenseChannels = null)
         {
             // Caller supplies and disposes a separate snapshot; this projection
             // is never serialized, applied or retained by document ownership.
@@ -395,6 +396,18 @@ namespace BrawlCrate.Studio
                     var curve = storage[channel]; if (curve == null || !curve.IsDense) continue;
                     if (changedChannels != null && !changedChannels.Contains(entry.Name + "\0" + channel)) continue;
                     var values = curve.EncodedValues;
+                    // Only newly claimed L4 channels whose complete immutable
+                    // payload has already passed fresh-load validation receive
+                    // this diagnostic representation. The N+1 physical value
+                    // is a proven duplicate hold: native clamping after N-1
+                    // expresses the same final interval without manufacturing
+                    // an outgoing endpoint side against the native incoming
+                    // tangent. The encoded payload is never changed or omitted.
+                    if (verifiedFloatDenseChannels?.Contains(entry.Name + "\0" + channel) == true &&
+                        curve.Format == AnimDataFormat.L4 && !independentlyDecoded.Loop && independentlyDecoded.FrameCount >= 2 &&
+                        curve.NativeSampleCount == independentlyDecoded.FrameCount && curve.EncodedSampleCount == independentlyDecoded.FrameCount + 1 &&
+                        values.Length == independentlyDecoded.FrameCount + 1 && Bits(values[values.Length - 1]) == Bits(values[values.Length - 2]))
+                        values = values.Take(curve.NativeSampleCount).ToArray();
                     var array = new KeyframeArray(values.Length) { Loop = false };
                     for (int i = 0; i < values.Length; i++)
                     {

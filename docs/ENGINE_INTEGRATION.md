@@ -1,5 +1,29 @@
 ﻿# Native Next integration
 
+Preview.64 qualifies its bounded compact-copy increment on 30 October 2026.
+Explicit Error-bounded preparation alone admits new whole-R L4 sampled from the
+same frozen finished target. Both curve alternatives remain owned; early L4,
+relevant immutable evidence and remaining formats share the two-million scalar-
+work ceiling, native-work limits and 24-attempt ceiling. No original Next/Core
+math/viewer, rig/bind/all-weight, root policy, ordinary Save/native Export or
+project-schema change. Current Apply is one native Undo command retaining the
+original session baseline.
+
+Actual bytes/fresh decode/complete storage claims, rational native-curve proof,
+separate floating physical-linear bounds and finite all-weight geometry remain
+distinct. Verified held-tail diagnostic clamping deletes no physical N+1 sample.
+Exact roots/joins/contacts and unknown contexts retain their gates. Qualification:
+3520 native checks/11 runs, 55 Python tests, 1352 renderer assertions, 31 covered
+UI PNGs and 261 reviewed GIF frames. Raw forward copies contain real L4; fitted
+output has zero eligible L4 and four exact entry/exit endpoint/join poses.
+Reverse up-air rejects upstream before optimization. See
+[architecture](CHR0_COMPACT_EXPORT_NOTES_2026-10-30.md),
+[acceptance](CHR0_COMPACT_EXPORT_ACCEPTANCE_2026-10-30.md) and
+[benchmark](CHR0_COMPACT_EXPORT_BENCHMARK_2026-10-30.md).
+Launcher: `Fighterport-float64/native1`; source publication verification remains
+pending parent delivery. ONE G1/M2 remains incomplete; contact/editor/runtime/
+Melee/input/DPI/human/game gates remain open.
+
 Preview.63 traces actual original, edited, worker, retarget and fitting bytes.
 The retargeted gap is primarily curve payload: identical visible key times can
 represent compact sampled streams or much larger indexed value/tangent rows.

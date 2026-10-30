@@ -17,7 +17,7 @@ namespace BrawlCrate.Studio
 
     // Preparation owns each completed candidate until a single choice is returned.
     // Attempts use one immutable baseline; callers share proof/native work counters.
-    internal static class NativeAnimationOptimizationPreparation
+    internal static partial class NativeAnimationOptimizationPreparation
     {
         internal static async Task<NativeAnimationOptimizationChoice> Prepare(bool highQuality, long currentBytes,
             Func<bool, double, Task<NativeAnimationOptimizationResult>> attempt, CancellationToken cancellation,

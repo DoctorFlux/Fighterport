@@ -186,6 +186,9 @@ internal static partial class Program
         if (!PrivateDesktop) throw new InvalidOperationException("Sonic fitting/size qualification requires a private desktop.");
         string Arg(string key) => args[Array.IndexOf(args, key) + 1];
         bool reciprocal = args.Contains("--sonic-pipeline-reciprocal"), fitOnly = args.Contains("--sonic-pipeline-fit-only");
+        bool fitExportSegment = args.Contains("--sonic-pipeline-fit-export-segment");
+        if (fitExportSegment && (!fitOnly || !args.Contains("--authentic-float-export-copy") || !args.Contains("--sonic-pipeline-mode")))
+            throw new ArgumentException("The bounded fit/export segment requires one explicit key mode, normal fit-only gates and the verified export-copy hook.");
         var pipelineEffort = args.Contains("--sonic-pipeline-thorough") ? NativeExportSearchEffort.Thorough : NativeExportSearchEffort.Standard;
         bool requireSpanRefit = args.Contains("--span-refit-required");
         string sourceCharacter = reciprocal ? "mario" : "sonic", sourceModelName = reciprocal ? "FitMario00" : "FitSonic00";
@@ -318,10 +321,13 @@ internal static partial class Program
                                 Check(NativeAnimationOptimization.ContentKey(Walk(savedRoot).OfType<CHR0Node>().Single()) == NativeAnimationOptimization.ContentKey(clip), keyMode + ": " + name + " project Save/reopen preserves exact current owned animation");
                             File.WriteAllText(Path.Combine(modeDirectory, "stage-sizes.json"), json.Serialize(stages)); return stage;
                         }
+                        if (args.Contains("--authentic-float-export-copy") && !fitExportSegment)
+                            await NativeDenseFloatAuthenticExportCopy(form, Path.Combine(modeDirectory, "authentic-float-export-copy"));
                         Export("raw-retarget");
-                        foreach (bool bounded in new[] { false, true })
-                            stages.Add(await SonicExportCopy(form, clip, model, Path.Combine(output, "target-model.mdl0"), rootNames, new int[0],
-                                Path.Combine(modeDirectory, "raw-retarget.chr0"), modeDirectory, bounded ? "raw-retarget-optimized-hq" : "raw-retarget-optimized-exact", bounded, pipelineEffort));
+                        if (!fitExportSegment)
+                            foreach (bool bounded in new[] { false, true })
+                                stages.Add(await SonicExportCopy(form, clip, model, Path.Combine(output, "target-model.mdl0"), rootNames, new int[0],
+                                    Path.Combine(modeDirectory, "raw-retarget.chr0"), modeDirectory, bounded ? "raw-retarget-optimized-hq" : "raw-retarget-optimized-exact", bounded, pipelineEffort));
                         File.WriteAllText(Path.Combine(modeDirectory, "stage-sizes.json"), json.Serialize(stages));
                         using (var attack = NativeAnimationOptimization.Copy(clip))
                         {
@@ -371,16 +377,24 @@ internal static partial class Program
                                 form.TransitionFitReady = null; if (failure != null) throw failure; await GameLibraryWait(()=>!(bool)Field(form,"_controlBusy")&&!(bool)Field(form,"_controlSetupQueued"),"Native control setup did not settle.",120);
                             }
                             if(!fitOnly)await Fit(false, false); await Fit(true, true); Export("fitted");
-                            foreach (bool bounded in new[] { false, true })
-                                stages.Add(await SonicExportCopy(form, clip, model, Path.Combine(output, "target-model.mdl0"), rootNames,
-                                    new[] { 0, 4, exitStart - 1, expectedFrames - 1 }, Path.Combine(modeDirectory, "fitted.chr0"), modeDirectory,
-                                    bounded ? "optimized-hq" : "optimized-exact", bounded, pipelineEffort, bounded && requireSpanRefit));
+                            // This hook is reached only after the existing fit
+                            // Apply, root/middle and exact project-reopen gates.
+                            // Missing bounded context still selects the real fallback.
+                            if (args.Contains("--authentic-float-export-copy"))
+                                await NativeDenseFloatAuthenticExportCopy(form, Path.Combine(modeDirectory, "authentic-fitted-float-export-copy"));
+                            if (!fitExportSegment)
+                                foreach (bool bounded in new[] { false, true })
+                                    stages.Add(await SonicExportCopy(form, clip, model, Path.Combine(output, "target-model.mdl0"), rootNames,
+                                        new[] { 0, 4, exitStart - 1, expectedFrames - 1 }, Path.Combine(modeDirectory, "fitted.chr0"), modeDirectory,
+                                        bounded ? "optimized-hq" : "optimized-exact", bounded, pipelineEffort, bounded && requireSpanRefit));
                         }
                         File.WriteAllText(Path.Combine(modeDirectory, "stage-sizes.json"), json.Serialize(stages));
                         allModes.Add(new { Mode = keyMode.ToString(), ClipIdentity = OptimizationNativeIdentity(clip), AttackTravelControls = positionNames,
-                            RawMaster = Path.Combine(modeDirectory, "raw-retarget.chr0"), RawExactExport = Path.Combine(modeDirectory, "raw-retarget-optimized-exact.chr0"),
-                            RawBoundedExport = Path.Combine(modeDirectory, "raw-retarget-optimized-hq.chr0"), FittedMaster = Path.Combine(modeDirectory, "fitted.chr0"),
-                            FittedExactExport = Path.Combine(modeDirectory, "optimized-exact.chr0"), FittedBoundedExport = Path.Combine(modeDirectory, "optimized-hq.chr0"), Stages = stages }); WriteManifest();
+                            VerificationSegment = fitExportSegment ? "Real retarget, normal fit, exact native/project roundtrip and one verified post-fit Standard export" : "Existing full policy pipeline",
+                            RawMaster = Path.Combine(modeDirectory, "raw-retarget.chr0"), RawExactExport = fitExportSegment ? null : Path.Combine(modeDirectory, "raw-retarget-optimized-exact.chr0"),
+                            RawBoundedExport = fitExportSegment ? null : Path.Combine(modeDirectory, "raw-retarget-optimized-hq.chr0"), FittedMaster = Path.Combine(modeDirectory, "fitted.chr0"),
+                            FittedExactExport = fitExportSegment ? null : Path.Combine(modeDirectory, "optimized-exact.chr0"),
+                            FittedBoundedExport = fitExportSegment ? Path.Combine(modeDirectory, "authentic-fitted-float-export-copy", "finished-target-export.chr0") : Path.Combine(modeDirectory, "optimized-hq.chr0"), Stages = stages }); WriteManifest();
                     }
                     finally { form.TransitionFitReady = null; form.RetargetKeyframeReviewReady = null; if (!form.IsDisposed) SimpleDisposeForm(form); }
                 }

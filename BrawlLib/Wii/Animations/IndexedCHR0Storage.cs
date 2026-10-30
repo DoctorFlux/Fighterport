@@ -99,6 +99,23 @@ namespace BrawlLib.Wii.Animations
                 throw new ArgumentException("Baked CHR0 decoding produced invalid data.");
         }
 
+        // Explicit operation-owned storage, never an automatic write policy.
+        // Admission and final decoded-master quality checks remain mandatory.
+        public static IndexedCHR0CurveStorage CreateFloatDense(float[] encodedSamples, int nativeKeyCount)
+        {
+            if (encodedSamples == null || encodedSamples.Length < 2 || encodedSamples.Length > 65536 ||
+                nativeKeyCount < 1 || nativeKeyCount != encodedSamples.Length && nativeKeyCount != encodedSamples.Length - 1)
+                throw new ArgumentException("Invalid raw-float baked CHR0 rotation curve.");
+            var bytes = new byte[checked(encodedSamples.Length * 4)];
+            for (int i = 0; i < encodedSamples.Length; i++)
+            {
+                if (!Finite(encodedSamples[i])) throw new ArgumentException("A raw-float baked CHR0 sample is nonfinite.");
+                WriteFloat(bytes, i * 4, encodedSamples[i]);
+            }
+            return FromEncodedDense(AnimDataFormat.L4, bytes, nativeKeyCount, encodedSamples.Length) ??
+                throw new ArgumentException("Raw-float baked CHR0 decoding produced invalid data.");
+        }
+
         internal static IndexedCHR0CurveStorage FromEncodedDense(AnimDataFormat format, byte[] bytes, int nativeKeyCount, int encodedSampleCount)
         {
             int stride = format == AnimDataFormat.L1 ? 1 : format == AnimDataFormat.L2 ? 2 : format == AnimDataFormat.L4 ? 4 : 0;

@@ -12,30 +12,89 @@ internal static partial class Program
 {
     // Authentic native container qualification, independent of the outer UI.
     // The master/template stay read-only; only operation-owned copies are saved.
-    static void NativeMotionPacVerificationChecks(string modelPath, string templatePath, string output)
+    static void NativeMotionPacVerificationChecks(string modelPath, string templatePath, string output,
+        string qualifiedAnimationPath = null, string qualifiedAnimationHash = null,
+        string qualifiedMasterPath = null, string qualifiedMasterHash = null, string qualifiedSlotName = null)
     {
         Directory.CreateDirectory(output);
         string modelHash = FighterProject.HashFile(modelPath), templateHash = FighterProject.HashFile(templatePath);
         using (var modelRoot = NodeFactory.FromFile(null, modelPath))
         using (var template = NodeFactory.FromFile(null, templatePath))
+        using (var qualifiedAnimation = qualifiedAnimationPath == null ? null : NodeFactory.FromFile(null, qualifiedAnimationPath) as CHR0Node)
+        using (var qualifiedMaster = qualifiedMasterPath == null ? null : NodeFactory.FromFile(null, qualifiedMasterPath) as CHR0Node)
         {
-            var model = ModelPanel.CollectModels(modelRoot).OfType<MDL0Node>().First();
+            var models = ModelPanel.CollectModels(modelRoot).OfType<MDL0Node>().ToArray();
+            var model = models.First();
             Check(template is ARCNode, "PAC fixture is an authentic native ARC motion container");
-            var original = Walk(template).OfType<CHR0Node>().Single(clip => clip.Name == "Wait1");
-            using (var candidate = NativeAnimationOptimization.CopySource(original))
+            if (qualifiedAnimationPath != null)
+            {
+                bool Hash(string value) => value != null && value.Length == 64 && value.All(Uri.IsHexDigit);
+                Check(models.Length == 1 && qualifiedAnimation != null && qualifiedMaster != null &&
+                    Hash(qualifiedAnimationHash) && Hash(qualifiedMasterHash) &&
+                    string.Equals(FighterProject.HashFile(qualifiedAnimationPath), qualifiedAnimationHash, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(FighterProject.HashFile(qualifiedMasterPath), qualifiedMasterHash, StringComparison.OrdinalIgnoreCase),
+                    "Qualified L4 PAC integration uses one exact target model and separately frozen actual candidate/master byte identities");
+                Check(!string.IsNullOrWhiteSpace(qualifiedSlotName) && qualifiedAnimation.Name == qualifiedSlotName &&
+                    qualifiedAnimation.Name == qualifiedMaster.Name && qualifiedAnimation.FrameCount == qualifiedMaster.FrameCount &&
+                    qualifiedAnimation.Version == qualifiedMaster.Version && qualifiedAnimation.Loop == qualifiedMaster.Loop &&
+                    qualifiedAnimation.NativeScalingRule == qualifiedMaster.NativeScalingRule &&
+                    qualifiedAnimation.Children.OfType<CHR0EntryNode>().Any(entry =>
+                        PreciseCHR0EntryNode.CaptureStorage(entry)?.Format(1) == BrawlLib.Wii.Models.AnimDataFormat.L4),
+                    "The qualified independent export actually contains L4 and retains this same finished master's identity, timing and native scaling policy");
+                var rig = BrawlRetargeter.Capture(model);
+                var policy = new HumanoidRetargeter(rig.Rig, rig.Rig);
+                ReplayRootsMatch(qualifiedMaster, qualifiedAnimation, model,
+                    policy.TargetMotionControls.Select(index => rig.Bones[index].Name).ToArray());
+            }
+            var original = Walk(template).OfType<CHR0Node>().Single(clip => clip.Name == (qualifiedAnimation?.Name ?? "Wait1"));
+            if (qualifiedAnimation != null)
+                Check(original.Version == qualifiedAnimation.Version,
+                    "Qualified L4 input binds one exact-name native slot of the same CHR0 version; no name, duration or version workaround is introduced");
+            using (var candidate = NativeAnimationOptimization.CopySource(qualifiedAnimation ?? original))
             {
                 string content = NativeAnimationOptimization.SourceContentKey(candidate), storage = NativeAnimationOptimization.StorageKey(candidate);
                 string sourceContent = NativeAnimationOptimization.SourceContentKey(original), sourceStorage = NativeAnimationOptimization.StorageKey(original);
                 bool dirty = candidate.IsDirty, originalDirty = original.IsDirty, modelDirty = model.IsDirty;
                 var siblings = MotionPacFixtureSiblings(template, original, output);
                 string destination = Path.Combine(output, "verified-motion-copy.pac"); int validations = 0;
-                BrawlRetargeter.ExportMotionPac(templatePath, destination, model, candidate, () => validations++);
+                BrawlRetargeter.ExportMotionPac(templatePath, destination, model, candidate, () => validations++, qualifiedAnimationHash, null);
                 Check(validations == 2 && File.Exists(destination), "PAC writer revalidates frozen dependencies immediately before new-file publication");
+                long? masterContainerBytes = null;
+                string masterContainerHash = null;
+                if (qualifiedMaster != null)
+                {
+                    string masterDestination = Path.Combine(output, "same-finished-master-motion-copy.pac");
+                    string masterContent = NativeAnimationOptimization.SourceContentKey(qualifiedMaster);
+                    string masterStorage = NativeAnimationOptimization.StorageKey(qualifiedMaster);
+                    BrawlRetargeter.ExportMotionPac(templatePath, masterDestination, model, qualifiedMaster, null, qualifiedMasterHash, null);
+                    using (var reopenedMaster = NodeFactory.FromFile(null, masterDestination))
+                    {
+                        var member = Walk(reopenedMaster).OfType<CHR0Node>().Single(clip => clip.Name == qualifiedMaster.Name);
+                        Check(NativeAnimationOptimization.SourceContentKey(member) == masterContent &&
+                            NativeAnimationOptimization.StorageKey(member) == masterStorage &&
+                            MotionPacFixtureEqual(siblings, MotionPacFixtureSiblings(reopenedMaster, member, output)),
+                            "Container byte baseline inserts the same full-quality finished master and preserves every untouched sibling");
+                    }
+                    masterContainerBytes = new FileInfo(masterDestination).Length;
+                    masterContainerHash = FighterProject.HashFile(masterDestination);
+                }
                 using (var decoded = NodeFactory.FromFile(null, destination))
                 {
                     var saved = Walk(decoded).OfType<CHR0Node>().Single(clip => clip.Name == original.Name);
                     Check(NativeAnimationOptimization.SourceContentKey(saved) == content && NativeAnimationOptimization.StorageKey(saved) == storage,
                         "Fresh PAC decode preserves complete prepared animation metadata, times, values, tangents, flags and storage");
+                    if (qualifiedAnimation != null)
+                    {
+                        Check(saved.Children.OfType<CHR0EntryNode>().Any(entry =>
+                            PreciseCHR0EntryNode.CaptureStorage(entry)?.Format(1) == BrawlLib.Wii.Models.AnimDataFormat.L4),
+                            "The freshly decoded exact PAC slot retains actual complete L4 storage, rather than an I12 fallback");
+                        string extractedPath = Path.Combine(output, "reopened-qualified-slot.chr0");
+                        using (var standalone = NativeAnimationOptimization.CopySource(saved)) standalone.ExportChecked(extractedPath);
+                        using (var extracted = (CHR0Node)NodeFactory.FromFile(null, extractedPath))
+                            Check(string.Equals(FighterProject.HashFile(extractedPath), qualifiedAnimationHash, StringComparison.OrdinalIgnoreCase) &&
+                                NativeAnimationOptimization.SourceContentKey(extracted) == content && NativeAnimationOptimization.StorageKey(extracted) == storage,
+                                "Reopened PAC slot exports the exact centrally qualified standalone L4 bytes and independently decodes again");
+                    }
                     Check(MotionPacFixtureEqual(siblings, MotionPacFixtureSiblings(decoded, saved, output)),
                         "Fresh PAC decode preserves all untouched CHR0 siblings, standalone native resource bytes and indexed structure");
                     string resaved = Path.Combine(output, "verified-motion-resaved.pac"); decoded.Merge(); decoded.ExportChecked(resaved);
@@ -123,9 +182,17 @@ internal static partial class Program
                 Check(!Directory.EnumerateFiles(output, ".fp-*").Any(), "PAC success and every rejected publication remove operation-owned staging files");
                 Check(FighterProject.HashFile(modelPath) == modelHash && FighterProject.HashFile(templatePath) == templateHash,
                     "Authentic model and original motion PAC bytes remain immutable through success and all failures");
+                if (qualifiedAnimation != null)
+                    Check(string.Equals(FighterProject.HashFile(qualifiedAnimationPath), qualifiedAnimationHash, StringComparison.OrdinalIgnoreCase) &&
+                        string.Equals(FighterProject.HashFile(qualifiedMasterPath), qualifiedMasterHash, StringComparison.OrdinalIgnoreCase),
+                        "Qualified standalone optimized copy and full-quality master remain immutable through PAC insertion, resave and every rejected publication");
                 File.WriteAllText(Path.Combine(output, "pac-verification.json"), new JavaScriptSerializer().Serialize(new {
                     TargetInputSha256 = modelHash, TemplateInputSha256 = templateHash, MasterContent = content, MasterStorage = storage,
                     PublishedContainerBytes = new FileInfo(destination).Length, UntouchedEntries = siblings.Count,
+                    QualifiedAnimationSha256 = qualifiedAnimationHash, QualifiedMasterSha256 = qualifiedMasterHash,
+                    ExactSlotName = candidate.Name, SameFinishedMasterContainerBytes = masterContainerBytes,
+                    SameFinishedMasterContainerSha256 = masterContainerHash,
+                    MeasuredContainerSavingsBytes = masterContainerBytes - new FileInfo(destination).Length,
                     ActualContainerBytesMeasured = true, ContainerCompressionRatioClaimed = false,
                     OriginalFilesPreserved = true, LiveDocumentMutated = false, OSInputInjected = false }));
             }

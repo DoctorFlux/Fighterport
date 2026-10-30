@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([Parameter(Mandatory)][string]$Model,[Parameter(Mandatory)][string]$Motion,[Parameter(Mandatory)][string]$OutputDirectory,[switch]$SuppliedModel,[string]$RetargetSource,[string]$TargetMotion,[string]$Clip='Wait1',[switch]$ModelPose,[string]$NativeDirectory,[switch]$ControlGizmos,[switch]$ControlReview,[switch]$LibraryBatch,[switch]$SceneFitting,[switch]$TransitionFit,[switch]$ContactAuthoring,[switch]$CombinedStress,[string]$ContactTransitionsProject,[switch]$CharacterWorkspace,[switch]$SimpleWorkspace,[switch]$WorkspaceFlow,[switch]$WorkspaceWalkthrough,[switch]$WorkspaceRecent,[switch]$WorkspaceExport,[switch]$WorkspaceExportOptimization,[switch]$WorkspaceExportCurrent,[switch]$WorkspaceExportNonselected,[switch]$WorkspaceExportDirtyModel,[switch]$WorkspaceOptimizationSharedContainer,[switch]$NativeExportStructure,[switch]$NativeChr0Forensics,[switch]$NativeChr0WritePath,[switch]$RequireRetainedStorage,[switch]$NativeExactI12WritePath,[switch]$NativeMotionPacVerification,[switch]$WorkspaceComparison,[switch]$WorkspaceLibrary,[switch]$WorkspaceBatchReview,[switch]$WorkspaceSetExport,[switch]$WorkspaceLoopInspection,[switch]$WorkspaceExitRecovery,[switch]$WorkspaceFootRecovery,[switch]$WorkspaceBoundaryFit,[switch]$ExpectFloorRejection,[switch]$MovingRootFixture,[switch]$ReferenceControls,[string]$ReferenceClip='Wait1',[int]$ExitSamples=8,[switch]$ProjectLifecycle,[switch]$WorkspaceKeyboard,[switch]$WorkspaceScaling,[switch]$WorkspaceDialogs,[switch]$WorkspacePerformance,[switch]$WorkspaceNextLayout,[switch]$WorkspaceLibraryTarget,[switch]$WorkspaceGameLibrary,[switch]$WorkspaceLibraryFlow,[switch]$WorkspaceLibraryOrder,[switch]$WorkspaceFitReferences,[string]$OptimizationProject,[switch]$OptimizationRawNext,[switch]$OptimizationHighQuality,[switch]$OptimizationCompactStorage,[switch]$OptimizationSmallFile,[switch]$WorkspaceAnimationOptimization,[ValidateSet("Exact","Bounded","Apply")][string]$WorkspaceOptimizationSegment,[switch]$WorkspaceOptimizationLayout,[switch]$NativeAnimationOptimization,[switch]$WorkspaceSonicPipeline,[switch]$WorkspaceSonicFourStages,[switch]$SonicPipelineReciprocal,[switch]$SonicPipelineThorough,[switch]$SpanRefitRequired,[ValidateSet("SourceBoneTimes","SourceChannelTimes")][string]$SonicPipelineMode,[switch]$SonicPipelineFitOnly,[string]$ProvidedMario,[switch]$WorkspaceUnifiedOptimization,[switch]$WorkspaceCompactOptimization,[switch]$NativeSourceKeys,[switch]$WorkspaceSourceKeys,[switch]$WorkspaceUseModelKeys,[switch]$WorkspaceNativeAnimationExport,[switch]$WorkspaceAerialRecovery,[switch]$WorkspaceDirectSources,[switch]$WorkspaceGameCapacity,[switch]$WorkspaceGameSources,[switch]$WorkspaceSourceFit,[string]$LibraryIndex,[string]$SourceCharacter='snake',[string]$DiscImage,[string]$CompatibilityProject,[string]$LegacyProject,[string]$LegacyFitProject)
+param([Parameter(Mandatory)][string]$Model,[Parameter(Mandatory)][string]$Motion,[Parameter(Mandatory)][string]$OutputDirectory,[switch]$SuppliedModel,[string]$RetargetSource,[string]$TargetMotion,[string]$Clip='Wait1',[switch]$ModelPose,[string]$NativeDirectory,[switch]$ControlGizmos,[switch]$ControlReview,[switch]$LibraryBatch,[switch]$SceneFitting,[switch]$TransitionFit,[switch]$ContactAuthoring,[switch]$CombinedStress,[string]$ContactTransitionsProject,[switch]$CharacterWorkspace,[switch]$SimpleWorkspace,[switch]$WorkspaceFlow,[switch]$WorkspaceWalkthrough,[switch]$WorkspaceRecent,[switch]$WorkspaceExport,[switch]$WorkspaceExportOptimization,[switch]$WorkspaceExportCurrent,[switch]$WorkspaceExportNonselected,[switch]$WorkspaceExportDirtyModel,[switch]$WorkspaceOptimizationSharedContainer,[switch]$NativeExportStructure,[switch]$NativeChr0Forensics,[switch]$NativeChr0WritePath,[switch]$RequireRetainedStorage,[switch]$NativeExactI12WritePath,[switch]$NativeDenseFloat,[switch]$NativeMotionPacVerification,[string]$QualifiedPacAnimation,[string]$QualifiedPacAnimationSha256,[string]$QualifiedPacMaster,[string]$QualifiedPacMasterSha256,[string]$QualifiedPacSlot,[switch]$WorkspaceComparison,[switch]$WorkspaceLibrary,[switch]$WorkspaceBatchReview,[switch]$WorkspaceSetExport,[switch]$WorkspaceLoopInspection,[switch]$WorkspaceExitRecovery,[switch]$WorkspaceFootRecovery,[switch]$WorkspaceBoundaryFit,[switch]$ExpectFloorRejection,[switch]$MovingRootFixture,[switch]$ReferenceControls,[string]$ReferenceClip='Wait1',[int]$ExitSamples=8,[switch]$ProjectLifecycle,[switch]$WorkspaceKeyboard,[switch]$WorkspaceScaling,[switch]$WorkspaceDialogs,[switch]$WorkspacePerformance,[switch]$WorkspaceNextLayout,[switch]$WorkspaceLibraryTarget,[switch]$WorkspaceGameLibrary,[switch]$WorkspaceLibraryFlow,[switch]$WorkspaceLibraryOrder,[switch]$WorkspaceFitReferences,[string]$OptimizationProject,[switch]$OptimizationRawNext,[switch]$OptimizationHighQuality,[switch]$OptimizationCompactStorage,[switch]$OptimizationSmallFile,[switch]$WorkspaceAnimationOptimization,[ValidateSet("Exact","Bounded","Apply")][string]$WorkspaceOptimizationSegment,[switch]$WorkspaceOptimizationLayout,[switch]$NativeAnimationOptimization,[switch]$WorkspaceSonicPipeline,[switch]$WorkspaceAuthenticFloatDense,[switch]$WorkspaceAuthenticLibraryFloat,[switch]$AuthenticL4ApplyCurrent,[string]$AuthenticFixtureManifest,[ValidateSet("SourceBoneTimes","SourceChannelTimes")][string]$AuthenticKeyMode,[switch]$AuthenticFloatExportCopy,[switch]$WorkspaceSonicFourStages,[switch]$SonicPipelineReciprocal,[switch]$SonicPipelineThorough,[switch]$SpanRefitRequired,[ValidateSet("SourceBoneTimes","SourceChannelTimes")][string]$SonicPipelineMode,[switch]$SonicPipelineFitOnly,[switch]$SonicPipelineFitExportSegment,[string]$ProvidedMario,[switch]$WorkspaceUnifiedOptimization,[switch]$WorkspaceCompactOptimization,[switch]$NativeSourceKeys,[switch]$WorkspaceSourceKeys,[switch]$WorkspaceUseModelKeys,[switch]$WorkspaceNativeAnimationExport,[switch]$WorkspaceAerialRecovery,[switch]$WorkspaceDirectSources,[switch]$WorkspaceGameCapacity,[switch]$WorkspaceGameSources,[switch]$WorkspaceSourceFit,[string]$LibraryIndex,[string]$SourceCharacter='snake',[string]$DiscImage,[string]$CompatibilityProject,[string]$LegacyProject,[string]$LegacyFitProject)
 $ErrorActionPreference='Stop'
 if($WorkspaceOptimizationSegment -and !$WorkspaceAnimationOptimization){throw 'WorkspaceOptimizationSegment requires WorkspaceAnimationOptimization.'}
 $root=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
@@ -67,22 +67,49 @@ try {
     if($WorkspaceOptimizationSharedContainer){$captureArgs+='--workspace-optimization-shared-container'}
     if($NativeExportStructure){$captureArgs+='--native-export-structure'}
     if($NativeChr0Forensics){$captureArgs+='--native-chr0-forensics'}
-    if($NativeMotionPacVerification){$captureArgs+='--native-motion-pac-verification'}
+    if($NativeMotionPacVerification){
+        $captureArgs+='--native-motion-pac-verification'
+        if($QualifiedPacAnimation){
+            if(!$QualifiedPacAnimationSha256 -or !$QualifiedPacMaster -or !$QualifiedPacMasterSha256 -or !$QualifiedPacSlot){throw 'Qualified PAC integration requires both exact standalone paths and SHA256 identities.'}
+            $captureArgs+=@('--qualified-pac-animation',(Resolve-Path -LiteralPath $QualifiedPacAnimation).Path,'--qualified-pac-animation-sha256',$QualifiedPacAnimationSha256,'--qualified-pac-master',(Resolve-Path -LiteralPath $QualifiedPacMaster).Path,'--qualified-pac-master-sha256',$QualifiedPacMasterSha256,'--qualified-pac-slot',$QualifiedPacSlot)
+        }
+    }
     if($WorkspaceAnimationOptimization){$captureArgs+='--workspace-animation-optimization'}
     if($WorkspaceOptimizationSegment){$captureArgs+=@('--workspace-optimization-segment',$WorkspaceOptimizationSegment)}
     if($WorkspaceOptimizationLayout){$captureArgs+='--workspace-optimization-layout'}
     if($NativeAnimationOptimization){$captureArgs+='--native-animation-optimization'}
+    if($WorkspaceAuthenticFloatDense -and $WorkspaceAuthenticLibraryFloat){throw 'Choose one authentic workflow path.'}
+    if($WorkspaceAuthenticLibraryFloat){
+        if(!$RetargetSource -or !$AuthenticFixtureManifest){throw 'Authentic library case requires RetargetSource and externally pinned AuthenticFixtureManifest.'}
+        $captureArgs+=@('--workspace-authentic-library-float','--authentic-fixture-manifest',(Resolve-Path -LiteralPath $AuthenticFixtureManifest).Path)
+        if($AuthenticKeyMode){$captureArgs+=@('--authentic-key-mode',$AuthenticKeyMode)}
+    }
+    if($WorkspaceAuthenticFloatDense){
+        if(!$RetargetSource -or !$AuthenticFixtureManifest){throw 'Authentic export-copy case requires RetargetSource and externally pinned AuthenticFixtureManifest.'}
+        $captureArgs+=@('--workspace-authentic-float-dense','--authentic-fixture-manifest',(Resolve-Path -LiteralPath $AuthenticFixtureManifest).Path)
+        if($AuthenticKeyMode){$captureArgs+=@('--authentic-key-mode',$AuthenticKeyMode)}
+    }
+    if($AuthenticFloatExportCopy){$captureArgs+='--authentic-float-export-copy'}
     if($WorkspaceSonicFourStages){if(!$RetargetSource -or !$TargetMotion){throw 'Four-stage Sonic workflow requires its authentic source model and Mario target motion.'};$captureArgs+=@('--workspace-sonic-four-stages','--target-motion',(Resolve-Path -LiteralPath $TargetMotion).Path)}
     if($WorkspaceSonicPipeline){if(!$LibraryIndex -or !$TargetMotion -or !$ProvidedMario){throw 'Sonic pipeline needs library index, target motion and provided Mario CHR0.'};$captureArgs+=@('--workspace-sonic-pipeline','--library-index',(Resolve-Path -LiteralPath $LibraryIndex).Path,'--target-motion',(Resolve-Path -LiteralPath $TargetMotion).Path,'--provided-mario',(Resolve-Path -LiteralPath $ProvidedMario).Path)}
     if($SonicPipelineThorough){$captureArgs+='--sonic-pipeline-thorough'}
     if($SpanRefitRequired){$captureArgs+='--span-refit-required'}
     if($SonicPipelineMode){$captureArgs+=@('--sonic-pipeline-mode',$SonicPipelineMode)}
     if($SonicPipelineReciprocal){if(!$WorkspaceSonicPipeline){throw 'Reciprocal pipeline requires WorkspaceSonicPipeline.'};$captureArgs+='--sonic-pipeline-reciprocal'}
+    if($SonicPipelineFitExportSegment){
+        if(!$WorkspaceSonicPipeline -or !$SonicPipelineFitOnly -or !$AuthenticFloatExportCopy -or !$SonicPipelineMode){throw 'Fit/export segment requires the existing pipeline, fit-only gates, explicit key mode and verified export-copy hook.'}
+        $captureArgs+='--sonic-pipeline-fit-export-segment'
+    }
     if($SonicPipelineFitOnly){if(!$WorkspaceSonicPipeline){throw 'Fit-only pipeline requires WorkspaceSonicPipeline.'};$captureArgs+='--sonic-pipeline-fit-only'}
     if($WorkspaceUnifiedOptimization){$captureArgs+='--workspace-unified-optimization'}
     if($WorkspaceCompactOptimization){$captureArgs+='--workspace-compact-optimization'}
     if($NativeChr0WritePath){$captureArgs+=@('--native-chr0-write-path','--clip',$Clip)}
     if($RequireRetainedStorage){$captureArgs+='--require-retained-storage'}
+    if($AuthenticL4ApplyCurrent){
+        if(!$WorkspaceAuthenticLibraryFloat){throw 'Current L4 Apply qualification requires the actual Library Use case.'}
+        $captureArgs+='--authentic-l4-apply-current'
+    }
+    if($NativeDenseFloat){$captureArgs+='--native-dense-float'}
     if($NativeExactI12WritePath){$captureArgs+='--native-exact-i12-write-path';$captureArgs+=('--exact-i12-clip='+$Clip)}
     if($NativeSourceKeys){$captureArgs+='--native-source-keys'}
     if($WorkspaceSourceKeys){$captureArgs+='--workspace-source-keys'}

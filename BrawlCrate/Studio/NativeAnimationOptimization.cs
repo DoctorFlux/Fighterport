@@ -57,6 +57,7 @@ namespace BrawlCrate.Studio
         // Creation workflows can search less without relaxing the quality
         // contract or increasing the shared native/scalar work ceilings.
         public int CompactCandidateAttemptLimit { get; set; } = 24;
+        internal NativeDensePairEvidenceIndex FloatDenseEvidence { get; set; }
     }
 
     // Operation-owned aggregate for sequential quality attempts. These are the

@@ -1,5 +1,42 @@
 ﻿# Current milestone M2 — simpler native workspace
 
+30 October — **preview.64 verified compact export copies qualified** inside
+the ONE incomplete G1/M2. Exact start:
+`1c96251bb7d8d4cf3ed54443e1920857942d9ad6`. New whole-R L4 is admitted only
+by existing explicit Error-bounded independent-copy preparation. Both curve
+alternatives qualify before codecs; early L4 and scoped evidence share the
+existing two-million scalar-work ceiling, native-work limits and 24 attempts.
+Every cumulative quality comparison uses the original finished target master.
+
+Qualification: **3520 native checks/11 completed runs**, **55 fresh Python
+checks**, **1352 separate renderer assertions**; 31 UI PNGs covered by 22 actual
+views and 9 exact reviewed-image matches; all 261 GIF frames viewed on 33 sheets
+plus 11 full PNGs. Production build5 stays fixed; harness6/7 add test-only Apply,
+PAC and focused normal-fit segmentation under the unchanged 10-minute watchdog.
+Timed-out combined fit and four upstream reverse-bake refusals are excluded.
+All 952 final source/native/fixture/protected63 facts remain unchanged.
+
+Actual Library Use forward masters 109984/81140B become 58256/54308B, with
+L4-specific gains 3024/4404B versus verified incumbents. Fitted 75152B becomes
+53004B through existing reduction/indexed work; zero eligible L4 and four exact
+entry/exit endpoint/join poses remain. Actual current Apply uses one native
+command; Undo/Redo, retained original baseline and actual animation-list Export
+preserve storage without automatic optimization. Native PAC insertion/resave
+measures 26752B saving against the same finished-master container.
+
+See [acceptance](../CHR0_COMPACT_EXPORT_ACCEPTANCE_2026-10-30.md),
+[benchmark](../CHR0_COMPACT_EXPORT_BENCHMARK_2026-10-30.md) and
+[notes](../CHR0_COMPACT_EXPORT_NOTES_2026-10-30.md). Launcher selects qualified
+`Fighterport-float64/native1`; parent `-Check` resolves it without UI launch.
+**Publication verification remains pending** the parent's DoctorFlux-only
+source commit/push to public `Fighterport/main`. Assets/settings/captures/binaries
+stay excluded. Full native viewer, original Next, hierarchy/binds/all weights,
+source-owned roots, historical recipes, native Undo and exact ordinary Save/
+right-click Export remain. No new UI/default/solver/schema/adapter or competing
+milestone. Donor-size gap, reverse fractional bake, broader contacts/editor/
+runtime/Melee, input/DPI/human and game acceptance stay open. No global minimum
+or universal porting claim; no next increment is promoted. Earlier records follow.
+
 29 October — **preview.63 native write-path diagnosis and exact cleanup**
 qualifies its bounded increment within the ONE incomplete G1/M2. Start:
 `d82c3f709b6d8526d11243bc0d4b6be98b75f9ad`. Actual original/no-edit/one-key/

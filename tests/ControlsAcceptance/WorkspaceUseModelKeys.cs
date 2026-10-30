@@ -183,6 +183,11 @@ internal static partial class Program
                 "Authentic source-channel Use-button output reduces actual keys and does not exceed its same-motion Dense reference bytes");
             evidence.Add(new { Scope = "Actual shared-library Use button", Mode = resultAsset.Retarget.KeyframeMode.ToString(), Report = report,
                 SourceClip = sourceItem.Clip.Id, SourceModel = displayed.Reference.ModelId, SourceContent = sourceContent });
+            if (args.Contains("--authentic-float-export-copy"))
+            {
+                await Await<ControlReply>(Call(form, "LoadControls"));
+                await NativeDenseFloatAuthenticExportCopy(form, Path.Combine(output, "authentic-float-export-copy"));
+            }
             await InterpolatedNativeBodyUndo(form, resultAsset);
             await UseModelRoundtrip(form, resultAsset, output, "authentic-use-model-source-channel");
 
