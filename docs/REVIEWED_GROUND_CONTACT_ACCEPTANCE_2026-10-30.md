@@ -190,4 +190,8 @@ solver or new renderer/document owner was introduced.
 Launcher promotion selects the verified local `.65/candidate-native` package.
 Source-only publication uses DoctorFlux identity on public `Fighterport/main`;
 assets, settings, native binaries, project snapshots and captures stay ignored.
-Publication/contributor verification is recorded after the source push.
+Published implementation: [`7c47706`](https://github.com/DoctorFlux/Fighterport/commit/7c47706ca37749c391d64c45d4e318aa9d39876f).
+After pushing, GitHub independently reported DoctorFlux as both author and
+committer, public visibility, canonical `main` at that exact revision and a
+DoctorFlux-only contributor list. No Codex author/coauthor/collaborator was added.
+The following documentation-only commit records this observed publication state.

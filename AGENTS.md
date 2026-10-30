@@ -11,6 +11,9 @@ runs, 936 renderer assertions, 66 inspected UI PNGs and 177 inspected GIF frames
 Earlier body correction needs its own unchecked review; original first pose,
 authored pins/actions, roots and all weights remain exact. See
 [acceptance and retained failures](docs/REVIEWED_GROUND_CONTACT_ACCEPTANCE_2026-10-30.md).
+Implementation `7c47706` is published to public main. GitHub verified DoctorFlux
+author/committer and the DoctorFlux-only contributor list after publication.
+The launcher check resolves the verified local .65 package without opening UI.
 
 30 October 2026 **preview.64-verified-float-storage** qualifies its bounded
 increment inside the ONE incomplete G1/M2. Start:

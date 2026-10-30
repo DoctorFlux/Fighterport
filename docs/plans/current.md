@@ -31,6 +31,8 @@ Local launcher selects `Fighterport-contacts65/candidate-native` after qualifica
 source-only public main uses DoctorFlux attribution. See
 [acceptance, byte comparisons and retained failures](../REVIEWED_GROUND_CONTACT_ACCEPTANCE_2026-10-30.md)
 and [implementation history](../REVIEWED_CONTACTS_PROGRESS_2026-10-30.md).
+Published implementation: `7c47706`; public main, DoctorFlux author/committer and
+DoctorFlux-only contributors verified after push. Parent launcher `-Check` passes.
 
 30 October — **preview.64 verified compact export copies qualified** inside
 the ONE incomplete G1/M2. Exact start:
