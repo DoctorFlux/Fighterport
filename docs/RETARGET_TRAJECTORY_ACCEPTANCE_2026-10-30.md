@@ -155,3 +155,8 @@ The launcher now selects `Fighterport-retarget65-fix/candidate-native`; the pare
 launcher `-Check` resolves that exact frozen executable without opening UI. Publish
 source only to public DoctorFlux/Fighterport/main with DoctorFlux attribution;
 keep private fixtures, generated exports, captures/settings and binaries ignored.
+
+Publication verified: implementation `62dfe99d73c329da72c5481502a9c80db1ebd0cc`
+is on public `DoctorFlux/Fighterport/main`. GitHub resolves both author and
+committer to DoctorFlux; contributor response lists only DoctorFlux. The parent
+launcher check resolves the frozen hotfix and the source checkout is clean.

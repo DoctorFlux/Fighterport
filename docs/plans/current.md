@@ -13,6 +13,9 @@ remain. Final Use takes 26.3/26.8 seconds including existing quality checks;
 dense bake about 1.7 seconds. Both Mario/Snake tilts still refuse; broader earlier
 failures remain open. Preview.66 ledges stays queued in this ONE incomplete M2.
 See [hotfix evidence and limits](../RETARGET_TRAJECTORY_ACCEPTANCE_2026-10-30.md).
+Implementation `62dfe99` is published to public main; DoctorFlux author/committer
+and DoctorFlux-only contributors are verified. Launcher `-Check` resolves the
+frozen preview.65.1 package.
 
 30 October — **preview.65 reviewed ground contacts qualifies its bounded slice**,
 starting `2c77c042d3f576f6b52ad6b6f80c7420ef7819f8`. The ONE G1/M2 milestone
