@@ -20,8 +20,9 @@ Reverse up-air rejects upstream before optimization. See
 [architecture](CHR0_COMPACT_EXPORT_NOTES_2026-10-30.md),
 [acceptance](CHR0_COMPACT_EXPORT_ACCEPTANCE_2026-10-30.md) and
 [benchmark](CHR0_COMPACT_EXPORT_BENCHMARK_2026-10-30.md).
-Launcher: `Fighterport-float64/native1`; source publication verification remains
-pending parent delivery. ONE G1/M2 remains incomplete; contact/editor/runtime/
+Launcher: `Fighterport-float64/native1`; source implementation `af6c975` is
+published to public main with verified DoctorFlux author/committer and sole
+contributor on 30 October. ONE G1/M2 remains incomplete; contact/editor/runtime/
 Melee/input/DPI/human/game gates remain open.
 
 Preview.63 traces actual original, edited, worker, retarget and fitting bytes.

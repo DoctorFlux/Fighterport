@@ -15,8 +15,9 @@ rejects before optimization at the unchanged corrected-bake gate. See
 [acceptance](CHR0_COMPACT_EXPORT_ACCEPTANCE_2026-10-30.md),
 [benchmark](CHR0_COMPACT_EXPORT_BENCHMARK_2026-10-30.md) and the sole
 [current plan](plans/current.md). Launcher: `Fighterport-float64/native1`.
-Source-only DoctorFlux public-main publication verification is pending parent
-commit/push. No second milestone or new increment is promoted. Broader contact,
+Source-only implementation `af6c975` is published to public main; DoctorFlux
+author/committer and sole contributor were verified on 30 October. No second
+milestone or new increment is promoted. Broader contact,
 editor/runtime/Melee, input/DPI/human and game gates remain open.
 Earlier qualified checkpoints follow.
 

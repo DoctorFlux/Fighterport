@@ -149,9 +149,20 @@ HQ analysis times out and contributes **zero** admitted checks; completed
 focused204 is separate. Earlier development/failed receipts are not blended in.
 
 The qualified launcher was promoted separately by the parent to
-`Fighterport-float64/native1`; `Start-FighterPort.ps1 -Check` exits0 without UI
-launch. Source publication remains a separate DoctorFlux-attributed public
-`DoctorFlux/Fighterport/main` step; this record does not claim a commit/push.
+`Fighterport-float64/native1`; `Start-FighterPort.ps1 -Check` exits 0 without UI
+launch. On 30 October, `git push origin main` published source implementation
+[`af6c975fec955741a561bc0adb3776a6474b4f1a`](https://github.com/DoctorFlux/Fighterport/commit/af6c975fec955741a561bc0adb3776a6474b4f1a)
+to public `DoctorFlux/Fighterport/main`. GitHub's main commit matched that SHA,
+with DoctorFlux as author and committer using the verified account email.
+The authenticated account was DoctorFlux (100806234); the contributor endpoint
+returned only DoctorFlux, with 58 contributions in that dated snapshot.
+No Codex attribution, coauthor or collaborator was added. This documentation
+receipt changes no qualified production source or binary.
+
+Publication verification used `gh api repos/DoctorFlux/Fighterport/commits/main`,
+`gh api user`, and `gh api repos/DoctorFlux/Fighterport/contributors --paginate`.
+Public visibility and default main were also checked through the GitHub connector.
+
 Broader G1/M2, physical input/monitor DPI/human usability, universal contacts,
 external editor/runtime compatibility, Melee and actual game acceptance remain
 open. No mathematical global minimum or fixed saving is claimed.

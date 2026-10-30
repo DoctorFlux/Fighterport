@@ -14,8 +14,9 @@ GIF frames/33 sheets/11 full PNGs. Forward masters 109984/81140B export
 rejects upstream; no output or correction-disabled workaround is invented.
 See [acceptance](docs/CHR0_COMPACT_EXPORT_ACCEPTANCE_2026-10-30.md) and
 [benchmark](docs/CHR0_COMPACT_EXPORT_BENCHMARK_2026-10-30.md).
-Launcher: qualified `Fighterport-float64/native1`. Source-only DoctorFlux public
-main publication verification is pending parent delivery. Assets/settings/
+Launcher: qualified `Fighterport-float64/native1`. Source-only public main
+implementation `af6c975` is published; DoctorFlux author/committer and the
+DoctorFlux-only contributor list were verified on 30 October. Assets/settings/
 captures/binaries remain excluded. Background-only testing stays; broader
 contact/editor/runtime/Melee/input/DPI/human/game gates remain open.
 Earlier qualified records follow.

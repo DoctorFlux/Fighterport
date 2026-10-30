@@ -28,8 +28,9 @@ See [acceptance](../CHR0_COMPACT_EXPORT_ACCEPTANCE_2026-10-30.md),
 [benchmark](../CHR0_COMPACT_EXPORT_BENCHMARK_2026-10-30.md) and
 [notes](../CHR0_COMPACT_EXPORT_NOTES_2026-10-30.md). Launcher selects qualified
 `Fighterport-float64/native1`; parent `-Check` resolves it without UI launch.
-**Publication verification remains pending** the parent's DoctorFlux-only
-source commit/push to public `Fighterport/main`. Assets/settings/captures/binaries
+**Published:** source implementation `af6c975` on public `Fighterport/main`.
+DoctorFlux author/committer and the DoctorFlux-only contributor list were
+verified on 30 October. Assets/settings/captures/binaries
 stay excluded. Full native viewer, original Next, hierarchy/binds/all weights,
 source-owned roots, historical recipes, native Undo and exact ordinary Save/
 right-click Export remain. No new UI/default/solver/schema/adapter or competing
