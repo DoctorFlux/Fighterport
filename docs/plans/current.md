@@ -26,6 +26,10 @@ the full 18-case corpus, moving supports, physical input/DPI/human/game/Melee
 remain open. Preview.66 finite ledges remains queued. Qualified local package:
 `Fighterport-orientation653/native1`. See [measurements, bytes and limitations](../CONTACT_ORIENTATION_ACCEPTANCE_2026-10-31.md).
 
+Implementation `62017ab` is published to public main with verified DoctorFlux
+author/committer and DoctorFlux-only contributors. Launcher `-Check` resolves
+the frozen preview.65.3 executable without opening UI.
+
 31 October - **preview.65.2 analytical recovery qualifies its bounded slice**,
 starting `a68f9bc1557565a4f9688a86ad6d84dcccda10f1`. Both Mario/Snake AttackS3S
 directions now pass actual Use with both source-key options, own-Wait1 first-frame

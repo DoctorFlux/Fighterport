@@ -170,3 +170,17 @@ model/anatomy or animation. Missing/contradictory context, moving supports and
 finite ledges remain outside this hotfix. Full G1/M2, the 18-case corpus, physical
 input, monitor DPI, human usability, external editors, Melee and game acceptance
 remain open. Historical failed evidence and the prior qualified package remain.
+
+## Publication and launcher
+
+Implementation `62017abc8d1ca3cf8d16b249c7807ab8b5d2a166` was published to public
+`DoctorFlux/Fighterport/main` on 31 October. GitHub verified public visibility,
+default `main`, DoctorFlux author/committer and DoctorFlux as the sole listed
+contributor. No Codex author, coauthor or collaborator was added. The 14 reviewed
+source/test/documentation files were committed; assets, settings, captures and
+binaries remain excluded. The worktree was clean after publication.
+
+The local launcher selects `Fighterport-orientation653/native1`.
+`Start-FighterPort.ps1 -Check` resolves the exact frozen executable and reports
+`2.0.0-preview.65.3-contact-orientation` without opening UI. Existing running
+instances were not interrupted; restarting normally loads the qualified package.
