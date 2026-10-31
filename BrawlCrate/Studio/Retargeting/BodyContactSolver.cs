@@ -7,6 +7,7 @@ namespace BrawlCrate.Studio.Retargeting
 {
     public sealed partial class ContactMotion
     {
+        internal const string EndOrientationPolicy="coupled-end-world-orientation-1";
         private sealed class ContactRow
         {
             internal SkinPoint Point;
@@ -23,11 +24,16 @@ namespace BrawlCrate.Studio.Retargeting
                 Support=nearFeet!=null && nearFeet.ContainsKey(c.Key)?Math.Max(c.Value.Support,nearFeet[c.Key].Item1):c.Value.Support,
                 Lock=c.Value.Lock,Marker=c.Value.Marker,Anchor=c.Value.Anchor})).Where(c=>c.Value.Support>0.001f).ToArray();
             int pelvis=pose.Rig.Roles["pelvis"];
+            // Analytical contact preparation has already chosen the palm/sole
+            // orientation (including authored rolls and partial flattening).
+            // Keep that goal throughout the coupled solve, rather than letting
+            // whichever skin vertex happens to be lowest rotate the end joint.
+            var endOrientations=active.Where(c=>IsEndContact(c.Key)).ToDictionary(c=>pose.Rig.Roles[c.Key],c=>pose.Orientation[pose.Rig.Roles[c.Key]]);
             // A supported head or arm can require torso articulation even when
             // the donor's trunk itself is slightly above the ground.
             int[] allJoints=active.SelectMany(c=>JointControls(pose.Rig,c.Key))
                 .Concat(new[]{"pelvis","spine","chest","neck"}.Select(r=>pose.Rig.Roles[r]))
-                .Where(j=>plan.Mapping.Any(m=>m.TargetIndex==j)).Distinct().OrderBy(i=>i).ToArray();
+                .Where(j=>plan.Mapping.Any(m=>m.TargetIndex==j)&&!endOrientations.ContainsKey(j)).Distinct().OrderBy(i=>i).ToArray();
             var digits=new HashSet<int>(pose.Rig.Roles.Where(r=>r.Key.Contains(".finger") || r.Key.EndsWith(".toe",StringComparison.Ordinal)).Select(r=>r.Value));
             int[] joints=allJoints.Where(j=>!digits.Contains(j)).ToArray();
             int count=3+joints.Length*3;
@@ -116,7 +122,7 @@ namespace BrawlCrate.Studio.Retargeting
                         Vector3 derivative=Vector3.Zero;
                         for(int w=0;w<skinPositions.Length;w++)
                             if(Descendant(pose.Rig,row.Point.Weights[w].Joint,joints[joint]))
-                                derivative+=Vector3.Cross(skinPositions[w]-positions[joints[joint]],row.Axis)*row.Point.Weights[w].Weight;
+                                derivative+=Vector3.Cross(ContactLever(pose.Rig,positions,row.Point.Weights[w].Joint,skinPositions[w],joints[joint],endOrientations),row.Axis)*row.Point.Weights[w].Weight;
                         jacobian[3+joint*3]=derivative.X*row.DerivativeWeight;
                         jacobian[4+joint*3]=derivative.Y*row.DerivativeWeight;
                         jacobian[5+joint*3]=derivative.Z*row.DerivativeWeight;
@@ -139,7 +145,7 @@ namespace BrawlCrate.Studio.Retargeting
                     for(int joint=0;joint<joints.Length;joint++)
                     {
                         if(!Descendant(pose.Rig,bone,joints[joint]))continue;
-                        Vector3 offset=positions[bone]-positions[joints[joint]];
+                        Vector3 offset=ContactLever(pose.Rig,positions,bone,positions[bone],joints[joint],endOrientations);
                         int index=3+joint*3;
                         columns[index]=new Vector3(0,-offset.Z,offset.Y);
                         columns[index+1]=new Vector3(offset.Z,0,-offset.X);
@@ -175,7 +181,7 @@ namespace BrawlCrate.Studio.Retargeting
                 // can miss descent. A diagonal gradient step crosses that corner.
                 for(int attempt=0;attempt<12;attempt++)
                 {
-                    ApplyBodyStep(pose,previous,pelvis,controlForBone,translation,rotations,scale);
+                    ApplyBodyStep(pose,previous,pelvis,controlForBone,translation,rotations,scale,endOrientations);
                     double candidateLoss=BodyContactLoss(pose,active,reference,poseWeight,desiredHeights,length);
                     if(candidateLoss<loss){acceptedLoss=candidateLoss;improved=true;break;}
                     scale*=0.5f;
@@ -193,7 +199,7 @@ namespace BrawlCrate.Studio.Retargeting
             // Finish the coupled body solve with exact two-bone end constraints.
             // This preserves palm/sole orientation and segment lengths while
             // removing the small end drift left by competing soft body goals.
-            ProjectBodyEnds(pose,active,desiredHeights);
+            ProjectBodyEnds(pose,active,desiredHeights,endOrientations);
             var supportedBody=active.Where(c=>!IsEndContact(c.Key) && c.Value.Support>0.99f).ToArray();
             for(int pass=0;pass<4 && supportedBody.Length>0;pass++)
             {
@@ -212,7 +218,7 @@ namespace BrawlCrate.Studio.Retargeting
                 {
                     Array.Copy(original,pose.Local,original.Length);pose.Update();
                     pose.SetWorldPoint(pelvis,pose.Point(pelvis)+pose.Rig.GroundNormal*shift);
-                    ProjectBodyEnds(pose,active,desiredHeights);
+                    ProjectBodyEnds(pose,active,desiredHeights,endOrientations);
                     if(BodyContactLoss(pose,active,reference,poseWeight,desiredHeights,length)<loss){improved=true;break;}
                     shift*=0.5f;
                 }
@@ -235,7 +241,7 @@ namespace BrawlCrate.Studio.Retargeting
                     {
                         Array.Copy(before,pose.Local,before.Length);pose.Update();
                         pose.SetWorldRotation(joint,Quaternion.CreateFromAxisAngle(axis,searchAngle*sign)*orientation);
-                        ProjectBodyEnds(pose,active,desiredHeights);
+                        ProjectBodyEnds(pose,active,desiredHeights,endOrientations);
                         double loss=BodyContactLoss(pose,active,reference,poseWeight,desiredHeights,length);
                         if(loss<bestLoss){bestLoss=loss;best=(JointTransform[])pose.Local.Clone();}
                     }
@@ -245,8 +251,19 @@ namespace BrawlCrate.Studio.Retargeting
                 if(!improved)searchAngle*=0.5f;
             }
         }
-        private void ProjectBodyEnds(RigPose pose,KeyValuePair<string,ContactGoal>[] active,Dictionary<string,float> desiredHeights)
+        private static Vector3 ContactLever(Rig rig,Vector3[] positions,int bone,Vector3 point,int joint,Dictionary<int,Quaternion> ends)
         {
+            // Holding an end's world orientation cancels its inherited angular
+            // change, but its pivot still moves with the ancestor. Skin below
+            // that end therefore uses the end pivot's lever, with every weight.
+            int first=-1;
+            foreach(int end in ends.Keys)
+                if(Descendant(rig,bone,end)&&Descendant(rig,end,joint)&&(first<0||Descendant(rig,first,end)))first=end;
+            return (first<0?point:positions[first])-positions[joint];
+        }
+        private void ProjectBodyEnds(RigPose pose,KeyValuePair<string,ContactGoal>[] active,Dictionary<string,float> desiredHeights,Dictionary<int,Quaternion> orientations)
+        {
+            foreach(var end in orientations.OrderBy(p=>p.Key))pose.SetWorldRotation(end.Key,end.Value);
             var report=new RetargetPose{Pose=pose};
             for(int pass=0;pass<3;pass++)foreach(var contact in active.Where(c=>IsEndContact(c.Key)))
             {
@@ -263,7 +280,7 @@ namespace BrawlCrate.Studio.Retargeting
                 plan.SolveLimb(pose,report,side,contact.Key.EndsWith(".hand",StringComparison.Ordinal),pose.Point(contact.Key)+delta);
             }
         }
-        private static void ApplyBodyStep(RigPose pose,JointTransform[] original,int pelvis,int[] controlForBone,Vector3 translation,Vector3[] rotations,float scale)
+        private static void ApplyBodyStep(RigPose pose,JointTransform[] original,int pelvis,int[] controlForBone,Vector3 translation,Vector3[] rotations,float scale,Dictionary<int,Quaternion> orientations)
         {
             Array.Copy(original,pose.Local,original.Length);
             // Body controls descend from the pelvis. Restore its unchanged
@@ -281,7 +298,12 @@ namespace BrawlCrate.Studio.Retargeting
             for(int bone=pelvis;bone<original.Length;bone++)
             {
                 int control=controlForBone[bone];
-                if(control>=0)
+                if(orientations.TryGetValue(bone,out Quaternion required))
+                {
+                    int ancestor=pose.Rig.Joints[bone].Parent;
+                    pose.Local[bone].Rotation=Quaternion.Normalize(ancestor<0?required:Quaternion.Inverse(pose.Orientation[ancestor])*required);
+                }
+                else if(control>=0)
                 {
                     float angle=rotations[control].Length();
                     if(angle>=0.000001f)

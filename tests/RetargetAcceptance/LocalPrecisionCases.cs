@@ -16,6 +16,7 @@ internal static partial class Program
         AdaptiveRotationPrecisionChecks();
         CorrectionTrajectoryChecks();
         CorrectionSupportChecks();
+        CoupledOrientationChecks();
         SourceSnapshotExtentChecks(output);
         foreach(bool permuted in new[]{false,true})foreach(float units in new[]{.7f,1.9f})
         {

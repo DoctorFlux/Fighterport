@@ -54,6 +54,20 @@ internal static partial class Program
             var refused=Create();bool exhausted=false;
             try{refused.RefineSupports(t=>true,(t,p)=>false,Solved,count=>false,33,CancellationToken.None);}catch(InvalidOperationException){exhausted=true;}
             Check(exhausted&&refused.AnchorCount==9&&ReferenceEquals(refused.Evaluate(.5f),anchors[4]),"Exhausted support preparation publishes no partial reference or changed anchor");
+            AdaptiveRotationPose Turning(float time)
+            {
+                var p=Fk(time);p.Local[1].Rotation=Quaternion.CreateFromAxisAngle(Vector3.UnitY,.4f*(float)Math.Sin(time*Math.PI*8));p.Update();
+                return new AdaptiveRotationPose{EulerDegrees=p.Local.Select(v=>BrawlRetargeter.Euler(v.Rotation)).ToArray(),WorldRotations=p.Orientation,
+                    LocalRotations=p.Local.Select(v=>v.Rotation).ToArray(),Translations=p.Local.Select(v=>v.Translation).ToArray(),Scales=p.Local.Select(v=>v.Scale).ToArray()};
+            }
+            var turningAnchors=Enumerable.Range(0,9).Select(i=>Turning(i/8f)).ToArray();
+            var turning=new RetargetCorrectionTrajectory(rig,turningAnchors,8,new[]{false,true,false,false,false,false,false},Fk,(b,t)=>Vector3.Zero,CancellationToken.None);
+            long turningWork=0;
+            turning.RefineSupports(t=>true,(t,p)=>ContactMotion.EndOrientationDegrees(p.Orientation[1],Turning(t).WorldRotations[1])<=.125,
+                Turning,count=>{turningWork+=count;return turningWork<=2000000;},33,CancellationToken.None);
+            double orientationMaximum=Enumerable.Range(0,1025).Select(i=>i/1024f).Max(t=>SpanAngle(turning.Evaluate(t).WorldRotations[1],Turning(t).WorldRotations[1]));
+            Check(turning.AnchorCount>9&&orientationMaximum<=.125,"Orientation-only curvature refines contact preparation even when floor position alone cannot reveal it",new{renamed,permuted,size,turning.AnchorCount,orientationMaximum,turningWork});
+            Check(Enumerable.Range(0,9).All(i=>ReferenceEquals(turning.Evaluate(i/8f),turningAnchors[i])),"Orientation refinement retains every original solved reference anchor");
         }
     }
 }

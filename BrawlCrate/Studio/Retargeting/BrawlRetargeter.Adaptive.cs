@@ -54,6 +54,7 @@ namespace BrawlCrate.Studio.Retargeting
             if(trajectory!=null&&result.Contacts.FloorEnabled)
             {
                 var supports=target.Rig.Surfaces.Where(p=>p.Key.EndsWith(".foot",StringComparison.Ordinal)||p.Key.EndsWith(".hand",StringComparison.Ordinal)).ToArray();
+                var orientations=new Dictionary<float,Dictionary<string,Quaternion>>();
                 float Bound(string role)
                 {
                     string side=role.Split('.')[0];bool arm=role.EndsWith(".hand",StringComparison.Ordinal);
@@ -63,9 +64,13 @@ namespace BrawlCrate.Studio.Retargeting
                 }
                 bool Accept(float time,RigPose pose)
                 {
+                    if(!orientations.TryGetValue(time,out var desired))orientations.Add(time,desired=result.Contacts.EndOrientationReference(time));
                     foreach(var support in supports)
                     {
                         var goal=result.Contacts.At(support.Key,time);if(goal.Support<=.99f)continue;
+                        // Reserve half the existing 0.25-degree contact budget
+                        // before native curve representation adds its own error.
+                        if(!desired.TryGetValue(support.Key,out var orientation)||ContactMotion.EndOrientationDegrees(pose.Orientation[target.Rig.Roles[support.Key]],orientation)>.125)return false;
                         float bound=Bound(support.Key);
                         if(support.Value.Points.Any(point=>Vector3.Dot(point.Evaluate(pose),target.Rig.GroundNormal)<target.Rig.GroundHeight-bound))return false;
                         if(goal.Lock>.99f&&goal.Marker!=null)
@@ -147,6 +152,7 @@ namespace BrawlCrate.Studio.Retargeting
                 " degrees; local translation " + bake.MaximumTranslationError.ToString("G7", System.Globalization.CultureInfo.InvariantCulture) +
                 "; local scale " + bake.MaximumScaleError.ToString("G7", System.Globalization.CultureInfo.InvariantCulture) +
                 ". Source-owned control curves retained. "+(trajectory==null?"Direct solved-pose reference.":"Correction trajectory: "+RetargetCorrectionTrajectory.Policy+"; every original eighth-frame pose retained; "+trajectory.AnchorCount+" correction anchors; source FK remains continuously evaluated. Raw independent subframe contact optima are not its motion reference.")+
+                " Coupled contact orientation: "+ContactMotion.EndOrientationPolicy+"; support preparation reserves 0.125 degrees of the existing 0.25-degree contact bound."+
                 " Support preparation work: "+preparationWork+"/2000000 (separate bounded proposal phase); native curve work: "+bake.Work+"/2000000."+supportNote+
                 " These bake checks are sampled, not continuous or game acceptance. Export size optimization is separate.";
         }

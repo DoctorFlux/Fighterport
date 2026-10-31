@@ -1,5 +1,16 @@
 # Fighterport
 
+31 October: **preview.65.3-contact-orientation** qualifies the bounded supported-end
+orientation fix from `d705a7801236d12294268d214c07b20709ee8bc0`, in the ONE
+incomplete G1/M2. Shared coupled solving retains intended palm/sole world
+orientation and accounts for compensating FK in every skin-weight derivative.
+Preparation checks orientation as well as support position. Sonic/Mario/Snake
+tilts and both actual source-key/own-Wait1 paths pass unchanged limits with zero
+root-local error; no character/action exceptions or viewer changes. Broader Sonic
+body clearance remains unqualified. Preserve failed evidence, all weights/binds,
+source-owned controls and original Next. Preview.66 ledges stays queued. See
+[acceptance](docs/CONTACT_ORIENTATION_ACCEPTANCE_2026-10-31.md).
+
 31 October: **preview.65.2-analytical-recovery** qualifies the bounded Mario/Snake
 forward-tilt hotfix in the ONE incomplete G1/M2, from
 `a68f9bc1557565a4f9688a86ad6d84dcccda10f1`. The generic coherent correction

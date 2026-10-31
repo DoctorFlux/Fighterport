@@ -1,5 +1,31 @@
 ﻿# Current milestone M2 — simpler native workspace
 
+31 October - **preview.65.3 contact orientation qualifies its bounded slice**,
+starting `d705a7801236d12294268d214c07b20709ee8bc0`. The shared coupled solver
+keeps the intended end orientation throughout trial FK/projection, with complete
+skin Jacobians that account for the compensating rotation. Orientation-only
+curvature now participates in offline support refinement. Source-owned roots,
+all weights/binds, original Next/viewer and existing quality/work gates remain.
+
+The Sonic tilt defect falls from 0.79346 to 0.03949 degrees; Snake/Mario tilt
+regressions measure 0.02658/0.03436 degrees, all below the unchanged 0.25-degree
+contact bound, with zero root-local error. Fresh qualification includes 1,216
+precision, 628 root, 94 coordinate and 222 actual-use checks, nine native oracles
+and held-out aerial/idle bakes. Both source-key options pass own-Wait1 frame-1
+fitting, current Apply, Undo/Redo, native export and project Save/reopen. Three
+fresh orthographic GIFs cover 218 inspected frames/28 sheets with 1,141 renderer
+assertions. UI evidence: six actual Sonic images and twelve exact prior-view
+hash matches. Reviewed body/floor guides and numerical coverage remain explicit.
+The existing reviewed earlier-body get-up recovery adds 52 fresh checks,
+including decoded optimized-copy contact replay and Save/reopen at a shorter
+evidence path. The deeper legacy asset-move failure is retained in the record.
+
+This is the ONE incomplete G1/M2, not acceptance of all contacts or animations.
+Sonic's early low body/head still intersects the floor; broader clearance/style,
+the full 18-case corpus, moving supports, physical input/DPI/human/game/Melee
+remain open. Preview.66 finite ledges remains queued. Qualified local package:
+`Fighterport-orientation653/native1`. See [measurements, bytes and limitations](../CONTACT_ORIENTATION_ACCEPTANCE_2026-10-31.md).
+
 31 October - **preview.65.2 analytical recovery qualifies its bounded slice**,
 starting `a68f9bc1557565a4f9688a86ad6d84dcccda10f1`. Both Mario/Snake AttackS3S
 directions now pass actual Use with both source-key options, own-Wait1 first-frame

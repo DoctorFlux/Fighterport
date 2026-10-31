@@ -124,7 +124,9 @@ internal static partial class Program
             var clip=Walk(m).OfType<CHR0Node>().Single(c=>c.Name==name);var plan=new HumanoidRetargeter(source.Rig,target.Rig);
             int last=clip.Loop?clip.FrameCount:clip.FrameCount-1;
             var contacts=new ContactMotion(plan,time=>BrawlRetargeter.Sample(source,clip,time),last,true,requireFloorEvidence:true,loop:clip.Loop);
-            double supportOrientation=0;double maxAngle=0,maxTranslation=0,maxScale=0,maxWorld=0,rootError=0,penetration=0,rawPenetration=0,lockDrift=0,nativePoseError=0,nativeSurfaceError=0,nativePenetration=0;int samples=0,contactSamples=0;float penetrationTime=0;string penetrationRole=null;
+            double supportOrientation=0,intendedOrientation=0;float orientationTime=0;string orientationRole=null;
+            var orientationWitnesses=new List<object>();
+            double maxAngle=0,maxTranslation=0,maxScale=0,maxWorld=0,rootError=0,penetration=0,rawPenetration=0,lockDrift=0,nativePoseError=0,nativeSurfaceError=0,nativePenetration=0;int samples=0,contactSamples=0;float penetrationTime=0;string penetrationRole=null;
             var nativeTarget=target.Bones[0].Model;
             var nativeSurfaces=target.Rig.Surfaces.Keys.ToDictionary(role=>role,role=>nativeTarget.PolygonList.Cast<MDL0ObjectNode>().SelectMany(o=>o.Vertices)
                 .Where(v=>NativeSurfaceMember(v,target,role,target.Bones[target.Rig.Roles[role]])).ToArray());
@@ -136,6 +138,7 @@ internal static partial class Program
             foreach(float time in times)
             {
                 var expected=contacts.Evaluate(time).Pose;var actual=BrawlRetargeter.Sample(target,saved,time);samples++;
+                var intended=contacts.EndOrientationReference(time);
                 nativeTarget.ApplyCHR(saved,time+1);
                 bool anchor=time*8==(int)(time*8);
                 for(int bone=0;bone<target.Bones.Length;bone++)
@@ -147,7 +150,14 @@ internal static partial class Program
                 foreach(var pair in regions)
                 {
                     var goal=contacts.At(pair.Key,time);if(goal.Support<=.99f)continue;contactSamples++;
-                    if(pair.Key.EndsWith(".foot",StringComparison.Ordinal)||pair.Key.EndsWith(".hand",StringComparison.Ordinal))supportOrientation=Math.Max(supportOrientation,SpanAngle(actual.Orientation[target.Rig.Roles[pair.Key]],expected.Orientation[target.Rig.Roles[pair.Key]]));
+                    if(pair.Key.EndsWith(".foot",StringComparison.Ordinal)||pair.Key.EndsWith(".hand",StringComparison.Ordinal))
+                    {
+                        int joint=target.Rig.Roles[pair.Key];double error=SpanAngle(actual.Orientation[joint],expected.Orientation[joint]);
+                        if(error>supportOrientation){supportOrientation=error;orientationTime=time;orientationRole=pair.Key;}
+                        if(!intended.TryGetValue(pair.Key,out var goalOrientation))throw new InvalidDataException("Supported end has no explicit intended orientation.");
+                        intendedOrientation=Math.Max(intendedOrientation,SpanAngle(actual.Orientation[joint],goalOrientation));
+                        orientationWitnesses.Add(new{Time=time,Role=pair.Key,ErrorDegrees=error,Actual=actual.Orientation[joint],Expected=expected.Orientation[joint]});
+                    }
                     float low=pair.Value.Min(p=>Vector3.Dot(p.Evaluate(actual),target.Rig.GroundNormal))-target.Rig.GroundHeight;
                     float raw=pair.Value.Min(p=>Vector3.Dot(p.Evaluate(expected),target.Rig.GroundNormal))-target.Rig.GroundHeight;
                     if(-low>penetration){penetrationTime=time;penetrationRole=pair.Key;}penetration=Math.Max(penetration,Math.Max(0,-low));rawPenetration=Math.Max(rawPenetration,Math.Max(0,-raw));
@@ -156,9 +166,12 @@ internal static partial class Program
                     if(goal.Marker!=null&&goal.Lock>.99f){var delta=goal.Marker.Evaluate(actual)-goal.Anchor;delta-=target.Rig.GroundNormal*Vector3.Dot(delta,target.Rig.GroundNormal);lockDrift=Math.Max(lockDrift,delta.Length());}
                 }
             }
-            var report=new{Clip=name,Passed=maxAngle<=.025&&maxTranslation<=.0002&&maxScale<=.00001&&rootError<.0001&&nativePoseError<.01&&nativeSurfaceError<.01&&penetration<=contactBound&&nativePenetration<=contactBound&&lockDrift<=contactBound&&supportOrientation<=.25,Samples=samples,OriginalSolvedAnchors=last*8+1,MaximumAnchorOrientation=maxAngle,MaximumAnchorTranslation=maxTranslation,MaximumAnchorScale=maxScale,MaximumAnchorWorldPosition=maxWorld,RootLocalError=rootError,FullContactSamples=contactSamples,MaximumPenetration=penetration,PenetrationTime=penetrationTime,PenetrationRole=penetrationRole,NativePenetration=nativePenetration,ContactPositionBound=contactBound,NativeBoneAgreement=nativePoseError,NativeSurfaceAgreement=nativeSurfaceError,RawSolverPenetration=rawPenetration,MaximumPlanarLockDrift=lockDrift,SupportOrientationAgainstRawNext=supportOrientation,AllSkinInfluences=true,ContinuousProof=false,RawSubframeOptimaReference=false};
+            var report=new{Clip=name,Passed=maxAngle<=.025&&maxTranslation<=.0002&&maxScale<=.00001&&rootError<.0001&&nativePoseError<.01&&nativeSurfaceError<.01&&penetration<=contactBound&&nativePenetration<=contactBound&&lockDrift<=contactBound&&supportOrientation<=.25,Samples=samples,OriginalSolvedAnchors=last*8+1,MaximumAnchorOrientation=maxAngle,MaximumAnchorTranslation=maxTranslation,MaximumAnchorScale=maxScale,MaximumAnchorWorldPosition=maxWorld,RootLocalError=rootError,FullContactSamples=contactSamples,MaximumPenetration=penetration,PenetrationTime=penetrationTime,PenetrationRole=penetrationRole,NativePenetration=nativePenetration,ContactPositionBound=contactBound,NativeBoneAgreement=nativePoseError,NativeSurfaceAgreement=nativeSurfaceError,RawSolverPenetration=rawPenetration,MaximumPlanarLockDrift=lockDrift,SupportOrientationAgainstRawNext=supportOrientation,SupportOrientationTime=orientationTime,SupportOrientationRole=orientationRole,AllSkinInfluences=true,ContinuousProof=false,RawSubframeOptimaReference=false};
             File.WriteAllText(Path.Combine(output,"trajectory-verification.json"),new JavaScriptSerializer().Serialize(report));
+            File.WriteAllText(Path.Combine(output,"intended-orientation-verification.json"),new JavaScriptSerializer().Serialize(new{Passed=intendedOrientation<=.25,MaximumDegrees=intendedOrientation,LimitDegrees=.25,Reference=ContactMotion.EndOrientationPolicy}));
+            File.WriteAllText(Path.Combine(output,"support-orientation-witnesses.json"),new JavaScriptSerializer().Serialize(orientationWitnesses));
             Check(report.Passed,"Fresh native CHR0 retains original solved eighth-frame poses, native timing and source-owned motion controls",report);
+            Check(intendedOrientation<=.25,"Decoded supported end orientations retain the intended pre-coupled contact goal within the unchanged bound",new{intendedOrientation});
             return 0;
         }
     }

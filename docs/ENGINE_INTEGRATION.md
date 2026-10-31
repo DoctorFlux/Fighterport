@@ -1,5 +1,21 @@
 ﻿# Native Next integration
 
+Preview.65.3 adds `coupled-end-world-orientation-1` to the existing complete
+hashed original support evidence. Contact preparation retains its established
+flatness/roll goals. The coupled body solver treats those end world orientations
+as hard constraints during every trial/projection; no independent end rotation
+variable may drift while satisfying a changing skin minimum. Jacobians/prior
+levers include the compensating end rotation for every influence below an end.
+No native hierarchy/bind/weight changes or replacement solver/editor are used.
+
+Support refinement also reserves 0.125 degrees of the existing 0.25-degree
+contact orientation bound. It derives intended end goals without repeated
+coupled solving; original anchors, source FK/roots, native bake budgets and atomic
+failure remain. Runtime/playback does no new solving. The evidence envelope and
+legacy read path, exact project saving, shared codec and document/Undo ownership
+are unchanged. Qualification is bounded; Sonic's earlier low body/head clearance
+remains open. See [acceptance](CONTACT_ORIENTATION_ACCEPTANCE_2026-10-31.md).
+
 Preview.65.2 extends the offline coherent correction reference to generated
 analytical branches as well as coupled-body results. Original eighth-frame
 Next anchors remain exact; optional geometry-based support proposals publish

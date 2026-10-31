@@ -240,17 +240,7 @@ namespace BrawlCrate.Studio.Retargeting
                 }
                 bendDirections[role]=Vector3.Transform(bend,plan.Calibration);
             }
-            // Flatten only genuinely flat source contacts; preserve heel/toe rolls and FK.
-            foreach(var pair in controls.Where(p=>p.Value.Support>0))
-            {
-                float flatness=plan.Source.Surfaces[pair.Key].Sample(source).Flatness;
-                if(flatness<=0)continue;
-                int joint=target.Rig.Roles[pair.Key];
-                Vector3 normal=Vector3.Transform(target.Rig.Surfaces[pair.Key].NormalLocal,target.Orientation[joint]);
-                if(pair.Key.EndsWith(".hand",StringComparison.Ordinal) && Vector3.Dot(normal,up)<0)normal=-normal;
-                Quaternion aligned=RigMath.FromTo(normal,up)*target.Orientation[joint];
-                target.SetWorldRotation(joint,Quaternion.Slerp(target.Orientation[joint],aligned,pair.Value.Support*flatness));
-            }
+            AlignContactOrientations(source,target,controls);
             FitStancePelvis(source,target,controls,time);
             // An arm bearing weight far below the initial FK pose needs torso
             // articulation too. Solve it before reach projection can turn the
@@ -323,6 +313,38 @@ namespace BrawlCrate.Studio.Retargeting
             foreach(var pair in controls.Where(p=>p.Value.Support>0.99f))result.MaximumContactResidual=Math.Max(result.MaximumContactResidual,Math.Abs(plan.Target.Surfaces[pair.Key].Sample(target).Clearance));
             if(bodyActive)CachePose(time,source,result);
             return result;
+        }
+        private void AlignContactOrientations(RigPose source,RigPose target,Dictionary<string,ContactGoal> controls)
+        {
+            // Flatten only genuinely flat source contacts; preserve heel/toe rolls and FK.
+            Vector3 up=plan.Target.GroundNormal;
+            foreach(var pair in controls.Where(p=>p.Value.Support>0))
+            {
+                float flatness=plan.Source.Surfaces[pair.Key].Sample(source).Flatness;
+                if(flatness<=0)continue;
+                int joint=target.Rig.Roles[pair.Key];
+                Vector3 normal=Vector3.Transform(target.Rig.Surfaces[pair.Key].NormalLocal,target.Orientation[joint]);
+                if(pair.Key.EndsWith(".hand",StringComparison.Ordinal) && Vector3.Dot(normal,up)<0)normal=-normal;
+                Quaternion aligned=RigMath.FromTo(normal,up)*target.Orientation[joint];
+                target.SetWorldRotation(joint,Quaternion.Slerp(target.Orientation[joint],aligned,pair.Value.Support*flatness));
+            }
+        }
+        // Offline preparation only: derive the intended end orientations before
+        // the coupled positional solve, without running that solver again.
+        internal Dictionary<string,Quaternion> EndOrientationReference(float time)
+        {
+            var source=sample(time);var result=plan.Evaluate(source);Suspended?.Apply(source,result);
+            var controls=tracks.Keys.ToDictionary(role=>role,role=>At(role,time));
+            AlignContactOrientations(source,result.Pose,controls);
+            return controls.Where(p=>IsEndContact(p.Key)&&p.Value.Support>.99f).ToDictionary(p=>p.Key,p=>result.Pose.Orientation[plan.Target.Roles[p.Key]]);
+        }
+        internal static double EndOrientationDegrees(Quaternion a,Quaternion b)
+        {
+            double aa=(double)a.X*a.X+(double)a.Y*a.Y+(double)a.Z*a.Z+(double)a.W*a.W;
+            double bb=(double)b.X*b.X+(double)b.Y*b.Y+(double)b.Z*b.Z+(double)b.W*b.W;
+            if(!(aa>0)||!(bb>0)||double.IsInfinity(aa)||double.IsInfinity(bb))throw new System.IO.InvalidDataException("Invalid contact orientation.");
+            double dot=Math.Abs(((double)a.X*b.X+(double)a.Y*b.Y+(double)a.Z*b.Z+(double)a.W*b.W)/Math.Sqrt(aa*bb));
+            return 2*Math.Acos(Math.Min(1,dot))*180/Math.PI;
         }
         private void FitStancePelvis(RigPose source,RigPose target,Dictionary<string,ContactGoal> controls,float time)
         {

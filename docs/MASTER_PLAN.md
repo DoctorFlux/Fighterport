@@ -1,5 +1,16 @@
 # Fighterport master plan
 
+31 October - preview.65.3 qualifies the bounded supported-end orientation
+hotfix in the same incomplete G1/M2. Generic coupled constraints retain intended
+palm/sole world orientation; complete skin derivatives account for compensation.
+Offline preparation checks orientation before native curve baking. Sonic → Mario
+measures 0.03949 degrees against the unchanged 0.25-degree bound; Mario/Snake
+regressions and both source-key workflows pass with zero root-local error.
+Original Next/viewer, all weights, binds, numeric/work gates and native Undo remain.
+Broader Sonic body clearance and universal/game acceptance stay open; preview.66
+ledges remains queued. See [current plan](plans/current.md) and
+[acceptance](CONTACT_ORIENTATION_ACCEPTANCE_2026-10-31.md).
+
 31 October - preview.65.2 qualifies the bounded Mario/Snake forward-tilt
 retarget/recovery hotfix, with both actual source-key paths and target-owned
 Wait1 frame-1 endings. Generic correction transport/refinement and near-pole
