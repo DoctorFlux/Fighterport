@@ -331,6 +331,16 @@ namespace BrawlCrate.Studio.Retargeting
             bool signedZero = keys.Any(k => NegativeZero(k._index) || NegativeZero(k._value) || NegativeZero(k._tangent));
             if (!paired && !signedZero && keys.All(k => SameBits(k._value, keys[0]._value) && PositiveZero(k._tangent)))
             { seedFrames = new[]{0f}; return new[] { new ControlKey { Frame = 0, Value = keys[0]._value, Tangent = 0 } }; }
+            // A proven fixed master may already contain just its first key.
+            // Source-bone timing can still request paired seeds from another
+            // channel. Materialize the identical fixed function at those exact
+            // sides; never invent a derivative or discard the paired contract.
+            if(keys.Length==1&&!signedZero&&PositiveZero(keys[0]._tangent))
+            {
+                var seeds=new List<float>(sourceTimes);if(!seeds.Contains(0))seeds.Add(0);
+                seedFrames=seeds.OrderBy(t=>t).ToArray();
+                return seedFrames.Select(t=>new ControlKey{Frame=t,Value=keys[0]._value,Tangent=0}).ToArray();
+            }
             var byTime = keys.GroupBy(k => k._index).ToDictionary(g => g.Key, g => g.ToArray());
             foreach (float time in sourceGroups.Keys)
                 if (!byTime.ContainsKey(time)) throw new InvalidDataException("The immutable dense reference lacks a source seed knot at " + time + ".");

@@ -1,5 +1,41 @@
 ﻿# Current milestone M2 — simpler native workspace
 
+31 October - **preview.65.4 bounded native bake qualifies its bounded slice**,
+starting `39d580b22576f6d5df2946ce81010a62cd32172e`. Offline native preparation
+uses eight-frame sections with the existing two-million-work ceiling per section;
+total curve work is explicitly bounded by section count, not the former global
+two-million ceiling. Proven constant S/T avoids repeated fitting. Absolute native
+float knots and seeded Euler continuation preserve joins/full turns; all section
+witnesses survive actual complete serialization and fresh native verification.
+The original Next/viewer, quality/depth/key limits, source-local roots, all skin
+weights/binds, native Undo and document ownership remain.
+
+Fresh final build: 2,179 assertions (19 budget, 1,216 precision, 628 root, 94
+coordinate, 222 actual-use), six decoded native oracles and three held-out bakes.
+Both source-key modes pass Use, own-Wait1 frame-1 fitting, Apply, Undo/Redo,
+export/reopen and project Save/reopen for Sonic/Mario and both Mario/Snake
+directions. The 128-bone/161-frame procedural case completes in 397 ms across
+20 sections: 2,155,940 total work; largest section 107,797. The unchanged
+single-pass control exhausted two million after four tracks. All six real
+decoded root-local errors are zero. Eighteen fresh UI captures have exact
+prior-view continuity; two endpoints also directly re-viewed.
+
+This remains the ONE incomplete G1/M2. An exceptional section may still refuse
+without partial import. The undisclosed reported pair is explicitly unverified;
+broader clearance/contact/style, the full 18-case matrix, physical input/DPI,
+human usability, Melee and in-game acceptance remain open. Preview.66 finite
+ledges stays queued. Qualified package: `Fighterport-budget654/native1`.
+See [measurements, retained failures and work policy](../BOUNDED_NATIVE_BAKE_ACCEPTANCE_2026-10-31.md).
+
+The additional new-character Wait1 corpus admits six native bakes/reopens:
+Fox/Peach, Captain Falcon/Luigi and Link/Marth, both directions. Five pass the
+complete native/contact oracle; Peach → Fox retains a planar-lock failure
+(0.0127292 vs 0.00596133 bound), and both Samus directions stop for reviewed
+right.hand mapping. These limitations are not promoted to passing evidence.
+Thirty read-only viewer assertions and eighteen inspected idle captures retain
+all weights/content/Undo. Next contact work must retain the new failure case;
+no universal acceptance claim follows from this work-budget increment.
+
 31 October - **preview.65.3 contact orientation qualifies its bounded slice**,
 starting `d705a7801236d12294268d214c07b20709ee8bc0`. The shared coupled solver
 keeps the intended end orientation throughout trial FK/projection, with complete

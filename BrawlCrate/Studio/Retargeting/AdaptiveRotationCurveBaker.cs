@@ -64,6 +64,10 @@ namespace BrawlCrate.Studio.Retargeting
         internal double FirstUnresolvedError { get; set; }
         internal int IntegerEulerRebranches { get; set; }
         internal string FailureWitness { get; set; }
+        internal int ProvenConstantGroups { get; set; }
+        internal int WindowCount { get; set; }
+        internal long MaximumWindowWork { get; set; }
+        internal float[] ValidationTimes { get; set; }
     }
 
     // A full-quality native master bake. No quantization, file-size reduction,
@@ -88,11 +92,11 @@ namespace BrawlCrate.Studio.Retargeting
             Func<float, AdaptiveRotationPose> sample, Func<int, float, Quaternion> frozenLocal,
             CancellationToken cancellation, double toleranceDegrees = .025,
             long maximumWork = 2000000, double translationTolerance = .0002, double scaleTolerance = .00001,
-            Func<long, bool> reserveSharedWork = null, bool generatedEulerContinuation = false,float[] mandatoryTimes=null)
+            Func<long, bool> reserveSharedWork = null, bool generatedEulerContinuation = false,float[] mandatoryTimes=null,NativeRetargetConstants invariants=null,Vector3[] initialEuler=null,float firstFrame=0)
         {
             if (parents == null || editable == null || parents.Length == 0 || parents.Length > 512 ||
                 editable.Length != parents.Length || sample == null || frozenLocal == null || !Finite(lastFrame) ||
-                lastFrame < 0 || lastFrame != Math.Truncate(lastFrame) || lastFrame > 65535 || maximumWork < 0 || maximumWork > 2000000 ||
+                lastFrame < 0 || lastFrame != Math.Truncate(lastFrame) || lastFrame > 65535 || !Finite(firstFrame)||firstFrame<0||firstFrame>lastFrame||firstFrame!=Math.Truncate(firstFrame)||maximumWork < 0 || maximumWork > 2000000 ||
                 !Finite(toleranceDegrees) || toleranceDegrees <= 0 || !Finite(translationTolerance) || translationTolerance <= 0 ||
                 !Finite(scaleTolerance) || scaleTolerance <= 0)
                 throw new ArgumentException("Adaptive native baking needs a bounded topological skeleton, fixed integer domain and finite declared tolerances.");
@@ -100,7 +104,7 @@ namespace BrawlCrate.Studio.Retargeting
             for (int bone = 0; bone < hierarchy.Length; bone++)
                 if (hierarchy[bone] < -1 || hierarchy[bone] >= bone) throw new ArgumentException("Adaptive rotation baking requires an acyclic topological hierarchy.");
             var operation = new Operation(hierarchy, change, lastFrame, sample, frozenLocal, cancellation,
-                toleranceDegrees, translationTolerance, scaleTolerance, maximumWork, reserveSharedWork, generatedEulerContinuation,mandatoryTimes);
+                toleranceDegrees, translationTolerance, scaleTolerance, maximumWork, reserveSharedWork, generatedEulerContinuation,mandatoryTimes,invariants,initialEuler,firstFrame);
             return operation.Run();
         }
 
@@ -130,6 +134,7 @@ namespace BrawlCrate.Studio.Retargeting
             private readonly int[] parents;
             private readonly bool[] editable;
             private readonly float last;
+            private readonly float first;
             private readonly Func<float, AdaptiveRotationPose> sampler;
             private readonly Func<int, float, Quaternion> frozen;
             private readonly CancellationToken token;
@@ -139,6 +144,9 @@ namespace BrawlCrate.Studio.Retargeting
             private readonly bool generatedContinuation;
             private readonly double[] hierarchyBudgets;
             private readonly float[] mandatory;
+            private readonly NativeRetargetConstants invariants;
+            private readonly Vector3[] initialEuler;
+            private readonly HashSet<float> validationTimes=new HashSet<float>();
             private readonly Dictionary<int, AdaptiveRotationPose> samples = new Dictionary<int, AdaptiveRotationPose>();
             private readonly Dictionary<long, Quaternion> worlds = new Dictionary<long, Quaternion>();
             private readonly Segment[][] rotations;
@@ -149,12 +157,16 @@ namespace BrawlCrate.Studio.Retargeting
 
             internal Operation(int[] parents, bool[] editable, float last, Func<float, AdaptiveRotationPose> sampler,
                 Func<int, float, Quaternion> frozen, CancellationToken token, double orientationTolerance,
-                double translationTolerance, double scaleTolerance, long maximumWork, Func<long, bool> reserve, bool generatedContinuation,float[] mandatoryTimes)
+                double translationTolerance, double scaleTolerance, long maximumWork, Func<long, bool> reserve, bool generatedContinuation,float[] mandatoryTimes,NativeRetargetConstants invariants,Vector3[] initialEuler,float firstFrame)
             {
                 this.parents = parents; this.editable = editable; this.last = last; this.sampler = sampler; this.frozen = frozen;
+                first=firstFrame;
                 this.token = token; this.orientationTolerance = orientationTolerance; this.translationTolerance = translationTolerance;
                 this.scaleTolerance = scaleTolerance; this.maximumWork = maximumWork; this.reserve = reserve;
                 this.generatedContinuation = generatedContinuation;
+                this.invariants=invariants;invariants?.Validate(parents);
+                if(initialEuler!=null&&(initialEuler.Length!=parents.Length||initialEuler.Any(v=>!Finite(v.X)||!Finite(v.Y)||!Finite(v.Z))))throw new ArgumentException("Invalid generated Euler continuation boundary.");
+                this.initialEuler=initialEuler?.ToArray();
                 rotations = new Segment[parents.Length][];
                 continuations = new List<EulerAnchor>[parents.Length];
                 var levels=new int[parents.Length];
@@ -165,7 +177,7 @@ namespace BrawlCrate.Studio.Retargeting
                 // budget leaves a constant child no remaining error allowance;
                 // adding child knots cannot repair that inherited plateau.
                 hierarchyBudgets=levels.Select(level=>orientationTolerance*.99*level/maximumLevel).ToArray();
-                if(mandatoryTimes!=null&&(mandatoryTimes.Length>2000000||mandatoryTimes.Any(time=>!Finite(time)||time<0||time>last)))throw new ArgumentException("Invalid bounded native reference breakpoints.");
+                if(mandatoryTimes!=null&&(mandatoryTimes.Length>2000000||mandatoryTimes.Any(time=>!Finite(time)||time<first||time>last)))throw new ArgumentException("Invalid bounded native reference breakpoints.");
                 var points=(mandatoryTimes??new float[0]).Distinct().OrderBy(time=>time).ToArray();
                 mandatory=points.Concat(points.Skip(1).Select((end,index)=>points[index]+(end-points[index])*.5f)).Distinct().OrderBy(time=>time).ToArray();
             }
@@ -179,12 +191,12 @@ namespace BrawlCrate.Studio.Retargeting
                         token.ThrowIfCancellationRequested(); if (!editable[bone]) continue;
                         if (generatedContinuation) PrepareContinuation(bone);
                         var rotation = Build(bone, ChannelKind.Rotation); rotations[bone] = rotation.ToArray();
-                        var first = Sample(0);
-                        var translation = first.Translations == null ? null : Build(bone, ChannelKind.Translation);
-                        var scale = first.Scales == null ? null : Build(bone, ChannelKind.Scale);
-                        var track = new AdaptiveTransformTrack { Bone = bone, Rotation = Keys(rotation, Value(bone, 0, ChannelKind.Rotation)),
-                            Translation = translation == null ? null : Keys(translation, first.Translations[bone]),
-                            Scale = scale == null ? null : Keys(scale, first.Scales[bone]) };
+                        var origin = Sample(first);
+                        var translation = origin.Translations == null ? null : Build(bone, ChannelKind.Translation);
+                        var scale = origin.Scales == null ? null : Build(bone, ChannelKind.Scale);
+                        var track = new AdaptiveTransformTrack { Bone = bone, Rotation = Keys(rotation, Value(bone, first, ChannelKind.Rotation),first),
+                            Translation = translation == null ? null : Keys(translation, origin.Translations[bone],first),
+                            Scale = scale == null ? null : Keys(scale, origin.Scales[bone],first) };
                         tracks.Add(track);
                         foreach (var curve in new[] { track.Rotation, track.Translation, track.Scale }.Where(c => c != null))
                         {
@@ -204,20 +216,27 @@ namespace BrawlCrate.Studio.Retargeting
                 catch (WorkExhausted) { result.WorkLimitReached = true; result.Converged = false; }
                 catch (UnrepresentableInterval) { result.Converged = false; }
                 token.ThrowIfCancellationRequested();
+                invariants?.Validate(parents);
                 result.Tracks = tracks.ToArray(); result.Work = work; result.SampleCount = samples.Count; result.NativeKeyUpperBound = keys;
+                result.ValidationTimes=validationTimes.OrderBy(t=>t).ToArray();result.WindowCount=1;result.MaximumWindowWork=work;
                 return result;
             }
 
             private List<Segment> Build(int bone, ChannelKind kind)
             {
                 var segments = new List<Segment>();
-                if (last == 0)
+                if(kind==ChannelKind.Translation&&invariants?.Translation(bone)==true||kind==ChannelKind.Scale&&invariants?.Scale(bone)==true)
                 {
-                    result.LastBone = bone; result.LastChannel = kind.ToString(); result.LastFirstFrame = 0; result.LastLastFrame = 0; result.LastDepth = 0;
-                    var one = new Segment { First = 0, Last = 0, Start = Value(bone, 0, kind), End = Value(bone, 0, kind) };
+                    Charge(1);result.ProvenConstantGroups++;
+                    return segments; // Keys emits the unchanged first value once.
+                }
+                if (last == first)
+                {
+                    result.LastBone = bone; result.LastChannel = kind.ToString(); result.LastFirstFrame = first; result.LastLastFrame = first; result.LastDepth = 0;
+                    var one = new Segment { First = first, Last = first, Start = Value(bone, first, kind), End = Value(bone, first, kind) };
                     Record(kind, Measure(bone, one, kind));
                 }
-                for (int frame = 0; frame < last; frame++) Refine(bone, frame, frame + 1, kind, 0, segments);
+                for (int frame = (int)first; frame < last; frame++) Refine(bone, frame, frame + 1, kind, 0, segments);
                 return segments;
             }
 
@@ -320,6 +339,7 @@ namespace BrawlCrate.Studio.Retargeting
                 foreach (float time in Validation.Select(fraction=>segment.First+(segment.Last-segment.First)*fraction).Concat(Mandatory(segment.First,segment.Last)).Distinct())
                 {
                     Charge(1);
+                    validationTimes.Add(time);
                     var evaluated = segment.At(time); double error;
                     if (kind == ChannelKind.Rotation)
                     {
@@ -356,6 +376,7 @@ namespace BrawlCrate.Studio.Retargeting
                 var desired = Sample(time);
                 if (kind == ChannelKind.Translation) return desired.Translations[bone];
                 if (kind == ChannelKind.Scale) return desired.Scales[bone];
+                if(generatedContinuation&&initialEuler!=null&&time==first)return initialEuler[bone];
                 // Follow the sampler's continuous authored local chart. Tiny
                 // native parent approximation must not be converted through a
                 // fresh inverse-parent Euler extraction at every sample: near
@@ -384,14 +405,14 @@ namespace BrawlCrate.Studio.Retargeting
 
             private void PrepareContinuation(int bone)
             {
-                var anchors = new List<EulerAnchor> { new EulerAnchor { Time = 0, Euler = Sample(0).EulerDegrees[bone] } };
+                var anchors = new List<EulerAnchor> { new EulerAnchor { Time = first, Euler = initialEuler==null?Sample(first).EulerDegrees[bone]:initialEuler[bone] } };
                 continuations[bone] = anchors;
                 // A sequential lift is independent of asynchronous/adaptive
                 // query order. Step doubling prevents an eighth-frame chart
                 // guide from taking a shortcut across a near-pole excursion.
-                for (int cell = 0; cell < last * 8; cell++)
+                for (int cell = (int)first*8; cell < last * 8; cell++)
                     TraceContinuation(bone, cell / 8f, (cell + 1) / 8f, anchors[anchors.Count - 1].Euler, 0, anchors);
-                for (int frame = 0; frame <= last; frame++)
+                for (int frame = (int)first; frame <= last; frame++)
                 {
                     var original = Sample(frame).EulerDegrees[bone];
                     if (MaximumComponent(Value(bone, frame, ChannelKind.Rotation) - original) >= .0005) result.IntegerEulerRebranches++;
@@ -467,7 +488,7 @@ namespace BrawlCrate.Studio.Retargeting
                 {
                     var curve = rotations[bone];
                     if (curve == null) throw new InvalidOperationException("Adaptive curves must be completed in topological order.");
-                    if (curve.Length == 0) local = Rotation(Sample(0).EulerDegrees[bone]);
+                    if (curve.Length == 0) local = Rotation(Sample(first).EulerDegrees[bone]);
                     else
                     {
                         int low = 0, high = curve.Length - 1;
@@ -491,10 +512,18 @@ namespace BrawlCrate.Studio.Retargeting
                     value.LocalRotations != null && value.LocalRotations.Length != parents.Length ||
                     value.Translations != null && value.Translations.Length != parents.Length || value.Scales != null && value.Scales.Length != parents.Length)
                     throw new ArgumentException("Solved native pose samples must identify every existing target bone.");
-                if (samples.TryGetValue(Bits(0), out var origin) &&
+                if (samples.TryGetValue(Bits(first), out var origin) &&
                     ((origin.Translations == null) != (value.Translations == null) || (origin.Scales == null) != (value.Scales == null) ||
                      (origin.LocalRotations == null) != (value.LocalRotations == null)))
                     throw new ArgumentException("Optional native scale/translation sampling must remain consistent for the complete operation.");
+                if(origin!=null&&invariants!=null)
+                    for(int bone=0;bone<parents.Length;bone++)
+                    {
+                        bool Same(Vector3 a,Vector3 b)=>Bits(a.X)==Bits(b.X)&&Bits(a.Y)==Bits(b.Y)&&Bits(a.Z)==Bits(b.Z);
+                        if(invariants.Translation(bone)&&value.Translations!=null&&!Same(value.Translations[bone],origin.Translations[bone])||
+                            invariants.Scale(bone)&&value.Scales!=null&&!Same(value.Scales[bone],origin.Scales[bone]))
+                            throw new InvalidOperationException("Solved motion violated its proven native constant-component contract; no candidate is available.");
+                    }
                 if (value.EulerDegrees.Any(v => !Finite(v.X) || !Finite(v.Y) || !Finite(v.Z)) ||
                     value.WorldRotations.Any(q => !Finite(q.X) || !Finite(q.Y) || !Finite(q.Z) || !Finite(q.W) || q.LengthSquared() == 0) ||
                     value.LocalRotations != null && value.LocalRotations.Any(q => !Finite(q.X) || !Finite(q.Y) || !Finite(q.Z) || !Finite(q.W) || q.LengthSquared() == 0) ||
@@ -515,9 +544,9 @@ namespace BrawlCrate.Studio.Retargeting
             }
         }
 
-        private static AdaptiveVectorKey[] Keys(List<Segment> segments, Vector3 first)
+        private static AdaptiveVectorKey[] Keys(List<Segment> segments, Vector3 first,float firstTime=0)
         {
-            if (segments.Count == 0) return new[] { new AdaptiveVectorKey { Time = 0, Value = first } };
+            if (segments.Count == 0) return new[] { new AdaptiveVectorKey { Time = firstTime, Value = first } };
             var keys = new List<AdaptiveVectorKey> { new AdaptiveVectorKey { Time = segments[0].First, Value = segments[0].Start,
                 IncomingSlope = segments[0].Outgoing, OutgoingSlope = segments[0].Outgoing } };
             foreach (var segment in segments)

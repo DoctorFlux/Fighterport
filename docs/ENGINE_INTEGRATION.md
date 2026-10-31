@@ -1,5 +1,25 @@
 ﻿# Native Next integration
 
+Preview.65.4 adds `WindowedNativeCurveBaker` around the existing adaptive native
+master builder. Its eight-frame sections each retain the two-million-work cap;
+whole-clip work now scales with section count. Key/witness counts remain bounded.
+Absolute native float times, sequential Euler endpoint seeds and paired seam
+tangents preserve the original native evaluation domain. The complete master is
+serialized and freshly decoded after shared-track restriction, before either
+source-key preparation or import; all section witnesses are rechecked against
+the same full-quality finished master. This is our native-decoder verification,
+not a third-party/game acceptance claim.
+
+`native-source-constant-components-1` proves fixed local scale/non-pelvis
+translation from original source curves and the existing Next equations. Equal
+values/nonzero tangents, signed-zero ambiguity and protected motion controls
+remain conservative. Dependencies and captured samples guard the proof. Required
+paired source-key seeds can materialize an identical fixed function without a
+new derivative. No playback work, solver-goal change, shared-codec alteration,
+new document owner, bind/weight mutation or tolerance relaxation is introduced.
+Failed/cancelled/stale sections produce no partial result. See
+[acceptance and explicit total-work accounting](BOUNDED_NATIVE_BAKE_ACCEPTANCE_2026-10-31.md).
+
 Preview.65.3 adds `coupled-end-world-orientation-1` to the existing complete
 hashed original support evidence. Contact preparation retains its established
 flatness/roll goals. The coupled body solver treats those end world orientations

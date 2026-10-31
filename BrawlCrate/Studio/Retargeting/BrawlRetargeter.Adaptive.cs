@@ -10,7 +10,7 @@ namespace BrawlCrate.Studio.Retargeting
 {
     public static partial class BrawlRetargeter
     {
-        private static void BakeAdaptiveNativeMaster(BrawlRig source, BrawlRig target, CHR0Node sourceClip,
+        private static Action BakeAdaptiveNativeMaster(BrawlRig source, BrawlRig target, CHR0Node sourceClip,
             RetargetResult result, bool correction, int last, List<float[][]> branches,List<AdaptiveRotationPose> solvedSamples,int subdivisions,
             CancellationToken cancellation, Action<int, string> progress)
         {
@@ -111,9 +111,13 @@ namespace BrawlCrate.Studio.Retargeting
             progress?.Invoke(68, "Preparing fractional native master curves...");
             var witnesses=(trajectory?.AnchorTimes??new float[0]).Concat(sourceClip.Children.OfType<CHR0EntryNode>().SelectMany(entry=>entry.KeyArrays).SelectMany(array=>array.Entries).Select(key=>key._index))
                 .Where(time=>time>=0&&time<=last).Distinct().OrderBy(time=>time).ToArray();
-            var bake = AdaptiveRotationCurveBaker.Bake(parents, editable, last, SampleMaster, FrozenLocal, cancellation, generatedEulerContinuation:true,mandatoryTimes:witnesses);
+            var constants=NativeRetargetConstants.Capture(result.Plan,sourceClip,cancellation);
+            var bake = WindowedNativeCurveBaker.Bake(parents,editable,last,SampleMaster,FrozenLocal,cancellation,witnesses,constants,
+                (window,total)=>progress?.Invoke(68+window*25/total,"Preparing native curves: section "+(window+1)+" of "+total+"..."));
             if (!bake.Converged)
             {
+                if(bake.WorkLimitReached&&bake.UnresolvedIntervals==0)
+                    throw new InvalidDataException("Retarget preparation reached the bounded work limit within one time section before all curves could be checked. No invalid interval was established, and no result was imported. Frame range: "+bake.LastFirstFrame+".."+bake.LastLastFrame+"; bone "+bake.LastBone+"; "+bake.LastChannel+". Existing animation is unchanged.");
                 var error=new InvalidDataException("The full-quality native master could not represent the solved motion within its fractional bake bounds. No retarget result was imported. Unresolved intervals: " + bake.UnresolvedIntervals + "; work " + bake.Work + "; samples " + bake.SampleCount + "; completed tracks " + bake.Tracks.Length + "; first unresolved " + bake.FirstUnresolvedBone + "/" + bake.FirstUnresolvedChannel + " at " + bake.FirstUnresolvedFirstFrame + ".." + bake.FirstUnresolvedLastFrame + " depth " + bake.FirstUnresolvedDepth + " error " + bake.FirstUnresolvedError + "; current bone " + bake.LastBone + " / " + bake.LastChannel + "; interval " + bake.LastFirstFrame + ".." + bake.LastLastFrame + "; depth " + bake.LastDepth + "; measured " + bake.LastMeasuredError + "; fixed endpoint " + bake.MaximumFixedEndpointOrientationDegrees + (bake.WorkLimitReached ? "; operation budget reached." : "."));
                 if(bake.FailureWitness!=null)error.Data["NativeCurveWitness"]=bake.FailureWitness;
                 throw error;
@@ -153,8 +157,15 @@ namespace BrawlCrate.Studio.Retargeting
                 "; local scale " + bake.MaximumScaleError.ToString("G7", System.Globalization.CultureInfo.InvariantCulture) +
                 ". Source-owned control curves retained. "+(trajectory==null?"Direct solved-pose reference.":"Correction trajectory: "+RetargetCorrectionTrajectory.Policy+"; every original eighth-frame pose retained; "+trajectory.AnchorCount+" correction anchors; source FK remains continuously evaluated. Raw independent subframe contact optima are not its motion reference.")+
                 " Coupled contact orientation: "+ContactMotion.EndOrientationPolicy+"; support preparation reserves 0.125 degrees of the existing 0.25-degree contact bound."+
-                " Support preparation work: "+preparationWork+"/2000000 (separate bounded proposal phase); native curve work: "+bake.Work+"/2000000."+supportNote+
+                " Support preparation work: "+preparationWork+"/2000000 (separate bounded proposal phase); native curve work: "+bake.Work+" total in "+bake.WindowCount+" bounded sections; largest section "+bake.MaximumWindowWork+"/2000000. Full decoded native master verified at "+bake.ValidationTimes.Length+" witness times."+supportNote+
+                " Proven constant native S/T groups: "+bake.ProvenConstantGroups+" ("+NativeRetargetConstants.Policy+"); no rotation witnesses removed."+
                 " These bake checks are sampled, not continuous or game acceptance. Export size optimization is separate.";
+            return ()=>{
+                cancellation.ThrowIfCancellationRequested();constants?.Validate(parents);
+                progress?.Invoke(94,"Verifying the complete decoded native master...");
+                WindowedNativeCurveBaker.VerifyDecoded(target,output,bake,SampleMaster,cancellation);
+                constants?.Validate(parents);
+            };
         }
     }
 }

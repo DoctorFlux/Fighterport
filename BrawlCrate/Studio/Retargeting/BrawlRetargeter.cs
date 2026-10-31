@@ -450,8 +450,9 @@ namespace BrawlCrate.Studio.Retargeting
                 // are independently replaced by PreserveMotionControls.
                 if(legacyContactProposal)FitContactCurves(target,output,result.Contacts,last,cancellation,progress,mappedTargets);
                 PreserveMotionControls(plan,clip,output,source,target,last);
-                BakeAdaptiveNativeMaster(source,target,clip,result,correction,last,values,solvedSamples,samplesPerFrame,cancellation,progress);
+                var verifyMaster=BakeAdaptiveNativeMaster(source,target,clip,result,correction,last,values,solvedSamples,samplesPerFrame,cancellation,progress);
                 RestrictOutputToSharedBones(result,target,cancellation);
+                verifyMaster();
                 // The original dense solver, contact fit and source-owned
                 // controls above remain the reference. Sparse storage is an
                 // explicit, separately measured representation of that result.

@@ -1,5 +1,17 @@
 # Fighterport
 
+31 October: **preview.65.4-bounded-native-bake** qualifies a bounded retarget
+preparation increment from `39d580b22576f6d5df2946ce81010a62cd32172e` in the
+ONE incomplete G1/M2. Whole-clip work is now explicitly divided into eight-frame
+sections, each retaining the two-million ceiling; total work may exceed two
+million. Preserve unchanged quality/depth/key limits, absolute native float time,
+Euler winding, source-local roots, all weights/binds and original Next/viewer.
+Proven constant S/T avoids redundant fitting; final whole-master serialization
+and fresh native decode must pass before import. Never publish a partial section
+or infer an undisclosed pair passed. 2,179 checks and six native oracles pass;
+universal/contact/game acceptance stays open. Preview.66 ledges remains queued.
+See [acceptance](docs/BOUNDED_NATIVE_BAKE_ACCEPTANCE_2026-10-31.md).
+
 31 October: **preview.65.3-contact-orientation** qualifies the bounded supported-end
 orientation fix from `d705a7801236d12294268d214c07b20709ee8bc0`, in the ONE
 incomplete G1/M2. Shared coupled solving retains intended palm/sole world

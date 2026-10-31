@@ -1,5 +1,16 @@
 # Fighterport master plan
 
+31 October - preview.65.4 qualifies bounded eight-frame native retarget baking
+in the same ONE incomplete G1/M2. Each section retains the two-million-work
+ceiling; the previous whole-clip ceiling is intentionally replaced by an explicit
+section-count bound. Absolute native time, seeded Euler continuation, proven
+constant S/T and final serialized whole-master verification address the generic
+exhaustion path without changing quality limits, roots, binds or weights. 2,179
+checks, six native oracles and three held-out final-build bakes pass. The exact
+undisclosed pair, broader contacts/style/game gates remain unverified. Preview.66
+ledges stays queued. See [current plan](plans/current.md) and
+[acceptance](BOUNDED_NATIVE_BAKE_ACCEPTANCE_2026-10-31.md).
+
 31 October - preview.65.3 qualifies the bounded supported-end orientation
 hotfix in the same incomplete G1/M2. Generic coupled constraints retain intended
 palm/sole world orientation; complete skin derivatives account for compensation.
