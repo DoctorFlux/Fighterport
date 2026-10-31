@@ -200,3 +200,16 @@ clearance/style, Sonic's earlier low-body intersection, the complete 18-case
 contact corpus, finite/moving ledges, props, other actors, Melee, physical input,
 monitor DPI, human usability, external-editor/runtime and actual game acceptance
 remain open. Shared code has no identity-specific branches or hidden overrides.
+
+## Publication and local launch
+
+Implementation **aa4a8cc30508927766e6ff23187eacbd3e3d6642** is published to
+public `DoctorFlux/Fighterport/main`. GitHub confirms public visibility/default
+main, DoctorFlux author and committer, and DoctorFlux as the only listed
+contributor. No collaborator was added, no historical repository was pushed,
+and no assets, captures, private settings or generated binaries were staged.
+
+The ignored development launcher selects `Fighterport-contact655/native1`.
+`Start-FighterPort.ps1 -Check` resolves its frozen preview.65.5 executable without
+opening a window. Its app/BrawlLib hashes above were rechecked after qualification.
+An already running older application requires a normal restart to use this build.

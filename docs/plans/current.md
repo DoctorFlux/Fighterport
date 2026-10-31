@@ -32,6 +32,10 @@ supports, external-editor/runtime, Melee, input/DPI/human/game acceptance remain
 open. Qualified package: `Fighterport-contact655/native1`. See
 [measurements and retained failures](../CONTACT_LOCK_CAPABILITY_ACCEPTANCE_2026-10-31.md).
 
+Implementation `aa4a8cc` is published to public main with verified DoctorFlux
+author/committer and DoctorFlux-only contributors. Launcher `-Check` resolves
+the frozen preview.65.5 executable without opening UI.
+
 31 October - **preview.65.4 bounded native bake qualifies its bounded slice**,
 starting `39d580b22576f6d5df2946ce81010a62cd32172e`. Offline native preparation
 uses eight-frame sections with the existing two-million-work ceiling per section;
