@@ -186,3 +186,14 @@ still measured against the same finished target, not against the donor.
 Physical input, monitor DPI, human usability, continuous-time contact guarantees,
 broad contact/clearance/style quality, external editors, Melee and actual games
 remain unverified. The GIF floor is a reviewed target guide, not in-game evidence.
+
+## Publication and launcher
+
+Implementation `7249711ce06cc05c1262eb9eff4a0481491c8104` was pushed to public
+`DoctorFlux/Fighterport/main` on 31 October. The GitHub API verified public
+visibility, `main` as default, DoctorFlux as author/committer and the sole listed
+contributor. No Codex attribution or collaborator was added. Only the 22 reviewed
+source/test/documentation files were committed; assets, captures, settings and
+binaries remain ignored. The local development launcher now selects the frozen
+`Fighterport-tilts652/native1` package. `Start-FighterPort.ps1 -Check` resolved its
+exact executable without opening a window. The worktree was clean after push.

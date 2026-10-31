@@ -26,6 +26,10 @@ full 18-case matrix, universal contacts/clearance, input/DPI/human/game/Melee ga
 stay open. Launcher promotion selects `Fighterport-tilts652/native1` only after
 qualification. See [acceptance and retained failures](../ANALYTICAL_RECOVERY_ACCEPTANCE_2026-10-31.md).
 
+Implementation `7249711` is published to public main with verified DoctorFlux
+author/committer and DoctorFlux-only contributors. Launcher `-Check` resolves
+the frozen preview.65.2 executable without opening UI.
+
 
 30 October - **preview.65.1 retarget trajectory hotfix qualifies its bounded slice**,
 starting `cf2e7a845bdd91ea4e30e77e9442d8fb6421530b`. Actual Sonic AttackS3S -> Mario
