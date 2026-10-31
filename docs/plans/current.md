@@ -36,6 +36,10 @@ Thirty read-only viewer assertions and eighteen inspected idle captures retain
 all weights/content/Undo. Next contact work must retain the new failure case;
 no universal acceptance claim follows from this work-budget increment.
 
+Implementation `feea9c2` is published to public main with verified DoctorFlux
+author/committer and DoctorFlux-only contributors. Launcher `-Check` resolves
+the frozen preview.65.4 executable without opening UI.
+
 31 October - **preview.65.3 contact orientation qualifies its bounded slice**,
 starting `d705a7801236d12294268d214c07b20709ee8bc0`. The shared coupled solver
 keeps the intended end orientation throughout trial FK/projection, with complete

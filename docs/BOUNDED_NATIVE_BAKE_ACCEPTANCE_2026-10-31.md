@@ -219,3 +219,17 @@ Sonic's earlier body/head floor intersection, broader clearance/style, the full
 18-case contact corpus, finite ledges, moving supports, Melee, external-editor
 compatibility, physical input, monitor DPI, human usability and in-game acceptance
 remain open. No tolerance, failed case or existing gate is removed to qualify it.
+
+## Publication and launcher
+
+Implementation **feea9c2529626010229b9161c6ab2afac39fe810** is published to
+public `DoctorFlux/Fighterport/main`. GitHub metadata confirms public visibility,
+main as default branch, DoctorFlux author/committer and DoctorFlux as the only
+listed contributor. No upstream historical repository was pushed and no
+collaborator was added. Source/tests/documentation only were staged.
+
+The ignored development launcher now selects `Fighterport-budget654/native1`.
+`Start-FighterPort.ps1 -Check` resolved the frozen .65.4 executable without
+opening a window. Production executable and unchanged BrawlLib hashes above were
+rechecked after all extra idle tests and the test-only build13. A running older
+application requires restart through the normal launcher to use this build.
