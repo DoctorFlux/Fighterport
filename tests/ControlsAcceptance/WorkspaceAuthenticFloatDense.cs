@@ -20,6 +20,7 @@ internal static partial class Program
         public string SourceClipSha256 { get; set; }
         public string SourceClipName { get; set; }
         public int SourceFrames { get; set; }
+        public string SourceNativeMember { get; set; }
         public int SourceVersion { get; set; }
         public bool SourceLoop { get; set; }
         public string SourceModelSha256 { get; set; }

@@ -1,5 +1,17 @@
 # Fighterport master plan
 
+31 October - preview.65.2 qualifies the bounded Mario/Snake forward-tilt
+retarget/recovery hotfix, with both actual source-key paths and target-owned
+Wait1 frame-1 endings. Generic correction transport/refinement and near-pole
+Euler guidance preserve original Next solved anchors, source FK/roots, all
+weights and numeric gates. Read-only native source snapshots now prove bounded
+N-sample L4 without relaxing ordinary writing. Renamed/permuted/unequal rigs
+pass; universal/contact/game acceptance stays open, including the measured
+pre-existing Sonic contact-orientation limitation. ONE incomplete G1/M2;
+preview.66 ledges remains queued. See [current plan](plans/current.md) and
+[acceptance](ANALYTICAL_RECOVERY_ACCEPTANCE_2026-10-31.md).
+
+
 30 October - preview.65.1 qualifies a bounded Sonic-tilt/Mario retarget hotfix
 within the same incomplete G1/M2. Coherent generated corrections retain original
 Next solved anchors and continuous source FK; source-owned roots/all weights,

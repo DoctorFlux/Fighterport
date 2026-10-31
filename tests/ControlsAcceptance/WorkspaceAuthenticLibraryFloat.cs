@@ -61,10 +61,13 @@ internal static partial class Program
         Check(SameHash(originals[targetFile], fixture.TargetModelSha256) && SameHash(originals[donor], fixture.SourceModelSha256) &&
             SameHash(originals[sourceFile], fixture.SourceClipSha256), "Actual library fixture preserves the exact externally pinned source/model bytes");
         string originalSourceContent;
-        using (var original = NodeFactory.FromFile(null, sourceFile) as CHR0Node)
+        using (var originalRoot = NodeFactory.FromFile(null, sourceFile))
         {
+            string Member(ResourceNode node)=>node.Parent==null?"root":Member(node.Parent)+"/"+node.Index;
+            var original=Walk(originalRoot).OfType<CHR0Node>().SingleOrDefault(c=>c.Name==name&&
+                (originalRoot is CHR0Node||Member(c)==fixture.SourceNativeMember));
             Check(original != null && original.Name == name && original.FrameCount == fixture.SourceFrames &&
-                original.Version == fixture.SourceVersion && original.Loop == fixture.SourceLoop, "Actual standalone source independently supplies its exact native clip identity and duration");
+                original.Version == fixture.SourceVersion && original.Loop == fixture.SourceLoop, "Original source independently supplies its exact pinned native clip member and duration");
             originalSourceContent = NativeAnimationOptimization.SourceContentKey(original);
         }
         var json = new JavaScriptSerializer { MaxJsonLength = 16 * 1024 * 1024, RecursionLimit = 100 };
@@ -116,7 +119,7 @@ internal static partial class Program
                             planned.FrameCount == fixture.SourceFrames && planned.NativeVersion == fixture.SourceVersion && planned.Loop == fixture.SourceLoop &&
                             !string.IsNullOrWhiteSpace(planned.AssociationEvidence) && string.IsNullOrWhiteSpace(planned.AssociationIssue),
                             "Normal source registration independently verifies exact model/motion body ownership and records the explicit fixture association review");
-                        Check(shared.Register(plan) == 1, "One exact supplied source clip is registered into this isolated shared library");
+                        Check(shared.Register(plan) == plan.Clips.Count, "Exact supplied source catalogue is registered into this isolated shared library");
                         string libraryFiles = NextLibraryFiles(shared);
                         Call(form, "UseSharedSourceLibrary"); await LibraryQuerySettled(form);
                         var sourceItem = await UseModelSelectSource(form, (AnimationLibrary)Field(form, "_library"), name, planned.Id);
@@ -181,7 +184,7 @@ internal static partial class Program
                         var setup = await Await<ControlReply>(Call(form, "LoadControls"));
                         var roots = (setup.ProtectedMotionBones ?? new int[0]).Select(index => setup.BoneNames[index]).ToArray();
                         Check(roots.Length > 0, "Normal target control setup resolves genuine protected motion controls before export");
-                        if (trajectoryCase)
+                        if (trajectoryCase && !args.Contains("--reviewed-recovery-case"))
                         {
                             string master = Path.Combine(directory, "finished-target-master.chr0");
                             form.ExportSimpleWorkspaceResult(master);
@@ -204,7 +207,9 @@ internal static partial class Program
                         }
                         if(args.Contains("--reviewed-recovery-case"))
                         {
+                            File.WriteAllText(Path.Combine(directory,"retarget-use-timing.json"),json.Serialize(new{UseMilliseconds=useMilliseconds,Mode=mode.ToString(),GroundMode=project.GroundMode.ToString(),MasterContent=NativeAnimationOptimization.SourceContentKey(clip)}));
                             await ReviewedRecoveryCase(form,clip,Required("--target-motion"),directory,args.Contains("--reviewed-ground-after-fit"));
+                            await UseModelRoundtrip(form,asset,directory,"fitted-current-result");
                             continue;
                         }
                         if (args.Contains("--authentic-l4-apply-current"))

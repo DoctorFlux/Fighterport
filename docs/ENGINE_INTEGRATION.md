@@ -1,5 +1,22 @@
 ﻿# Native Next integration
 
+Preview.65.2 extends the offline coherent correction reference to generated
+analytical branches as well as coupled-body results. Original eighth-frame
+Next anchors remain exact; optional geometry-based support proposals publish
+atomically and report unqualified contacts on exhaustion. Source-owned controls,
+scales and unmapped locals remain excluded. Near-pole Euler guidance and actual
+source/correction mandatory witnesses guard inherited parent errors without
+changing CHR0 interpolation, solver goals or quality/work limits.
+
+`IndexedCHR0EntryStorage.CaptureForSourceSnapshot` adds a separate read-only
+v4/v5 proof for original non-loop L4 streams whose immutable exact bounds contain
+N samples. Complete original flags/metadata and projected tuples must match.
+The independent source snapshot uses exact I12 for these groups without inventing
+a terminal; ordinary `CaptureForWrite` and edited/unknown sampled guards remain
+unchanged. No project migration, extra document owner, playback work or automatic
+export optimization is introduced. See [implementation, tests and limitations](ANALYTICAL_RECOVERY_ACCEPTANCE_2026-10-31.md).
+
+
 Preview.65.1 changes offline fractional-master authoring, not the original Next
 solver or shared native codec. Original solved eighth-frame poses are cached;
 static floor body correction uses a named local correction trajectory over

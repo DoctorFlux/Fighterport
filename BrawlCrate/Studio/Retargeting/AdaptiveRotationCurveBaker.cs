@@ -63,6 +63,7 @@ namespace BrawlCrate.Studio.Retargeting
         internal int FirstUnresolvedDepth { get; set; }
         internal double FirstUnresolvedError { get; set; }
         internal int IntegerEulerRebranches { get; set; }
+        internal string FailureWitness { get; set; }
     }
 
     // A full-quality native master bake. No quantization, file-size reduction,
@@ -87,7 +88,7 @@ namespace BrawlCrate.Studio.Retargeting
             Func<float, AdaptiveRotationPose> sample, Func<int, float, Quaternion> frozenLocal,
             CancellationToken cancellation, double toleranceDegrees = .025,
             long maximumWork = 2000000, double translationTolerance = .0002, double scaleTolerance = .00001,
-            Func<long, bool> reserveSharedWork = null, bool generatedEulerContinuation = false)
+            Func<long, bool> reserveSharedWork = null, bool generatedEulerContinuation = false,float[] mandatoryTimes=null)
         {
             if (parents == null || editable == null || parents.Length == 0 || parents.Length > 512 ||
                 editable.Length != parents.Length || sample == null || frozenLocal == null || !Finite(lastFrame) ||
@@ -99,7 +100,7 @@ namespace BrawlCrate.Studio.Retargeting
             for (int bone = 0; bone < hierarchy.Length; bone++)
                 if (hierarchy[bone] < -1 || hierarchy[bone] >= bone) throw new ArgumentException("Adaptive rotation baking requires an acyclic topological hierarchy.");
             var operation = new Operation(hierarchy, change, lastFrame, sample, frozenLocal, cancellation,
-                toleranceDegrees, translationTolerance, scaleTolerance, maximumWork, reserveSharedWork, generatedEulerContinuation);
+                toleranceDegrees, translationTolerance, scaleTolerance, maximumWork, reserveSharedWork, generatedEulerContinuation,mandatoryTimes);
             return operation.Run();
         }
 
@@ -137,6 +138,7 @@ namespace BrawlCrate.Studio.Retargeting
             private readonly Func<long, bool> reserve;
             private readonly bool generatedContinuation;
             private readonly double[] hierarchyBudgets;
+            private readonly float[] mandatory;
             private readonly Dictionary<int, AdaptiveRotationPose> samples = new Dictionary<int, AdaptiveRotationPose>();
             private readonly Dictionary<long, Quaternion> worlds = new Dictionary<long, Quaternion>();
             private readonly Segment[][] rotations;
@@ -147,7 +149,7 @@ namespace BrawlCrate.Studio.Retargeting
 
             internal Operation(int[] parents, bool[] editable, float last, Func<float, AdaptiveRotationPose> sampler,
                 Func<int, float, Quaternion> frozen, CancellationToken token, double orientationTolerance,
-                double translationTolerance, double scaleTolerance, long maximumWork, Func<long, bool> reserve, bool generatedContinuation)
+                double translationTolerance, double scaleTolerance, long maximumWork, Func<long, bool> reserve, bool generatedContinuation,float[] mandatoryTimes)
             {
                 this.parents = parents; this.editable = editable; this.last = last; this.sampler = sampler; this.frozen = frozen;
                 this.token = token; this.orientationTolerance = orientationTolerance; this.translationTolerance = translationTolerance;
@@ -163,6 +165,9 @@ namespace BrawlCrate.Studio.Retargeting
                 // budget leaves a constant child no remaining error allowance;
                 // adding child knots cannot repair that inherited plateau.
                 hierarchyBudgets=levels.Select(level=>orientationTolerance*.99*level/maximumLevel).ToArray();
+                if(mandatoryTimes!=null&&(mandatoryTimes.Length>2000000||mandatoryTimes.Any(time=>!Finite(time)||time<0||time>last)))throw new ArgumentException("Invalid bounded native reference breakpoints.");
+                var points=(mandatoryTimes??new float[0]).Distinct().OrderBy(time=>time).ToArray();
+                mandatory=points.Concat(points.Skip(1).Select((end,index)=>points[index]+(end-points[index])*.5f)).Distinct().OrderBy(time=>time).ToArray();
             }
 
             internal AdaptiveRotationBake Run()
@@ -278,9 +283,9 @@ namespace BrawlCrate.Studio.Retargeting
                 var result = new Segment { First = first, Last = end, Start = Value(bone, first, kind), End = Value(bone, end, kind) };
                 double aa = 0, ab = 0, bb = 0; var ar = new double[3]; var br = new double[3];
                 var constant = Enumerable.Range(0, 3).Select(c => Bits((float)Component(result.Start, c)) == Bits((float)Component(result.End, c))).ToArray();
-                foreach (float fraction in Training)
+                foreach (float time in Training.Select(fraction=>first+(end-first)*fraction).Concat(Mandatory(first,end)).Distinct())
                 {
-                    Charge(1); float time = first + (end - first) * fraction;
+                    Charge(1);
                     if (time <= first || time >= end) continue;
                     double t = (time - first) / (double)(end - first), t2 = t * t, t3 = t2 * t;
                     double a = t3 - 2 * t2 + t, b = t3 - t2, h0 = 2 * t3 - 3 * t2 + 1, h1 = 1 - h0;
@@ -311,9 +316,10 @@ namespace BrawlCrate.Studio.Retargeting
             private double Measure(int bone, Segment segment, ChannelKind kind)
             {
                 double maximum = 0;
-                foreach (float fraction in Validation)
+                result.FailureWitness=null;
+                foreach (float time in Validation.Select(fraction=>segment.First+(segment.Last-segment.First)*fraction).Concat(Mandatory(segment.First,segment.Last)).Distinct())
                 {
-                    Charge(1); float time = segment.First + (segment.Last - segment.First) * fraction;
+                    Charge(1);
                     var evaluated = segment.At(time); double error;
                     if (kind == ChannelKind.Rotation)
                     {
@@ -326,9 +332,23 @@ namespace BrawlCrate.Studio.Retargeting
                         error = kind == ChannelKind.Translation ? delta.Length() : Math.Max(Math.Abs(delta.X), Math.Max(Math.Abs(delta.Y), Math.Abs(delta.Z)));
                     }
                     if (!Finite(error)) throw new ArgumentException("Adaptive native evaluation produced a nonfinite error.");
+                    if(kind==ChannelKind.Rotation && error>=maximum && error>orientationTolerance)
+                    {
+                        var desired=Sample(time);var parent=World(parents[bone],time);
+                        result.FailureWitness="time="+time.ToString("R",System.Globalization.CultureInfo.InvariantCulture)+"; actualEuler="+evaluated+
+                            "; expectedEuler="+desired.EulerDegrees[bone]+"; localError="+Angle(Rotation(evaluated),Local(desired,bone))+
+                            "; parentError="+(parents[bone]<0?0:Angle(parent,desired.WorldRotations[parents[bone]]));
+                    }
                     maximum = Math.Max(maximum, error);
                 }
                 return maximum;
+            }
+
+            private IEnumerable<float> Mandatory(float first,float last)
+            {
+                int low=0,high=mandatory.Length;
+                while(low<high){int mid=(low+high)/2;if(mandatory[mid]<=first)low=mid+1;else high=mid;}
+                for(int i=low;i<mandatory.Length&&mandatory[i]<last;i++)yield return mandatory[i];
             }
 
             private Vector3 Value(int bone, float time, ChannelKind kind)
@@ -394,12 +414,29 @@ namespace BrawlCrate.Studio.Retargeting
                 var mid = BrawlRetargeter.EulerNear(Local(Sample(middle), bone), previous);
                 var through = BrawlRetargeter.EulerNear(Local(lastPose, bone), mid);
                 double guideTravel = MaximumComponent(lastPose.EulerDegrees[bone] - Sample(first).EulerDegrees[bone]);
+                // A near-pole excursion can lie between the midpoint and an
+                // endpoint. Endpoint branch agreement alone misses it, then
+                // nearest-family extraction switches at an arbitrary time.
+                // Check the physical orientation of both half-span guides;
+                // refine the guide without changing the solved reference.
+                bool illConditioned = new[] {previous,mid,through}.Any(v=>Math.Abs(Math.Cos(v.Y*Math.PI/180))<.05);
+                bool guideFailure=false;
+                if(illConditioned)
+                {
+                    foreach(var half in new[]{Tuple.Create(first,middle,previous,mid),Tuple.Create(middle,end,mid,through)})
+                    {
+                        Charge(1);float at=half.Item1+(half.Item2-half.Item1)*.5f;
+                        if(at<=half.Item1||at>=half.Item2)continue;
+                        var reference=Vector3.Lerp(half.Item3,half.Item4,.5f);
+                        guideFailure|=Angle(Rotation(reference),Local(Sample(at),bone))>hierarchyBudgets[bone]*.25;
+                    }
+                }
                 // A generated guide may jump by 180 degrees when it changes
                 // equivalent Euler families. That alias must not force endless
                 // subdivision; a larger raw step can carry real full winding
                 // which quaternion endpoints alone cannot identify.
                 bool refine = MaximumComponent(direct - through) > .01 || MaximumComponent(mid - previous) > 45 ||
-                    MaximumComponent(through - mid) > 45 || guideTravel > 270;
+                    MaximumComponent(through - mid) > 45 || guideTravel > 270 || guideFailure;
                 if (refine && depth < MaximumDepth)
                 {
                     TraceContinuation(bone, first, middle, previous, depth + 1, output);

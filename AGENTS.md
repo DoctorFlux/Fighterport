@@ -1,5 +1,18 @@
 # Fighterport
 
+31 October: **preview.65.2-analytical-recovery** qualifies the bounded Mario/Snake
+forward-tilt hotfix in the ONE incomplete G1/M2, from
+`a68f9bc1557565a4f9688a86ad6d84dcccda10f1`. The generic coherent correction
+trajectory also covers analytical branches; near-pole/native parent witnesses
+include actual source/correction breakpoints. No character/action exceptions.
+Both source-key Use paths, own-Wait1 fitting, Undo/Redo and native/project reopen
+pass. Root motion, every weight and existing numeric/work gates remain. Short
+original N-sample L4 is admitted only through a proven read-only source snapshot;
+normal writing remains guarded. Retain failed evidence and the pre-existing
+Sonic contact-orientation limitation. Preview.66 ledges stays queued. See
+[acceptance](docs/ANALYTICAL_RECOVERY_ACCEPTANCE_2026-10-31.md).
+
+
 30 October: **preview.65.1-retarget-trajectory** qualifies the bounded reported
 Sonic AttackS3S -> Mario Use failure within the ONE incomplete G1/M2. Start:
 `cf2e7a845bdd91ea4e30e77e9442d8fb6421530b`. Preserve original Next solved

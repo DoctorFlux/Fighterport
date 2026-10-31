@@ -66,6 +66,30 @@ internal static partial class Program
         var chain=AdaptiveRotationCurveBaker.Bake(Enumerable.Range(0,8).Select(b=>b-1).ToArray(),Enumerable.Repeat(true,8).ToArray(),2,Chain,(b,t)=>Quaternion.Identity,CancellationToken.None);
         Check(chain.Converged&&chain.Tracks.Length==8&&chain.MaximumOrientationDegrees<=.025,
             "Ancestor fitting reserves descendant headroom instead of repeatedly subdividing a constant child's inherited orientation error",new{chain.Work,chain.MaximumOrientationDegrees});
+        const float centre=.2422638f,width=.00002f;
+        AdaptiveRotationPose Narrow(float time)
+        {
+            float angle=Math.Max(0,1-Math.Abs(time-centre)/width)*.1f;
+            var q=Quaternion.CreateFromAxisAngle(Vector3.UnitZ,angle*(float)Math.PI/180);
+            return new AdaptiveRotationPose{EulerDegrees=new[]{Vector3.Zero,new Vector3(0,0,angle),Vector3.Zero},
+                LocalRotations=new[]{Quaternion.Identity,q,Quaternion.Identity},WorldRotations=new[]{Quaternion.Identity,q,q}};
+        }
+        var narrow=AdaptiveRotationCurveBaker.Bake(new[]{-1,0,1},new[]{false,true,true},1,Narrow,(b,t)=>Quaternion.Identity,CancellationToken.None,
+            mandatoryTimes:new[]{centre-width,centre,centre+width});
+        Check(narrow.Converged&&narrow.MaximumOrientationDegrees<=.025,"Mandatory source/correction breakpoints expose narrow parent motion before a child inherits an unchecked error",new{narrow.Work,narrow.SampleCount});
+        using(var clip=new CHR0Node{Name="Independent narrow parent",Version=4,FrameCount=2})
+        {
+            var entry=clip.CreateEntry("Unfamiliar parent");entry.Keyframes.PreserveInterpolation=true;
+            foreach(var key in narrow.Tracks.Single(t=>t.Bone==1).Rotation)
+            {
+                entry.SetKeyframe(5,key.Time,key.Value.Z,true,true)._tangent=key.IncomingSlope.Z;
+                if(key.IncomingSlope.Z!=key.OutgoingSlope.Z)entry.SetKeyframe(5,key.Time,key.Value.Z,true,true)._tangent=key.OutgoingSlope.Z;
+            }
+            double maximum=0;
+            foreach(float time in new[]{centre-width,centre-width*.85f,centre-width*.37f,centre,centre+width*.18f,centre+width*.73f,centre+width})
+                maximum=Math.Max(maximum,SpanAngle(BrawlRetargeter.Rotation(new BrawlLib.Internal.Vector3(0,0,entry.GetFrameValue(5,time))),Narrow(time).WorldRotations[1]));
+            Check(maximum<=.025,"Independent native interpolation preserves narrow mandatory-knot motion at withheld subframes",new{maximum});
+        }
     }
 
     static int CompareContactProposal(string sourcePath,string targetPath,string motionPath,string name,string output)
@@ -100,7 +124,7 @@ internal static partial class Program
             var clip=Walk(m).OfType<CHR0Node>().Single(c=>c.Name==name);var plan=new HumanoidRetargeter(source.Rig,target.Rig);
             int last=clip.Loop?clip.FrameCount:clip.FrameCount-1;
             var contacts=new ContactMotion(plan,time=>BrawlRetargeter.Sample(source,clip,time),last,true,requireFloorEvidence:true,loop:clip.Loop);
-            double maxAngle=0,maxTranslation=0,maxScale=0,maxWorld=0,rootError=0,penetration=0,rawPenetration=0,lockDrift=0,nativePoseError=0,nativeSurfaceError=0,nativePenetration=0;int samples=0,contactSamples=0;
+            double supportOrientation=0;double maxAngle=0,maxTranslation=0,maxScale=0,maxWorld=0,rootError=0,penetration=0,rawPenetration=0,lockDrift=0,nativePoseError=0,nativeSurfaceError=0,nativePenetration=0;int samples=0,contactSamples=0;float penetrationTime=0;string penetrationRole=null;
             var nativeTarget=target.Bones[0].Model;
             var nativeSurfaces=target.Rig.Surfaces.Keys.ToDictionary(role=>role,role=>nativeTarget.PolygonList.Cast<MDL0ObjectNode>().SelectMany(o=>o.Vertices)
                 .Where(v=>NativeSurfaceMember(v,target,role,target.Bones[target.Rig.Roles[role]])).ToArray());
@@ -123,15 +147,16 @@ internal static partial class Program
                 foreach(var pair in regions)
                 {
                     var goal=contacts.At(pair.Key,time);if(goal.Support<=.99f)continue;contactSamples++;
+                    if(pair.Key.EndsWith(".foot",StringComparison.Ordinal)||pair.Key.EndsWith(".hand",StringComparison.Ordinal))supportOrientation=Math.Max(supportOrientation,SpanAngle(actual.Orientation[target.Rig.Roles[pair.Key]],expected.Orientation[target.Rig.Roles[pair.Key]]));
                     float low=pair.Value.Min(p=>Vector3.Dot(p.Evaluate(actual),target.Rig.GroundNormal))-target.Rig.GroundHeight;
                     float raw=pair.Value.Min(p=>Vector3.Dot(p.Evaluate(expected),target.Rig.GroundNormal))-target.Rig.GroundHeight;
-                    penetration=Math.Max(penetration,Math.Max(0,-low));rawPenetration=Math.Max(rawPenetration,Math.Max(0,-raw));
+                    if(-low>penetration){penetrationTime=time;penetrationRole=pair.Key;}penetration=Math.Max(penetration,Math.Max(0,-low));rawPenetration=Math.Max(rawPenetration,Math.Max(0,-raw));
                     if(nativeSurfaces[pair.Key].Length>0){float nativeLow=nativeSurfaces[pair.Key].Min(v=>Vector3.Dot(BrawlRetargeter.Vector(v.WeightedPosition),target.Rig.GroundNormal))-target.Rig.GroundHeight;
                         nativeSurfaceError=Math.Max(nativeSurfaceError,Math.Abs(nativeLow-low));nativePenetration=Math.Max(nativePenetration,Math.Max(0,-nativeLow));}
                     if(goal.Marker!=null&&goal.Lock>.99f){var delta=goal.Marker.Evaluate(actual)-goal.Anchor;delta-=target.Rig.GroundNormal*Vector3.Dot(delta,target.Rig.GroundNormal);lockDrift=Math.Max(lockDrift,delta.Length());}
                 }
             }
-            var report=new{Clip=name,Passed=maxAngle<=.025&&maxTranslation<=.0002&&maxScale<=.00001&&rootError<.0001&&nativePoseError<.01&&nativeSurfaceError<.01&&penetration<=contactBound&&nativePenetration<=contactBound&&lockDrift<=contactBound,Samples=samples,OriginalSolvedAnchors=last*8+1,MaximumAnchorOrientation=maxAngle,MaximumAnchorTranslation=maxTranslation,MaximumAnchorScale=maxScale,MaximumAnchorWorldPosition=maxWorld,RootLocalError=rootError,FullContactSamples=contactSamples,MaximumPenetration=penetration,NativePenetration=nativePenetration,ContactPositionBound=contactBound,NativeBoneAgreement=nativePoseError,NativeSurfaceAgreement=nativeSurfaceError,RawSolverPenetration=rawPenetration,MaximumPlanarLockDrift=lockDrift,AllSkinInfluences=true,ContinuousProof=false,RawSubframeOptimaReference=false};
+            var report=new{Clip=name,Passed=maxAngle<=.025&&maxTranslation<=.0002&&maxScale<=.00001&&rootError<.0001&&nativePoseError<.01&&nativeSurfaceError<.01&&penetration<=contactBound&&nativePenetration<=contactBound&&lockDrift<=contactBound&&supportOrientation<=.25,Samples=samples,OriginalSolvedAnchors=last*8+1,MaximumAnchorOrientation=maxAngle,MaximumAnchorTranslation=maxTranslation,MaximumAnchorScale=maxScale,MaximumAnchorWorldPosition=maxWorld,RootLocalError=rootError,FullContactSamples=contactSamples,MaximumPenetration=penetration,PenetrationTime=penetrationTime,PenetrationRole=penetrationRole,NativePenetration=nativePenetration,ContactPositionBound=contactBound,NativeBoneAgreement=nativePoseError,NativeSurfaceAgreement=nativeSurfaceError,RawSolverPenetration=rawPenetration,MaximumPlanarLockDrift=lockDrift,SupportOrientationAgainstRawNext=supportOrientation,AllSkinInfluences=true,ContinuousProof=false,RawSubframeOptimaReference=false};
             File.WriteAllText(Path.Combine(output,"trajectory-verification.json"),new JavaScriptSerializer().Serialize(report));
             Check(report.Passed,"Fresh native CHR0 retains original solved eighth-frame poses, native timing and source-owned motion controls",report);
             return 0;

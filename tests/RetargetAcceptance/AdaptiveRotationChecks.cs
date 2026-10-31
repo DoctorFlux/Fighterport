@@ -93,14 +93,16 @@ internal static partial class Program
                 Check(stopped && RootIdentity() == original, "Adaptive master cancellation preserves the exact native source control");
             }
         }
-        foreach (bool fullTurns in new[] { false, true })
+        foreach (int pathCase in new[] { 0, 1, 2 })
         {
+            bool fullTurns=pathCase==1;
             Vector3 TrueEuler(float time)
             {
                 if (fullTurns) return new Vector3(0, 0, 720 * time);
-                double offset = time - .5, radius = Math.Sqrt(offset * offset + .0001);
-                float x = (float)(Math.Atan2(.01, offset) * 180 / Math.PI);
-                return new Vector3(x, (float)(-90 + radius * 20), -x);
+                double width=pathCase==2?.00005:.01;
+                double offset=time-(pathCase==2?.822447:.5),radius=Math.Sqrt(offset*offset+width*width);
+                float x=(float)(Math.Atan2(width,offset)*180/Math.PI);
+                return new Vector3(x,(float)(-90+radius*(pathCase==2?.4:20)),-x);
             }
             var beginning = TrueEuler(0); var ending = TrueEuler(1);
             var aliasedEnd = new Vector3(ending.X + 180, -180 - ending.Y, ending.Z - 180);
@@ -113,7 +115,8 @@ internal static partial class Program
             }
             var continuous = AdaptiveRotationCurveBaker.Bake(new[] { -1 }, new[] { true }, 1, Solved,
                 (bone, time) => Quaternion.Identity, CancellationToken.None, generatedEulerContinuation: true);
-            Check(continuous.Converged && !continuous.WorkLimitReached && (fullTurns ? continuous.IntegerEulerRebranches == 0 : continuous.IntegerEulerRebranches == 1),
+            Check(continuous.Converged && !continuous.WorkLimitReached && (pathCase==2 || (fullTurns ? continuous.IntegerEulerRebranches == 0 : continuous.IntegerEulerRebranches == 1)),
+                pathCase==2 ? "Off-midpoint near-pole motion retains its independent orientation reference without an imposed Euler-family change" :
                 fullTurns ? "Generated Euler continuation retains an intentional 720-degree body path and its original integer coefficients" :
                 "Generated Euler continuation follows a smooth near-pole excursion instead of the aliased guide's opposite integer family",
                 new { continuous.Work, continuous.SampleCount, continuous.IntegerEulerRebranches, continuous.MaximumOrientationDegrees });
@@ -129,9 +132,8 @@ internal static partial class Program
                         entry.SetKeyframe(ch + 3, key.Time, Value(key.Value), true, true)._tangent = Value(key.OutgoingSlope);
                 }
                 double maximum = 0;
-                for (int i = 0; i <= 4096; i++)
+                foreach(float time in Enumerable.Range(0,4097).Select(i=>i/4096f).Concat(new[]{.8224468f,.822447f,.8224478f,.137f,.371f,.623f}))
                 {
-                    float time = i / 4096f;
                     var actual = BrawlRetargeter.Rotation(new BrawlLib.Internal.Vector3(entry.GetFrameValue(3, time), entry.GetFrameValue(4, time), entry.GetFrameValue(5, time)));
                     maximum = Math.Max(maximum, SpanAngle(actual, Solved(time).WorldRotations[0]));
                 }

@@ -1,5 +1,32 @@
 ﻿# Current milestone M2 — simpler native workspace
 
+31 October - **preview.65.2 analytical recovery qualifies its bounded slice**,
+starting `a68f9bc1557565a4f9688a86ad6d84dcccda10f1`. Both Mario/Snake AttackS3S
+directions now pass actual Use with both source-key options, own-Wait1 first-frame
+fitting, current Apply, Undo/Redo, native export and project reopen. Generic
+analytical correction transport retains original Next anchors and continuously
+evaluated source FK; geometry-only support refinement and mandatory native
+breakpoints address fractional branch failures without changing solver goals,
+root ownership, weights or quality/work limits. A separately proven read-only
+source snapshot handles original bounded N-sample L4; ordinary writing is unchanged.
+
+Fresh final-package numerical/workflow runs: 1,168 precision, 628 root, 94
+coordinate and 148 actual-use checks. Native write/dense regressions add 178
+earlier candidate checks with explicit unchanged-path continuity. Final media:
+684 renderer assertions; 130 inspected GIF frames/17 sheets, 12 UI PNGs and two
+full comparison endpoints. Default Use takes 13.5/14.4 seconds; direct dense
+bakes 1.4/1.2 seconds. Root-local error is zero; both tilt directions pass existing
+anchor/contact bounds. Held-out Sonic native gates pass, but its new raw-solver
+support-orientation comparison remains an identical pre-existing 0.79346-degree
+limitation. Automatic get-up support refinement can retain its original reference
+with an explicit unqualified-contact report; it never becomes contact acceptance.
+
+The ONE G1/M2 remains incomplete. Preview.66 static ledges remains queued; the
+full 18-case matrix, universal contacts/clearance, input/DPI/human/game/Melee gates
+stay open. Launcher promotion selects `Fighterport-tilts652/native1` only after
+qualification. See [acceptance and retained failures](../ANALYTICAL_RECOVERY_ACCEPTANCE_2026-10-31.md).
+
+
 30 October - **preview.65.1 retarget trajectory hotfix qualifies its bounded slice**,
 starting `cf2e7a845bdd91ea4e30e77e9442d8fb6421530b`. Actual Sonic AttackS3S -> Mario
 Use/import, both source-key options, native export and project reopen pass. The

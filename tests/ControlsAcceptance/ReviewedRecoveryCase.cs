@@ -60,11 +60,18 @@ internal static partial class Program
             };
             Call(form,"ShowTransitionFit");await Wait(()=>done);form.TransitionFitReady=null;if(failure!=null)throw failure;
             Check(ReferenceEquals(editor.SelectedCHR0,current),"End fit Apply updates the current target animation without replacing native ownership");
+            string fittedContent=SetNativeContent(current);
+            editor.Undo();await SimpleControlsReady(form);
+            Check(ReferenceEquals(editor.SelectedCHR0,current)&&SetNativeContent(current)==before,"Own-Wait1 fitting Undo restores the exact retargeted animation in its original native owner");
+            editor.Redo();await SimpleControlsReady(form);
+            Check(ReferenceEquals(editor.SelectedCHR0,current)&&SetNativeContent(current)==fittedContent,"Own-Wait1 fitting Redo restores the exact fitted result without solving again");
+            editor.SetFrame(current.FrameCount);editor.FrameFighterModel();
+            await CaptureWindow(form,Path.Combine(output,"fitted-own-wait-endpoint.png"));
             Check(FighterProject.HashFile(targetMotion)==motionHash&&(string)Call(form,"NativeControlHash",model,".mdl0")==modelHash,"Recovery baseline preserves all original reference bytes, native binds and skin weights");
             form.FighterProject.Save(Path.Combine(output,"fitted-recovery.fpstudio"));await SimpleControlsReady(form);
             File.WriteAllText(Path.Combine(output,"recovery-baseline.json"),json.Serialize(new{Clip=current.Name,Frames=current.FrameCount,Reference="target Wait1 first frame only",EntryFitting=false,ExitSamples=10,
                 RetargetedBytes=new FileInfo(Path.Combine(output,"01-retargeted.chr0")).Length,FittedBytes=new FileInfo(Path.Combine(output,"02-fitted.chr0")).Length,
-                ReviewedFloor=false,ReviewedLedge=false,ContactAcceptance=false,Note="Unchanged actual Use workflow with no supplied support context. Contact qualification is separate."}));
+                GroundMode=form.FighterProject.GroundMode.ToString(),ReviewedFloor=false,ReviewedLedge=false,ContactAcceptance=false,Note="Frozen own-Wait1 endpoint, original move beginning and attack-owned translation; absolute contact qualification remains separate."}));
             if(ground)await ReviewedGroundAfterFit(form,current,reference,output);
         }
     }

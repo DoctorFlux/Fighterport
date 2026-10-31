@@ -200,7 +200,7 @@ namespace BrawlCrate.Studio
                         foreach (var key in sourceEntry.KeyArrays[channel].Entries)
                             entry.Keyframes.SetFrameValue(channel, key._index, key._value, true)._tangent = key._tangent;
                     entry.Keyframes.PreserveInterpolation = true;
-                    var writeCapture = PreciseCHR0EntryNode.CaptureStorageForWrite(sourceEntry);
+                    var writeCapture = sourceSnapshot ? IndexedCHR0EntryStorage.CaptureForSourceSnapshot(sourceEntry) : PreciseCHR0EntryNode.CaptureStorageForWrite(sourceEntry);
                     if (!writeCapture.Accepted) throw new InvalidDataException(writeCapture.Diagnostic);
                     var storage = writeCapture.Storage;
                     if (storage != null) PreciseCHR0EntryNode.RestoreStorage(entry, storage);

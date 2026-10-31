@@ -41,8 +41,9 @@ namespace BrawlLib.Wii.Animations
         public int ByteCount => data.Length;
         public string ContentKey { get; }
         public bool IsDense => Format == AnimDataFormat.L1 || Format == AnimDataFormat.L2 || Format == AnimDataFormat.L4;
-        // Baked rotation payloads always store duration+1 samples. The retained
-        // native reader projects only duration samples for a non-looping clip.
+        // Generated baked plans store duration+1 samples. Some original L4
+        // sources have exactly N floats; only the separate read-only source
+        // projection proof below accepts that explicitly bounded layout.
         public int EncodedSampleCount { get; }
         public float Base => Format == AnimDataFormat.L4 ? 0 : ReadFloat(data, IsDense ? 4 : 12);
         public float Step => Format == AnimDataFormat.L4 ? 1 : ReadFloat(data, IsDense ? 0 : 8);
@@ -116,11 +117,11 @@ namespace BrawlLib.Wii.Animations
                 throw new ArgumentException("Raw-float baked CHR0 decoding produced invalid data.");
         }
 
-        internal static IndexedCHR0CurveStorage FromEncodedDense(AnimDataFormat format, byte[] bytes, int nativeKeyCount, int encodedSampleCount)
+        internal static IndexedCHR0CurveStorage FromEncodedDense(AnimDataFormat format, byte[] bytes, int nativeKeyCount, int encodedSampleCount,bool boundedSourceN=false)
         {
             int stride = format == AnimDataFormat.L1 ? 1 : format == AnimDataFormat.L2 ? 2 : format == AnimDataFormat.L4 ? 4 : 0;
             int header = format == AnimDataFormat.L4 ? 0 : 8;
-            if (stride == 0 || bytes == null || encodedSampleCount < 2 || encodedSampleCount > 65536 ||
+            if (stride == 0 || bytes == null || encodedSampleCount < (boundedSourceN&&format==AnimDataFormat.L4&&nativeKeyCount==encodedSampleCount?1:2) || encodedSampleCount > 65536 ||
                 nativeKeyCount < 1 || nativeKeyCount != encodedSampleCount && nativeKeyCount != encodedSampleCount - 1 ||
                 bytes.Length != header + encodedSampleCount * stride && bytes.Length != ((header + encodedSampleCount * stride + 3) & ~3) ||
                 format != AnimDataFormat.L4 && (!Finite(ReadFloat(bytes, 0)) || !Finite(ReadFloat(bytes, 4)))) return null;
@@ -194,6 +195,20 @@ namespace BrawlLib.Wii.Animations
             foreach (var key in array.Entries)
             {
                 if (Bits(key._index) != Bits(Frame(index)) || Bits(key._value) != Bits(Value(index)) || Bits(key._tangent) != Bits(Tangent(index))) return false;
+                index++;
+            }
+            return true;
+        }
+
+        // Read-only source projection proof only. This never authorizes a
+        // short dense payload for the ordinary writer or edited native clips.
+        internal bool MatchesBoundedSourceN(KeyframeArray array)
+        {
+            if(Format!=AnimDataFormat.L4||array==null||array.Loop||NativeSampleCount!=array.FrameLimit||EncodedSampleCount!=NativeSampleCount||array.KeyCount!=KeyCount)return false;
+            int index=0;
+            foreach(var key in array.Entries)
+            {
+                if(Bits(key._index)!=Bits(Frame(index))||Bits(key._value)!=Bits(Value(index))||Bits(key._tangent)!=Bits(Tangent(index)))return false;
                 index++;
             }
             return true;
@@ -326,6 +341,47 @@ namespace BrawlLib.Wii.Animations
         // must match. In particular, this never invents a missing terminal.
         public static IndexedCHR0EntryStorage Capture(CHR0EntryNode entry) => CaptureCore(entry, false);
 
+        public static unsafe WriteCapture CaptureForSourceSnapshot(CHR0EntryNode entry)
+        {
+            var ordinary=CaptureForWrite(entry);if(ordinary.Accepted)return ordinary;
+            if(entry==null||entry is PreciseCHR0EntryNode)return ordinary;
+            var clip=entry.Parent as CHR0Node;var data=clip?.WorkingUncompressed??default(DataSource);var raw=entry.WorkingUncompressed;
+            if(clip==null||data.Length<0x28||!HasOwnerBytes(clip,(byte*)data.Address,0x28)||!HasOwnerBytes(entry,(byte*)raw.Address,8))return ordinary;
+            byte* header=(byte*)data.Address;byte* start=(byte*)raw.Address;
+            uint Read(byte* p)=>(uint)p[0]<<24|(uint)p[1]<<16|(uint)p[2]<<8|p[3];
+            int version=unchecked((int)Read(header+8)),offset=version==4?0x1c:0x20;
+            if(version!=4&&version!=5||!HasOwnerBytes(clip,header,version==4?0x28:0x2c))return ordinary;
+            int frames=header[offset]<<8|header[offset+1];AnimationCode code=Read(start+4);
+            if(frames<1||clip.Version!=version||clip.FrameCount!=frames||Read(header+offset+4)!=0||clip.Loop||entry.Keyframes.Loop||entry.Keyframes.FrameLimit!=frames||
+                Read(header+offset+8)>2||Read(header+offset+8)!=unchecked((uint)clip.NativeScalingRule)||!code.GetExists(1)||code.GetFormat(1)!=AnimDataFormat.L4||
+                entry.UseModelScale!=code.UseModelScale||entry.UseModelRotate!=code.UseModelRot||entry.UseModelTranslate!=code.UseModelTrans||
+                entry.ScaleCompensateApply!=code.ScaleCompApply||entry.ScaleCompensateParent!=code.ScaleCompParent||entry.ClassicScaleOff!=code.ClassicScaleOff)return ordinary;
+            var bounded=CaptureCore(entry,false,true);if(bounded==null)return ordinary;
+            int rotationCell=code.GetExists(0)?code.GetIsIsotropic(0)?1:3:0;bool any=false;
+            for(int axis=0;axis<3;axis++)
+            {
+                int channel=axis+3;var curve=bounded[channel];
+                if(!code.GetIsFixed(channel))
+                {
+                    if(curve==null||!curve.MatchesBoundedSourceN(entry.KeyArrays[channel]))return ordinary;
+                    any=true;
+                }
+                else
+                {
+                    byte* cell=start+8+(rotationCell+axis)*4;var keys=entry.KeyArrays[channel].Entries.ToArray();
+                    if(!HasOwnerBytes(entry,cell,4)||keys.Length!=1||IndexedCHR0CurveStorage.Bits(keys[0]._index)!=0||IndexedCHR0CurveStorage.Bits(keys[0]._tangent)!=0||
+                        IndexedCHR0CurveStorage.Bits(keys[0]._value)!=unchecked((int)Read(cell)))return ordinary;
+                }
+            }
+            if(!any)return ordinary;
+            // All varying R axes contain exactly N original floats, bounded by
+            // the immutable dictionary/next payload. There is no N+1 terminal
+            // to discard or invent. Preserve their complete native projection
+            // with I12 only in this independent, read-only solver snapshot.
+            var kept=new IndexedCHR0EntryStorage(Enumerable.Range(0,9).Select(c=>c>=3&&c<6?null:bounded[c]).ToArray());
+            return new WriteCapture(kept.HasIndexedCurves?kept:null,true,true,"Read-only source snapshot: bounded unchanged N-sample L4 projection uses exact I12; no terminal is read from the next stream. Ordinary writing remains unchanged.");
+        }
+
         public static unsafe WriteCapture CaptureForWrite(CHR0EntryNode entry)
         {
             if (entry is PreciseCHR0EntryNode precise)
@@ -415,7 +471,7 @@ namespace BrawlLib.Wii.Animations
                 "Bounded interior-only sampled rotation edit: matching groups retain imported payloads; changed rotation uses precise I12. Original non-loop held terminal and final projected tuples are unchanged. Same-native interpolation only; general runtime compatibility is unverified.");
         }
 
-        private static unsafe IndexedCHR0EntryStorage CaptureCore(CHR0EntryNode entry, bool includeUnmatchedDense)
+        private static unsafe IndexedCHR0EntryStorage CaptureCore(CHR0EntryNode entry, bool includeUnmatchedDense,bool boundedSourceN=false)
         {
             if (entry == null) return null;
             var data = entry.WorkingUncompressed;
@@ -527,7 +583,7 @@ namespace BrawlLib.Wii.Animations
                     bool dense = format == AnimDataFormat.L1 || format == AnimDataFormat.L2 || format == AnimDataFormat.L4;
                     if (format != AnimDataFormat.I4 && format != AnimDataFormat.I6 && !dense) continue;
                     byte* encoded = start + unchecked((int)Raw32(cell));
-                    if (!Contains(encoded, dense ? 8 : 16)) return null;
+                    if (!Contains(encoded, dense ? boundedSourceN&&format==AnimDataFormat.L4?4:8 : 16)) return null;
                     if (dense && (group != 1 || clip == null || clip.FrameCount < 1 || clip.FrameCount > ushort.MaxValue)) continue;
                     int count = dense ? clip.FrameCount + 1 : encoded[0] << 8 | encoded[1];
                     int stride = dense ? format == AnimDataFormat.L1 ? 1 : format == AnimDataFormat.L2 ? 2 : 4 : format == AnimDataFormat.I4 ? 4 : 6;
@@ -538,6 +594,8 @@ namespace BrawlLib.Wii.Animations
                         ulong next = curveStarts.FirstOrDefault(p => p > address);
                         if (nativeResourceEnd > address && (next == 0 || nativeResourceEnd < next)) next = nativeResourceEnd;
                         if (nativeVersion == 5 && nativeUserDataBoundary > address && (next == 0 || nativeUserDataBoundary < next)) next = nativeUserDataBoundary;
+                        if(boundedSourceN&&!clip.Loop&&format==AnimDataFormat.L4&&next==address+(ulong)(clip.FrameCount*4))
+                        {count=clip.FrameCount;rawLength=count*4;length=rawLength;}
                         // Imported resources may end on the last sample byte,
                         // before physical-file alignment. Preserve that exact
                         // payload extent; newly generated plans stay aligned.
@@ -548,9 +606,9 @@ namespace BrawlLib.Wii.Animations
                     }
                     if (!Contains(encoded, length)) return null;
                     var bytes = new byte[length]; for (int i = 0; i < length; i++) bytes[i] = encoded[i];
-                    var curve = dense ? IndexedCHR0CurveStorage.FromEncodedDense(format, bytes, clip.FrameCount + (clip.Loop ? 1 : 0), count) :
+                    var curve = dense ? IndexedCHR0CurveStorage.FromEncodedDense(format, bytes, clip.FrameCount + (clip.Loop ? 1 : 0), count,boundedSourceN) :
                         IndexedCHR0CurveStorage.FromEncoded(format, bytes);
-                    if (curve == null || !(dense && includeUnmatchedDense) && !curve.Matches(entry.KeyArrays[channel])) continue;
+                    if (curve == null || !(dense && includeUnmatchedDense) && !curve.Matches(entry.KeyArrays[channel])&&!(boundedSourceN&&curve.MatchesBoundedSourceN(entry.KeyArrays[channel]))) continue;
                     if (axes == 1)
                     { for (int component = 0; component < 3; component++) if (curve.Matches(entry.KeyArrays[component])) curves[component] = curve; }
                     else curves[channel] = curve;
