@@ -35,7 +35,7 @@ namespace BrawlCrate.Studio.Retargeting
             RigPose first=poses[0];Vector3 up=plan.Source.GroundNormal;
             float leg=Length(plan.Source.Rest,"left",false);
             float hip=Vector3.Dot(first.Point("pelvis"),up)-plan.Source.GroundHeight;
-            string[] hands=new[]{"left","right"}.Where(side=>{
+            string[] hands=new[]{"left","right"}.Where(side=>plan.Source.Roles.ContainsKey(side+".hand")&&plan.Target.Roles.ContainsKey(side+".hand")).Where(side=>{
                 float arm=Length(plan.Source.Rest,side,true),hand=Vector3.Dot(first.Point(side+".hand"),up)-plan.Source.GroundHeight;
                 return hand>hip+arm*0.2f && Math.Abs(hand)<arm*0.45f;
             }).ToArray();

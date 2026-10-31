@@ -44,6 +44,7 @@ namespace BrawlCrate.Studio.Retargeting
             rig.CoordinateUp.HasValue ? "declared-coordinate-up/anatomical-heading-v1" : "legacy-anatomical-rest-fallback";
         public string[] UnmappedSource { get; }
         public string[] UnmappedTarget { get; }
+        public string[] UnavailableEndEffectors { get; }
         private readonly Dictionary<int, RetargetMap> _byTarget;
         private readonly RetargetMap trajectory;
         private readonly Dictionary<int,Tuple<Quaternion,Quaternion>> localFrames=new Dictionary<int,Tuple<Quaternion,Quaternion>>();
@@ -56,8 +57,10 @@ namespace BrawlCrate.Studio.Retargeting
             var required = new List<string> {"pelvis", "spine", "chest", "neck", "head"};
             foreach (string side in new[] {"left", "right"})
                 required.AddRange(new[] {"upperArm", "lowerArm", "hand", "upperLeg", "lowerLeg", "foot"}.Select(n => side + "." + n));
-            if (required.Any(r => !source.Roles.ContainsKey(r) || !target.Roles.ContainsKey(r)))
+            bool Unavailable(Rig rig,string role)=>role.EndsWith(".hand",StringComparison.Ordinal)&&SkeletonCharacterizer.HasTerminalArm(rig,rig.Roles,role.Split('.')[0]);
+            if (required.Any(r => !source.Roles.ContainsKey(r)&&!Unavailable(source,r) || !target.Roles.ContainsKey(r)&&!Unavailable(target,r)))
                 throw new InvalidDataException("This rig is missing a required humanoid role. No motion was generated.");
+            UnavailableEndEffectors=required.Where(r=>Unavailable(source,r)||Unavailable(target,r)).ToArray();
             Mapping = source.Roles.Keys.Intersect(target.Roles.Keys).Select(role => new RetargetMap {
                 Role = role, SourceIndex = source.Roles[role], TargetIndex = target.Roles[role],
                 Source = source.Joints[source.Roles[role]].Name, Target = target.Joints[target.Roles[role]].Name
@@ -121,7 +124,9 @@ namespace BrawlCrate.Studio.Retargeting
             if (length < 0.01f) throw new InvalidDataException("A required limb has zero length.");
             return length;
         }
-        private float ChainRatio(string side, bool arm) => ChainLength(Target, side, arm) / ChainLength(Source, side, arm);
+        private float ChainRatio(string side, bool arm) => arm&&(!Source.Roles.ContainsKey(side+".hand")||!Target.Roles.ContainsKey(side+".hand"))
+            ?Vector3.Distance(Target.Rest.Point(side+".upperArm"),Target.Rest.Point(side+".lowerArm"))/Vector3.Distance(Source.Rest.Point(side+".upperArm"),Source.Rest.Point(side+".lowerArm"))
+            :ChainLength(Target, side, arm) / ChainLength(Source, side, arm);
         private static int[] AncestorPath(Rig rig)
         {var path=new List<int>();for(int i=rig.Joints[rig.Roles["pelvis"]].Parent;i>=0;i=rig.Joints[i].Parent)path.Add(i);path.Reverse();return path.ToArray();}
         public bool IsTrajectory(RetargetMap map)=>map.SourceIndex!=Source.Roles["pelvis"] && map.TargetIndex!=Target.Roles["pelvis"] &&
@@ -202,6 +207,7 @@ namespace BrawlCrate.Studio.Retargeting
             string rootRole = side + (arm ? ".upperArm" : ".upperLeg");
             string middleRole = side + (arm ? ".lowerArm" : ".lowerLeg");
             string endRole = side + (arm ? ".hand" : ".foot");
+            if(!Source.Roles.ContainsKey(endRole)||!Target.Roles.ContainsKey(endRole))return; // exact terminal-arm capability: retain mapped FK
             int s = Source.Roles[rootRole], t = Target.Roles[rootRole], m = Target.Roles[middleRole], end = Target.Roles[endRole];
             float ratio = ChainRatio(side, arm);
             Vector3 restResidual = Target.Rest.Point(endRole) - Target.Rest.Point(t) - Convert(Source.Rest.Point(endRole) - Source.Rest.Point(s)) * ratio;
@@ -228,6 +234,7 @@ namespace BrawlCrate.Studio.Retargeting
 
         internal void SolveLimb(RigPose target, RetargetPose report, string side, bool arm, Vector3 goal, Vector3? bendDirection=null)
         {
+            if(!Target.Roles.ContainsKey(side+(arm?".hand":".foot")))throw new InvalidDataException("End-effector IK is unavailable: this exact rig has no distinct mapped distal joint. Native FK remains available.");
             int t=Target.Roles[side+(arm?".upperArm":".upperLeg")], m=Target.Roles[side+(arm?".lowerArm":".lowerLeg")], end=Target.Roles[side+(arm?".hand":".foot")];
             if (Vector3.Distance(target.Point(end), goal) < 1e-4f) return;
             Quaternion endOrientation = target.Orientation[end];

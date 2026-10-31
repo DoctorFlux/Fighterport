@@ -1,5 +1,17 @@
 # Fighterport
 
+31 October: **preview.65.5-contact-capabilities** qualifies the bounded idle
+lock/terminal-arm increment from `a3e74f44f05b0c84e5f9023fc5364f99d1b4ec04`
+inside the ONE incomplete G1/M2. Established body locks retain end-contact
+priority; optional end projection cannot worsen the worst established residual.
+Missing hands are admitted only with exact terminal-forearm rest/topology proof,
+retaining existing FK and explicitly unavailable hand IK/contact. Distinct or
+ambiguous joints still require review. No model/action/name/hash/index exceptions,
+new wrists, changed binds/weights/roots or relaxed gates. All eight idle pairs
+and retained tilt/fitting regressions pass; universal/game acceptance remains
+open. Preview.66 ledges stays queued. See
+[acceptance](docs/CONTACT_LOCK_CAPABILITY_ACCEPTANCE_2026-10-31.md).
+
 31 October: **preview.65.4-bounded-native-bake** qualifies a bounded retarget
 preparation increment from `39d580b22576f6d5df2946ce81010a62cd32172e` in the
 ONE incomplete G1/M2. Whole-clip work is now explicitly divided into eight-frame

@@ -1,5 +1,16 @@
 # Fighterport master plan
 
+31 October - preview.65.5 qualifies established contact locking and exact
+terminal-arm capabilities in the same ONE incomplete G1/M2. Shared solving
+preserves established body markers through end projection. Exact zero distal
+offsets can establish unavailable hand IK/contact while retaining native forearm
+FK; no wrist/skeleton/weight changes or identity-specific overrides. All eight
+idle directions pass native/contact oracles, including Peach → Fox and Link ↔
+Samus. Both source-key workflows, root gates and original tilt/own-Wait1 fitting
+regressions pass unchanged limits. Preview.66 ledges and broader anatomy/contact/
+style/game gates remain open. See [current plan](plans/current.md) and
+[acceptance](CONTACT_LOCK_CAPABILITY_ACCEPTANCE_2026-10-31.md).
+
 31 October - preview.65.4 qualifies bounded eight-frame native retarget baking
 in the same ONE incomplete G1/M2. Each section retains the two-million-work
 ceiling; the previous whole-clip ceiling is intentionally replaced by an explicit

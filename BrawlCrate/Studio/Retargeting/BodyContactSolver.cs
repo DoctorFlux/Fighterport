@@ -8,6 +8,7 @@ namespace BrawlCrate.Studio.Retargeting
     public sealed partial class ContactMotion
     {
         internal const string EndOrientationPolicy="coupled-end-world-orientation-1";
+        internal const string EstablishedLockPolicy="coupled-established-locks-1";
         private sealed class ContactRow
         {
             internal SkinPoint Point;
@@ -85,11 +86,12 @@ namespace BrawlCrate.Studio.Retargeting
                         Vector3 z=Vector3.Cross(x,pose.Rig.GroundNormal);
                         Vector3 planar=delta-pose.Rig.GroundNormal*Vector3.Dot(delta,pose.Rig.GroundNormal);
                         contactsSatisfied&=planar.Length()*goal.Lock<=precision*2;
-                        if(goal.Lock>0.99f && !IsEndContact(contact.Key))supportedContactsSatisfied&=planar.Length()<=length*0.01f;
-                        if(goal.Lock>0.99f && IsEndContact(contact.Key) && planar.Length()>length*0.01f)unresolvedEnds=true;
-                        if(!IsEndContact(contact.Key))bodyFeasible&=planar.Length()*goal.Lock<=length*0.01f;
-                        rows.Add(new ContactRow{Point=goal.Marker,Axis=x,Error=Vector3.Dot(delta,x),Weight=goal.Lock*(IsEndContact(contact.Key)?40:1),DerivativeWeight=goal.Lock*(IsEndContact(contact.Key)?40:1)});
-                        rows.Add(new ContactRow{Point=goal.Marker,Axis=z,Error=Vector3.Dot(delta,z),Weight=goal.Lock*(IsEndContact(contact.Key)?40:1),DerivativeWeight=goal.Lock*(IsEndContact(contact.Key)?40:1)});
+                        if(goal.Lock>0.99f && !IsEndContact(contact.Key))supportedContactsSatisfied&=planar.Length()<=length*0.0005f;
+                        if(goal.Lock>0.99f && IsEndContact(contact.Key) && planar.Length()>length*0.0005f)unresolvedEnds=true;
+                        if(!IsEndContact(contact.Key))bodyFeasible&=planar.Length()*goal.Lock<=length*(goal.Lock>0.99f?0.0005f:0.01f);
+                        float lockWeight=ContactLockWeight(contact.Key,goal);
+                        rows.Add(new ContactRow{Point=goal.Marker,Axis=x,Error=Vector3.Dot(delta,x),Weight=lockWeight,DerivativeWeight=lockWeight});
+                        rows.Add(new ContactRow{Point=goal.Marker,Axis=z,Error=Vector3.Dot(delta,z),Weight=lockWeight,DerivativeWeight=lockWeight});
                     }
                 }
                 if(iteration>=4 && bodyFeasible && !unresolvedEnds)break;
@@ -263,6 +265,8 @@ namespace BrawlCrate.Studio.Retargeting
         }
         private void ProjectBodyEnds(RigPose pose,KeyValuePair<string,ContactGoal>[] active,Dictionary<string,float> desiredHeights,Dictionary<int,Quaternion> orientations)
         {
+            var original=(JointTransform[])pose.Local.Clone();
+            float before=EstablishedContactError(pose,active,desiredHeights);
             foreach(var end in orientations.OrderBy(p=>p.Key))pose.SetWorldRotation(end.Key,end.Value);
             var report=new RetargetPose{Pose=pose};
             for(int pass=0;pass<3;pass++)foreach(var contact in active.Where(c=>IsEndContact(c.Key)))
@@ -279,6 +283,21 @@ namespace BrawlCrate.Studio.Retargeting
                 string side=contact.Key.Split('.')[0];
                 plan.SolveLimb(pose,report,side,contact.Key.EndsWith(".hand",StringComparison.Ordinal),pose.Point(contact.Key)+delta);
             }
+            // End projection must not trade an established body marker for a
+            // slightly better foot. Keep the jointly solved pose when this
+            // optional polishing step increases the worst hard-contact error.
+            if(EstablishedContactError(pose,active,desiredHeights)>before)
+            {Array.Copy(original,pose.Local,original.Length);pose.Update();}
+        }
+        private static float EstablishedContactError(RigPose pose,KeyValuePair<string,ContactGoal>[] active,Dictionary<string,float> desiredHeights)
+        {
+            float maximum=0;
+            foreach(var contact in active)
+            {
+                if(contact.Value.Support>0.99f)maximum=Math.Max(maximum,Math.Abs(pose.Rig.Surfaces[contact.Key].Clearance(pose)-desiredHeights[contact.Key]));
+                if(contact.Value.Lock>0.99f&&contact.Value.Marker!=null)maximum=Math.Max(maximum,PlanarLockError(pose,contact.Value));
+            }
+            return maximum;
         }
         private static void ApplyBodyStep(RigPose pose,JointTransform[] original,int pelvis,int[] controlForBone,Vector3 translation,Vector3[] rotations,float scale,Dictionary<int,Quaternion> orientations)
         {
@@ -333,12 +352,17 @@ namespace BrawlCrate.Studio.Retargeting
                 if(contact.Value.Marker==null)continue;
                 Vector3 delta=contact.Value.Marker.Evaluate(pose)-contact.Value.Anchor;
                 delta-=pose.Rig.GroundNormal*Vector3.Dot(delta,pose.Rig.GroundNormal);
-                float lockWeight=contact.Value.Lock*(IsEndContact(contact.Key)?40:1);
+                float lockWeight=ContactLockWeight(contact.Key,contact.Value);
                 loss+=delta.LengthSquared()*lockWeight*lockWeight;
             }
             for(int i=0;i<reference.Length;i++)loss+=Vector3.DistanceSquared(pose.Point(i),reference[i])*poseWeight*poseWeight;
             return loss;
         }
+        // An established body marker is a stationary contact too, not merely
+        // a weak pose preference. Share the end-contact priority and reserve
+        // half the existing positional bound before native representation.
+        private static float ContactLockWeight(string role,ContactGoal goal)
+            =>goal.Lock*(IsEndContact(role)?40:1+39*Smooth(0.8f,0.99f,goal.Lock));
         private static bool Descendant(Rig rig,int joint,int ancestor)=>rig.Ancestors[joint][ancestor];
         private static void AddContactEquation(double[,] normal,double[] rhs,double[] jacobian,double residual)
         {

@@ -53,7 +53,7 @@ namespace BrawlCrate.Studio.Retargeting
             }
             var poseWeights=reference.Keys.ToDictionary(t=>t,t=>{
                 bool bodySupported=contactTracks[t].Any(c=>!ContactMotion.IsEndContact(c.Key) && c.Value.Support>0.001f);
-                int[] freeBranches=new[]{"left","right"}.SelectMany(side=>new[]{"hand","foot"}.Where(end=>contactTracks[t][side+"."+end].Support<=0.001f)
+                int[] freeBranches=new[]{"left","right"}.SelectMany(side=>new[]{"hand","foot"}.Where(end=>target.Rig.Roles.ContainsKey(side+"."+end)&&contactTracks[t][side+"."+end].Support<=0.001f)
                     .Select(end=>target.Rig.Roles[side+(end=="hand"?".upperArm":".upperLeg")])).ToArray();
                 return Enumerable.Range(0,target.Bones.Length).Select(b=>!bodySupported && poseErrors[t]>poseTolerance && freeBranches.Any(j=>target.Rig.Ancestors[b][j])?0.5f:0.025f).ToArray();
             });

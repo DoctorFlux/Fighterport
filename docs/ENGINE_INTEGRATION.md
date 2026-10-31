@@ -1,5 +1,26 @@
 ﻿# Native Next integration
 
+Preview.65.5 adds `coupled-established-locks-1` to shared contact solving. Body
+marker priority rises continuously to end-contact priority on establishment;
+hard planar convergence reserves half the unchanged contact positional bound.
+Final optional end projection restores the joint solution if it would increase
+the worst established positional residual. Root controls, every skin influence,
+end-orientation constraints and the 180-iteration budget remain unchanged.
+
+Characterization admits a missing hand only from exact existing terminal-arm
+evidence: reviewed/proposed upper/lower ancestry and no nonzero descendant local
+offsets. A distinct unbound endpoint still requires review. Shared retargeting
+retains forearm FK, measures common elbow-span ratios for incomplete sides and
+does not create a wrist/hand curve or hand contact. Surface capture, floor
+analysis, curve fitting and suspended support use available capabilities. Missing
+one hand no longer disables feet/body support. Direct unavailable hand IK refuses.
+
+The existing complete support JSON hashes the lock policy and unavailable ends;
+its envelope/legacy reads and project schema remain. Existing Mapping evidence
+and source-key review explain capability limits without a new panel. This changes
+no MDL0/skin data, shared codec, playback work, document ownership or Undo stack.
+See [qualification and boundaries](CONTACT_LOCK_CAPABILITY_ACCEPTANCE_2026-10-31.md).
+
 Preview.65.4 adds `WindowedNativeCurveBaker` around the existing adaptive native
 master builder. Its eight-frame sections each retain the two-million-work cap;
 whole-clip work now scales with section count. Key/witness counts remain bounded.

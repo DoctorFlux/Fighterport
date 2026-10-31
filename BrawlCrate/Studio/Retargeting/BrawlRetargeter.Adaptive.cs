@@ -157,8 +157,10 @@ namespace BrawlCrate.Studio.Retargeting
                 "; local scale " + bake.MaximumScaleError.ToString("G7", System.Globalization.CultureInfo.InvariantCulture) +
                 ". Source-owned control curves retained. "+(trajectory==null?"Direct solved-pose reference.":"Correction trajectory: "+RetargetCorrectionTrajectory.Policy+"; every original eighth-frame pose retained; "+trajectory.AnchorCount+" correction anchors; source FK remains continuously evaluated. Raw independent subframe contact optima are not its motion reference.")+
                 " Coupled contact orientation: "+ContactMotion.EndOrientationPolicy+"; support preparation reserves 0.125 degrees of the existing 0.25-degree contact bound."+
+                " Established contact locks: "+ContactMotion.EstablishedLockPolicy+"; coupled body/end projection cannot increase worst established residual."+
                 " Support preparation work: "+preparationWork+"/2000000 (separate bounded proposal phase); native curve work: "+bake.Work+" total in "+bake.WindowCount+" bounded sections; largest section "+bake.MaximumWindowWork+"/2000000. Full decoded native master verified at "+bake.ValidationTimes.Length+" witness times."+supportNote+
                 " Proven constant native S/T groups: "+bake.ProvenConstantGroups+" ("+NativeRetargetConstants.Policy+"); no rotation witnesses removed."+
+                (result.Plan.UnavailableEndEffectors.Length==0?"":" Unavailable end effectors: "+string.Join(", ",result.Plan.UnavailableEndEffectors)+"; existing forearm FK retained; no invented wrist, hand IK or contact.")+
                 " These bake checks are sampled, not continuous or game acceptance. Export size optimization is separate.";
             return ()=>{
                 cancellation.ThrowIfCancellationRequested();constants?.Validate(parents);

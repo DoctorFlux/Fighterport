@@ -12,7 +12,8 @@ namespace BrawlCrate.Studio.Retargeting
         public Dictionary<string,int> Roles { get; } = new Dictionary<string,int>();
         public Dictionary<string,string> Evidence { get; } = new Dictionary<string,string>();
         public List<string> Warnings { get; } = new List<string>();
-        public string[] Missing => SkeletonCharacterizer.CoreRoles.Where(r=>!Roles.ContainsKey(r)).ToArray();
+        public Dictionary<string,string> Unavailable { get; } = new Dictionary<string,string>();
+        public string[] Missing => SkeletonCharacterizer.CoreRoles.Where(r=>!Roles.ContainsKey(r)&&!Unavailable.ContainsKey(r)).ToArray();
     }
 
     // Anatomy is shared across characters and formats. Names contribute evidence;
@@ -86,6 +87,11 @@ namespace BrawlCrate.Studio.Retargeting
                 else result.Warnings.Add("Several bones suggest "+pair.Key+"; review the proposed hierarchy/geometry mapping.");
             }
             InferGeometry(neutral,result);
+            foreach(string side in new[]{"left","right"})if(HasTerminalArm(neutral,result.Roles,side))
+            {
+                string role=side+".hand",reason="No distinct distal joint: forearm FK retained; hand IK/contact unavailable.";
+                result.Unavailable.Add(role,reason);result.Evidence[role]=reason;
+            }
             foreach(string missing in result.Missing)result.Warnings.Add("Assign "+missing+" before retargeting.");
             return result;
         }
@@ -172,14 +178,29 @@ namespace BrawlCrate.Studio.Retargeting
         private static int Depth(Rig rig,int bone){int n=0;while((bone=rig.Joints[bone].Parent)>=0)n++;return n;}
         private static int[] Path(Rig rig,int ancestor,int child)
         {var path=new List<int>();while(child>=0){path.Add(child);if(child==ancestor){path.Reverse();return path.ToArray();}child=rig.Joints[child].Parent;}return new int[0];}
+        // A genuinely terminal forearm is different from an unassigned wrist.
+        // Only exact existing hierarchy/rest evidence permits this capability
+        // limitation. A distinct distal descendant still requires mapping review.
+        internal static bool HasTerminalArm(Rig rig,IDictionary<string,int> roles,string side)
+        {
+            if(roles.ContainsKey(side+".hand")||!roles.TryGetValue(side+".upperArm",out int upper)||!roles.TryGetValue(side+".lowerArm",out int lower))return false;
+            if(upper<0||lower<0||upper>=rig.Joints.Length||lower>=rig.Joints.Length||!rig.Ancestors[lower][upper]||upper==lower)return false;
+            float span=Vector3.Distance(rig.Rest.Point(upper),rig.Rest.Point(lower));
+            if(!RigMath.Finite(span)||span<0.00001f)return false;
+            // Exact zero local offsets, not a scale-dependent proximity guess.
+            // Even a tiny distinct descendant remains an unresolved binding.
+            return Enumerable.Range(0,rig.Joints.Length).Where(i=>i!=lower&&rig.Ancestors[i][lower])
+                .All(i=>rig.Joints[i].Bind.Translation==Vector3.Zero);
+        }
         public static void Validate(RigJoint[] joints,IDictionary<string,int> roles)
         {
-            var missing=CoreRoles.Where(r=>!roles.ContainsKey(r)).ToArray();
-            if(missing.Length>0)throw new InvalidDataException("Skeleton mapping needs: "+string.Join(", ",missing)+". Use Review Skeleton Mapping.");
             var rig=new Rig("Validation","Humanoid",joints,roles,1);
+            var missing=CoreRoles.Where(r=>!roles.ContainsKey(r)&&!(r.EndsWith(".hand",StringComparison.Ordinal)&&HasTerminalArm(rig,roles,r.Split('.')[0]))).ToArray();
+            if(missing.Length>0)throw new InvalidDataException("Skeleton mapping needs: "+string.Join(", ",missing)+". Use Review Skeleton Mapping.");
             foreach(string side in new[]{"left","right"})foreach(string[] chain in new[]{new[]{"upperArm","lowerArm","hand"},new[]{"upperLeg","lowerLeg","foot"}})
                 for(int i=1;i<chain.Length;i++)
                 {
+                    if(!roles.ContainsKey(side+"."+chain[i]))continue; // proven unavailable end only
                     int ancestor=roles[side+"."+chain[i-1]],node=roles[side+"."+chain[i]];float distance=Vector3.Distance(rig.Rest.Point(ancestor),rig.Rest.Point(node));
                     while(node>=0 && node!=ancestor)node=joints[node].Parent;
                     if(node!=ancestor || distance<0.00001f)throw new InvalidDataException("Invalid mapped limb hierarchy or zero-length segment: "+side+"."+chain[i]);

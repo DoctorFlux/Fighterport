@@ -182,7 +182,7 @@ MSBuild.exe tests/ControlsAcceptance/ControlsAcceptance.csproj /p:Configuration=
 RetargetAcceptance.exe --adaptive-budget-baseline <baseline4>
 RetargetAcceptance.exe --adaptive-budget <final-budget11>
 RetargetAcceptance.exe --local-precision <precision11>
-RetargetAcceptance.exe --motion-controls <original-model> <original-motion> <roots11>
+RetargetAcceptance.exe --motion-controls <source-model> <target-model> <roots11>
 RetargetAcceptance.exe --coordinate-frames <coordinates11>
 scripts/Test-BackgroundCapture.ps1 -Model <target> -Motion <donor-motion> -RetargetSource <donor> -TargetMotion <own-motion> -Clip AttackS3S -AuthenticFixtureManifest <pinned> -WorkspaceAuthenticLibraryFloat -RetargetTrajectoryCase -ReviewedRecoveryCase -NativeDirectory <native1> -OutputDirectory <use11-direction>
 RetargetAcceptance.exe --verify-trajectory <donor> <target> <donor-motion> AttackS3S <actual-retargeted-export> <oracle11>

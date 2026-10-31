@@ -1,5 +1,37 @@
 ﻿# Current milestone M2 — simpler native workspace
 
+31 October - **preview.65.5 contact locks/capabilities qualifies its bounded
+slice**, from `a3e74f44f05b0c84e5f9023fc5364f99d1b4ec04`. The shared coupled
+solver treats established body markers with end-contact priority; optional end
+projection cannot worsen the worst established positional residual. The affected
+idle's largest failing marker was body-classified, already drifting in the raw
+solver. Decoded drift falls from 0.0127292 to 0.00296952 against the unchanged
+0.00596133 bound. No contacts, roots or weights were removed.
+
+Exact terminal-arm topology/rest proof distinguishes a genuinely absent wrist
+from an unassigned distinct joint. Native upper-arm/forearm FK remains available,
+with hand IK/contact explicitly unavailable. All descendants must have exact zero
+local offsets; tiny distinct offsets still require review. Both transfer
+directions work without invented bones or aliases. Existing feet/body contacts
+remain active when one hand is absent. Evidence uses existing mapping/review
+surfaces and the complete hashed support JSON with legacy compatibility.
+
+Qualification: 2,435 passing assertions (2,383 fresh final build9; 52 full-rig UI
+checks with explicit build8 source continuity), eight full idle native/contact
+oracles and six actual source-key export oracles. All eight idle directions pass,
+including both formerly blocked partial-arm directions. Both key modes pass
+library Use, export and project Save/reopen; the original three tilt/own-Wait1
+fitting workflows pass current Apply, Undo/Redo and protected data checks. Eight
+fresh mapping/idle PNGs directly inspected. Original Next/viewer, all weights,
+binds, source-owned roots and quality/work budgets remain.
+
+The ONE G1/M2 stays incomplete; preview.66 finite ledges remains queued. A missing
+hand does not acquire hand IK/contact. Unknown/distinct anatomy needs review;
+broader contacts/style/clearance, all costumes, the full 18-case matrix, moving
+supports, external-editor/runtime, Melee, input/DPI/human/game acceptance remain
+open. Qualified package: `Fighterport-contact655/native1`. See
+[measurements and retained failures](../CONTACT_LOCK_CAPABILITY_ACCEPTANCE_2026-10-31.md).
+
 31 October - **preview.65.4 bounded native bake qualifies its bounded slice**,
 starting `39d580b22576f6d5df2946ce81010a62cd32172e`. Offline native preparation
 uses eight-frame sections with the existing two-million-work ceiling per section;

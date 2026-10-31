@@ -261,7 +261,8 @@ namespace BrawlCrate.Studio.Retargeting
             foreach (string side in new[] {"left", "right"})
                 foreach (string end in new[] {"foot", "hand"})
                 {
-                    string role = side + "." + end; int joint = rig.Roles[role];
+                    string role = side + "." + end;
+                    if(!rig.Roles.TryGetValue(role,out int joint))continue; // no fabricated wrist/surface on a terminal native arm
                     var points = new List<SkinPoint>();
                     foreach (Vertex3 vertex in vertices)
                     {

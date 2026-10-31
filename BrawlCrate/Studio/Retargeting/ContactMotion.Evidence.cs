@@ -30,7 +30,7 @@ namespace BrawlCrate.Studio.Retargeting
             var frames=Enumerable.Range(0,last*4+1).Select(i=>{
                 var pose=sample(i/4f);return new{Frame=SupportBits(i/4f),Local=pose.Local.Select(t=>new{Translation=SupportVector(t.Translation),Scale=SupportVector(t.Scale),Rotation=SupportQuaternion(t.Rotation)}).ToArray(),World=pose.World.Select(SupportMatrix).ToArray()};
             }).ToArray();
-            return new{Version="original-next-support-context-1",Algorithm=HumanoidRetargeter.Algorithm,EndOrientationPolicy,LastFrame=last,SampleStep=.25f,
+            return new{Version="original-next-support-context-1",Algorithm=HumanoidRetargeter.Algorithm,EndOrientationPolicy,EstablishedLockPolicy,UnavailableEndEffectors=plan.UnavailableEndEffectors,LastFrame=last,SampleStep=.25f,
                 Source=SupportRig(plan.Source),Target=SupportRig(plan.Target),FloorEnabled,
                 Suspended=Suspended?.CaptureOriginalEvidence(),SourceFrames=frames,
                 Tracks=tracks.OrderBy(t=>t.Key,StringComparer.Ordinal).Select(t=>new{Role=t.Key,Samples=t.Value.Select(g=>new{Support=SupportBits(g.Support),Lock=SupportBits(g.Lock),Anchor=SupportVector(g.Anchor),Marker=SupportPoint(g.Marker)}).ToArray()}).ToArray(),

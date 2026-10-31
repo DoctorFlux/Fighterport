@@ -36,7 +36,7 @@ namespace BrawlCrate.Studio.Retargeting
         public ContactMotion(HumanoidRetargeter retargeter,Func<float,RigPose> sampler,int lastFrame,bool floorEnabled,CancellationToken cancellation=default,bool requireFloorEvidence=false,bool stabilizeStanding=true,Action<int,string> progress=null,bool detectSuspended=true,bool loop=false)
         {
             plan=retargeter; sample=sampler; last=lastFrame; FloorEnabled=floorEnabled;
-            if(!floorEnabled || !new[]{"left.foot","right.foot","left.hand","right.hand"}.All(r=>plan.Source.Surfaces.ContainsKey(r)&&plan.Target.Surfaces.ContainsKey(r))) return;
+            if(!floorEnabled || !new[]{"left.foot","right.foot"}.All(r=>plan.Source.Surfaces.ContainsKey(r)&&plan.Target.Surfaces.ContainsKey(r))) return;
             RigPose[] poses=Enumerable.Range(0,last*4+1).Select(i=>{cancellation.ThrowIfCancellationRequested();if(i%4==0)progress?.Invoke(i*3/Math.Max(1,last*4),"Reading source motion...");return sample(i/4f);}).ToArray();
             Suspended=detectSuspended?SuspendedSupport.Detect(plan,poses):null;
             float[] hips=poses.Select(p=>Vector3.Dot(p.Point("pelvis"),plan.Source.GroundNormal)-plan.Source.GroundHeight).ToArray();
@@ -307,12 +307,18 @@ namespace BrawlCrate.Studio.Retargeting
             // large FK gap despite the soft analytic passes. Escalate measured
             // residuals to the coupled solver even without body skin support.
             bool unresolvedEnd=controls.Any(c=>IsEndContact(c.Key) && c.Value.Support>0.99f &&
-                Math.Abs(plan.Target.Surfaces[c.Key].Clearance(target))>Length(plan.Target.Rest,c.Key.Split('.')[0],c.Key.EndsWith(".hand",StringComparison.Ordinal))*0.001f);
+                (Math.Abs(plan.Target.Surfaces[c.Key].Clearance(target))>Length(plan.Target.Rest,c.Key.Split('.')[0],c.Key.EndsWith(".hand",StringComparison.Ordinal))*0.0005f ||
+                 c.Value.Marker!=null&&c.Value.Lock>0.99f&&PlanarLockError(target,c.Value)>Length(plan.Target.Rest,c.Key.Split('.')[0],c.Key.EndsWith(".hand",StringComparison.Ordinal))*0.0005f));
             FitBodyContacts(target,controls,nearFeet,unresolvedEnd);
             result.PelvisCorrection=target.Point("pelvis")-originalPelvis;
             foreach(var pair in controls.Where(p=>p.Value.Support>0.99f))result.MaximumContactResidual=Math.Max(result.MaximumContactResidual,Math.Abs(plan.Target.Surfaces[pair.Key].Sample(target).Clearance));
             if(bodyActive)CachePose(time,source,result);
             return result;
+        }
+        private static float PlanarLockError(RigPose pose,ContactGoal goal)
+        {
+            Vector3 delta=goal.Marker.Evaluate(pose)-goal.Anchor;
+            return (delta-pose.Rig.GroundNormal*Vector3.Dot(delta,pose.Rig.GroundNormal)).Length();
         }
         private void AlignContactOrientations(RigPose source,RigPose target,Dictionary<string,ContactGoal> controls)
         {
