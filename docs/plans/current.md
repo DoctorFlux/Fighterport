@@ -1,4 +1,28 @@
-﻿# Current milestone M2 — simpler native workspace
+# Current milestone M2 — simpler native workspace
+
+1 November — **preview.65.8-reviewed-stance-recovery qualifies its bounded slice**,
+starting `372769c3ee1ca41740185ac4d3637a432fc06d63`. The existing foot-contact dialog
+adds one opt-in reviewed stance plan: retain planted anchors, then take sequential
+steps where the starting and target stances differ. Every phase requires review;
+Apply uses one native Undo command on the current clip. Preserve exact source
+roots/all weights, first/join/end poses, original middle, authored pins and the
+exact fit-result hash guard. No model/action exceptions or relaxed limits.
+
+Four native tilt → own-Wait1-frame-1 workflows pass, including decoded Exact
+exports and actual native project Save/reopen. Worst sampled added penetration
+0.000125066 native units versus 0.0002; worst orientation 0.106717° versus 0.25°.
+Full skin checks include every positive influence and independent 1/128-frame
+recovery witnesses. 701 Core/control/boundary/skin checks and 339 completed native
+workflow/structure/legacy assertions pass. Four orthographic side GIFs (318 decoded
+frames), their larger recovery sheets, and compact/wide 100%/175% UI captures were
+inspected. Package/launcher: `Fighterport-plant658/native1`.
+
+The broader keyboard suite is NOT a pass: both .65.7 and .65.8 time out at first
+source registration after the same 152 successful routing checks. Preserve both
+logs and investigate separately before broader keyboard acceptance. ONE G1/M2
+stays incomplete; .66 finite static ledges remains queued. Further anatomical/
+style/contact, continuous-time, costume, physical input/DPI/human and game gates
+remain open. See [implementation, exact metrics and retained failures](../REVIEWED_STANCE_RECOVERY_ACCEPTANCE_2026-11-01.md).
 
 1 November — **preview.65.7-reviewed-fk-floor qualifies its bounded slice**,
 from `3b359b9d0f39ff3201b2c8adf69e3d09525accc7`. The existing reviewed static-plane

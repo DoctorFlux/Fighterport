@@ -23,6 +23,10 @@ namespace BrawlCrate.Studio
         readonly CHR0Node source;
         readonly NumericUpDown floor=new NumericUpDown{Name="reviewedContactFloor",Minimum=-100000,Maximum=100000,DecimalPlaces=4,Increment=.01m,Width=110};
         readonly CheckBox plane=new CheckBox{Name="reviewedContactPlane",Text="I reviewed this ground height",AutoSize=true};
+        readonly CheckBox recovery=new CheckBox{Name="reviewedContactRecovery",Text="Recover fitted stance · review steps",AutoSize=true,Visible=false};
+        internal bool RecoveryRequested=>recovery.Visible&&recovery.Checked;
+        internal bool RecoveryAvailable{set{recovery.Visible=value;}}
+        bool frozenRecovery;
         readonly Button suggest=new Button{Name="reviewedContactSuggest",Text="Suggest",AutoSize=true};
         readonly Button preview=new Button{Name="reviewedContactPreview",Text="Preview",AutoSize=true};
         readonly Button apply=new Button{Name="reviewedContactApply",Text="Apply",AutoSize=true};
@@ -59,7 +63,7 @@ namespace BrawlCrate.Studio
             var surface=new FlowLayoutPanel{Dock=DockStyle.Fill,AutoSize=true,WrapContents=true};
             surface.Controls.AddRange(new Control[]{new Label{Text="Ground height",AutoSize=true,Margin=new Padding(3,8,3,0)},floor,plane,limb});
             limb.Items.AddRange(effectors);if(limb.Items.Count>0)limb.SelectedIndex=0;
-            surface.Controls.AddRange(new Control[]{add,remove,advanced,earlier,correctionLabel,correctionFirst});layout.Controls.Add(surface,0,0);
+            surface.Controls.AddRange(new Control[]{recovery,add,remove,advanced,earlier,correctionLabel,correctionFirst});layout.Controls.Add(surface,0,0);
             var views=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=2};views.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,50));views.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,50));
             views.Controls.Add(SourceView,0,0);views.Controls.Add(TargetView,1,0);layout.Controls.Add(views,0,1);layout.Controls.Add(frame,0,2);
             rows.Columns.Add(new DataGridViewCheckBoxColumn{Name="Reviewed",HeaderText="Review",FillWeight=55});
@@ -76,6 +80,8 @@ namespace BrawlCrate.Studio
             cancel.Click+=(s,e)=>{generation++;CancelWork?.Invoke();SetBusy(false);InvalidateResult();report.Text="Cancelled; the animation is unchanged.";};
             close.Click+=(s,e)=>Close();CancelButton=close;
             floor.ValueChanged+=(s,e)=>ResetContext();plane.CheckedChanged+=(s,e)=>ResetContext();
+            recovery.CheckedChanged+=(s,e)=>ResetContext();
+            hints.SetToolTip(recovery,"Keep planted soles at their frozen anchors, and propose a step when the fitted target stance differs. Every hold and step requires review. Original joins, endpoint, roots and weights stay exact.");recovery.AccessibleDescription=hints.GetToolTip(recovery);
             rows.CurrentCellDirtyStateChanged+=(s,e)=>{if(rows.IsCurrentCellDirty)rows.CommitEdit(DataGridViewDataErrorContexts.Commit);};
             rows.CellValueChanged+=(s,e)=>{if(!loading){if(e.RowIndex>=0&&e.ColumnIndex>=0&&rows.Columns[e.ColumnIndex].Name!="Reviewed"){loading=true;try{rows.Rows[e.RowIndex].Cells["Reviewed"].Value=false;}finally{loading=false;}}generation++;CancelWork?.Invoke();SetBusy(false);InvalidateResult();UpdateActions();}};
             rows.DataError+=(s,e)=>{e.ThrowException=false;report.Text="Use finite native frame numbers and offsets.";InvalidateResult();};
@@ -100,6 +106,9 @@ namespace BrawlCrate.Studio
                 context=reply.ContactContextJson;originalRows=(reply.ContactRanges??new ReviewedContactRow[0]).Select(r=>r.Id).ToArray();loading=true;try{rows.Rows.Clear();foreach(var row in reply.ContactRanges??new ReviewedContactRow[0])
                     {int i=rows.Rows.Add(false,row.Role,row.Start+1,row.End+1,row.Blend,row.AnchorFrame+1,0,0,0);rows.Rows[i].Tag=row.Id;}}
                 finally{loading=false;}
+                frozenRecovery=reply.RecoverySteps;
+                foreach(DataGridViewColumn column in rows.Columns)column.ReadOnly=column.Name=="Limb"||frozenRecovery&&column.Name!="Reviewed";
+                earlier.Checked=false;
                 report.Text=(rows.Rows.Count==0?"No confident stationary ranges. Add and review a range manually.":"Suggestions are unapproved. Review each range before Preview.")+"\r\n"+string.Join("\r\n",reply.Diagnostics??new string[0]);
             }
             catch(Exception error){if(!IsDisposed&&epoch==generation)report.Text=error.Message;}
@@ -119,9 +128,9 @@ namespace BrawlCrate.Studio
                 Offset=new[]{"X","Y","Z"}.Select(axis=>float.Parse(Convert.ToString(row.Cells[axis].Value,CultureInfo.InvariantCulture),CultureInfo.InvariantCulture)).ToArray(),Reviewed=Convert.ToBoolean(row.Cells["Reviewed"].Value)}).ToArray();
             return edits.Concat(originalRows.Where(id=>!edits.Any(e=>e.Id==id)).Select(id=>new ReviewedContactEdit{Id=id,Remove=true})).ToArray();
         }
-        void ResetContext(){generation++;CancelWork?.Invoke();SetBusy(false);context=null;loading=true;try{rows.Rows.Clear();earlier.Checked=false;}finally{loading=false;}InvalidateResult();UpdateActions();}
-        void SetBusy(bool busy){Busy=busy;floor.Enabled=plane.Enabled=rows.Enabled=limb.Enabled=advanced.Enabled=add.Enabled=remove.Enabled=earlier.Enabled=correctionFirst.Enabled=!busy;cancel.Enabled=busy;UpdateActions();}
-        void UpdateActions(){suggest.Enabled=!Busy&&plane.Checked;preview.Enabled=!Busy&&context!=null&&rows.Rows.Cast<DataGridViewRow>().Any(r=>Convert.ToBoolean(r.Cells["Reviewed"].Value));apply.Enabled=!Busy&&Candidate!=null;}
+        void ResetContext(){generation++;CancelWork?.Invoke();frozenRecovery=false;SetBusy(false);context=null;loading=true;try{rows.Rows.Clear();earlier.Checked=false;}finally{loading=false;}InvalidateResult();UpdateActions();}
+        void SetBusy(bool busy){Busy=busy;floor.Enabled=plane.Enabled=recovery.Enabled=rows.Enabled=limb.Enabled=advanced.Enabled=!busy;cancel.Enabled=busy;UpdateActions();}
+        void UpdateActions(){add.Enabled=remove.Enabled=earlier.Enabled=correctionFirst.Enabled=!Busy&&!RecoveryRequested&&!frozenRecovery;suggest.Enabled=!Busy&&plane.Checked;var review=rows.Rows.Cast<DataGridViewRow>().Select(r=>Convert.ToBoolean(r.Cells["Reviewed"].Value)).ToArray();preview.Enabled=!Busy&&context!=null&&review.Any(v=>v)&&(!frozenRecovery||review.All(v=>v));apply.Enabled=!Busy&&Candidate!=null;}
         void InvalidateResult(){TargetView.Pose(source,frame.Value);Candidate?.Dispose();Candidate=null;UpdateActions();}
         protected override bool ProcessCmdKey(ref Message message,Keys keys)
         {

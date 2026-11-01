@@ -8,6 +8,8 @@ var checks=new List<string>();
 void Check(bool value,string message){if(!value)throw new Exception("FAIL: "+message);checks.Add(message);Console.WriteLine("PASS: "+message);}
 void Near(float actual,float expected,float tolerance,string message)=>Check(Math.Abs(actual-expected)<=tolerance,$"{message} ({actual:G7} / {expected:G7})");
 var dir=Path.GetFullPath(args.FirstOrDefault()??"artifacts/tests");Directory.CreateDirectory(dir);
+int recoveryPlant=Array.IndexOf(args,"--recovery-plant-probe");
+if(recoveryPlant>=0){await RecoveryPlantProbe.Run(args[recoveryPlant+1],dir,args.Contains("--prepare"));return 0;}
 int reviewedReplay=Array.IndexOf(args,"--reviewed-contact-replay");
 if(reviewedReplay>=0){await ReviewedContactReplayChecks.Run(args[reviewedReplay+1],dir,!args.Contains("--probe-only"));return 0;}
 int reviewedCached=Array.IndexOf(args,"--reviewed-contact-project-replay");

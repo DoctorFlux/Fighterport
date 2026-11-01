@@ -29,6 +29,37 @@ public static partial class ReviewedContactSets
         return complete.Length<=512?complete:Unique(row.Region);
     }
     sealed record FullFootWitness(SkinSurfacePoint[] Region,SkinSurfacePoint[] Sole,Vector3[] Anchors);
+    // Keep every original witness and every ordered skin coefficient. Repeated
+    // face-storage points share only an identical position equation at one pose.
+    // Dynamic geometry must retain its mesh/vertex-specific identity.
+    internal sealed class CompleteSkinSamples
+    {
+        readonly Dictionary<SkinSurfacePoint,(int Equation,int Member)> members=new();
+        public CompleteSkinSamples(IEnumerable<SkinSurfacePoint> points)
+        {
+            var equations=new Dictionary<string,int>(StringComparer.Ordinal);
+            foreach(var point in points)
+            {
+                if(members.ContainsKey(point))continue;
+                string key=string.Join(",",new[]{BitConverter.SingleToInt32Bits(point.Position.X),BitConverter.SingleToInt32Bits(point.Position.Y),BitConverter.SingleToInt32Bits(point.Position.Z)}
+                    .Concat(Enumerable.Range(0,point.InfluenceCount).SelectMany(i=>new[]{(int)point.JointAt(i),BitConverter.SingleToInt32Bits(point.WeightAt(i))})));
+                if(!equations.TryGetValue(key,out int equation)){equation=equations.Count;equations.Add(key,equation);}
+                members.Add(point,(equation,members.Count));
+            }
+        }
+        public AtPose At(EvaluatedPose pose)=>new(this,pose);
+        public sealed class AtPose(CompleteSkinSamples owner,EvaluatedPose pose)
+        {
+            readonly Dictionary<int,Vector3> evaluated=new();
+            public Vector3 Point(SkinSurfacePoint point,ref long work)
+            {
+                var member=owner.members[point];int identity=pose.GeometryPositions is null?member.Equation:member.Member;
+                if(evaluated.TryGetValue(identity,out var value))return value;
+                if(++work>MaximumKeys)throw new InvalidOperationException("Complete skin evaluation exhausted its unchanged two-million-work budget.");
+                value=ContactGeometry.Point(point,pose);evaluated.Add(identity,value);return value;
+            }
+        }
+    }
     static FullFootWitness FullFootWitnesses(Scene scene,AnimationClip master,ReviewedContactRange row,Vector3 normal)
     {
         var region=FullFootRegion(scene,row.Bone);

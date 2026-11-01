@@ -112,6 +112,11 @@ public static class ContactSolver
         float unit=PoseGeometry.Scale(scene,setup),tolerance=unit*.0001f;
         if(pins.Any(p=>p.Clearance is not null)){var lengths=setup.Chains.Where(c=>c.Role.StartsWith("Foot.",StringComparison.Ordinal)&&c.Calibration is not null).Select(c=>c.Calibration!.UpperLength+c.Calibration.LowerLength).ToArray();if(lengths.Length>0)tolerance=Math.Min(tolerance,lengths.Average()*.0001f);}
         if(referencePose is not null)tolerance*=.5f; // Retarget-key margin for native interpolation; acceptance is unchanged.
+        foreach(var clearance in pins.Select(p=>p.Clearance).OfType<ContactClearance>().Where(c=>c.MaximumPenetration.HasValue))
+        {
+            if(!float.IsFinite(clearance.MaximumPenetration!.Value)||clearance.MaximumPenetration.Value<=0)return Fail("INVALID_CONTACT","The explicit clearance bound must be finite and positive.");
+            tolerance=Math.Min(tolerance,clearance.MaximumPenetration.Value*.5f);
+        }
         EvaluatedPose EvaluateLocal(IReadOnlyDictionary<int,Transform> transforms)=>AnimationService.Evaluate(scene,null,0,transforms) with{Seconds=input.Seconds,GeometryPositions=input.GeometryPositions};
         var local=input.Local.Select((t,i)=>(t,i)).ToDictionary(x=>x.i,x=>x.t);foreach(var edit in edits)local[edit.Key]=edit.Value;
         var pose=EvaluateLocal(local);

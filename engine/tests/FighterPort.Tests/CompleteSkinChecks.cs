@@ -22,6 +22,17 @@ internal static class CompleteSkinChecks
             check(Vector3.Distance(AnimationService.Skin(v,pose),expected)<.00001f,$"All {count} ordered original influence coefficients contribute to native geometry without normalization");
             var point=new SkinSurfacePoint(v.Position,v.Joints,v.Weights){Influences=all};
             check(ContactGeometry.Valid(point,count)&&Vector3.Distance(ContactGeometry.Point(point,pose),expected)<.00001f,$"All {count} influences survive contact/surface evaluation");
+            var first=point with{Mesh=0,Vertex=0};var duplicate=point with{Mesh=0,Vertex=1,Influences=all.ToArray()};
+            var changedPoint=point with{Influences=all.Select((w,i)=>i==count-1?w with{Weight=MathF.BitIncrement(w.Weight)}:w).ToArray()};
+            var samples=new ReviewedContactSets.CompleteSkinSamples([first,duplicate,changedPoint]);long work=0;
+            var at=samples.At(pose);var a=at.Point(first,ref work);var b=at.Point(duplicate,ref work);
+            check(a==b&&Vector3.Distance(a,expected)<.00001f&&work==1,$"Complete {count}-influence face witnesses reuse only bit-identical ordered position equations");
+            at.Point(changedPoint,ref work);check(work==2,$"Changing influence {count} by one float bit prevents skin-equation aliasing");
+            var geometry=pose with{GeometryPositions=[[new(1,2,3),new(4,5,6)]]};var dynamicSamples=samples.At(geometry);work=0;
+            a=dynamicSamples.Point(first,ref work);b=dynamicSamples.Point(duplicate,ref work);
+            check(a==ContactGeometry.Point(first,geometry)&&b==ContactGeometry.Point(duplicate,geometry)&&a!=b&&work==2,"Dynamic mesh/vertex geometry keeps separate witness identities even when bind equations match");
+            work=ReviewedContactSets.MaximumKeys;bool exhausted=false;try{samples.At(pose).Point(first,ref work);}catch(InvalidOperationException){exhausted=true;}
+            check(exhausted,"Skin-equation reuse never resets or raises the existing cumulative operation budget");
             var setup=new ControlRigSetup(Guid.NewGuid(),AnimationControls.Fingerprint(scene),[],[])
                 {BodyBone=0,Axes=new(Vector3.UnitX,Vector3.UnitY,Vector3.UnitZ),BoneRoles=[new("Hips",0,"Original complete-weight fixture",true)]};
             var rig=RigDescriptor.Prepare(scene,setup);

@@ -18,6 +18,8 @@ public record SkinSurfacePoint(Vector3 Position,Vector4 Joints,Vector4 Weights)
 }
 public record ContactClearance(Vector3 Normal,float Height,SkinSurfacePoint[] Points)
 {
+    [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
+    public float? MaximumPenetration {get;init;}
     public SkinSurfacePoint[] SupportPoints {get;init;}=[];
     [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public SupportEdge? Edge {get;init;}
@@ -36,6 +38,8 @@ public record GroundContactSettings
     public double MinimumSeconds {get;init;}=.05;
     public float? SourceFloor {get;init;}
     public float? TargetFloor {get;init;}
+    [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
+    public float[]? SourceNormal {get;init;}
     [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     public bool ExplicitSurface {get;init;}
     [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
@@ -143,13 +147,25 @@ public static class ContactGeometry
     }
     public static float Penetration(ContactPin pin,EvaluatedPose pose)=>pin.Clearance is {} plane?plane.Points.Select(p=>plane.Surface.Penetration(Point(p,pose))).DefaultIfEmpty().Max():0;
     public static float SupportHeight(ContactClearance plane,EvaluatedPose pose)=>(plane.SupportPoints.Length>0?plane.SupportPoints:plane.Points).Min(p=>Vector3.Dot(Point(p,pose),plane.Normal))-plane.Height;
-    public static bool Valid(ContactPin pin,int bones)=>pin.SurfacePoints.Length<=8&&pin.SurfacePoints.All(s=>Valid(s,bones))&&pin.SurfaceRegion.Length<=512&&pin.SurfaceRegion.All(s=>Valid(s,bones))&&(pin.SurfaceRegion.Length==0||pin.PlaneNormal is not null)&&(pin.PlaneNormal is not {} n||PoseGeometry.Finite(n)&&Math.Abs(n.LengthSquared()-1)<.001f)&&(pin.EdgeInward is not {} edge||pin.EdgeSupport&&pin.Reference is null&&pin.PlaneNormal is {} normal&&PoseGeometry.Finite(edge)&&Math.Abs(edge.LengthSquared()-1)<.001f&&Math.Abs(Vector3.Dot(edge,normal))<.001f)&&(pin.AllowedSurface is not {} surface||Valid(surface)&&pin.EdgeInward is null&&(pin.PlaneNormal is not {} planeNormal||Vector3.Dot(planeNormal,surface.Normal)>.9999f))&&(pin.Clearance is not {} c||PoseGeometry.Finite(c.Normal)&&Math.Abs(c.Normal.LengthSquared()-1)<.001f&&float.IsFinite(c.Height)&&c.Points.Length<=512&&c.Points.All(p=>Valid(p,bones))&&c.SupportPoints.Length<=512&&c.SupportPoints.All(p=>Valid(p,bones)));
+    public static bool Valid(ContactPin pin,int bones)=>pin.SurfacePoints.Length<=8&&pin.SurfacePoints.All(s=>Valid(s,bones))&&pin.SurfaceRegion.Length<=512&&pin.SurfaceRegion.All(s=>Valid(s,bones))&&(pin.SurfaceRegion.Length==0||pin.PlaneNormal is not null)&&(pin.PlaneNormal is not {} n||PoseGeometry.Finite(n)&&Math.Abs(n.LengthSquared()-1)<.001f)&&(pin.EdgeInward is not {} edge||pin.EdgeSupport&&pin.Reference is null&&pin.PlaneNormal is {} normal&&PoseGeometry.Finite(edge)&&Math.Abs(edge.LengthSquared()-1)<.001f&&Math.Abs(Vector3.Dot(edge,normal))<.001f)&&(pin.AllowedSurface is not {} surface||Valid(surface)&&pin.EdgeInward is null&&(pin.PlaneNormal is not {} planeNormal||Vector3.Dot(planeNormal,surface.Normal)>.9999f))&&(pin.Clearance is not {} c||PoseGeometry.Finite(c.Normal)&&Math.Abs(c.Normal.LengthSquared()-1)<.001f&&float.IsFinite(c.Height)&&c.Points.Length<=512&&c.Points.All(p=>Valid(p,bones))&&(c.MaximumPenetration is not {} maximum||float.IsFinite(maximum)&&maximum>0)&&c.SupportPoints.Length<=512&&c.SupportPoints.All(p=>Valid(p,bones)));
     public static bool Valid(SupportSurface surface)=>PoseGeometry.Finite(surface.Normal)&&Math.Abs(surface.Normal.LengthSquared()-1)<.0001f&&float.IsFinite(surface.Height)&&(surface.Edge is not {} e||PoseGeometry.Finite(e.Inward)&&float.IsFinite(e.Offset)&&Math.Abs(e.Inward.LengthSquared()-1)<.0001f&&Math.Abs(Vector3.Dot(e.Inward,surface.Normal))<.0001f);
     public static bool Valid(SkinSurfacePoint point,int bones)=>PoseGeometry.Finite(point.Position)&&SkinInfluences.Valid(point.Joints,point.Weights,point.Influences,bones)&&Math.Abs(Enumerable.Range(0,point.InfluenceCount).Sum(i=>(double)point.WeightAt(i))-1)<.002;
 }
 
 public static class SurfaceContacts
 {
+    public static Vector3 Normal(Scene scene,ControlRigSetup rig,GroundContactSettings settings)
+    {
+        if(settings.SourceNormal is {} values)
+        {
+            if(values.Length!=3||values.Any(v=>!float.IsFinite(v)))throw new InvalidDataException("Review a finite explicit support normal.");
+            var normal=new Vector3(values[0],values[1],values[2]);
+            if(Math.Abs(normal.LengthSquared()-1)>.0001f)throw new InvalidDataException("The reviewed support normal must already be normalized.");
+            return normal;
+        }
+        var basis=RigCharacterization.Describe(scene,rig).Basis;
+        return new(basis.M21,basis.M22,basis.M23);
+    }
     public const string Version="functional-surface-relations-21";
     // One frozen detector policy for every rig. These classify candidate
     // evidence; the much stricter contact acceptance bounds remain separate.
@@ -264,7 +280,7 @@ public static class SurfaceContacts
     {
         if(!float.IsFinite(settings.HeightFraction)||settings.HeightFraction<=0||settings.HeightFraction>.2f||settings.LimbHeightFraction is {} limbBand&&(!float.IsFinite(limbBand)||limbBand<=0||limbBand>.2f)||!float.IsFinite(settings.DriftFraction)||settings.DriftFraction<=0||!float.IsFinite(settings.SpeedFractionPerSecond)||settings.SpeedFractionPerSecond<=0||!double.IsFinite(settings.MinimumSeconds)||settings.MinimumSeconds<=0)throw new InvalidOperationException("Ground detection tolerances must be finite, positive and bounded.");
         if(clip.SampleCount>20000)throw new InvalidOperationException("Automatic surface analysis is limited to 20,000 samples per clip; select a shorter source revision or use reviewed contact intervals.");
-        var anatomy=RigCharacterization.Describe(donor.Scene,rig);var up=new Vector3(anatomy.Basis.M21,anatomy.Basis.M22,anatomy.Basis.M23);var regions=Regions(donor.Scene,rig);var geometry=new PreparedGeometry(donor,clip);
+        var anatomy=RigCharacterization.Describe(donor.Scene,rig);var up=Normal(donor.Scene,rig,settings);var regions=Regions(donor.Scene,rig);var geometry=new PreparedGeometry(donor,clip);
         float floor=settings.SourceFloor??Floor(donor.Scene,rig,regions,up),height=anatomy.LegLength*settings.HeightFraction,drift=anatomy.LegLength*settings.DriftFraction;
         settings.SourceEdge?.Validate(up);var supportSurface=new SupportSurface(up,floor,settings.SourceEdge);
         if(!float.IsFinite(floor))throw new InvalidOperationException("Ground plane must be finite.");

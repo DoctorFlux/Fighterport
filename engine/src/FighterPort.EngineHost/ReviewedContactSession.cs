@@ -15,6 +15,7 @@ sealed partial class ControlSession
         if(state.AuthoringContacts.Length>0||state.AuthoringPose.Count>0)throw new NotSupportedException("Uncommitted authoring pose/pins need their complete native adapter before contact correction.");
         clip=clip with{Id=state.Clip};project=project with{Clips=[clip],Contacts=state.Contacts,ControlRigs=[state.Setup],BonePins=state.BonePins};
         object Reply(ReviewedContactContext context)=>new{Ok=true,Algorithm=ReviewedContactSets.Version,
+            RecoverySteps=context.RecoveryPolicy==ReviewedContactSets.RecoveryStepPolicy,
             ContactContextJson=JsonSerializer.Serialize(context,ProjectStore.Json),
             ContactRanges=context.Ranges.Select(r=>new{r.Id,r.Role,r.Bone,r.Start,r.End,r.Blend,r.AnchorFrame,Anchor=new[]{r.Anchor.X,r.Anchor.Y,r.Anchor.Z},r.Reviewed}).ToArray(),
             Diagnostics=context.Diagnostics};
@@ -33,7 +34,9 @@ sealed partial class ControlSession
         if(request.Operation=="contact-set-suggest")
         {
             var settings=request.ContactSurface??throw new InvalidDataException("Review the static ground plane first.");
-            var suggested=await Task.Run(()=>ReviewedContactSets.Suggest(project,clip,state.Setup,settings,request.ContactProtection??[]));
+            var suggested=await Task.Run(()=>request.ReviewFittedRecovery?
+                ReviewedContactSets.SuggestRecovery(project,clip,state.Setup,settings,request.ContactProtection??[],request.ReviewedFittingMiddle??throw new InvalidDataException("A frozen fitted action prefix is required.")):
+                ReviewedContactSets.Suggest(project,clip,state.Setup,settings,request.ContactProtection??[]));
             return Reply(Evidence(suggested with{ProtectedIntervals=request.ReviewedProtectedRanges??[],FittingMiddle=request.ReviewedFittingMiddle},true));
         }
         if(request.ReviewedContactsJson is null||request.ReviewedContactsJson.Length>8*1024*1024)throw new InvalidDataException("Missing or oversized complete contact context.");

@@ -21,12 +21,12 @@ public static partial class ReviewedContactSets
         var protectedIndices=AnimationControls.ProtectedMotionBones(scene,rig).Concat(rig.PreservedHelperBones)
             .Concat(context.ProtectedBones.Select(name=>Array.FindIndex(scene.Bones,b=>b.Name==name))).ToHashSet();
         var allowed=rows.SelectMany(row=>{var chain=rig.Chains.Single(c=>c.Reviewed&&c.Effector==row.Bone);return new[]{chain.Root,chain.Middle,chain.Effector};}).ToHashSet();
-        allowed.UnionWith(rows.SelectMany(r=>ReviewedContactShapeBones(scene,rig,r)));
+        allowed.UnionWith(rows.SelectMany(r=>ReviewedContactShapeBones(scene,rig,r,RecoverySteps(context))));
         int body=ReviewedContactBody(scene,rig);
         if(body>=0)allowed.Add(body);
         allowed.ExceptWith(protectedIndices);
         if(rows.Any(r=>!allowed.Contains(r.Bone)))throw new InvalidOperationException("An approved contact conflicts with a protected support or motion control. No animation changed.");
-        int contactBegin=rows.Min(r=>r.Start-r.Blend),begin=context.EarlierBodyCorrectionStart??contactBegin,end=rows.Max(r=>r.End+r.Blend);
+        int contactBegin=rows.Min(Approach),begin=context.EarlierBodyCorrectionStart??contactBegin,end=rows.Max(Release);
         if(end-begin>MaximumEditedSamples)throw new InvalidOperationException("The contact set exceeds the existing 240-sample edit window.");
         if(context.EarlierBodyCorrectionStart is not null&&context.OriginalContacts.Any(c=>c.Frame<=contactBegin&&(c.EndFrame??c.Frame)>=begin&&c.Pins.Length>0))
             throw new NotSupportedException("The earlier body range overlaps authored pins. Review their release through the native pin workflow first; earlier recovery cannot override them.");
@@ -34,11 +34,12 @@ public static partial class ReviewedContactSets
             throw new InvalidOperationException("A reviewed contact overlaps the retained fitting/action middle. Adjust the recovery start or contact range; protected data cannot be released by a suggestion.");
         if(project.Moves.SelectMany(m=>m.Events).Any(e=>e.Start<=end&&e.End>=begin))
             throw new InvalidOperationException("Contact correction overlaps a protected gameplay event.");
-        var anatomy=RigCharacterization.Describe(scene,rig);var normal=new Vector3(anatomy.Basis.M21,anatomy.Basis.M22,anatomy.Basis.M23);
+        var anatomy=RigCharacterization.Describe(scene,rig);var normal=SurfaceContacts.Normal(scene,rig,context.Surface);
         float positionBound=rows.Select(r=>{var calibration=rig.Chains.Single(c=>c.Reviewed&&c.Effector==r.Bone).Calibration;
             return calibration is null?throw new InvalidDataException("Review finite limb calibration first."):calibration.UpperLength+calibration.LowerLength;}).Min()*.001f;
         if(!float.IsFinite(positionBound)||positionBound<=0)throw new InvalidDataException("Contact bounds need a finite positive reviewed limb scale.");
         const float orientationBound=.25f;
+        var floors=rows.ToDictionary(r=>r.Id,r=>RecoveryFloor(scene,master,rig,context,r));
         // A sole witness must remain within the drift bound of its frozen
         // anchor AND above floor minus the penetration bound. Anchors more
         // than two bounds below the floor make those requirements contradictory;
@@ -46,16 +47,16 @@ public static partial class ReviewedContactSets
         foreach(var row in rows)
         {
             var complete=FullFootWitnesses(scene,master,row,normal);
-            if(complete.Anchors.Any(point=>Vector3.Dot(point,normal)<context.Surface.SourceFloor!.Value-2*positionBound))
+            if(complete.Anchors.Any(point=>Vector3.Dot(point,normal)<floors[row.Id]-2*positionBound))
                 throw new InvalidOperationException("The frozen full-sole anchor contradicts the reviewed floor within the unchanged contact bounds. Review the anchor and complete skin geometry; no candidate is available.");
-            foreach(int boundary in new[]{row.Start-row.Blend,row.End+row.Blend})
+            foreach(int boundary in new[]{Approach(row),Release(row)})
             {
-                if(EarlierBodyActive(context,boundary)||rows.Any(other=>boundary>other.Start-other.Blend&&boundary<other.End+other.Blend))continue;
+                if(EarlierBodyActive(context,boundary)||rows.Any(other=>boundary>Approach(other)&&boundary<Release(other)))continue;
                 // Existing paired sides can describe an authored jump; leave
                 // those to the complete native boundary verifier instead.
                 if(master.Tracks.SelectMany(t=>t.Channels.OfType<Curve>()).Any(c=>c.Keys.Count(k=>k.Frame==boundary)>1))continue;
                 var pose=ContactPose(scene,master,boundary);
-                float depth=context.Surface.SourceFloor!.Value-complete.Region.Min(p=>Vector3.Dot(ContactGeometry.Point(p,pose),normal));
+                float depth=floors[row.Id]-complete.Region.Min(p=>Vector3.Dot(ContactGeometry.Point(p,pose),normal));
                 if(depth>positionBound)
                     throw new InvalidOperationException(row.Role+" has a fixed penetrated contact boundary at native display frame "+(boundary+1)+" (depth "+depth+", limit "+positionBound+"). A continuous floor recovery cannot retain that boundary and immediately meet the same clearance bound. Review the range/fitting or support context; no candidate is available.");
             }
@@ -73,6 +74,7 @@ public static partial class ReviewedContactSets
         });
         var solverRegions=rows.ToDictionary(r=>r.Id,r=>ContactSolverRegion(scene,r),StringComparer.Ordinal);
         var completeGeometry=rows.ToDictionary(r=>r.Id,r=>FullFootWitnesses(scene,master,r,normal),StringComparer.Ordinal);
+        var completeSamples=RecoverySteps(context)?new CompleteSkinSamples(completeGeometry.Values.SelectMany(g=>g.Region.Concat(g.Sole))):null;
         long proposalSkinWork=0;int independentlyAcceptedTrials=0;
         int evaluations=0;string refinement="before first curve build";
         var solved=new SortedDictionary<double,Transform[]>();
@@ -94,15 +96,19 @@ public static partial class ReviewedContactSets
         }
         float Weight(ReviewedContactRange row,double frame)
         {
-            float t=frame<row.Start?(float)((frame-(row.Start-row.Blend))/row.Blend):frame>row.End?(float)((row.End+row.Blend-frame)/row.Blend):1;
-            t=Math.Clamp(t,0,1);return t*t*(3-2*t);
+            return ContactWeight(row,frame);
         }
         ContactPin[] Goals(double frame,EvaluatedPose original)
         {
             var pins=new List<ContactPin>(context.OriginalContacts.Where(c=>c.Contains(frame)).SelectMany(c=>c.Pins));
+            if(RecoverySteps(context))
+            {
+                if(pins.Any(p=>rows.Any(r=>r.Bone==p.Bone)))throw new InvalidOperationException("Original authored support intersects the recovery plan; no anchor is released.");
+                return pins.Concat(RecoveryGoals(scene,master,rig,context,frame,normal,solverRegions,floors)).ToArray();
+            }
             foreach(var row in rows)
             {
-                float weight=Weight(row,frame);if(weight<=0&&!(context.EarlierBodyCorrectionStart is not null&&frame==contactBegin&&row.Start-row.Blend==contactBegin))continue;
+                float weight=Weight(row,frame);if(weight<=0&&!(context.EarlierBodyCorrectionStart is not null&&frame==contactBegin&&Approach(row)==contactBegin))continue;
                 if(pins.Any(p=>p.Bone==row.Bone))throw new InvalidOperationException("An existing contact overlaps the reviewed replacement. Release or review that original constraint explicitly.");
                 pins.Add(ContactGoal(scene,master,rig,context,row,frame,original,normal,weight,solverRegions[row.Id]));
                 if(weight>=1)for(int point=0;point<row.Patch.Length;point++)
@@ -121,12 +127,14 @@ public static partial class ReviewedContactSets
                 if(!float.IsFinite(distance)||!float.IsFinite(depth)||!float.IsFinite(surface)||distance>positionBound||depth>positionBound||surface>positionBound||
                     pin.HoldRotation&&ContactAuthoring.AngleError(PoseGeometry.Rotation(pose.World[pin.Bone]),ContactGeometry.TargetRotation(pin,pose))>orientationBound)return false;
             }
-            foreach(var row in rows.Where(r=>Weight(r,frame)>0))
+            var sample=completeSamples?.At(pose);
+            foreach(var row in rows.Where(r=>RecoverySteps(context)||Weight(r,frame)>0))
             {
-                var geometry=completeGeometry[row.Id];proposalSkinWork+=geometry.Region.Length+geometry.Sole.Length;
+                var geometry=completeGeometry[row.Id];if(sample is null)proposalSkinWork+=geometry.Region.Length+geometry.Sole.Length;
                 if(proposalSkinWork>MaximumKeys)throw new InvalidOperationException("Contact trial verification exhausted the unchanged full-skin work budget.");
-                if(geometry.Region.Any(p=>context.Surface.SourceFloor!.Value-Vector3.Dot(ContactGeometry.Point(p,pose),normal)>positionBound))return false;
-                if(frame>=row.Start&&frame<=row.End&&geometry.Sole.Where((p,i)=>Vector3.Distance(ContactGeometry.Point(p,pose),geometry.Anchors[i])>positionBound).Any())return false;
+                Vector3 Point(SkinSurfacePoint point)=>sample is null?ContactGeometry.Point(point,pose):sample.Point(point,ref proposalSkinWork);
+                if(geometry.Region.Any(p=>floors[row.Id]-Vector3.Dot(Point(p),normal)>(RecoverySteps(context)?.0002f:positionBound)))return false;
+                if(frame>=row.Start&&frame<=row.End&&geometry.Sole.Where((p,i)=>Vector3.Distance(Point(p),geometry.Anchors[i])>positionBound).Any())return false;
             }
             return true;
         }
@@ -135,7 +143,7 @@ public static partial class ReviewedContactSets
             if(trial is null)return null;
             if(!ReviewedTrial(trial,original,locks,goals,frame))
             {
-                var adjusted=BodyClearanceTrial(scene,rig,context,trial,locks,goals,frame,positionBound,normal,completeGeometry,ref proposalSkinWork);
+                var adjusted=BodyClearanceTrial(scene,master,rig,context,trial,locks,goals,frame,positionBound,normal,completeGeometry,ref proposalSkinWork);
                 if(adjusted is null||!ReviewedTrial(adjusted,original,locks,goals,frame))return null;
                 trial=adjusted;
             }
@@ -147,6 +155,7 @@ public static partial class ReviewedContactSets
             if(solved.TryGetValue(frame,out var prior))return prior;
             if(++evaluations>EvaluationBudget)throw new InvalidOperationException("Contact set exhausted its fixed offline pose budget ("+refinement+"). No candidate is available.");
             var original=OriginalAt(frame);
+            if(RecoverySteps(context)&&(frame==begin||frame==end))return Remember(frame,original.Local.ToArray());
             if(context.EarlierBodyCorrectionStart is not null&&frame<contactBegin&&frame>begin)
             {
                 var entry=SolveAt(contactBegin);var earlier=EarlierBodyPose(scene,master,rig,context,frame,original,entry,contactBegin);
@@ -156,7 +165,11 @@ public static partial class ReviewedContactSets
             if(!entryTarget&&rows.All(r=>Weight(r,frame)<=0))return Remember(frame,original.Local.ToArray());
             var locks=Enumerable.Range(0,scene.Bones.Length).Where(i=>!allowed.Contains(i)).ToDictionary(i=>i,i=>original.Local[i]);
             foreach(int bone in OriginalProtection(scene,context,frame,rig))locks[bone]=original.Local[bone];
-            foreach(var row in rows.Where(r=>Weight(r,frame)>0))
+            if(RecoverySteps(context))
+            {
+                RecoveryShapeLocks(scene,master,rig,context,frame,original,allowed,locks);
+            }
+            foreach(var row in rows.Where(r=>!RecoverySteps(context)&&Weight(r,frame)>0))
             {
                 var anchor=ContactPose(scene,master,row.AnchorFrame);float weight=Weight(row,frame);
                 foreach(int bone in ReviewedContactShapeBones(scene,rig,row).Where(b=>allowed.Contains(b)&&!locks.ContainsKey(b)))
@@ -322,10 +335,15 @@ public static partial class ReviewedContactSets
             for(int i=0;i<knots.Length-1;i++)foreach(double fraction in new[]{.25,.5,.75})
             {
                 double frame=knots[i]+(knots[i+1]-knots[i])*fraction;
+                if(RecoverySteps(context))
+                {
+                    frame=(float)frame;
+                    if(frame<=knots[i]||frame>=knots[i+1])throw new InvalidOperationException("Recovery refinement reached the native float time resolution.");
+                }
                 if(++evaluations>EvaluationBudget)throw new InvalidOperationException("Contact native-curve verification exhausted its fixed pose budget (sweep "+(sweep+1)+", "+times.Count+" knots). No candidate is available.");
                 var actual=ContactPose(scene,working,frame);
                 var original=ContactPose(scene,master,frame);
-                bool failed=Goals(frame,original).Any(pin=>ContactGeometry.Residual(pin,actual).Length()>positionBound||ContactGeometry.Penetration(pin,actual)>positionBound||
+                bool failed=Goals(frame,original).Any(pin=>ContactGeometry.Residual(pin,actual).Length()>positionBound||ContactGeometry.Penetration(pin,actual)>(RecoverySteps(context)?.0002f:positionBound)||
                     pin.HoldRotation&&ContactAuthoring.AngleError(PoseGeometry.Rotation(actual.World[pin.Bone]),pin.Rotation)>orientationBound);
                 if(failed)contactFailures++;
                 bool patchFailed=rows.Where(r=>frame>=r.Start&&frame<=r.End).Any(row=>row.Patch.Where((p,j)=>Vector3.Distance(ContactGeometry.Point(p,actual),row.AnchorPoints[j])>positionBound).Any());
@@ -344,6 +362,28 @@ public static partial class ReviewedContactSets
                 if(poseFailed)poseFailures++;failed|=poseFailed;
                 if(failed)failures.Add(frame);
             }
+            // Refine the complete sole only after the cheaper native contact
+            // equations converge. Failed geometry remains a refinement request,
+            // never a reason to relax the final acceptance bound.
+            if(RecoverySteps(context)&&failures.Count==0)
+                foreach(double frame in Enumerable.Range(begin*64,(end-begin)*64+1).Select(i=>i/64d)
+                    .Concat(knots.Zip(knots.Skip(1),(a,b)=>(double)(float)(a+(b-a)*.371))).Distinct().Where(t=>t>begin&&t<end))
+                {
+                    // Newly selected native float witnesses, not rounded
+                    // authored keys. The complete recovery grid is offline.
+                    if(++evaluations>EvaluationBudget)throw new InvalidOperationException("Recovery withheld refinement exhausted its fixed pose budget.");
+                    var actual=ContactPose(scene,working,frame);
+                    var sample=completeSamples!.At(actual);
+                    bool failed=Goals(frame,OriginalAt(frame)).Any(pin=>ContactGeometry.Residual(pin,actual).Length()>positionBound*.9f||ContactGeometry.Penetration(pin,actual)>.00012f||
+                        pin.HoldRotation&&ContactAuthoring.AngleError(PoseGeometry.Rotation(actual.World[pin.Bone]),pin.Rotation)>.2f);
+                    foreach(var row in rows)
+                    {
+                        var geometry=completeGeometry[row.Id];
+                        failed|=geometry.Region.Any(p=>floors[row.Id]-Vector3.Dot(sample.Point(p,ref proposalSkinWork),normal)>.00012f)||
+                            frame>=row.Start&&frame<=row.End&&geometry.Sole.Where((p,j)=>Vector3.Distance(sample.Point(p,ref proposalSkinWork),geometry.Anchors[j])>positionBound*.9f).Any();
+                    }
+                    if(failed){failures.Add(frame);patchFailures++;}
+                }
             refinement="sweep "+(sweep+1)+", knots "+times.Count+", contact "+contactFailures+", patch "+patchFailures+", pose "+poseFailures+", worst pose "+worstPose+" on "+worstBone+" at "+worstFrame;
             progress?.Invoke(refinement);
             if(failures.Count==0)break;
@@ -356,6 +396,7 @@ public static partial class ReviewedContactSets
                 var original=OriginalAt(frame);var current=ContactPose(scene,working,frame);
                 var locks=Enumerable.Range(0,scene.Bones.Length).Where(b=>!allowed.Contains(b)).ToDictionary(b=>b,b=>original.Local[b]);
                 foreach(int bone in OriginalProtection(scene,context,frame,rig))locks[bone]=original.Local[bone];
+                if(RecoverySteps(context))RecoveryShapeLocks(scene,master,rig,context,frame,original,allowed,locks);
                 var goals=Goals(frame,original);
                 EvaluatedPose? trial=null;
                 var result=ContactSolver.Solve(scene,current,rig,locks,goals,adjustBody:true,referencePose:current,preserveFeasibleSeed:true,initializeChains:false,onRejectedTrial:p=>trial=p);
@@ -380,6 +421,7 @@ public static partial class ReviewedContactSets
         }
         var witnesses=new SortedSet<double>(times);
         for(double frame=begin;frame<=end;frame+=.25)witnesses.Add(frame);
+        if(RecoverySteps(context))for(double frame=begin;frame<=end;frame+=1d/64)witnesses.Add(frame);
         foreach(var frame in times.Zip(times.Skip(1),(a,b)=>a+(b-a)*.371))witnesses.Add(frame);
         var metrics=Validate(scene,working,master,rig,context,positionBound,orientationBound,witnesses.ToArray(),cancellation,skinWorkOffset:proposalSkinWork);
         if(MasterKey(scene,master)!=context.MasterKey)throw new InvalidDataException("Contact master changed during preparation.");
@@ -388,14 +430,16 @@ public static partial class ReviewedContactSets
                 context.TrajectoryPolicy,
                 "Unconverged internal-margin trial poses independently meeting the unchanged reviewed contract: "+independentlyAcceptedTrials+". Strict solver failure status is retained; native serialization/reopen remains mandatory.",
                 context.EarlierBodyCorrectionStart is {} reviewedFirst?context.EarlierCorrectionPolicy+" Reviewed first display frame: "+(reviewedFirst+1):"No earlier body correction was approved; the retained fitting middle stays exact.",
-                context.EarlierBodyCorrectionStart is {} early?"Reviewed inferred support dependencies in the body range: "+string.Join(", ",context.InferredSupports.Where(s=>s.First<end&&s.Last>early).Select(s=>s.Role).Distinct()):"Original inferred support locks remain unchanged.",
+                RecoverySteps(context)?"The complete reviewed hold/step window replaces inferred plants only on its selected feet, including swing. Authored pins and protected controls remain exact.":
+                    context.EarlierBodyCorrectionStart is {} early?"Reviewed inferred support dependencies in the body range: "+string.Join(", ",context.InferredSupports.Where(s=>s.First<end&&s.Last>early).Select(s=>s.Role).Distinct()):"Original inferred support locks remain unchanged.",
+                RecoverySteps(context)?"Reviewed deforming-foot descendant rotations follow the frozen native shape across each step; original local translation/scale and all skin weights are retained.":ShapePolicy,
                 "Temporal seeds retain at most 64 samples per native-frame cell; fidelity is always frozen to the original integer path. Analytic IK is used only for cold starts (anchor conditioning threshold 0.001). All acceptance bounds and work limits are unchanged.",
                 "Reviewed static foot contacts only. Native encoding and fresh reopen must independently pass before Apply.",
                 "Finite integer/quarter/adaptive/withheld geometry evidence is not a continuous-time or game acceptance proof.",
                 "All original skin influences participate; protected roots and exterior native channels remain unchanged."});
         var contacts=context.OriginalContacts.Concat(rows.Select(row=>new ContactFrame(Guid.ParseExact(row.Id,"N"),working.Id,row.Start,rig.SkeletonFingerprint,
             [new(Guid.ParseExact(row.Id,"N"),row.Role,row.Bone,Vector3.Zero,row.Anchor,row.Orientation,true,"Reviewed static floor")
-            {SurfacePoints=row.Patch,Clearance=new(normal,context.Surface.SourceFloor!.Value,row.Region)}]){EndFrame=row.End})).ToArray();
+            {SurfacePoints=row.Patch,Clearance=new(normal,floors[row.Id],row.Region){MaximumPenetration=RecoverySteps(context)?.0002f:null}}]){EndFrame=row.End})).ToArray();
         return new(working,changed,contacts,context,receipt);
     }
 
@@ -414,10 +458,10 @@ public static partial class ReviewedContactSets
         if(candidate.SampleCount!=master.SampleCount||candidate.Rate!=master.Rate||candidate.Loop!=master.Loop)throw new InvalidDataException("Contact candidate changed native timing.");
         var rows=context.Ranges.Where(r=>r.Reviewed).ToArray();var anatomy=RigCharacterization.Describe(scene,rig);
         var solverRegions=rows.ToDictionary(r=>r.Id,r=>ContactSolverRegion(scene,r),StringComparer.Ordinal);
-        var normal=new Vector3(anatomy.Basis.M21,anatomy.Basis.M22,anatomy.Basis.M23);float drift=0,penetration=0,angle=0;
+        var normal=SurfaceContacts.Normal(scene,rig,context.Surface);float drift=0,penetration=0,angle=0;
         var protectedBones=AnimationControls.ProtectedMotionBones(scene,rig).Concat(rig.PreservedHelperBones).Concat(context.ProtectedBones.Select(n=>Array.FindIndex(scene.Bones,b=>b.Name==n))).Distinct().ToArray();
         var editable=rows.SelectMany(r=>{var chain=rig.Chains.Single(c=>c.Reviewed&&c.Effector==r.Bone);return new[]{chain.Root,chain.Middle,chain.Effector};}).ToHashSet();
-        editable.UnionWith(rows.SelectMany(r=>ReviewedContactShapeBones(scene,rig,r)));
+        editable.UnionWith(rows.SelectMany(r=>ReviewedContactShapeBones(scene,rig,r,RecoverySteps(context))));
         int body=ReviewedContactBody(scene,rig);if(body>=0)editable.Add(body);editable.ExceptWith(protectedBones);
         var beforeTracks=master.Tracks.ToDictionary(t=>t.Bone,StringComparer.Ordinal);
         var afterTracks=candidate.Tracks.ToDictionary(t=>t.Bone,StringComparer.Ordinal);
@@ -431,16 +475,19 @@ public static partial class ReviewedContactSets
                 throw new InvalidDataException("Contact correction cannot change native scale channels.");
         }
         var required=new SortedSet<double>(witnesses);
-        int first=context.EarlierBodyCorrectionStart??rows.Min(r=>r.Start-r.Blend),last=rows.Max(r=>r.End+r.Blend);
+        int first=context.EarlierBodyCorrectionStart??rows.Min(Approach),last=rows.Max(Release);
         for(double frame=0;frame<=master.SampleCount-1;frame+=.25)required.Add(frame);
         foreach(var frame in master.Tracks.Concat(candidate.Tracks).SelectMany(t=>t.Channels.OfType<Curve>()).SelectMany(c=>c.Keys).Select(k=>k.Frame).Where(t=>t>=first&&t<=last))required.Add(frame);
         if(required.Count>EvaluationBudget)throw new InvalidOperationException("Complete native contact witnesses exceed the fixed verification budget.");
         var full=rows.Select(row=>FullFootWitnesses(scene,master,row,normal)).ToArray();long skinWork=skinWorkOffset;
+        var completeSamples=RecoverySteps(context)?new CompleteSkinSamples(full.SelectMany(g=>g.Region.Concat(g.Sole))):null;
+        var floors=rows.ToDictionary(r=>r.Id,r=>RecoveryFloor(scene,master,rig,context,r));
         if(skinWork<0||skinWork>MaximumKeys)throw new InvalidDataException("Invalid shared full-skin verification budget.");
         foreach(double frame in required)
         {
             cancellation.ThrowIfCancellationRequested();var pose=ContactPose(scene,candidate,frame);var baseline=ContactPose(scene,master,frame);
-            bool outside=context.EarlierBodyCorrectionStart is not null?frame<=first||frame>=last:rows.All(r=>frame<=r.Start-r.Blend||frame>=r.End+r.Blend);
+            var sample=completeSamples?.At(pose);
+            bool outside=context.EarlierBodyCorrectionStart is not null||RecoverySteps(context)?frame<=first||frame>=last:rows.All(r=>frame<=Approach(r)||frame>=Release(r));
             if(preserveEditScope&&outside&&pose.Local.Where((t,i)=>t!=baseline.Local[i]).Any())
             {
                 int changed=Enumerable.Range(0,scene.Bones.Length).First(i=>pose.Local[i]!=baseline.Local[i]);
@@ -456,34 +503,40 @@ public static partial class ReviewedContactSets
                 penetration=Math.Max(penetration,ContactGeometry.Penetration(pin,pose));
                 if(pin.HoldRotation)angle=Math.Max(angle,ContactAuthoring.AngleError(PoseGeometry.Rotation(pose.World[pin.Bone]),pin.Rotation));
             }
-            foreach(var row in rows)
+            if(RecoverySteps(context)&&frame>=first&&frame<=last)
+                foreach(var goal in RecoveryGoals(scene,master,rig,context,frame,normal,solverRegions,floors))
+                {
+                    drift=Math.Max(drift,ContactGeometry.Residual(goal,pose).Length());
+                    penetration=Math.Max(penetration,ContactGeometry.Penetration(goal,pose));
+                    if(goal.HoldRotation)angle=Math.Max(angle,ContactAuthoring.AngleError(PoseGeometry.Rotation(pose.World[goal.Bone]),goal.Rotation));
+                }
+            foreach(var row in rows.Where(r=>!RecoverySteps(context)))
             {
-                float weight=frame<row.Start?(float)((frame-row.Start+row.Blend)/row.Blend):frame>row.End?(float)((row.End+row.Blend-frame)/row.Blend):1;
-                weight=Math.Clamp(weight,0,1);weight=weight*weight*(3-2*weight);
+                float weight=ContactWeight(row,frame);
                 if(weight<=0)continue;
                 var goal=ContactGoal(scene,master,rig,context,row,frame,baseline,normal,weight,solverRegions[row.Id]);
                 var actual=row.Patch.Select(p=>ContactGeometry.Point(p,pose)).Aggregate(Vector3.Zero,(a,p)=>a+p)/row.Patch.Length;
                 drift=Math.Max(drift,Vector3.Distance(actual,goal.Position));
-                foreach(var point in row.Region)penetration=Math.Max(penetration,context.Surface.SourceFloor!.Value-Vector3.Dot(ContactGeometry.Point(point,pose),normal));
+                foreach(var point in row.Region)penetration=Math.Max(penetration,floors[row.Id]-Vector3.Dot(ContactGeometry.Point(point,pose),normal));
                 angle=Math.Max(angle,ContactAuthoring.AngleError(PoseGeometry.Rotation(pose.World[row.Bone]),goal.Rotation));
             }
             foreach(var row in rows.Where(r=>frame>=r.Start&&frame<=r.End))
             {
                 for(int i=0;i<row.Patch.Length;i++)drift=Math.Max(drift,Vector3.Distance(ContactGeometry.Point(row.Patch[i],pose),row.AnchorPoints[i]));
-                foreach(var point in row.Region)penetration=Math.Max(penetration,context.Surface.SourceFloor!.Value-Vector3.Dot(ContactGeometry.Point(point,pose),normal));
+                foreach(var point in row.Region)penetration=Math.Max(penetration,floors[row.Id]-Vector3.Dot(ContactGeometry.Point(point,pose),normal));
                 angle=Math.Max(angle,ContactAuthoring.AngleError(PoseGeometry.Rotation(pose.World[row.Bone]),row.Orientation));
             }
             for(int r=0;r<rows.Length;r++)
             {
-                var row=rows[r];if(frame<=row.Start-row.Blend||frame>=row.End+row.Blend)continue;
-                var geometry=full[r];skinWork+=geometry.Region.Length+geometry.Sole.Length;
+                var row=rows[r];if(RecoverySteps(context)?frame<first||frame>last:frame<=Approach(row)||frame>=Release(row))continue;
+                var geometry=full[r];if(sample is null)skinWork+=geometry.Region.Length+geometry.Sole.Length;
                 if(skinWork>MaximumKeys)throw new InvalidOperationException("Complete contact skin verification exceeds the existing two-million-work budget; no partial verification is accepted.");
-                foreach(var point in geometry.Region)penetration=Math.Max(penetration,context.Surface.SourceFloor!.Value-Vector3.Dot(ContactGeometry.Point(point,pose),normal));
+                foreach(var point in geometry.Region)penetration=Math.Max(penetration,floors[row.Id]-Vector3.Dot(sample is null?ContactGeometry.Point(point,pose):sample.Point(point,ref skinWork),normal));
                 if(frame>=row.Start&&frame<=row.End)for(int p=0;p<geometry.Sole.Length;p++)
-                    drift=Math.Max(drift,Vector3.Distance(ContactGeometry.Point(geometry.Sole[p],pose),geometry.Anchors[p]));
+                    drift=Math.Max(drift,Vector3.Distance(sample is null?ContactGeometry.Point(geometry.Sole[p],pose):sample.Point(geometry.Sole[p],ref skinWork),geometry.Anchors[p]));
             }
-            if(!float.IsFinite(drift)||!float.IsFinite(penetration)||!float.IsFinite(angle)||drift>positionBound||penetration>positionBound||angle>orientationBound)
-                throw new InvalidOperationException("Contact full-patch/penetration/orientation bound failed at native frame "+(frame+1)+". No result was applied.");
+            if(!float.IsFinite(drift)||!float.IsFinite(penetration)||!float.IsFinite(angle)||drift>positionBound||penetration>(RecoverySteps(context)?.0002f:positionBound)||angle>orientationBound)
+                throw new InvalidOperationException("Contact full-patch/penetration/orientation bound failed at native frame "+(frame+1)+": drift "+drift+", penetration "+penetration+", orientation "+angle+". No result was applied.");
         }
         return(drift,penetration,angle);
     }
@@ -501,7 +554,12 @@ public static partial class ReviewedContactSets
         var authored=bones.ToHashSet();
         foreach(var support in context.InferredSupports.Where(s=>frame>=s.First&&frame<=s.Last))
         {
-            bool replaced=context.Ranges.Any(r=>r.Reviewed&&scene.Bones[r.Bone].Name==support.BoneName&&frame>r.Start-r.Blend&&frame<r.End+r.Blend);
+            // The reviewed stance plan includes the swing between its holds.
+            // Do not resurrect an inferred plant at the zero-weight point
+            // between two rows. Authored pins above remain exact throughout.
+            bool replaced=context.Ranges.Any(r=>r.Reviewed&&scene.Bones[r.Bone].Name==support.BoneName&&
+                (RecoverySteps(context)?frame>context.FittingMiddle!.End&&frame<context.Ranges.Where(other=>other.Bone==r.Bone).Max(Release):
+                    frame>Approach(r)&&frame<Release(r)));
             if(replaced)continue;
             foreach(string name in support.Dependencies)Add(Array.FindIndex(scene.Bones,b=>b.Name==name));
         }

@@ -1,4 +1,22 @@
-﻿# Native Next integration
+# Native Next integration
+
+Preview.65.8 adds `reviewed-native-stance-steps-1` through the existing contact
+context and native Suggest/Preview/Apply boundary. Explicit native plane normals
+retain legacy null behavior. Frozen hold/step schedules keep native anchor heights,
+protect exact prefix/join/end/root data, and adapt only reviewed body/foot-deformation
+dependencies. Swing never resurrects a replaced inferred plant; authored pins
+remain hard constraints. The exact fitted-result hash gate remains enabled.
+
+Offline quarter/adaptive and 1/64-frame refinement uses native float knot times;
+complete all-influence skin witnesses reuse only identical ordered equations per
+pose. Dynamic geometry keeps member identities. Work/quality limits are unchanged;
+no solver or hashing work runs on playback. Fresh native validation additionally
+uses 1/128 frames and withheld samples. Read-only native orientation measurement
+removes scale/shear from its constraint frame, with frozen independent numerical
+counterexamples; model transforms and weights are untouched. Contact/floor exports
+remain Exact-only and independently recheck absolute acceptance after decoding.
+No new document, renderer, project envelope or Undo stack. See
+[acceptance and current boundaries](REVIEWED_STANCE_RECOVERY_ACCEPTANCE_2026-11-01.md).
 
 Preview.65.7 reuses the existing offline `BoundaryFloorRecovery` body-normal
 envelope for ordinary FK fits as `fk-boundary-floor-1`. Unlike baked-path recovery,

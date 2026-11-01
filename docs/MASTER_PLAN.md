@@ -1,5 +1,15 @@
 # Fighterport master plan
 
+1 November — **preview.65.8** qualifies reviewed planted holds and sequential
+stance steps inside the ONE incomplete G1/M2. Keep the full viewer/Next, source
+roots, all weights, exact beginning/middle/join/own-reference endpoint and native
+Undo. All four Peach/Fox and Link/Samus tilts pass decoded/exported/project-reopened
+native contact bounds; the ending remains target Wait1 frame 1 only. No numerical
+identity exceptions or changed work/quality limits. The existing keyboard first-
+registration timeout reproduces on .65.7; broader G1 and .66 remain open. See
+[qualification](REVIEWED_STANCE_RECOVERY_ACCEPTANCE_2026-11-01.md) and
+[current plan](plans/current.md).
+
 1 November — preview.65.7 qualifies reviewed-plane correction for ordinary FK
 fitting inside the same ONE incomplete G1/M2. Four Peach/Fox and Link/Samus tilt
 recoveries now pass the unchanged added-penetration bound with exact attack

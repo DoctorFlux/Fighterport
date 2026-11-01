@@ -146,7 +146,60 @@ internal static class ReviewedContactSetChecks
                 check(soleContradiction,"Full-foot preflight proves a minority-influence sole/floor contradiction before spending the solve budget");
             }
             if(variant!="original")MovingVariant(project,master,rig,settings,check);
+            RecoveryVariant(project,master,rig,settings,check,Reject);
         }
+    }
+
+    static void RecoveryVariant(FighterProject project,AnimationClip master,ControlRigSetup rig,GroundContactSettings surface,Action<bool,string> check,Func<Action,bool> reject)
+    {
+        var scene=project.Scene;int join=master.SampleCount-10;
+        var explicitPlane=surface with{SourceNormal=[0,1,0]};
+        check(SurfaceContacts.Normal(scene,rig,explicitPlane)==Vector3.UnitY,"Reviewed native plane uses its explicit normal rather than an inferred character lean");
+        check(reject(()=>SurfaceContacts.Normal(scene,rig,explicitPlane with{SourceNormal=[0,2,0]}))&&
+            reject(()=>SurfaceContacts.Normal(scene,rig,explicitPlane with{SourceNormal=[float.NaN,1,0]})),"Non-unit/nonfinite reviewed planes reject without normalization");
+        check(!JsonSerializer.Serialize(surface,ProjectStore.Json).Contains("SourceNormal"),"Legacy plane settings omit new optional metadata and retain their original content hashes");
+        var proposal=ReviewedContactSets.SuggestRecovery(project,master,rig,explicitPlane,[],new(0,join,"Exact original action"));
+        check(proposal.RecoveryPolicy==ReviewedContactSets.RecoveryStepPolicy&&proposal.Ranges.Length>=2&&proposal.Ranges.All(r=>!r.Reviewed),"Stance recovery freezes native anchors and staged timings without approving them");
+        check(reject(()=>ReviewedContactSets.Prepare(project,master,rig,proposal)),"Partial or absent stance review cannot produce an applicable result");
+        var row=proposal.Ranges[0];
+        check(reject(()=>ReviewedContactSets.SetRange(scene,master,rig,proposal,row.Role,row.Start+1,row.End,row.Blend,row.AnchorFrame,Vector3.Zero,true,row.Id)),"Reviewed step timing cannot become stale through a single-row edit");
+        var approved=proposal;
+        foreach(var range in proposal.Ranges)approved=ReviewedContactSets.SetRange(scene,master,rig,approved,range.Role,range.Start,range.End,range.Blend,range.AnchorFrame,Vector3.Zero,true,range.Id);
+        var before=ReviewedContactSets.ContentKey(project);
+        var prepared=ReviewedContactSets.Prepare(project,master,rig,approved);
+        check(prepared.Receipt.MaximumDrift<=prepared.Receipt.PositionBound&&prepared.Receipt.MaximumPenetration<=.0002f&&prepared.Receipt.MaximumOrientationError<=.25f,"Reviewed recovery meets the unchanged drift/orientation and stricter added-floor limits");
+        check(ReviewedContactSets.ContentKey(project)==before&&prepared.Clip.Tracks.SequenceEqual(master.Tracks),"Already planted procedural motion remains unchanged and preserves the complete master/skin");
+        check(reject(()=>ReviewedContactSets.ValidateContext(scene,master,rig,approved with{Ranges=approved.Ranges.Skip(1).ToArray()},true)),"Removing a frozen stance phase invalidates the complete plan");
+        var restored=JsonSerializer.Deserialize<ReviewedContactContext>(JsonSerializer.Serialize(approved,ProjectStore.Json),ProjectStore.Json)!;
+        check(ReviewedContactSets.ContentKey(restored)==ReviewedContactSets.ContentKey(approved),"Reviewed stance phase/anchor/protection context roundtrips exactly");
+        var pin=prepared.Contacts.SelectMany(c=>c.Pins).First();
+        check(pin.Clearance?.MaximumPenetration==.0002f&&ContactGeometry.Valid(pin,scene.Bones.Length)&&!ContactGeometry.Valid(pin with{Clearance=pin.Clearance! with{MaximumPenetration=-1}},scene.Bones.Length),"Persisted recovery clearance retains a finite positive explicit bound");
+        using var cancelled=new CancellationTokenSource();cancelled.Cancel();bool stopped=false;
+        try{ReviewedContactSets.Prepare(project,master,rig,approved,cancelled.Token);}catch(OperationCanceledException){stopped=true;}
+        check(stopped,"Cancellation returns no partially prepared recovery");
+        int body=AnimationControls.ResolveBodyBone(scene,rig);
+        var bodyChannels=new Curve?[9];float origin=scene.Bones[body].Rest.Translation.X;
+        bodyChannels[6]=new([new(0,origin+.04f),new(join,origin+.04f),new(master.SampleCount-1,origin)]);
+        var travelChannels=new Curve?[9];float root=scene.Bones[0].Rest.Translation.Z;
+        travelChannels[8]=new([new(0,root,.001f,.001f),new(master.SampleCount-1,root+(master.SampleCount-1)*.001f,.001f,.001f)]);
+        var moving=master with{Tracks=[new(scene.Bones[body].Name,bodyChannels),new(scene.Bones[0].Name,travelChannels)]};
+        var movingProject=project with{Clips=[moving]};
+        var stepped=ReviewedContactSets.SuggestRecovery(movingProject,moving,rig,explicitPlane,[],new(0,join,"Frozen original move"));
+        stepped=stepped with{Ranges=stepped.Ranges.Select(r=>r with{Reviewed=true}).ToArray(),OriginalSupportKey=new string('a',64),
+            InferredSupports=stepped.Ranges.DistinctBy(r=>r.Bone).Select(r=>new InferredSupportWindow(r.Role,scene.Bones[r.Bone].Name,0,master.SampleCount-1,r.Dependencies)).ToArray()};
+        var corrected=ReviewedContactSets.Prepare(movingProject,moving,rig,stepped);
+        check(stepped.Ranges.Length==3&&corrected.Changed.Length>0,"Different native stances produce reviewed sequential steps rather than a sliding shared anchor");
+        check(corrected.Receipt.MaximumDrift<=corrected.Receipt.PositionBound,"Review covers inferred-support release at the swing midpoint without reinstating a contradictory plant");
+        check(corrected.Changed.SelectMany(t=>t.Channels.OfType<Curve>()).SelectMany(c=>c.Keys).All(k=>(double)(float)k.Frame==k.Frame),"Every generated recovery knot is chosen on the native float time grid before solving");
+        check(ReviewedContactSets.ContentKey(corrected.Clip.Tracks.Single(t=>t.Bone==scene.Bones[0].Name))==ReviewedContactSets.ContentKey(moving.Tracks.Single(t=>t.Bone==scene.Bones[0].Name)),"Staged recovery preserves every authored root-motion channel and tangent");
+        check(new[]{0d,(double)join,(double)(master.SampleCount-1)}.All(t=>AnimationService.Evaluate(scene,moving,t).Local.SequenceEqual(AnimationService.Evaluate(scene,corrected.Clip,t).Local)),"Reviewed steps retain exact original first/join and frozen ending poses on generalized rigs");
+        check(reject(()=>ReviewedContactSets.Prepare(movingProject,moving with{Name="A different owned member"},rig,stepped)),"Changed master content invalidates staged recovery before any candidate can apply");
+        var foot=stepped.Ranges[0];
+        var authored=movingProject with{Contacts=[new(Guid.NewGuid(),moving.Id,join,rig.SkeletonFingerprint,
+            [new(Guid.NewGuid(),foot.Role,foot.Bone,Vector3.Zero,foot.Anchor,foot.Orientation,true,"Original authored pin")]){EndFrame=master.SampleCount-1}]};
+        var pinned=ReviewedContactSets.SuggestRecovery(authored,moving,rig,explicitPlane,[],new(0,join,"Frozen action"));
+        pinned=pinned with{Ranges=pinned.Ranges.Select(r=>r with{Reviewed=true}).ToArray()};
+        check(reject(()=>ReviewedContactSets.Prepare(authored,moving,rig,pinned)),"Step approval never releases an authored pin even when replacing selected inferred plants");
     }
 
     static void MovingVariant(FighterProject project,AnimationClip master,ControlRigSetup rig,GroundContactSettings settings,Action<bool,string> check)

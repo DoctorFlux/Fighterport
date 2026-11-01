@@ -43,10 +43,12 @@ namespace BrawlCrate.UI
             var previous=ReviewedContactsFor(asset,source);
             var intervals=new List<TransitionProtected>();
             TransitionProtected fittingMiddle=null;
+            bool recoveryAvailable=false;
             if(TransitionRecipeFor(asset,source) is NativeTransitionFit fit)
             {
                 fit.Validate();var options=json.Deserialize<TransitionFitOptions>(fit.Options);intervals.AddRange(options.Protected??new TransitionProtected[0]);
                 fittingMiddle=new TransitionProtected{Start=options.Entry==null?0:options.EntrySamples-1,End=options.Exit==null?source.FrameCount-1:source.FrameCount-options.ExitSamples,Reason="Retained fitted action middle"};
+                recoveryAvailable=fit.InitialResultSha256==motionHash&&options.Entry==null&&options.Exit!=null&&options.ExitFrozen&&options.ExitFrame==0&&options.Components==7&&options.ExitSamples>=8&&!source.Loop;
             }
             string dependencies=json.Serialize(new{asset.Retarget,asset.ContactBake,Previous=previous,Fits=asset.TransitionRecipes().ToArray()});
             string originalState=liveState;
@@ -101,6 +103,7 @@ namespace BrawlCrate.UI
                 CHR0Node prepared=null;string preparedKey=null,preparedState=null;NativeReviewedContacts metadata=null;
                 using(var window=new ReviewedContactsDialog(beforeRoot,Match(beforeRoot),afterRoot,Match(afterRoot),preview,feet,modelEditControl1.ModelPanel.CurrentViewport,references))
                 {
+                    window.RecoveryAvailable=recoveryAvailable&&previous==null;
                     var coordinates=ReviewedFighterCoordinates(model);
                     window.SourceView.Up=window.TargetView.Up=coordinates?.Up??new[]{0f,1f,0f};
                     window.SourceView.Forward=window.TargetView.Forward=coordinates?.Forward??new[]{0f,0f,1f};
@@ -109,7 +112,8 @@ namespace BrawlCrate.UI
                     {
                         Current();if(client==null)client=new AnimationControlClient();var session=client;
                         var reply=await session.Send(new{Operation="contact-set-suggest",Model=modelPath,Motion=masterPath,State=originalState,
-                            ContactSurface=new{SurfaceMode="Ground",SourceFloor=floor,TargetFloor=floor,ExplicitSurface=true},NativeSupportJson=nativeSupport,ReviewedProtectedRanges=intervals.ToArray(),ReviewedFittingMiddle=fittingMiddle,
+                            ContactSurface=new{SurfaceMode="Ground",SourceFloor=floor,TargetFloor=floor,ExplicitSurface=true,SourceNormal=new[]{0f,1f,0f}},NativeSupportJson=nativeSupport,ReviewedProtectedRanges=intervals.ToArray(),ReviewedFittingMiddle=fittingMiddle,
+                            ReviewFittedRecovery=window.RecoveryRequested,
                             ContactProtection=nativeSupport==null?NativeTransitionContacts.Resolve(model,asset,true):new string[0]});
                         Current();if(window.IsDisposed||client!=session)throw new OperationCanceledException();return reply;
                     };

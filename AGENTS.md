@@ -1,5 +1,16 @@
 # Fighterport
 
+1 November: **preview.65.8-reviewed-stance-recovery** qualifies the bounded
+reviewed static-biped stance increment from `372769c3ee1ca41740185ac4d3637a432fc06d63`.
+Use the existing Suggest/Preview/Apply workflow: planted holds and explicitly
+reviewed steps, exact original prefix/join/ending, roots and all weights. Preserve
+the exact fit-result hash gate, authored pins and every numeric/work limit.
+Four tilt/own-Wait1-first-frame native workflows, real Save/reopen/export and
+318 inspected side-GIF frames pass. No character/action numerical exceptions.
+One G1/M2 remains incomplete and .66 ledges queued. The keyboard registration
+suite times out identically on .65.7 and .65.8; keep that broader gate open.
+See [acceptance](docs/REVIEWED_STANCE_RECOVERY_ACCEPTANCE_2026-11-01.md).
+
 1 November: **preview.65.7-reviewed-fk-floor** qualifies ordinary FK fitting with
 an optional reviewed static-plane guard. Require exact reviewed hips/leg chains,
 complete authentic weights and explicit plane review; never invent baked support

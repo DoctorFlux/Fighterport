@@ -55,6 +55,7 @@ namespace BrawlCrate.Studio
     internal sealed class ControlReply
     {
         public string ContactContextJson {get;set;}
+        public bool RecoverySteps {get;set;}
         public ReviewedContactRow[] ContactRanges {get;set;}
         public SceneFittingReply Fitting {get;set;}
         public string OptimizationPath {get;set;}

@@ -11,6 +11,12 @@ public sealed record ReviewedContactRange(string Id,string Role,int Bone,int Sta
 {
     public SkinSurfacePoint[] Region {get;init;}=[];
     public string[] Dependencies {get;init;}=[];
+    [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public int? ApproachStart {get;init;}
+    [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public int? ReleaseEnd {get;init;}
+    [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool NativeAnchorHeight {get;init;}
 }
 public sealed record ReviewedContactContext(string Version,string RigFingerprint,string MasterKey,
     GroundContactSettings Surface,ContactFrame[] OriginalContacts,ReviewedContactRange[] Ranges,
@@ -25,6 +31,10 @@ public sealed record ReviewedContactContext(string Version,string RigFingerprint
     public ProtectedInterval? FittingMiddle {get;init;}
     public int? EarlierBodyCorrectionStart {get;init;}
     public string EarlierCorrectionPolicy {get;init;}="Explicitly reviewed earlier body correction may adapt reviewed body dependencies of inferred supports; authored pins, protected motion and the chosen first frame remain exact.";
+    [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? RecoveryPolicy {get;init;}
+    [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? RecoveryPlanKey {get;init;}
 }
 public sealed record InferredSupportWindow(string Role,string BoneName,float First,float Last,string[] Dependencies);
 public sealed record ReviewedContactSetReceipt(string Version,string ContextKey,string MasterKey,int FirstChanged,int LastChanged,
@@ -60,8 +70,7 @@ public static partial class ReviewedContactSets
         var original=project.Contacts.Where(c=>c.Clip==clip.Id).ToArray();
         if(original.Any(c=>c.SkeletonFingerprint!=rig.SkeletonFingerprint))throw new InvalidDataException("Saved contacts belong to another rig revision.");
         var analysis=SurfaceContacts.Detect(project,clip,rig,surface,cancellation);
-        var up=RigCharacterization.Describe(project.Scene,rig).Basis;
-        var normal=new Vector3(up.M21,up.M22,up.M23);
+        var normal=SurfaceContacts.Normal(project.Scene,rig,surface);
         var ranges=new List<ReviewedContactRange>();
         foreach(var interval in analysis.Contacts.OrderBy(c=>c.Frame))foreach(var pin in interval.Pins)
         {
@@ -93,11 +102,18 @@ public static partial class ReviewedContactSets
         string role,int start,int end,int blend,int anchorFrame,Vector3 offset,bool reviewed,string? id=null)
     {
         ValidateContext(scene,master,rig,context,false);
+        if(RecoverySteps(context))
+        {
+            var frozen=context.Ranges.SingleOrDefault(r=>r.Id==id)??throw new InvalidDataException("Re-suggest the complete recovery plan rather than adding an unbound hold.");
+            if(frozen.Role!=role||frozen.Start!=start||frozen.End!=end||frozen.Blend!=blend||frozen.AnchorFrame!=anchorFrame||offset!=Vector3.Zero)
+                throw new InvalidDataException("Recovery holds and steps are frozen together. Change the fitting range and re-suggest; existing native anchors cannot be moved silently.");
+            return context with{Ranges=context.Ranges.Select(r=>r.Id==id?r with{Reviewed=reviewed}:r).ToArray()};
+        }
         if(!PoseGeometry.Finite(offset)||anchorFrame<0||anchorFrame>=master.SampleCount)throw new InvalidDataException("A reviewed anchor requires a finite offset and native frame.");
         var chain=rig.Chains.SingleOrDefault(c=>c.Reviewed&&c.Role==role&&c.Role.StartsWith("Foot.",StringComparison.Ordinal))
             ??throw new InvalidDataException("Choose a reviewed existing foot chain.");
         var region=SurfaceContacts.Regions(scene,rig).Single(r=>r.Bone==chain.Effector);
-        var anatomy=RigCharacterization.Describe(scene,rig);var normal=new Vector3(anatomy.Basis.M21,anatomy.Basis.M22,anatomy.Basis.M23);
+        var anatomy=RigCharacterization.Describe(scene,rig);var normal=SurfaceContacts.Normal(scene,rig,context.Surface);
         if(Math.Abs(Vector3.Dot(offset,normal))>.00001f)throw new InvalidDataException("A floor-contact anchor offset must stay in the reviewed ground plane. Change the reviewed ground height for another surface.");
         var pose=ContactPose(scene,master,anchorFrame);var patch=SurfaceContacts.Patch(region,pose,normal,anatomy.LegLength*.006f);
         var points=patch.Select(p=>ContactGeometry.Point(p,pose)).ToArray();
@@ -119,11 +135,15 @@ public static partial class ReviewedContactSets
             throw new InvalidDataException("Unknown contact adaptation policy; review with a supported context version.");
         if(context.Ranges.Length>MaximumRanges||requireReview&&!context.Ranges.Any(r=>r.Reviewed))throw new InvalidDataException("Review at least one contact range.");
         if(context.Ranges.Select(r=>r.Id).Distinct(StringComparer.Ordinal).Count()!=context.Ranges.Length)throw new InvalidDataException("Contact range identities must be unique.");
+        if(context.RecoveryPolicy is not null&&!RecoverySteps(context)||!RecoverySteps(context)&&(context.RecoveryPlanKey is not null||context.Ranges.Any(r=>r.NativeAnchorHeight||r.ApproachStart is not null||r.ReleaseEnd is not null)))
+            throw new InvalidDataException("Unknown or incomplete reviewed recovery policy.");
+        if(RecoverySteps(context)&&(context.FittingMiddle is null||context.EarlierBodyCorrectionStart is not null||context.RecoveryPlanKey!=RecoveryRowsKey(context.Ranges)||requireReview&&context.Ranges.Any(r=>!r.Reviewed)))
+            throw new InvalidDataException("Review the complete frozen recovery hold/step plan; changed ranges require new suggestions.");
         var motion=AnimationControls.ProtectedMotionBones(scene,rig).ToHashSet();
         foreach(var row in context.Ranges)
         {
             if(!Guid.TryParseExact(row.Id,"N",out _)||row.Bone<0||row.Bone>=scene.Bones.Length||motion.Contains(row.Bone)||row.Start<0||row.End<row.Start||row.Blend<2||
-                row.Start-row.Blend<0||row.End+row.Blend>=master.SampleCount||row.End-row.Start+2*row.Blend>MaximumEditedSamples||
+                Approach(row)<0||Approach(row)>row.Start||Release(row)<row.End||Release(row)>=master.SampleCount||Release(row)-Approach(row)>MaximumEditedSamples||
                 row.AnchorFrame<0||row.AnchorFrame>=master.SampleCount||!PoseGeometry.Finite(row.Anchor)||!float.IsFinite(row.Orientation.LengthSquared())||row.Orientation.LengthSquared()<.0001f||
                 row.Patch.Length==0||row.Region.Length==0||row.Patch.Length!=row.AnchorPoints.Length||row.AnchorPoints.Any(p=>!PoseGeometry.Finite(p))||
                 !rig.Chains.Any(c=>c.Reviewed&&c.Effector==row.Bone&&c.Role==row.Role&&c.Role.StartsWith("Foot.",StringComparison.Ordinal)))
@@ -139,16 +159,15 @@ public static partial class ReviewedContactSets
             var nativePatch=row.Patch.Select(p=>ContactGeometry.Point(p,anchorPose)).ToArray();
             var center=nativePatch.Aggregate(Vector3.Zero,(a,p)=>a+p)/nativePatch.Length;
             var shift=row.Anchor-center;
-            var basis=RigCharacterization.Describe(scene,rig).Basis;
-            var normal=new Vector3(basis.M21,basis.M22,basis.M23);
+            var normal=SurfaceContacts.Normal(scene,rig,context.Surface);
             if(row.AnchorPoints.Where((point,i)=>Vector3.Distance(point,nativePatch[i]+shift)>.00001f).Any()||
-                Math.Abs(row.AnchorPoints.Min(p=>Vector3.Dot(p,normal))-floor)>.00001f)
+                (!row.NativeAnchorHeight&&Math.Abs(row.AnchorPoints.Min(p=>Vector3.Dot(p,normal))-floor)>.00001f))
                 throw new InvalidDataException("A ground-contact patch must retain its native shape and touch the reviewed floor.");
         }
         foreach(var group in context.Ranges.Where(r=>r.Reviewed).GroupBy(r=>r.Bone))
         {
             var rows=group.OrderBy(r=>r.Start).ToArray();
-            for(int i=1;i<rows.Length;i++)if(rows[i].Start-rows[i].Blend<=rows[i-1].End+rows[i-1].Blend)
+            for(int i=1;i<rows.Length;i++)if(RecoverySteps(context)?Approach(rows[i])<Release(rows[i-1]):Approach(rows[i])<=Release(rows[i-1]))
                 throw new InvalidOperationException("Overlapping contacts on the same foot conflict. Different feet are solved together.");
         }
         if(context.ProtectedBones.Any(name=>!scene.Bones.Any(b=>b.Name==name)))throw new InvalidDataException("A protected contact dependency is missing from the target.");

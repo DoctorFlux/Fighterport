@@ -43,8 +43,9 @@ internal static partial class Program
         using(var baseline=NativeAnimationOptimization.CopySource(current))
         {
             baseline.ExportChecked(Path.Combine(output,"01-retargeted.chr0"));
+            var priorReferences=editor._openedFiles.SelectMany(Walk).OfType<CHR0Node>().ToArray();
             Call(form,"ImportFighterAnimations",new[]{new[]{targetMotion}});await SimpleControlsReady(form);
-            var reference=editor._openedFiles.SelectMany(Walk).OfType<CHR0Node>().Single(c=>c.Name==referenceName);
+            var reference=editor._openedFiles.SelectMany(Walk).OfType<CHR0Node>().Single(c=>c.Name==referenceName&&!priorReferences.Contains(c));
             Check(expectedReference==null||NativeAnimationOptimization.SourceContentKey(reference)==expectedReference,"Imported target reference matches the independently pinned native member");
             using(var copy=NativeAnimationOptimization.CopySource(reference))copy.ExportChecked(Path.Combine(output,"frozen-reference.chr0"));
             string referenceContent=NativeAnimationOptimization.SourceContentKey(reference),before=SetNativeContent(current);

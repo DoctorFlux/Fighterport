@@ -8,7 +8,7 @@ public static partial class ReviewedContactSets
     {
         var rows=context.Ranges.Where(r=>r.Reviewed).ToArray();
         var result=rows.SelectMany(row=>{var chain=rig.Chains.Single(c=>c.Reviewed&&c.Effector==row.Bone);return new[]{chain.Root,chain.Middle,chain.Effector};}).ToHashSet();
-        result.UnionWith(rows.SelectMany(r=>ReviewedContactShapeBones(scene,rig,r)));
+        result.UnionWith(rows.SelectMany(r=>ReviewedContactShapeBones(scene,rig,r,RecoverySteps(context))));
         int body=ReviewedContactBody(scene,rig);if(body>=0)result.Add(body);
         result.ExceptWith(AnimationControls.ProtectedMotionBones(scene,rig).Concat(rig.PreservedHelperBones)
             .Concat(context.ProtectedBones.Select(name=>Array.FindIndex(scene.Bones,b=>b.Name==name))));
@@ -43,7 +43,7 @@ public static partial class ReviewedContactSets
         }
         return AnimationService.Evaluate(scene,null,0,values);
     }
-    static EvaluatedPose? BodyClearanceTrial(Scene scene,ControlRigSetup rig,ReviewedContactContext context,EvaluatedPose pose,
+    static EvaluatedPose? BodyClearanceTrial(Scene scene,AnimationClip master,ControlRigSetup rig,ReviewedContactContext context,EvaluatedPose pose,
         IReadOnlyDictionary<int,Transform> locks,ContactPin[] goals,double frame,float bound,Vector3 normal,
         IReadOnlyDictionary<string,FullFootWitness> geometry,ref long skinWork)
     {
@@ -57,19 +57,20 @@ public static partial class ReviewedContactSets
             if(factor<=0){if(error.Length()>bound)possible=false;return;}
             double radius=Math.Sqrt(remaining);lower=Math.Max(lower,(-radius-along)/factor);upper=Math.Min(upper,(radius-along)/factor);
         }
-        foreach(var goal in goals)
+        foreach(var goal in goals.Where(g=>!g.ClearanceOnly))
         {
             if(goal.SurfaceRegion.Length>0||goal.PlaneNormal is not null||goal.AllowedSurface is not null)return null;
             double factor=goal.SurfacePoints.Length>0?goal.SurfacePoints.Average(Factor):PoseGeometry.Ancestor(scene,body,goal.Bone)?1:0;
             Sphere(ContactGeometry.Point(goal,pose)-ContactGeometry.Target(goal,pose),factor);
         }
-        foreach(var row in context.Ranges.Where(r=>r.Reviewed&&frame>r.Start-r.Blend&&frame<r.End+r.Blend))
+        foreach(var row in context.Ranges.Where(r=>r.Reviewed&&frame>Approach(r)&&frame<Release(r)))
         {
             var full=geometry[row.Id];skinWork+=full.Region.Length+full.Sole.Length;
+            float floor=RecoveryFloor(scene,master,rig,context,row);
             if(skinWork>MaximumKeys)throw new InvalidOperationException("Body-clearance trial exhausted the unchanged full-skin verification budget.");
             foreach(var point in full.Region)
             {
-                double factor=Factor(point),need=context.Surface.SourceFloor!.Value-Vector3.Dot(ContactGeometry.Point(point,pose),normal)-bound;
+                double factor=Factor(point),need=floor-Vector3.Dot(ContactGeometry.Point(point,pose),normal)-bound;
                 if(factor>0)lower=Math.Max(lower,need/factor);else if(need>0)possible=false;
             }
             if(frame>=row.Start&&frame<=row.End)for(int i=0;i<full.Sole.Length;i++)Sphere(ContactGeometry.Point(full.Sole[i],pose)-full.Anchors[i],Factor(full.Sole[i]));
