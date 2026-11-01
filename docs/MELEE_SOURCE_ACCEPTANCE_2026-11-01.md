@@ -68,3 +68,12 @@ animation, actual supplied modpacks, physical input/DPI and game acceptance rema
 unverified. Synthetic mod overlays are not actual modpack qualification. The next
 stage is native Melee target/document ownership and a verified edited native writer,
 then bidirectional motion and independent asset conversion.
+
+## Publication record
+
+Implementation `400019bae761182c5b6bfc92bc7aea90b0ba4f23` is published to public
+DoctorFlux/Fighterport/main. GitHub returned DoctorFlux for both author and
+committer, and its contributor endpoint listed DoctorFlux only. The check-only
+launcher resolves the verified local preview.67 build. No binaries/game assets
+were published. The final native build's 21 captures are byte-identical to the
+inspected ui18 set. Engine continuity and every open gate above remain unchanged.
