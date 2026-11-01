@@ -1,0 +1,150 @@
+﻿using System;
+
+namespace HSDRaw.GX
+{
+    public struct GXVector4
+    {
+        public GXVector4(float x, float y, float z, float w) : this()
+        {
+            X = x;
+            Y = y;
+            Z = z;
+            W = w;
+        }
+
+        public float X { get; set; }
+        public float Y { get; set; }
+        public float Z { get; set; }
+        public float W { get; set; }
+
+        public override string ToString()
+        {
+            return $"({X}, {Y}, {Z}, {W})";
+        }
+    }
+
+    public struct GXColor4
+    {
+        public float R, G, B, A;
+
+        public GXColor4(float r, float g, float b, float a)
+        {
+            R = r;
+            G = g;
+            B = b;
+            A = a;
+        }
+
+        public byte[] ToBytes()
+        {
+            return new byte[] {
+                (byte) (R > 1 ? 0xFF : R * 0xFF),
+                (byte) (G > 1 ? 0xFF : G * 0xFF),
+                (byte) (B > 1 ? 0xFF : B * 0xFF),
+                (byte) (A > 1 ? 0xFF : A * 0xFF)
+                };
+        }
+
+        public override string ToString()
+        {
+            return $"({R}, {G}, {B}, {A})";
+        }
+    }
+
+    public struct GXVector3
+    {
+        public float X { get; set; }
+        public float Y { get; set; }
+        public float Z { get; set; }
+
+        public GXVector3(float x, float y, float z)
+        {
+            X = x;
+            Y = y;
+            Z = z;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is GXVector3 v && v.X == X && v.Y == Y && v.Z == Z ;
+        }
+
+        public override int GetHashCode()
+        {
+            int hashCode = -307843816;
+            hashCode = hashCode * -1521134295 + X.GetHashCode();
+            hashCode = hashCode * -1521134295 + Y.GetHashCode();
+            hashCode = hashCode * -1521134295 + Z.GetHashCode();
+            return hashCode;
+        }
+
+        public static bool operator ==(GXVector3 x, GXVector3 y)
+        {
+            return x.X == y.X && x.Y == y.Y && x.Z == y.Z;
+        }
+        public static bool operator !=(GXVector3 x, GXVector3 y)
+        {
+            return !(x.X == y.X && x.Y == y.Y && x.Z == y.Z);
+        }
+
+        public static GXVector3 operator +(GXVector3 x, GXVector3 y)
+        {
+            return new GXVector3(x.X + y.X, x.Y + y.Y, x.Z + y.Z);
+        }
+
+        public static GXVector3 operator /(GXVector3 x, float v)
+        {
+            return new GXVector3(x.X / v, x.Y / v, x.Z / v);
+        }
+
+        public static float Distance(GXVector3 point1, GXVector3 point2)
+        {
+            float deltaX = point2.X - point1.X;
+            float deltaY = point2.Y - point1.Y;
+            float deltaZ = point2.Z - point1.Z;
+
+            return (float)Math.Sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
+        }
+
+        public override string ToString()
+        {
+            return $"({X}, {Y}, {Z})";
+        }
+    }
+
+    public struct GXVector2
+    {
+        public float X { get; set; }
+        public float Y { get; set; }
+
+        public GXVector2(float x, float y)
+        {
+            X = x;
+            Y = y;
+        }
+
+        public static bool operator ==(GXVector2 x, GXVector2 y)
+        {
+            return x.X == y.X && x.Y == y.Y;
+        }
+        public static bool operator !=(GXVector2 x, GXVector2 y)
+        {
+            return !(x.X == y.X && x.Y == y.Y);
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is GXVector2 vector &&
+                   X == vector.X &&
+                   Y == vector.Y;
+        }
+
+        public override int GetHashCode()
+        {
+            int hashCode = 1861411795;
+            hashCode = hashCode * -1521134295 + X.GetHashCode();
+            hashCode = hashCode * -1521134295 + Y.GetHashCode();
+            return hashCode;
+        }
+    }
+}

@@ -1,5 +1,11 @@
 # FighterPort Studio V2 — 2.0.0-preview.4
 
+Preview.67 adds native Melee ISO/GCM/folder source browsing, costumes, original
+source preview and explicit unchanged source-file export. Parts reviews native
+variants. Melee target editing, edited export, retarget/fitting and asset conversion
+remain unavailable. See MELEE_SOURCE_ACCEPTANCE_2026-11-01.md for bounded evidence.
+
+
 Windows portable testing preview, built in Release mode for x86 using .NET
 Framework 4.7.2. Windows x64 can run this x86 application. The framework must
 already be installed. This is an unsigned preview, not a stable final release.

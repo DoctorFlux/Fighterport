@@ -71,6 +71,15 @@
         "dependencies": {
           "System.IO.Hashing": "[8.0.0, )"
         }
+      },
+      "fighterport.adapters.melee": {
+        "type": "Project",
+        "dependencies": {
+          "HSDRaw": "[1.0.0, )"
+        }
+      },
+      "HSDRaw": {
+        "type": "Project"
       }
     },
     ".NETFramework,Version=v4.7.2/win-x86": {}

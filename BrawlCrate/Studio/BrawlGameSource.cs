@@ -16,6 +16,7 @@ namespace BrawlCrate.Studio
         public string Game {get;set;}="Brawl";
         public string GameVersion {get;set;}="Build not supplied";
         public string Path {get;set;}
+        public string BaseSourceId {get;set;}
         // Legacy request compatibility only. The built-in reader never executes it.
         public string DolphinToolPath {get;set;}
         public bool ApproveBuild {get;set;}

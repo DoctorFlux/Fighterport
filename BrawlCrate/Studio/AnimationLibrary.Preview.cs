@@ -9,6 +9,7 @@ namespace BrawlCrate.Studio
     {
         private LibrarySourceState PreviewState(LibraryCatalogue data,LibraryAnimation clip,bool force=false)
         {
+            if(data.Mounts.Single(m=>m.Id==clip.MountId).Provider==MeleeGameSource.NativeProvider)return State(data,clip,force);
             if(!LibraryNativePreview.Supported(clip))return LibrarySourceState.UnsupportedChannelVersion;
             var motion=data.Mounts.Single(m=>m.Id==clip.MountId);
             if(motion.Provider!=BrawlLibrarySource.Provider)return LibrarySourceState.UnsupportedChannelVersion;
@@ -26,12 +27,13 @@ namespace BrawlCrate.Studio
             lock(cacheSync)
             {
                 var data=SearchSnapshot();var clip=data.Clips.SingleOrDefault(c=>c.Id==clipId);
-                var anchor=clip==null?null:LibraryNativePreview.Anchor(data,clip);
+                var anchor=clip==null?null:data.Mounts.Single(m=>m.Id==clip.MountId).Provider==MeleeGameSource.NativeProvider?clip:LibraryNativePreview.Anchor(data,clip);
                 return anchor==null?new LibraryCostumeOption[0]:GetCostumes(anchor.Id);
             }
         }
         public bool TrySelectPreview(LibrarySourceLease lease,string clipId,string modelId)
         {
+            if(lease?.MeleePlayback!=null)return TrySelectMeleePreview(lease,clipId,modelId);
             if(lease?.Reference==null||lease.LibraryDirectory!=DirectoryPath||lease.ModelRoot==null||lease.MotionRoot==null||lease.Reference.ModelId!=modelId)return false;
             lock(cacheSync)
             {

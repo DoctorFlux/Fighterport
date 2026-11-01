@@ -1,5 +1,24 @@
 # Current milestone M2 — simpler native workspace
 
+1 November: **preview.67-native-melee-source** qualifies the bounded read-only
+source/preview stage. Native Melee target editing/writing is the next OPEN stage;
+then original Next motion and independent asset conversion. Keep ONE G1/M2
+incomplete, .66 queued, all root/weight/contact gates and background-only tests.
+Native game-controlled part defaults require review. See
+[source qualification](../MELEE_SOURCE_ACCEPTANCE_2026-11-01.md).
+
+
+1 November: Melee native source/destination work is the user-selected next bounded
+increment, IN PROGRESS, starting c8a24af492fedfe2e1641c23ccefa8b5aaf06fcb.
+Qualify shared source providers and native HSD source rendering first, then native
+target writing, bidirectional motion and full asset conversion in verified stages.
+Preserve full Model Previewer/Next, binds/weights, source-owned roots and background
+testing. Do not infer export/game/modpack support from indexing.
+Native envelope/scale and reviewed part rendering checks now pass their bounded
+source tests; see [runtime diagnosis](../MELEE_RENDERING_DIAGNOSIS_2026-11-01.md).
+See [implementation and remaining gates](../MELEE_ADAPTER.md). ONE G1/M2 remains
+incomplete; preview.66 ledges and every existing failure remain queued/open.
+
 1 November — **preview.65.8-reviewed-stance-recovery qualifies its bounded slice**,
 starting `372769c3ee1ca41740185ac4d3637a432fc06d63`. The existing foot-contact dialog
 adds one opt-in reviewed stance plan: retain planted anchors, then take sequential

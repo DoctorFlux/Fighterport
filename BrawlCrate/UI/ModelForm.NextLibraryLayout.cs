@@ -11,7 +11,7 @@ namespace BrawlCrate.UI
         private TableLayoutPanel _sourceCatalogueLayout,_sourcePreviewHost;
         private Panel _sourceCatalogueScroll;
         private TableLayoutPanel _sourcePreviewTransport;
-        private Button _sourceFitButton;
+        private Button _sourceFitButton,_sourcePartsButton;
         private int _sourceTransportText=-1, _sourcePauseWidth;
 
         private void BuildNextLibraryPreviewHost(TableLayoutPanel catalogue,TableLayoutPanel transport)
@@ -33,7 +33,10 @@ namespace BrawlCrate.UI
             foreach(var button in new[]{_libraryPreview,_libraryOpenTarget}){button.AutoSize=false;button.Dock=DockStyle.Fill;}
             destinations.Controls.Add(_libraryPreview,0,0);destinations.Controls.Add(_libraryOpenTarget,1,0);
             _sourcePreviewHost.Controls.Add(destinations,0,1);
-            _sourcePreviewHost.Controls.Add(_libraryOriginalLabel,0,2);
+            var caption=new Panel{Dock=DockStyle.Fill,Margin=Padding.Empty};
+            _sourcePartsButton=LibraryButton("sourceNativeParts","Parts...",ShowMeleeSourceParts);_sourcePartsButton.Dock=DockStyle.Right;_sourcePartsButton.AutoSize=false;_sourcePartsButton.Width=70;_sourcePartsButton.Visible=false;
+            _sourcePartsButton.AccessibleDescription="Review native source model-part variants. Preview choices do not change the source or target document; game scripts are not evaluated.";
+            caption.Controls.Add(_libraryOriginalLabel);caption.Controls.Add(_sourcePartsButton);_sourcePreviewHost.Controls.Add(caption,0,2);
             _sourcePreviewHost.Controls.Add(_libraryViewport,0,3);
             _sourcePreviewHost.Controls.Add(transport,0,4);
             // Keep the two everyday operations visible beside the target even
@@ -95,6 +98,7 @@ namespace BrawlCrate.UI
             _sourcePreviewTransport.ColumnStyles[0].Width=Math.Max(WorkspaceAppearance.Pixels(72),_sourcePauseWidth);
 
             bool loaded = _libraryLease != null;
+            _sourcePartsButton.Visible=_libraryLease?.MeleeRenderer?.Parts!=null;_sourcePartsButton.Enabled=!SimpleWorkspaceBusy;
             _libraryPlay.Enabled = _libraryFrame.Enabled = loaded && !SimpleWorkspaceBusy;
             if (!loaded)
                 _libraryOriginalLabel.Text = "Source preview · select a character or animation";

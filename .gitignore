@@ -172,3 +172,9 @@ __pycache__/
 
 # Local supplied Word plan; the authoritative specification is checked in as Markdown.
 docs/FighterPort_V2_Source_Bound_Universal_Animation_Library_Master_Plan.docx
+
+# Native Melee source assets stay private.
+*.gcm
+*.dat
+*.usd
+*.dol

@@ -1,5 +1,11 @@
 # Native Next integration
 
+The in-progress Melee adapter adds source-provider/capability registration and a
+prepared native-preview interface around the existing ModelPanel. HSD I/O/material
+rendering stay outside Core and preserve original Next and native document/Undo
+ownership. Native graphs/all weights remain authentic; display projections are
+independent. See [pinned dependency and unqualified stages](MELEE_ADAPTER.md).
+
 Preview.65.8 adds `reviewed-native-stance-steps-1` through the existing contact
 context and native Suggest/Preview/Apply boundary. Explicit native plane normals
 retain legacy null behavior. Frozen hold/step schedules keep native anchor heights,

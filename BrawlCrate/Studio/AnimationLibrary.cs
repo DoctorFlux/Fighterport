@@ -164,10 +164,10 @@ namespace BrawlCrate.Studio
             if(data.Models.Any(m=>m.MotionMountIds==null||m.MotionMountIds.Count>8192||m.MotionMountIds.Any(id=>!mounts.ContainsKey(id))))throw new InvalidDataException("Invalid source-set motion ownership.");
             if(data.GameLocations==null||data.GameLocations.Any(l=>l==null||!Id(l.Id)||!Text(l.Game,128)||!Text(l.GameVersion,256)||!Text(l.Path,32767)||!Text(l.Label,512))||
                 data.GameLocations.Select(l=>l.Id).Distinct().Count()!=data.GameLocations.Count)throw new InvalidDataException("Invalid game/build path configuration.");
-            foreach(var location in data.GameLocations)OrdinaryPath(location.Path);
+            foreach(var location in data.GameLocations){OrdinaryPath(location.Path);if(location.BaseSourceId!=null&&(!Id(location.BaseSourceId)||location.BaseSourceId==location.Id||location.Game!="Melee"))throw new InvalidDataException("Invalid explicit game-source base association.");}
             foreach(var location in data.GameLocations.Where(l=>l.Indexed))
                 if(!Hash(location.ContainerSha256)||!Hash(location.InventorySha256)||location.NativeFiles<1||
-                    (location.Provider!="brawl-folder-v1"&&!BrawlGameSource.IsDiscProvider(location.Provider))||
+                    NativeGameAdapters.ForSource(location.Game,location.Provider)==null||
                     (location.Provider=="dolphin-brawl-disc-v1"&&(!Hash(location.ToolSha256)||!Text(location.ToolPath,32767)||location.Bytes<=0||location.Bytes>64L*1024*1024*1024))||
                     (location.Provider==BrawlDiscImage.Provider&&(location.ToolPath!=null||location.ToolSha256!=null||location.Bytes<=0||location.Bytes>64L*1024*1024*1024)))
                     throw new InvalidDataException("Invalid indexed game/build provenance.");
@@ -181,7 +181,7 @@ namespace BrawlCrate.Studio
                     if(!Hash(mount.OriginSha256)||mount.OriginBytes<=0||mount.OriginBytes>64L*1024*1024*1024||mount.OriginWriteTicks<=0)
                         throw new InvalidDataException("Invalid original disc identity.");
                     var origin=data.GameLocations.Single(l=>l.Id==mount.GameSourceId);
-                    if(origin.ContainerSha256!=mount.OriginSha256||origin.Bytes!=mount.OriginBytes||!BrawlGameSource.IsDiscProvider(origin.Provider))throw new InvalidDataException("Disc resource origin differs from its source mount.");
+                    if(mount.Provider!=MeleeGameSource.NativeProvider&&(origin.ContainerSha256!=mount.OriginSha256||origin.Bytes!=mount.OriginBytes||!BrawlGameSource.IsDiscProvider(origin.Provider)))throw new InvalidDataException("Disc resource origin differs from its source mount.");
                 }
             }
             if(data.Clips.Any(c=>c==null || !Id(c.Id)||c.Revision<1||!mounts.ContainsKey(c.MountId??"")||!Text(c.Name,512)||!Text(c.ResourceKey,512)||!Text(c.ResourcePath)||
@@ -283,12 +283,15 @@ namespace BrawlCrate.Studio
         public int RegisterGame(LibraryGamePlan plan,CancellationToken cancellation=default)
         {
             if(plan==null)throw new ArgumentNullException(nameof(plan));
+            bool melee=MeleeGameSource.IsSource(plan.Source.Provider);
+            if(melee)MeleeGameSource.VerifyPlan(plan,cancellation);
             var discs=new Dictionary<string,BrawlDiscImage>(StringComparer.OrdinalIgnoreCase);
             try
             {
             foreach(var mount in plan.Mounts)
             {
                 cancellation.ThrowIfCancellationRequested();
+                if(melee)continue;
                 if(mount.OriginPath!=null)
                 {
                     if(!discs.TryGetValue(mount.OriginPath,out var image))
@@ -343,6 +346,7 @@ namespace BrawlCrate.Studio
         private void RepairGameSource(string sourceId,string replacement,CancellationToken cancellation,string name)
         {
             string path=OrdinaryPath(replacement);NoLinks(path);
+            if(MeleeGameSource.IsSource(Read().GameLocations.Single(l=>l.Id==sourceId).Provider)){RepairMeleeSource(sourceId,path,cancellation,name);return;}
             using(var held=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.Read))
             {
                 if(held.Length<=0||held.Length>64L*1024*1024*1024)throw new InvalidDataException("Invalid disc image size.");
@@ -446,6 +450,7 @@ namespace BrawlCrate.Studio
             }
             if(game!=source.Game||version!=source.GameVersion)throw new InvalidOperationException("Indexed game/build identities stay fixed. Add a separate source for another game/build.");
             if(same){RenameSavedGameSource(id,label);return;}
+            if(MeleeGameSource.IsSource(source.Provider)){RepairMeleeSource(id,path,cancellation,label);return;}
             if(!source.IsDirectory)
             {
                 if(!file)throw new InvalidDataException("Choose the same original disc image at its new location.");
@@ -569,7 +574,9 @@ namespace BrawlCrate.Studio
             var motion=mounts==null?data.Mounts.Single(m=>m.Id==clip.MountId):mounts[clip.MountId];
             var state=CachedMountState(motion,force,states,files);
             if(state!=LibrarySourceState.Available)return state;
-            if(motion.Provider!=BrawlLibrarySource.Provider || clip.Channel!="CHR0 skeletal" || (clip.NativeVersion!=4&&clip.NativeVersion!=5) || clip.FrameCount<1||clip.FrameCount>4096)
+            if(motion.Provider==MeleeGameSource.NativeProvider&&motion.GameSourceId!=null&&data.GameLocations.Single(l=>l.Id==motion.GameSourceId).BaseSourceId is string baseId&&!data.GameLocations.Any(l=>l.Id==baseId))return LibrarySourceState.Missing;
+            if(motion.Provider==MeleeGameSource.NativeProvider&&(clip.Channel!=MeleeGameSource.Channel||clip.NativeVersion!=1||clip.FrameCount<1||clip.FrameCount>4096))return LibrarySourceState.UnsupportedChannelVersion;
+            if(motion.Provider!=MeleeGameSource.NativeProvider&&(motion.Provider!=BrawlLibrarySource.Provider || clip.Channel!="CHR0 skeletal" || (clip.NativeVersion!=4&&clip.NativeVersion!=5) || clip.FrameCount<1||clip.FrameCount>4096))
                 return LibrarySourceState.UnsupportedChannelVersion;
             if(clip.ModelId==null)return LibrarySourceState.NeedsModelAssociation;
             var model=models==null?data.Models.Single(m=>m.Id==clip.ModelId):models[clip.ModelId];
@@ -630,7 +637,7 @@ namespace BrawlCrate.Studio
                 if(!costumeChoices.TryGetValue(clipId,out var choices))
                 {
                     var clip=data.Clips.SingleOrDefault(c=>c.Id==clipId)??throw new InvalidDataException("This immutable library clip is no longer registered.");
-                    choices=BrawlLibraryCostumes.Choices(data,clip);
+                    choices=data.Mounts.Single(m=>m.Id==clip.MountId).Provider==MeleeGameSource.NativeProvider?MeleeGameSource.Costumes(data,clip):BrawlLibraryCostumes.Choices(data,clip);
                     if(costumeChoices.Count>=64)costumeChoices.Clear();
                     costumeChoices.Add(clipId,choices);
                 }
@@ -648,6 +655,7 @@ namespace BrawlCrate.Studio
             cancellation.ThrowIfCancellationRequested();
             Interlocked.Increment(ref DiagnosticOpens);
             var data=Read();var clip=data.Clips.SingleOrDefault(c=>c.Id==clipId)??throw new InvalidDataException("This immutable library clip is no longer registered.");
+            if(data.Mounts.Single(m=>m.Id==clip.MountId).Provider==MeleeGameSource.NativeProvider)return OpenMelee(data,clip,modelId,cancellation,preview);
             var anchor=preview?LibraryNativePreview.Anchor(data,clip):clip;
             var state=preview?PreviewState(data,clip,true):State(data,clip,true);
             if(state!=LibrarySourceState.Available)throw new InvalidOperationException("Library source: "+state+". Repair the exact source or review its model association first.");

@@ -32,7 +32,7 @@ if(-not $BuildDirectory){
 }
 $build=(Resolve-Path -LiteralPath $BuildDirectory).Path
 foreach($file in @('engine/FighterPort.EngineHost.exe','engine/FighterPort.Core.dll','engine/FighterPort.Cli.dll','engine/worker/FighterPort.BrawlWorker.exe')){if(!(Test-Path -LiteralPath (Join-Path $build $file))){throw "Incomplete native integration output: $file"}}
-$required=@('FighterPortStudioV2.exe','BrawlLib.dll','OpenTK.dll','IronPython.dll','IronPython.Modules.dll',
+$required=@('FighterPortStudioV2.exe','FighterPort.Adapters.Melee.dll','HSDRaw.dll','BrawlLib.dll','OpenTK.dll','IronPython.dll','IronPython.Modules.dll',
     'IronPython.SQLite.dll','IronPython.Wpf.dll','Microsoft.Dynamic.dll','Microsoft.Scripting.dll',
     'Microsoft.Scripting.Metadata.dll','System.Buffers.dll','System.IO.Hashing.dll','System.Memory.dll',
     'System.Numerics.Vectors.dll','System.Runtime.CompilerServices.Unsafe.dll','FighterPortStudioV2.exe.config',

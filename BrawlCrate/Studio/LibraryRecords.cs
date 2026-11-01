@@ -77,6 +77,7 @@ namespace BrawlCrate.Studio
         public string ToolSha256 { get; set; }
         public string InventorySha256 { get; set; }
         public int NativeFiles { get; set; }
+        public string BaseSourceId { get; set; }
         public string NativeGameId { get; set; }
         public int NativeRevision { get; set; }
         public string NativeRegion { get; set; }

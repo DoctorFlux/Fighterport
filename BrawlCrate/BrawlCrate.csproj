@@ -29,8 +29,8 @@
       Super Smash Bros. Brawl © 2008 Nintendo and HAL Laboratory
     </Copyright>
     <AssemblyVersion>2.0.0.0</AssemblyVersion>
-    <FileVersion>2.0.0.41</FileVersion>
-    <InformationalVersion>2.0.0-preview.65.8-reviewed-stance-recovery</InformationalVersion>
+    <FileVersion>2.0.0.42</FileVersion>
+    <InformationalVersion>2.0.0-preview.67-native-melee-source</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Platforms>AnyCPU;x64;x86</Platforms>
@@ -275,6 +275,11 @@
     <OutputPath>bin\$(Platform)\$(Configuration)\</OutputPath>
   </PropertyGroup>
   <ItemGroup>
+    <Content Include="../third_party/HSDRaw/LICENSE" Link="licenses/HSDRaw-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../third_party/HSDRaw/PROVENANCE.md" Link="licenses/HSDRaw-PROVENANCE.md" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../third_party/HSDShaders/PROVENANCE.md" Link="licenses/HSDShaders-PROVENANCE.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="Doxygen" Version="1.8.14">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
@@ -398,7 +403,9 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="../third_party/HSDShaders/*.frag" LogicalName="Fighterport.HSD.%(Filename)%(Extension)" />
     <ProjectReference Include="..\BrawlLib\BrawlLib.csproj" />
+    <ProjectReference Include="../adapters/FighterPort.Adapters.Melee/FighterPort.Adapters.Melee.csproj" />
     <None Include="..\licenses\**\*" Link="licenses\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\THIRD_PARTY_NOTICES.md" Link="licenses\THIRD_PARTY_NOTICES.md" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\LICENSE" Link="licenses\BrawlCrate-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />

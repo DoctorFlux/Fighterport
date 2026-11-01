@@ -1,5 +1,11 @@
 # Fighterport master plan
 
+1 November: the user selects Melee as the next bidirectional native asset adapter,
+including named mod folders and Brawl <-> Melee models/materials/textures/motion.
+Native replacement files precede disc rebuilding. Shared provider/preview work is
+in progress; no draft closes G1/M2 or promotes export/game/material-animation gates.
+See [implementation and remaining stages](MELEE_ADAPTER.md) and the sole current plan.
+
 1 November — **preview.65.8** qualifies reviewed planted holds and sequential
 stance steps inside the ONE incomplete G1/M2. Keep the full viewer/Next, source
 roots, all weights, exact beginning/middle/join/own-reference endpoint and native

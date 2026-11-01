@@ -1,0 +1,248 @@
+﻿using HSDRaw.Common;
+using HSDRaw.GX;
+using System;
+using System.Collections.Generic;
+
+namespace HSDRaw.Tools
+{
+    public class GX_VertexAccessor
+    {
+        /// <summary>
+        /// Reads the vertex buffer into a more accessable format : <see cref="GXVertex"/>
+        /// </summary>
+        /// <param name="DisplayList">Display list belonging to given PBOJ</param>
+        /// <param name="Polygon"><see cref="HSD_POBJ"/> the the display list belong to</param>
+        /// <returns>Array of <see cref="GXVertex"/></returns>
+        public static GX_Shape[] GetShapeSet(GX_DisplayList DisplayList, HSD_POBJ Polygon, int shapeset)
+        {
+            // Create Vertex List
+            List<GX_Shape> Vertices = new List<GX_Shape>();
+
+            // Read through the Display Lists
+            foreach (GX_PrimitiveGroup pg in DisplayList.Primitives)
+            {
+                var v = GetDecodedVertices(pg, DisplayList.Attributes, Polygon, shapeset);
+
+                foreach (var gv in v)
+                    Vertices.Add(new GX_Shape() { POS = gv.POS, NRM = gv.NRM });
+            }
+
+            return Vertices.ToArray();
+        }
+
+        /// <summary>
+        /// Reads the vertex buffer into a more accessable format : <see cref="GXVertex"/>
+        /// </summary>
+        /// <param name="DisplayList">Display list belonging to given PBOJ</param>
+        /// <param name="Polygon"><see cref="HSD_POBJ"/> the the display list belong to</param>
+        /// <returns>Array of <see cref="GXVertex"/></returns>
+        public static GX_Vertex[] GetDecodedVertices(GX_DisplayList DisplayList, HSD_POBJ Polygon)
+        {
+            // Create Vertex List
+            List<GX_Vertex> Vertices = new List<GX_Vertex>();
+
+            // Read through the Display Lists
+            foreach (GX_PrimitiveGroup pg in DisplayList.Primitives)
+            {
+                Vertices.AddRange(GetDecodedVertices(pg, DisplayList.Attributes, Polygon, 0));
+            }
+
+            return Vertices.ToArray();
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="PrimitiveGroup"></param>
+        /// <param name="Attributes"></param>
+        /// <returns></returns>
+        private static GX_Vertex[] GetDecodedVertices(GX_PrimitiveGroup PrimitiveGroup, List<GX_Attribute> Attributes, HSD_POBJ Polygon, int shapeset)
+        {
+            // Create Vertex List
+            List<GX_Vertex> Vertices = new List<GX_Vertex>();
+            
+            // Decode
+            foreach (GX_IndexGroup ig in PrimitiveGroup.Indices)
+            {
+                GX_Vertex Vertex = new GX_Vertex();
+                for (int i = 0; i < Attributes.Count; i++)
+                {
+                    var attribute = Attributes[i];
+                    
+                    int index = ig.Indices[i];
+                    float[] f = new float[4];
+                    
+                    // check if index is in range of buffer
+                    if (attribute.AttributeType != GXAttribType.GX_DIRECT && 
+                        attribute.Buffer != null && 
+                        index >= attribute.Count)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Warning: Attribute index out of range {index} >= {attribute.Count}");
+                        continue;
+                    }
+
+                    // check if data is direct
+                    if (attribute.AttributeType != GXAttribType.GX_DIRECT)
+                        f = attribute.GetDecodedDataAt(index);
+
+                    switch (attribute.AttributeName)
+                    {
+                        case GXAttribName.GX_VA_NULL:
+                            break;
+                        case GXAttribName.GX_VA_PNMTXIDX:
+                            if(attribute.AttributeType == GXAttribType.GX_DIRECT)
+                                Vertex.PNMTXIDX = (ushort)index;
+                            break;
+                        case GXAttribName.GX_VA_TEX0MTXIDX:
+                            if (attribute.AttributeType == GXAttribType.GX_DIRECT)
+                                Vertex.TEX0MTXIDX = (ushort)index;
+                            break;
+                        case GXAttribName.GX_VA_TEX1MTXIDX:
+                            if (attribute.AttributeType == GXAttribType.GX_DIRECT)
+                                Vertex.TEX1MTXIDX = (ushort)index;
+                            break;
+                        case GXAttribName.GX_VA_POS:
+                            if (attribute.AttributeType != GXAttribType.GX_DIRECT)
+                            {
+                                if (Polygon.ShapeSet != null)
+                                {
+                                    var ss = Polygon.ShapeSet.VertexIndices[shapeset];
+                                    f = attribute.GetDecodedDataAt(ss[index]);
+                                }
+
+                                if (f.Length > 0)
+                                    Vertex.POS.X = f[0];
+                                if (f.Length > 1)
+                                    Vertex.POS.Y = f[1];
+                                if(f.Length > 2)
+                                    Vertex.POS.Z = f[2];
+                            }
+                            break;
+                        case GXAttribName.GX_VA_NRM:
+                            if (attribute.AttributeType != GXAttribType.GX_DIRECT)
+                            {
+                                //if (Polygon.ShapeSet != null)
+                                //{
+                                //    var ss = Polygon.ShapeSet.NormalIndicies[shapeset];
+                                //    f = attribute.GetDecodedDataAt(ss[index]);
+                                //}
+
+                                Vertex.NRM.X = f[0];
+                                Vertex.NRM.Y = f[1];
+                                Vertex.NRM.Z = f[2];
+                            }
+                            break;
+                        case GXAttribName.GX_VA_NBT:
+                            if (attribute.AttributeType != GXAttribType.GX_DIRECT)
+                            {
+                                Vertex.NRM.X = f[0];
+                                Vertex.NRM.Y = f[1];
+                                Vertex.NRM.Z = f[2];
+                                Vertex.BITAN.X = f[3];
+                                Vertex.BITAN.Y = f[4];
+                                Vertex.BITAN.Z = f[5];
+                                Vertex.TAN.X = f[6];
+                                Vertex.TAN.Y = f[7];
+                                Vertex.TAN.Z = f[8];
+                            }
+                            break;
+                        case GXAttribName.GX_VA_TEX0:
+                            if (attribute.AttributeType != GXAttribType.GX_DIRECT)
+                            {
+                                Vertex.TEX0.X = f[0];
+                                Vertex.TEX0.Y = f[1];
+                            }
+                            break;
+                        case GXAttribName.GX_VA_TEX1:
+                            if (attribute.AttributeType != GXAttribType.GX_DIRECT)
+                            {
+                                Vertex.TEX1.X = f[0];
+                                Vertex.TEX1.Y = f[1];
+                            }
+                            break;
+                        case GXAttribName.GX_VA_TEX2:
+                            if (attribute.AttributeType != GXAttribType.GX_DIRECT)
+                            {
+                                Vertex.TEX2.X = f[0];
+                                Vertex.TEX2.Y = f[1];
+                            }
+                            break;
+                        case GXAttribName.GX_VA_TEX3:
+                            if (attribute.AttributeType != GXAttribType.GX_DIRECT)
+                            {
+                                Vertex.TEX3.X = f[0];
+                                Vertex.TEX3.Y = f[1];
+                            }
+                            break;
+                        case GXAttribName.GX_VA_TEX4:
+                            if (attribute.AttributeType != GXAttribType.GX_DIRECT)
+                            {
+                                Vertex.TEX4.X = f[0];
+                                Vertex.TEX4.Y = f[1];
+                            }
+                            break;
+                        case GXAttribName.GX_VA_TEX5:
+                            if (attribute.AttributeType != GXAttribType.GX_DIRECT)
+                            {
+                                Vertex.TEX5.X = f[0];
+                                Vertex.TEX5.Y = f[1];
+                            }
+                            break;
+                        case GXAttribName.GX_VA_TEX6:
+                            if (attribute.AttributeType != GXAttribType.GX_DIRECT)
+                            {
+                                Vertex.TEX6.X = f[0];
+                                Vertex.TEX6.Y = f[1];
+                            }
+                            break;
+                        case GXAttribName.GX_VA_TEX7:
+                            if (attribute.AttributeType != GXAttribType.GX_DIRECT)
+                            {
+                                Vertex.TEX7.X = f[0];
+                                Vertex.TEX7.Y = f[1];
+                            }
+                            break;
+                        case GXAttribName.GX_VA_CLR0:
+                            if (attribute.AttributeType == GXAttribType.GX_DIRECT)
+                            {
+                                Vertex.CLR0.R = ig.Clr0[0] / 255f;
+                                Vertex.CLR0.G = ig.Clr0[1] / 255f;
+                                Vertex.CLR0.B = ig.Clr0[2] / 255f;
+                                Vertex.CLR0.A = ig.Clr0[3] / 255f;
+                            }
+                            else
+                            {
+                                Vertex.CLR0.R = f[0];
+                                Vertex.CLR0.G = f[1];
+                                Vertex.CLR0.B = f[2];
+                                Vertex.CLR0.A = f[3];
+                            }
+                            break;
+                        case GXAttribName.GX_VA_CLR1:
+                            if (attribute.AttributeType == GXAttribType.GX_DIRECT)
+                            {
+                                Vertex.CLR1.R = ig.Clr1[0] / 255f;
+                                Vertex.CLR1.G = ig.Clr1[1] / 255f;
+                                Vertex.CLR1.B = ig.Clr1[2] / 255f;
+                                Vertex.CLR1.A = ig.Clr1[3] / 255f;
+                            }else
+                            {
+                                Vertex.CLR1.R = f[0];
+                                Vertex.CLR1.G = f[1];
+                                Vertex.CLR1.B = f[2];
+                                Vertex.CLR1.A = f[3];
+                            }
+                            break;
+                        default:
+                            Console.WriteLine("To be implemented: " + attribute.AttributeName);
+                            break;
+                    }
+                }
+                Vertices.Add(Vertex);
+            }
+            
+            return Vertices.ToArray();
+        }
+
+    }
+}

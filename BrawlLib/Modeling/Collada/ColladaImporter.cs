@@ -30,7 +30,9 @@ namespace BrawlLib.Modeling.Collada
             //NP3D, //Namco (Smash 4)
         }
 
-        public IModel ImportModel(string filePath, ImportType type)
+        public IModel ImportModel(string filePath, ImportType type)=>ImportModel(filePath,type,true);
+
+        public IModel ImportModel(string filePath, ImportType type,bool showErrors)
         {
             IModel model = null;
             ModelType = type;
@@ -396,6 +398,7 @@ namespace BrawlLib.Modeling.Collada
 #if !DEBUG
                 catch (Exception x)
                 {
+                    if(!showErrors){(model as ResourceNode)?.Dispose();throw new InvalidDataException(Error,x);}
                     MessageBox.Show("Cannot continue importing this model.\n" + Error + "\n\nException:\n" +
                                     x);
                     model = null;

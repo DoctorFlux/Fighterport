@@ -130,6 +130,9 @@ namespace BrawlCrate.UI
             var clear=LibraryButton("libraryClearSearch","Clear",()=>{if(_librarySearch.Text.Length>0)_librarySearch.Clear();else RefreshLibrary();});clear.Dock=DockStyle.Right;clear.AutoSize=false;clear.Width=49;searchRow.Controls.Add(clear);
             searchRow.Controls.Add(new Label{Text="Search",Dock=DockStyle.Left,Width=49,Padding=new Padding(0,4,0,0)});_librarySearch.BringToFront();layout.Controls.Add(searchRow,0,1);
             _libraryList=new TreeView{Name="libraryClips",AccessibleName="Animation Library by game",Dock=DockStyle.Fill,HideSelection=false,ShowLines=true,ShowNodeToolTips=true};
+            var sourceMenu=new ContextMenuStrip();var exportOriginal=new ToolStripMenuItem("Export original native files..."){Name="libraryExportOriginalNative",ToolTipText="Export the unchanged selected costume and motion files to a separate folder. This does not export the edited target."};
+            exportOriginal.Click+=(sender,e)=>RunFighterAction(ExportOriginalLibraryFiles);sourceMenu.Items.Add(exportOriginal);
+            sourceMenu.Opening+=(sender,e)=>{var item=LibrarySelection;exportOriginal.Enabled=!SimpleWorkspaceBusy&&item?.Model!=null&&NativeGameAdapters.ForNative(item.Motion.Provider) is INativeSourceExportAdapter;};_libraryList.ContextMenuStrip=sourceMenu;
             _libraryPopulateTimer=new System.Windows.Forms.Timer{Interval=8};
             _libraryPopulateTimer.Tick+=(s,e)=>RunFighterAction(ProcessLibraryTreeWork);
             _libraryList.BeforeExpand+=(s,e)=>{if(_libraryReplacingTree&&!_libraryApplyingExpansion){e.Cancel=true;return;}PopulateLibraryGroup(e.Node);};
@@ -212,13 +215,13 @@ namespace BrawlCrate.UI
             {_libraryPreviewStateKey=previewKey;_libraryPreviewState=item==null?LibrarySourceState.Missing:_library.GetPreviewState(item.Clip.Id);}
             bool preview=LibraryPreviewReady;
             _libraryPreview.Enabled=preview;_libraryUse.Enabled=available&&LibraryCostumeReady&&!SimpleWorkspaceSourceNeedsRepair(item)&&item?.Clip.Channel=="CHR0 skeletal"&&modelEditControl1.TargetModel is MDL0Node;
-            _libraryOpenTarget.Enabled=preview&&!SimpleWorkspaceBusy;
+            _libraryOpenTarget.Enabled=preview&&!SimpleWorkspaceBusy&&(NativeGameAdapters.ForNative(item?.Motion.Provider)?.Operations.HasFlag(NativeGameOperation.TargetEdit)??false);
             _libraryRepair.Enabled=SimpleWorkspaceSourceNeedsRepair(item)&&!_libraryReplacingTree&&!_librarySearchTimer.Enabled;
             UpdateLibraryRetargetHint();
             _libraryDetails.Text="Retarget keys: "+RetargetKeyframes.ModeLabel(_retargetKeyframeMode)+Environment.NewLine+
                 (item==null?"One shared library across all fighters. Add an original model and its complete motion set.":
                 item.Motion.Game+" · "+item.Motion.GameVersion+" · "+item.Clip.Channel+" v"+item.Clip.NativeVersion+Environment.NewLine+
-                item.Clip.FrameCount+" ticks @ "+item.Clip.TicksPerSecond+" Hz · "+(item.Clip.Loop?"Loop":"No loop")+" · "+(preview&&item.Clip.Channel!="CHR0 skeletal"?"Original native preview; skeletal transfer unavailable":SimpleWorkspaceSourceStateText(item))+Environment.NewLine+
+                item.Clip.FrameCount+" ticks @ "+item.Clip.TicksPerSecond+" Hz · "+(item.Motion.Provider==MeleeGameSource.NativeProvider?"Runtime loop policy unknown; preview stops":item.Clip.Loop?"Loop":"No loop")+" · "+(preview&&item.Clip.Channel!="CHR0 skeletal"?"Original native preview; skeletal transfer unavailable":SimpleWorkspaceSourceStateText(item))+Environment.NewLine+
                 "Original: "+(SelectedLibraryCostume?.Name??item.Model?.Name??"Not verified")+" · "+item.Clip.ResourceKey+Environment.NewLine+
                 (item.Clip.AssociationEvidence??item.Clip.AssociationIssue)+Environment.NewLine+
                 (item.Clip.UnboundSourceTracks==null?"":"Native tracks absent on original model (not evaluated): "+item.Clip.UnboundSourceTracks+Environment.NewLine)+"SHA256: "+item.Clip.ResourceSha256);
@@ -259,15 +262,15 @@ namespace BrawlCrate.UI
             // character picker or second document state is introduced.
             request.ApproveBuild=true;request.Characters=null;
             int added=0;
-            var indexed=LibraryWork.Run(owner,"Adding Brawl Library",(cancel,progress)=>{
-                var plan=BrawlGameSource.Prepare(request,Path.Combine(_library.DirectoryPath,"NativeCache"),cancel,(percent,message)=>progress.Report(message));
+            var indexed=LibraryWork.Run(owner,"Adding "+request.Game+" Library",(cancel,progress)=>{
+                var plan=NativeGameAdapters.ForGame(request.Game).Prepare(request,_library.Read(),Path.Combine(_library.DirectoryPath,"NativeCache"),cancel,(percent,message)=>progress.Report(message));
                 cancel.ThrowIfCancellationRequested();progress.Report("Publishing the complete source catalogue...");added=_library.RegisterGame(plan,cancel);return plan;
             });
             if(indexed==null)return;
             var savedSource=_library.Read().GameLocations.Single(l=>l.Indexed&&l.Game==indexed.Source.Game&&l.GameVersion==indexed.Source.GameVersion&&
                 string.Equals(l.Path,indexed.Source.Path,StringComparison.OrdinalIgnoreCase)&&l.InventorySha256==indexed.Source.InventorySha256&&l.ContainerSha256==indexed.Source.ContainerSha256&&l.Provider==indexed.Source.Provider);
             OpenSavedGameLibrary(_library,savedSource);
-            _fighterStatus.Text="Added "+indexed.Mounts.Select(m=>m.VirtualPath.Split('/')).Where(p=>p.Length>=3).Select(p=>p[1]).Distinct().Count()+" characters · "+added+" native animation resources · "+indexed.Issues.Count+" source issues. Original game remains read-only.";
+            _fighterStatus.Text="Added "+indexed.Models.Select(m=>m.Character).Distinct().Count()+" characters · "+added+" native animation resources · "+indexed.Issues.Count+" source issues. Original game remains read-only.";
             if(indexed.Issues.Count>0)MessageBox.Show(owner,string.Join(Environment.NewLine,indexed.Issues.Take(12)),"Source inventory issues",MessageBoxButtons.OK,MessageBoxIcon.Information);
         }
         private LibraryImportPlan InventoryLibrarySource(LibraryRegistration request)
@@ -299,7 +302,7 @@ namespace BrawlCrate.UI
         }
         private void FrameLibraryOriginal()
         {
-            var box=_libraryLease.Model.GetBox();var center=(box.Min+box.Max)*0.5f;var half=(box.Max-box.Min)*0.65f;
+            var box=_libraryLease.NativePreview?.RenderTarget.GetBox()??_libraryLease.Model.GetBox();var center=(box.Min+box.Max)*0.5f;var half=(box.Max-box.Min)*0.65f;
             // Frame this viewport in its own projection and final laid-out size.
             // A remembered orthographic view/zoom or an earlier zero-height
             // layout must not leave a successfully loaded source out of view.
@@ -315,9 +318,10 @@ namespace BrawlCrate.UI
         private void RenderLibraryFrame()
         {
             if(_libraryLease==null)return;
-            LibraryNativePreview.Apply(_libraryLease.Model,_libraryLease.PreviewBundle,(float)_libraryTime+1);
+            if(_libraryLease.NativePreview!=null)_libraryLease.NativePreview.ApplyDisplayFrame((float)_libraryTime+1);
+            else LibraryNativePreview.Apply(_libraryLease.Model,_libraryLease.PreviewBundle,(float)_libraryTime+1);
             _libraryScrubbing=true;try{_libraryFrame.Value=Math.Max(1,Math.Min(_libraryFrame.Maximum,(int)_libraryTime+1));}finally{_libraryScrubbing=false;}
-            _libraryOriginalLabel.Text="Original: "+_libraryLease.Model.Name+" · "+_libraryLease.PreviewAnimation.Name+" · "+_libraryLease.PreviewAnimation.GetType().Name.Replace("Node","")+" · frame "+(_libraryTime+1).ToString("0.0")+" (read-only)";
+            _libraryOriginalLabel.Text="Original: "+_libraryLease.Model.Name+" · "+_libraryLease.PreviewAnimation.Name+" · "+(_libraryLease.MeleePlayback!=null?"Melee native curves":_libraryLease.PreviewAnimation.GetType().Name.Replace("Node",""))+" · frame "+(_libraryTime+1).ToString("0.0")+" (read-only)";
             _libraryViewport.Invalidate();
         }
         private void ReleaseLibraryPreview()

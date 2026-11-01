@@ -12,7 +12,11 @@ namespace BrawlCrate.Studio
         {
             if(resourceKey==null)return "1";
             var parts=resourceKey.Split('/');
-            if(parts[0]!="$")return "1"+resourceKey;
+            if(parts[0]!="$")
+            {
+                if(parts.Length==2&&int.TryParse(parts[0],NumberStyles.None,CultureInfo.InvariantCulture,out int nativeOffset)&&nativeOffset>=0&&parts[0]==nativeOffset.ToString(CultureInfo.InvariantCulture))return "1"+nativeOffset.ToString("D10",CultureInfo.InvariantCulture)+"/"+parts[1];
+                return "1"+resourceKey;
+            }
             var indices=new string[parts.Length-1];
             for(int i=1;i<parts.Length;i++)
             {

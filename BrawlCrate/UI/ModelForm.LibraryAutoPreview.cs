@@ -22,7 +22,7 @@ namespace BrawlCrate.UI
         {
             _libraryCharacterSelection=null;
             if(_libraryList.SelectedNode?.Tag is LibraryGroup group)
-                _libraryCharacterSelection=group.Items.Where(i=>i.Model!=null&&i.Clip.Channel=="CHR0 skeletal"&&i.State==LibrarySourceState.Available)
+                _libraryCharacterSelection=group.Items.Where(i=>i.Model!=null&&(i.Clip.Channel=="CHR0 skeletal"||i.Clip.Channel==MeleeGameSource.Channel)&&i.State==LibrarySourceState.Available)
                     .GroupBy(i=>i.Model.Id).OrderByDescending(g=>g.Count()).ThenBy(g=>g.Key,StringComparer.Ordinal).FirstOrDefault()?
                     .OrderByDescending(i=>i.Clip.Name=="Wait1"||i.Clip.Name=="Idle").ThenBy(i=>i.Clip.Name,StringComparer.Ordinal).FirstOrDefault()
                     ??group.Items.FirstOrDefault(i=>LibraryNativePreview.Supported(i.Clip));
@@ -87,12 +87,13 @@ namespace BrawlCrate.UI
         private void PrepareLibraryPreviewView(bool reframe)
         {
             LayoutSimpleWorkspaceLibraryPreview();_libraryPane.PerformLayout();_sourcePreviewHost?.PerformLayout();
-            _libraryViewport.CreateControl();_libraryViewport.Capture();
+            _libraryViewport.CreateControl();_libraryViewport.Capture();_libraryLease.MeleeRenderer?.Prepare();
             _libraryTime=0;_libraryScrubbing=true;
             try{_libraryFrame.Maximum=_libraryLease.PreviewAnimation.FrameCount;_libraryFrame.Value=1;}finally{_libraryScrubbing=false;}
             _libraryLease.Model.ResetToBindState();_libraryLease.Model.ApplySHP(null,0);
-            _libraryViewport.ClearAll();_libraryViewport.AddReference(_libraryLease.Model.RootNode);_libraryViewport.AddTarget(_libraryLease.Model);
-            if(reframe){_libraryViewport.PrepareModelTextures(_libraryLease.Model);FrameLibraryOriginal();}
+            _libraryViewport.ClearAll();_libraryViewport.AddReference(_libraryLease.Model.RootNode);_libraryViewport.AddTarget(_libraryLease.NativePreview?.RenderTarget??_libraryLease.Model);
+            if(_libraryLease.NativePreview!=null)_libraryLease.NativePreview.ApplyDisplayFrame(1);
+            if(reframe){if(_libraryLease.MeleeRenderer==null)_libraryViewport.PrepareModelTextures(_libraryLease.Model);FrameLibraryOriginal();}
             RenderLibraryFrame();_libraryViewport.Update();
             string bindings=LibraryNativePreview.Bindings(_libraryLease.Model,_libraryLease.PreviewBundle);
             _libraryDetails.Text+=Environment.NewLine+_libraryLease.PreviewNotice+" "+bindings;

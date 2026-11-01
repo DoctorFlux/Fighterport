@@ -58,3 +58,14 @@ DolphinTool and its dependencies are not included in this source repository or
 portable application. The locally tested version is Dolphin 2609a. Older builds
 without the extraction command are not sufficient. Upstream command behavior is
 documented in [ExtractCommand.cpp](https://github.com/dolphin-emu/dolphin/blob/master/Source/Core/DolphinTool/ExtractCommand.cpp).
+
+
+## HSDRaw and HSD material shader modules
+
+Source: https://github.com/Ploaj/HSDLib
+Revision: 85567e40797de3c820a55476eca54c704921a848
+MIT, Copyright (c) 2021 Ploaj. Original notices/licenses remain in
+third_party/HSDRaw/LICENSE and third_party/HSDShaders/LICENSE.
+Source components only; no upstream application shell or game assets.
+The owned native build uses Framework 4.7.2. Fragment modules use an owned
+compatibility-profile wrapper and all-influence CPU skinning.

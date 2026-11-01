@@ -1,5 +1,15 @@
 # Fighterport
 
+1 November: **preview.67-native-melee-source** qualifies bounded read-only native
+Melee source/library/preview and unchanged model/action-file export from
+`c8a24af492fedfe2e1641c23ccefa8b5aaf06fcb`. Preserve authored HSD envelopes, native
+scale semantics and every weight; review native part variants without character
+rules. Melee target editing/writing, cross-game Next/fitting and asset conversion
+remain unavailable. Full Brawl viewer/Next/Undo/root policy and old gates remain.
+ONE G1/M2 stays incomplete; .66 ledges is queued. See
+[acceptance](docs/MELEE_SOURCE_ACCEPTANCE_2026-11-01.md).
+
+
 1 November: **preview.65.8-reviewed-stance-recovery** qualifies the bounded
 reviewed static-biped stance increment from `372769c3ee1ca41740185ac4d3637a432fc06d63`.
 Use the existing Suggest/Preview/Apply workflow: planted holds and explicitly

@@ -10,6 +10,7 @@ namespace BrawlCrate.Studio
         internal static readonly Type[] Types={typeof(CHR0Node),typeof(SRT0Node),typeof(SHP0Node),typeof(PAT0Node),typeof(CLR0Node),typeof(VIS0Node),typeof(SCN0Node)};
         internal static bool Supported(LibraryAnimation clip)
         {
+            if(clip?.Channel==MeleeGameSource.Channel)return clip.NativeVersion==1&&clip.FrameCount>0&&clip.FrameCount<=4096;
             if(clip==null||clip.FrameCount<1||clip.FrameCount>4096)return false;
             switch(clip.Channel)
             {
@@ -22,7 +23,7 @@ namespace BrawlCrate.Studio
             =>node!=null&&(channel=="CHR0 skeletal"?node is CHR0Node:node.GetType().Name==channel);
         internal static LibraryAnimation Anchor(LibraryCatalogue data,LibraryAnimation clip)
         {
-            if(clip.ModelId!=null&&clip.Channel=="CHR0 skeletal")return clip;
+            if(clip.ModelId!=null&&(clip.Channel=="CHR0 skeletal"||clip.Channel==MeleeGameSource.Channel))return clip;
             var mount=data.Mounts.Single(m=>m.Id==clip.MountId);
             var mounts=data.Mounts.ToDictionary(m=>m.Id);
             var models=data.Models.ToDictionary(m=>m.Id);

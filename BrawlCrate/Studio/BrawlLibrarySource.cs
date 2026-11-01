@@ -19,6 +19,13 @@ namespace BrawlCrate.Studio
 
     public sealed class LibrarySourceLease : IDisposable
     {
+        internal INativeSourcePreview NativePreview;
+        internal MDL0BoneNode[] MeleeBones;
+        internal float[][] MeleePose;
+        internal MeleeNativeRender MeleeRenderer;
+        internal FighterPort.Adapters.Melee.MeleePlayback MeleePlayback;
+        internal FighterPort.Adapters.Melee.MeleeNativeModel MeleeModel;
+        internal FighterPort.Adapters.Melee.MeleeMember[] MeleeMotionMembers;
         internal ResourceNode ModelRoot, MotionRoot;
         internal FileStream ModelLock, MotionLock;
         internal readonly List<FileStream> OriginLocks=new List<FileStream>();
@@ -34,6 +41,7 @@ namespace BrawlCrate.Studio
         internal string ProvenanceModelPath;
         public void Dispose()
         {
+            NativePreview?.Dispose();NativePreview=null;MeleeRenderer=null;MeleePlayback=null;MeleeModel=null;MeleeMotionMembers=null;
             MotionRoot?.Dispose(); ModelRoot?.Dispose();
             MotionLock?.Dispose(); ModelLock?.Dispose();
             foreach(var origin in OriginLocks)origin.Dispose();OriginLocks.Clear();
