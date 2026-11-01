@@ -1,5 +1,23 @@
 ﻿# Current milestone M2 — simpler native workspace
 
+1 November — **test-only forward-tilt/aerial corpus**, starting
+`64eea3dfafc866f101b3bbdd098aa345cbffdebd`. Unchanged preview.65.5 passes
+23/24 exact native members across Peach ↔ Fox and Link ↔ Samus: neutral forward
+tilt and all five aerials, with identical Auto contact/default source-channel
+preparation. No fitting or appended endpoint. All source files, binds, root
+controls and every skin weight are preserved. Forty-six decoded dense/default
+native/contact oracles pass for the 23 successful cases. Fox → Peach forward
+tilt remains rejected at native time 3.213408: 0.59494° versus 0.025°; no target
+output or workaround. It is not work-budget exhaustion.
+
+Next implementation task: reproduce and repair generic fractional rotation
+continuation/native baking near the retained pole witness, without character,
+action, bone-index or fixture exceptions. Preserve current quality gates and
+the original Next/viewer. No production changes or launcher promotion in this
+test increment. ONE G1/M2 stays incomplete; preview.66 finite ledges remains
+queued. Background-only GIFs/receipts and coverage limits are recorded in
+[the corpus report](../ATTACK_TRANSFER_CORPUS_2026-11-01.md).
+
 31 October - **preview.65.5 contact locks/capabilities qualifies its bounded
 slice**, from `a3e74f44f05b0c84e5f9023fc5364f99d1b4ec04`. The shared coupled
 solver treats established body markers with end-contact priority; optional end

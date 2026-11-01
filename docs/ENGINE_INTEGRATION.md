@@ -1,5 +1,15 @@
 ﻿# Native Next integration
 
+The 1 November test-only `--retarget-case` boundary seals exact native fixtures,
+calls unchanged production Bake/default source-channel preparation, freshly
+reopens both exports and fingerprints original model/clip ownership including
+every weight and bind/inverse bind. `Test-NativeTransferCorpus.ps1` preserves
+each failure and runs existing dense/default native/contact trajectory oracles;
+completion is not a pass claim. No production algorithm, renderer, codec,
+playback, document/Undo or save-policy changes. The new 24-case attack corpus
+retains a generic fractional-rotation failure for future repair. See
+[results and coverage](ATTACK_TRANSFER_CORPUS_2026-11-01.md).
+
 Preview.65.5 adds `coupled-established-locks-1` to shared contact solving. Body
 marker priority rises continuously to end-contact priority on establishment;
 hard planar convergence reserves half the unchanged contact positional bound.

@@ -1,5 +1,13 @@
 # Fighterport master plan
 
+1 November — unchanged preview.65.5 passes 23/24 neutral-forward-tilt/all-five-
+aerial transfers across Peach ↔ Fox and Link ↔ Samus. Test-only corpus preserves
+roots, all weights/binds and originals; Fox → Peach tilt retains an upstream
+fractional native rotation rejection. Next generic continuation/bake repair
+must retain that failure without identity exceptions or weaker gates. No preview
+promotion; ONE G1/M2 remains incomplete and preview.66 ledges stays queued. See
+[current plan](plans/current.md) and [test record](ATTACK_TRANSFER_CORPUS_2026-11-01.md).
+
 31 October - preview.65.5 qualifies established contact locking and exact
 terminal-arm capabilities in the same ONE incomplete G1/M2. Shared solving
 preserves established body markers through end projection. Exact zero distal

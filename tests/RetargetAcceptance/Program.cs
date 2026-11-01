@@ -12,6 +12,7 @@ internal static partial class Program
         CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
         try
         {
+            if(args.Length==6&&args[0]=="--retarget-case")return NativeTransferCase(args[1],args[2],args[3],args[4],args[5]);
             if(args.Length==3&&args[0]=="--mapping-audit")return MappingAudit(args[1],args[2]);
             if(args.Length==2&&args[0]=="--terminal-contacts")return TerminalContactChecks(args[1]);
             if(args.Length==6&&args[0]=="--native-pair-fixture")return NativePairFixture(args[1],args[2],args[3],args[4],args[5]);

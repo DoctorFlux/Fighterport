@@ -1,5 +1,14 @@
 # Fighterport
 
+1 November: the unchanged preview.65.5 forward-tilt/all-five-aerial corpus
+passes 23/24 Peach/Fox and Link/Samus directional cases. Fox → Peach tilt
+retains a fractional native rotation rejection; never substitute a partial
+target or relax gates. No model/action exceptions, app changes or preview
+promotion. Original roots, all weights/binds and source files remain preserved.
+Next work is the generic near-pole continuation/bake failure. The ONE G1/M2
+remains incomplete; preview.66 ledges stays queued. See
+[test evidence](docs/ATTACK_TRANSFER_CORPUS_2026-11-01.md).
+
 31 October: **preview.65.5-contact-capabilities** qualifies the bounded idle
 lock/terminal-arm increment from `a3e74f44f05b0c84e5f9023fc5364f99d1b4ec04`
 inside the ONE incomplete G1/M2. Established body locks retain end-contact
