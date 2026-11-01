@@ -1,5 +1,12 @@
 # Fighterport
 
+1 November: test-only own-Wait1/Fall endpoint corpus passes 24/24 native
+endpoint/preservation workflows with assisted exact-rig role review. All four
+tilt recoveries retain measured foot dipping; do not promote them as contact
+quality. Attack travel/all weights remain exact; no numerical identity rules or
+application changes. Keep ONE incomplete G1/M2 and .66 queued. Next work needs
+reviewed ground/contact recovery. See [evidence](docs/FITTING_CORPUS_2026-11-01.md).
+
 1 November: **preview.65.6-pole-continuation** fixes between-sample Euler-pole
 guide crossings from `65240305420e7bb825874b1a9ed2172585db55a6`. The generic
 guide now checks any 90+180k pitch crossing before it can introduce an artificial

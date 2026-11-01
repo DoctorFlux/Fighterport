@@ -1,5 +1,15 @@
 ﻿# Native Next integration
 
+The target-owned endpoint test boundary accepts additive exact-reference and
+optional assisted binding fixture data. It verifies the native protected
+ancestor path/body against the sealed rig and uses normal metadata-only control
+review before actual Fit/Apply/Undo/Redo. Fresh native read-only evaluation
+checks every target bone before recovery and at the frozen reference endpoint;
+foot-surface diagnostics remain separate from contact acceptance. No application,
+Core/worker, renderer, codec or project schema changes. The four tilt dip cases
+remain open; no protection/tolerance is weakened. See
+[fitting corpus](FITTING_CORPUS_2026-11-01.md).
+
 Preview.65.6 extends the offline `TraceContinuation` conditioning decision to
 pitch intervals spanning any `90 + 180k` pole. A smooth physical trajectory can
 skirt a pole between guide samples that all lie outside the previous near-pole

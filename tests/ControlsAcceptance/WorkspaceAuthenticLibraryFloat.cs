@@ -208,7 +208,8 @@ internal static partial class Program
                         if(args.Contains("--reviewed-recovery-case"))
                         {
                             File.WriteAllText(Path.Combine(directory,"retarget-use-timing.json"),json.Serialize(new{UseMilliseconds=useMilliseconds,Mode=mode.ToString(),GroundMode=project.GroundMode.ToString(),MasterContent=NativeAnimationOptimization.SourceContentKey(clip)}));
-                            await ReviewedRecoveryCase(form,clip,Required("--target-motion"),directory,args.Contains("--reviewed-ground-after-fit"));
+                            await ReviewedRecoveryCase(form,clip,Required("--target-motion"),directory,args.Contains("--reviewed-ground-after-fit"),
+                                args.Contains("--reference-clip")?Required("--reference-clip"):"Wait1",args.Contains("--reference-fixture")?Required("--reference-fixture"):null);
                             await UseModelRoundtrip(form,asset,directory,"fitted-current-result");
                             continue;
                         }

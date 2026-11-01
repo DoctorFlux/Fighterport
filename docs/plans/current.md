@@ -1,5 +1,29 @@
 ﻿# Current milestone M2 — simpler native workspace
 
+1 November — **test-only target-owned ending corpus**, starting
+`48bc309dcaf69ea2724f04c770b094be51eae4f6`. Unchanged preview.65.6 tests
+Peach ↔ Fox and Link ↔ Samus: neutral forward tilt → own Wait1 frame 1, all five
+aerials → own Fall frame 1. Ten-sample end-only fitting preserves the move's
+beginning/middle and attack motion-position S/R/T; no idle/fall append. Explicit
+fixture-assisted native role review uses the existing metadata dialog, with
+complete protected-ancestor/body proof and no axis or model/weight changes.
+
+All 24 actual Use/Fit/Apply/Undo/Redo/native/project reopen paths pass 1,224
+assertions and 8,316 independent pre-recovery witnesses. Endpoint orientation
+maximum 0.000039991°; existing limits remain. This is endpoint/preservation
+acceptance. All four tilt recoveries introduce foot dips below the bind-plane
+guide: about 1.07174 / 0.59246 / 1.87759 / 0.03723 native units. No baked support
+ranges or reviewed floor are recorded for these results, so normal adaptation
+is unavailable and plain FK fitting does not promise ground quality.
+
+Next useful implementation work is reviewed generic floor/contact recovery
+within the explicit fitting window, retaining the same bounds, source-owned
+travel, all weights and beginning/middle protections. Preserve missing-context,
+overlap and non-convergence gates. No character/action/name/hash/index numerical
+exceptions. Keep ONE G1/M2 incomplete, .66 finite ledges queued, and the existing
+qualified .65.6 launcher. No new application preview is promoted by this test.
+See [native results, retained dips and side-view evidence](../FITTING_CORPUS_2026-11-01.md).
+
 1 November — **preview.65.6 between-sample pole continuation**, starting
 `65240305420e7bb825874b1a9ed2172585db55a6`. The generated native Euler guide
 also checks pole crossings between conditioning samples. Its existing physical

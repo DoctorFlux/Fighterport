@@ -1,5 +1,15 @@
 # Fighterport master plan
 
+1 November — test-only target-owned ending corpus passes 24 endpoint/preservation
+workflows across Peach/Fox and Link/Samus, both directions: tilt → Wait1 frame 1,
+all five aerials → Fall frame 1. Native Apply/Undo/Redo and Save/reopen preserve
+attack travel, all weights and the original beginning/middle. Fixture-assisted
+semantic role review remains explicit; no automatic universal acceptance.
+All four tilt recoveries retain observed foot dipping under plain FK fitting.
+Reviewed ground/contact recovery is the next open quality step. App/launcher
+stay .65.6; ONE G1/M2 incomplete and .66 ledges queued. See
+[current plan](plans/current.md) and [test evidence](FITTING_CORPUS_2026-11-01.md).
+
 1 November — preview.65.6 addresses the generic between-sample Euler-pole guide
 failure in the same ONE incomplete G1/M2. Existing physical guide checks now
 also cover intervals spanning any pitch pole, retaining the same solved motion,

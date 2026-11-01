@@ -27,6 +27,8 @@ internal static partial class Program
         public string TargetModelSha256 { get; set; }
         public string SourceRigFingerprint { get; set; }
         public string TargetRigFingerprint { get; set; }
+        public Dictionary<string,string> FittingRoles { get; set; }
+        public string FittingBindingEvidence { get; set; }
     }
 
     // Dedicated background fixture driver, activated after preview.63.
