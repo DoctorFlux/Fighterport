@@ -135,3 +135,13 @@ BrawlCrate viewer, native Undo, source-owned roots and all existing quality gate
 remain. Native builds, game data, DOLs, captures, settings and generated reports
 stay excluded. After package validation the local launcher selects
 `artifacts/Fighterport-melee68/native3`; its check-only run does not open a window.
+
+## Publication record
+
+Implementation `8285833320223b80db1cb8b492177297b8aef1b4` is published to public
+DoctorFlux/Fighterport/main. GitHub returned DoctorFlux for both author and
+committer; the contributor endpoint listed DoctorFlux only. The final launcher
+check resolves native3, version 2.0.0.43 / preview.68-native-target-srt. Only source,
+tests and documentation were committed; game assets, settings, captures and
+generated binaries remain excluded. Full model/tool parity and every open gate
+above remain incomplete.
