@@ -11,15 +11,19 @@ namespace FighterPort.Adapters.Melee
     {
         private readonly int[][][] groups;
         private readonly int[] hidden;
+        private readonly bool[] normalDetail;
         private readonly int displayCount;
         private readonly int[] choices;
         public int GroupCount=>groups.Length;
+        public bool IsNormalDetail(int displayObject)=>displayObject>=0&&displayObject<normalDetail.Length&&normalDetail[displayObject];
         public int VariantCount(int group)=>groups[group].Length;
         public int Choice(int group)=>choices[group];
         public string SourceSha256 {get;}
         public string SourceKey {get;}
         private MeleePartVisibility(int[][][] groups,int[] hidden,int count,string hash,string key)
-        {this.groups=groups;this.hidden=hidden;displayCount=count;SourceSha256=hash;SourceKey=key;choices=groups.Select(g=>g.Length==0?-1:0).ToArray();}
+        {this.groups=groups;this.hidden=hidden;displayCount=count;SourceSha256=hash;SourceKey=key;choices=groups.Select(g=>g.Length==0?-1:0).ToArray();
+            var high=new HashSet<int>(groups.SelectMany(g=>g).SelectMany(v=>v));
+            normalDetail=Enumerable.Range(0,count).Select(i=>!hidden.Contains(i)||high.Contains(i)).ToArray();}
         public void Select(int group,int variant)
         {if(group<0||group>=groups.Length||variant< -1||variant>=groups[group].Length)throw new ArgumentOutOfRangeException();choices[group]=variant;}
         public bool[] Snapshot()
@@ -27,6 +31,7 @@ namespace FighterPort.Adapters.Melee
             var visible=Enumerable.Repeat(true,displayCount).ToArray();
             foreach(int index in hidden)visible[index]=false;
             for(int group=0;group<groups.Length;group++)for(int variant=0;variant<groups[group].Length;variant++)foreach(int index in groups[group][variant])visible[index]=variant==choices[group];
+            for(int i=0;i<visible.Length;i++)visible[i]&=normalDetail[i];
             return visible;
         }
         public static MeleePartVisibility Create(SBM_PlayerModelLookupTables tables,int count,string hash,string key,int? costumeIndex=null)

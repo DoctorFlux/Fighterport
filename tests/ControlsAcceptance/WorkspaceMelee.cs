@@ -1,4 +1,4 @@
-using BrawlCrate.Studio;
+﻿using BrawlCrate.Studio;
 using BrawlCrate.UI;
 using FighterPort.Adapters.Melee;
 using BrawlLib.SSBB.ResourceNodes;
@@ -14,6 +14,7 @@ internal static partial class Program
     static async Task WorkspaceMelee(string[] args,string output)
     {
         if(!PrivateDesktop)throw new InvalidOperationException("Melee UI acceptance requires the private desktop.");
+        MeleeMasterBridgeChecks(output);
         string image=args[0],previous=Environment.GetEnvironmentVariable("FIGHTERPORT_LIBRARY_ROOT");
         Environment.SetEnvironmentVariable("FIGHTERPORT_LIBRARY_ROOT",Path.Combine(output,"library"));
         try
@@ -32,27 +33,52 @@ internal static partial class Program
             Check(plan.Source.NativeGameId=="GALE01"&&plan.Source.NativeRevision==2,"Real fixture is independently identified as Melee USA 1.02, not by filename");
             Check(plan.Models.Count==156&&plan.Clips.Count>6000,"Real disc enumerates native costume models and exact motion members without character selection");
             int added=await Task.Run(()=>library.RegisterGame(plan));var catalogue=library.Read();
+            Check(catalogue.GameLocations.Single().InventoryIssues.SequenceEqual(plan.Issues),"Complete source inventory diagnostics survive catalogue Save/reopen");
             Check(added==plan.Clips.Count&&catalogue.GameLocations.Single().Provider==MeleeSource.DiscProvider,"Melee inventory publishes and fresh catalogue load validates its native provider");
-            var wait=library.Browse("Wait1").First(i=>i.Model?.Character=="Mario"&&i.Clip.Name=="Wait1");
-            Check(wait.State==LibrarySourceState.Available&&library.GetPreviewState(wait.Clip.Id)==LibrarySourceState.Available,"Actual Melee Wait1 is available through native association and source state routing");
+            string actorArg=args.Contains("--melee-target-character")?args[Array.IndexOf(args,"--melee-target-character")+1]:"Mario";
+            string nextIdleArg=args.Contains("--melee-target-next")?args[Array.IndexOf(args,"--melee-target-next")+1]:"Wait2";
+            string idleArg=args.Contains("--melee-target-idle")?args[Array.IndexOf(args,"--melee-target-idle")+1]:"Wait1";
+            var wait=library.Browse(idleArg).First(i=>i.Model?.Character==actorArg&&i.Clip.Name==idleArg);
+            Check(wait.State==LibrarySourceState.Available&&library.GetPreviewState(wait.Clip.Id)==LibrarySourceState.Available,"Actual "+actorArg+" "+idleArg+" is available through native association and source state routing");
             var costumes=library.GetPreviewCostumes(wait.Clip.Id);
-            Check(costumes.Length>=5&&costumes.Count(c=>c.IsCanonical)==1,"Costume choices use exact full-rig compatibility inside this source instance");
+            int expectedCostumes=catalogue.Models.Count(m=>m.SkeletonSha256==wait.Model.SkeletonSha256&&m.MotionMountIds.Contains(wait.Clip.MountId));
+            Check(costumes.Length==expectedCostumes&&expectedCostumes>0&&costumes.Count(c=>c.IsCanonical)==1,"Costume choices include every exact compatible native rig inside this source instance");
             using(var lease=library.OpenPreview(wait.Clip.Id))
             {
-                Check(lease.MeleePlayback.JointCount==61&&lease.Model.AllBones.Count==61,"Native Melee model and display projection preserve all 61 joint identities");
+                Check(lease.MeleePlayback.JointCount==lease.Model.AllBones.Count,"Native Melee model and display projection preserve every authentic joint identity for "+actorArg);
                 Console.WriteLine("TRACE MESH "+lease.Model.Objects.Length+" vertices "+lease.Model.PolygonList.OfType<MDL0ObjectNode>().Sum(o=>o.Vertices?.Count??0)+" bounds "+lease.Model.GetBox());
                 Check(lease.Model.PolygonList.OfType<MDL0ObjectNode>().Sum(o=>o.Vertices?.Count??0)>0,"Original Melee source model includes decoded native geometry in the retained viewport");
+                if(args.Contains("--melee-target-prepare"))
+                {
+                    using(var prepared=MeleeTargetDocument.Prepare(lease,library.Read(),CancellationToken.None))
+                    {ModelForm.ValidateFighterProjectAssets(prepared);prepared.Save(Path.Combine(output,"prepared-melee.fpstudio"));Check(prepared.NativeTarget!=null,"Prepared native target owns native snapshots and editable masters");}
+                    return;
+                }
                 string rig=MeleeNative.RigHash(lease.MeleeModel);var first=lease.MeleePlayback.Sample(0,0);
                 MeleeLibraryPreview.Apply(lease,1);MeleeLibraryPreview.Apply(lease,12.25f);
                 Check(MeleeNative.RigHash(lease.MeleeModel)==rig,"Fractional source playback never changes the authentic native rig");
-                var next=library.Browse("Wait2").First(i=>i.Model?.Id==wait.Model.Id&&i.Clip.Name=="Wait2");
+                var next=library.Browse(nextIdleArg).FirstOrDefault(i=>i.Model?.Id==wait.Model.Id&&i.Clip.Name==nextIdleArg);
+                if(next==null)throw new InvalidDataException("Exact held-out "+nextIdleArg+" fixture is missing for "+actorArg+"; no replacement was chosen.");
                 var model=lease.Model;
                 Check(library.TrySelectPreview(lease,next.Clip.Id,wait.Model.Id)&&ReferenceEquals(model,lease.Model),"Same-model source selection prepares the next native motion without scene/model reconstruction");
             }
             using(var startup=MainForm.StartViewerApplication())
             {
                 var form=(ModelForm)Field(MainForm.Instance,"_fighterForm");form.WindowState=FormWindowState.Normal;form.ClientSize=new Size(1700,950);
-                Call(form,"OpenSavedGameLibrary",library,catalogue.GameLocations.Single());await GameLibrarySelect(form,wait.Clip.Id);
+                if(!args.Contains("--melee-target-only"))
+                {
+                    using(var manager=new SavedGameSourcesDialog(library))
+                    {
+                        manager.Show();Exception failure=null;
+                        using(var timer=new System.Windows.Forms.Timer{Interval=150})
+                        {
+                            timer.Tick+=async(sender,eventArgs)=>{timer.Stop();var dialog=Application.OpenForms.Cast<Form>().Single(f=>f.Name=="sourceInventoryIssues");try{Check(((TextBox)dialog.Controls.Find("sourceIssueDetails",true).Single()).Lines.SequenceEqual(plan.Issues),"On-demand source issues show every retained diagnostic without truncation");await CaptureWindow(dialog,Path.Combine(output,"source-issues.png"));((Button)dialog.Controls.Find("sourceIssuesClose",true).Single()).PerformClick();}catch(Exception error){failure=error;dialog.Close();}};
+                            timer.Start();((Button)manager.Controls.Find("savedSourceIssues",true).Single()).PerformClick();
+                        }
+                        if(failure!=null)throw failure;manager.Close();
+                    }
+                }
+                Call(form,"OpenSavedGameLibrary",library,catalogue.GameLocations.Single());await GameLibrarySelect(form,wait.Clip.Id,idleArg);
                 await GameLibraryWait(()=>Field(form,"_libraryLease") is LibrarySourceLease lease&&lease.Reference.ClipId==wait.Clip.Id,"Automatic Melee source preview did not settle.");
                 var active=(LibrarySourceLease)Field(form,"_libraryLease");Console.WriteLine("TRACE RENDER "+active.Model.IsRendering+" draws "+active.Model.DrawCalls.Count+" box "+active.Model.GetBox());
                 foreach(var o in active.Model.PolygonList.OfType<MDL0ObjectNode>().Take(3))Console.WriteLine("TRACE OBJECT "+o.Name+" vertices "+o.Vertices.Count+" visible "+o.IsRendering+" calls "+o._drawCalls.Count);
@@ -61,7 +87,7 @@ internal static partial class Program
                 Check(active.MeleeRenderer.RenderCount>0,"Native HSD shader and mesh draw calls execute in the shared offscreen viewport");
                 form.ClientSize=new Size(1050,900);await Task.Delay(100);await CaptureSimpleWorkspace(form,Path.Combine(output,"melee-source-compact.png"));
                 Call(form,"SetWorkspaceTextSize",175);await Task.Delay(100);await CaptureSimpleWorkspace(form,Path.Combine(output,"melee-source-compact-175.png"));Call(form,"SetWorkspaceTextSize",100);
-                foreach(var fixture in new[]{Tuple.Create("Fox","Wait1"),Tuple.Create("Samus","Wait"),Tuple.Create("Peach","Wait1"),Tuple.Create("Donkey","Wait")})
+                if(!args.Contains("--melee-target-only"))foreach(var fixture in new[]{Tuple.Create("Fox","Wait1"),Tuple.Create("Samus","Wait"),Tuple.Create("Peach","Wait1"),Tuple.Create("Donkey","Wait")})
                 {
                     string actor=fixture.Item1;var item=library.Browse(fixture.Item2).FirstOrDefault(i=>i.Model?.Character==actor&&i.Clip.Name==fixture.Item2);
                     if(item==null){Console.WriteLine("MISSING exact requested native idle fixture: "+actor);continue;}
@@ -132,6 +158,113 @@ internal static partial class Program
                     Check(ready.MeleeRenderer.RenderCount>0&&ready.MeleePlayback.JointCount==ready.Model.AllBones.Count,"Actual native HSD rendering/animation succeeds for held-out "+actor+" fixture");
                 }
                 Check(form.FighterEditor.TargetModel==null,"Library browsing does not replace the target document");
+                if(args.Contains("--melee-editable-target"))
+                {
+                    await GameLibrarySelect(form,wait.Clip.Id,idleArg);
+                    await GameLibraryWait(()=>Field(form,"_libraryLease") is LibrarySourceLease ready&&ready.Reference.ClipId==wait.Clip.Id,"Exact editable source did not settle.");
+                    Check((bool)form.GetType().GetProperty("LibraryPreviewReady",Private).GetValue(form),"Exact native target selection passes normal readiness guards");
+                    Call(form,"OpenLibraryAsTarget");
+                    Check(ReferenceEquals(form,Field(MainForm.Instance,"_fighterForm")),"Melee Open as target retains the existing full native viewer window");
+                    Check(form.FighterProject.TargetGame=="Melee"&&form.FighterProject.NativeTarget!=null&&form.FighterEditor.TargetModel is MDL0Node&&form.FighterEditor.SelectedCHR0!=null,"Melee model and selected motion are owned editable target masters");
+                    var target=(MDL0Node)form.FighterEditor.TargetModel;var clip=form.FighterEditor.SelectedCHR0;var nativeBackend=target.NativeEditingBackend as MeleeModelEditingBackend;
+                    Check(nativeBackend!=null,"Main target uses authentic native Melee skinning instead of the projection skinning path");
+                    Check(MeleeLibraryPreview.Report(((LibrarySourceLease)Field(form,"_libraryLease")).Model).Meshes.All(mesh=>((LibrarySourceLease)Field(form,"_libraryLease")).MeleeRenderer.Parts.IsNormalDetail(mesh.DisplayObject)),"Native authoring projection contains normal-detail geometry only");
+                    form.FighterEditor.SetFrame(12);form.FighterEditor.FrameFighterModel();await CaptureSimpleWorkspace(form,Path.Combine(output,"melee-editable-main.png"));
+                    if(actorArg=="Mario")foreach(var dimensions in new[]{new Size(1700,950),new Size(1050,900)})foreach(int textSize in new[]{100,175})
+                    {
+                        form.ClientSize=dimensions;Call(form,"SetWorkspaceTextSize",textSize);await Task.Delay(80);
+                        await CaptureSimpleWorkspace(form,Path.Combine(output,"melee-target-"+dimensions.Width+"-"+textSize+".png"));
+                        Check(form.FighterEditor.SelectedCHR0==clip&&form.FighterEditor.CurrentFrame==12,"Native target layout retains exact animation and playhead at "+dimensions.Width+" / "+textSize);
+                    }
+                    Call(form,"SetWorkspaceTextSize",100);
+                    Check(nativeBackend.EditPolicy.Available,"Authentic native common bone metadata authorizes body SRT editing without a projected rig");
+                    string content=LifecycleContent(clip);
+                    foreach(int protectedJoint in nativeBackend.EditPolicy.ProtectedJoints)
+                    {
+                        form.FighterEditor.SelectedBone=target.AllBones.Single(b=>b.Name==MeleeProjection.JointName(protectedJoint));
+                        var protectedBox=form.FighterEditor.chr0Editor._transBoxes[6];protectedBox.Value+=7;form.FighterEditor.chr0Editor.BoxChangedCreateUndo(protectedBox,EventArgs.Empty);
+                        Check(LifecycleContent(clip)==content,"Real native transform fields cannot synthesize protected motion-control keys: "+protectedJoint);
+                    }
+                    var entry=clip.Children.OfType<CHR0EntryNode>().First(e=>nativeBackend.CanEditAnimationBone(e.Name)&&e.KeyArrays[3].KeyCount>0);
+                    float editTime=entry.KeyArrays[3].Entries.Last()._index,before=entry.KeyArrays[3].GetFrameValue(editTime);
+                    form.FighterEditor.SetFrame(checked((int)editTime+1));form.FighterEditor.SelectedBone=target.AllBones.Single(b=>b.Name==entry.Name);int frame=form.FighterEditor.CurrentFrame;
+                    var protectedNames=new System.Collections.Generic.HashSet<string>(nativeBackend.EditPolicy.ProtectedJoints.Select(MeleeProjection.JointName));
+                    string ProtectedCurves()=>new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(clip.Children.OfType<CHR0EntryNode>().Where(e=>protectedNames.Contains(e.Name)).Select(e=>new{e.Name,Keys=e.KeyArrays.Select(a=>a.Entries.Select(k=>new{k._index,k._value,k._tangent}).ToArray()).ToArray()}).ToArray());
+                    string protectedContent=ProtectedCurves();
+                    string nativeOriginal=Path.Combine(output,"owned-original-action.dat");form.ExportFighterResource(nativeOriginal);
+                    Check(FighterProject.HashFile(nativeOriginal)==form.FighterProject.NativeTarget.NativeMotionSha256,"Unedited target native export preserves the exact original action-member bytes before project Save");
+                    var bodyBox=form.FighterEditor.chr0Editor._transBoxes[3];bodyBox.Value=before+5;form.FighterEditor.chr0Editor.BoxChangedCreateUndo(bodyBox,EventArgs.Empty);await Task.Delay(60);
+                    Check(Math.Abs(entry.KeyArrays[3].GetFrameValue(editTime)-(before+5))<.00001,"Actual native rotation field edits the current eligible body bone");
+                    Check(ProtectedCurves()==protectedContent,"Body SRT editing preserves every protected source-owned motion curve");
+                    form.FighterEditor.FrameFighterModel();await CaptureSimpleWorkspace(form,Path.Combine(output,"melee-body-edited.png"));
+                    string staleOutput=Path.Combine(output,"stale-native-action.dat");int costumeBefore=form.FighterProject.NativeTarget.CostumeIndex;bool staleRejected=false;
+                    try
+                    {
+                        var adapter=(INativeTargetExportAdapter)NativeGameAdapters.ForNative(form.FighterProject.NativeTarget.Provider);
+                        adapter.ExportAnimation(form.FighterProject,target,clip,staleOutput,CancellationToken.None,()=>form.FighterProject.NativeTarget.CostumeIndex++);
+                    }
+                    catch(InvalidOperationException){staleRejected=true;}
+                    finally{form.FighterProject.NativeTarget.CostumeIndex=costumeBefore;}
+                    Check(staleRejected&&!File.Exists(staleOutput),"Native export rejects in-place member or costume dependency changes without publishing output");
+                    string nativeEdited=Path.Combine(output,"owned-edited-action.dat");form.ExportFighterResource(nativeEdited);
+                    File.WriteAllText(Path.Combine(output,"native-edited-receipt.json"),new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(form.LastNativeTargetExport));
+                    Check(form.LastNativeTargetExport.SampleTimes>clip.FrameCount&&form.LastNativeTargetExport.NativeVertices>0,"Native export receipt records subframe and complete surface coverage after successful publication");
+                    var savedMotion=MeleeNative.ReadMembers(File.ReadAllBytes(nativeEdited)).SelectMany(MeleeNative.Motions).Single();
+                    var savedPlayer=new MeleePlayback(MeleeTargetDocument.OriginalModel(form.FighterProject),savedMotion);
+                    int editedJoint=Array.IndexOf(target.AllBones.Select(b=>b.Name).ToArray(),entry.Name);
+                    Check(Math.Abs(savedPlayer.Sample(editedJoint,editTime)[3]-(before+5)*Math.PI/180)<.000006,"Actual native export reopens the current edited target rotation, without replacing original resources");
+                    Check(form.FighterEditor.CurrentFrame==frame,"Native Melee export preserves the current playhead");
+                    Check(LifecycleContent(clip)!=content,"Melee target animation edits change the current owned master");
+                    var sparseEntry=clip.Children.OfType<CHR0EntryNode>().FirstOrDefault(e=>nativeBackend.CanEditAnimationBone(e.Name)&&Enumerable.Range(6,3).All(a=>e.KeyArrays[a].KeyCount==0)&&target.AllBones.Any(b=>b.Name==e.Name&&(Math.Abs(b.BindState.Translate._y)>.00001||Math.Abs(b.BindState.Translate._z)>.00001)));
+                    Check(sparseEntry!=null,"Real native fixture includes a sparse translation group with nonzero bind siblings");
+                    string beforeSparse=LifecycleContent(clip);var sparseBone=target.AllBones.Single(b=>b.Name==sparseEntry.Name);form.FighterEditor.SelectedBone=sparseBone;
+                    var sparseBox=form.FighterEditor.chr0Editor._transBoxes[6];sparseBox.Value=sparseBone.BindState.Translate._x+.125f;form.FighterEditor.chr0Editor.BoxChangedCreateUndo(sparseBox,EventArgs.Empty);await Task.Delay(60);
+                    Check(sparseEntry.KeyArrays[7].GetFrameValue(0)==sparseBone.BindState.Translate._y&&sparseEntry.KeyArrays[8].GetFrameValue(0)==sparseBone.BindState.Translate._z,"Activating a native translation axis preserves the other native bind components");
+                    form.ExportFighterResource(Path.Combine(output,"new-translation-group.dat"));
+                    form.FighterEditor.Undo();Check(LifecycleContent(clip)==beforeSparse,"Sparse group activation and bind preservation share one native Undo command");
+                    using(var curveEditor=new BrawlLib.Internal.Windows.Controls.InterpolationEditor(form.FighterEditor))
+                    {
+                        curveEditor.SetTarget(sparseEntry);sparseEntry.SetKeyframe(6,0,sparseBone.BindState.Translate._x+.25f);Call(curveEditor,"SignalCurveChange");await Task.Delay(60);
+                        Check(sparseEntry.KeyArrays[7].GetFrameValue(0)==sparseBone.BindState.Translate._y&&sparseEntry.KeyArrays[8].GetFrameValue(0)==sparseBone.BindState.Translate._z,"Native interpolation-editor callbacks preserve unanimated bind siblings in their existing transaction");
+                        form.FighterEditor.Undo();Check(LifecycleContent(clip)==beforeSparse,"Curve-group activation and bind preservation undo together exactly");
+                    }
+                    form.FighterEditor.SelectedBone=target.AllBones.Single(b=>b.Name==entry.Name);form.FighterEditor.SetFrame(frame);
+                    form.FighterEditor.Undo();Check(LifecycleContent(clip)==content&&form.FighterEditor.CurrentFrame==frame,"Existing native Undo restores the exact Melee animation and frame");
+                    form.FighterEditor.Redo();Check(LifecycleContent(clip)!=content,"Existing native Redo reapplies Melee animation editing");
+                    string editedContent=LifecycleContent(clip),editedProject=Path.Combine(output,"edited-melee.fpstudio");form.SaveFighterProject(editedProject);form.FighterEditor.Undo();
+                    string projectPath=Path.Combine(output,"editable-melee.fpstudio");form.SaveFighterProject(projectPath);
+                    using(var reopened=FighterProject.Open(projectPath))
+                    {
+                        ModelForm.ValidateFighterProjectAssets(reopened);
+                        Check(reopened.TargetGame=="Melee"&&reopened.NativeSources.Count>=3,"Project Save/reopen retains owned Melee source snapshots and exact editable masters");
+                        using(var reopenedClip=NodeFactory.FromFile(null,reopened.Animations[0].WorkingPath) as CHR0Node)Check(LifecycleContent(reopenedClip)==content,"Project reopen preserves exact authored Melee animation curves");
+                    }
+                    var loaded=FighterProject.Open(projectPath);bool adopted=false;
+                    try{adopted=form.ReplaceLibraryTarget(loaded);Check(adopted,"Saved Melee project reopens into the existing editable main viewer");}finally{if(!adopted)loaded.Dispose();}
+                    Check(form.FighterEditor.TargetModel is MDL0Node loadedModel&&loadedModel.NativeEditingBackend!=null&&LifecycleContent(form.FighterEditor.SelectedCHR0)==content,"Full native target backend and exact curves recover after actual project reopen");
+                    string reopenedOutput=Path.Combine(output,"reopened-native-action.dat");form.ExportFighterResource(reopenedOutput);
+                    Check(FighterProject.HashFile(reopenedOutput)==form.FighterProject.NativeTarget.NativeMotionSha256,"Native action export remains byte-exact after project Save/reopen");
+                    await CaptureSimpleWorkspace(form,Path.Combine(output,"melee-editable-reopened.png"));
+                    var editedLoaded=FighterProject.Open(editedProject);bool editedAdopted=false;
+                    try
+                    {
+                        using(FlowModal("unsavedProjectDiscard",dialog=>SimpleControl<Button>(dialog,"unsavedProjectDiscard").PerformClick()))
+                            editedAdopted=form.ReplaceLibraryTarget(editedLoaded);
+                        Check(editedAdopted,"Saved edited Melee project reopens into the same main viewer");
+                    }
+                    finally{if(!editedAdopted)editedLoaded.Dispose();}
+                    Check(LifecycleContent(form.FighterEditor.SelectedCHR0)==editedContent,"Actual main-view reopen retains exact body edits and protected curves");
+                    string editedReopenedOutput=Path.Combine(output,"reopened-edited-native-action.dat");form.ExportFighterResource(editedReopenedOutput);
+                    Check(FighterProject.HashFile(editedReopenedOutput)==FighterProject.HashFile(nativeEdited),"Edited native output remains deterministic after project Save and actual reopen");
+                    await CaptureSimpleWorkspace(form,Path.Combine(output,"melee-body-edited-reopened.png"));
+                    var currentMaster=form.FighterEditor.SelectedCHR0;int currentFrame=form.FighterEditor.CurrentFrame;
+                    var nextSource=library.Browse(nextIdleArg).First(i=>i.Model?.Id==wait.Model.Id&&i.Clip.Name==nextIdleArg);
+                    await GameLibrarySelect(form,nextSource.Clip.Id,nextIdleArg);
+                    await GameLibraryWait(()=>Field(form,"_libraryLease") is LibrarySourceLease selected&&selected.Reference.ClipId==nextSource.Clip.Id,"Same-model source change did not settle.");
+                    Check(ReferenceEquals(currentMaster,form.FighterEditor.SelectedCHR0)&&form.FighterEditor.CurrentFrame==currentFrame&&LifecycleContent(currentMaster)==editedContent,"Browsing a different original native action never replaces or edits the owned target master");
+                    form.SaveFighterProject(projectPath);
+                }
+
 
             }
             var modelChoice=catalogue.Models.Single(m=>m.Id==wait.Model.Id);

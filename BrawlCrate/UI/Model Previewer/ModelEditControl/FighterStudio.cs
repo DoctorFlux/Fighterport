@@ -1,4 +1,4 @@
-using BrawlLib.Internal;
+﻿using BrawlLib.Internal;
 using BrawlLib.Internal.Windows.Controls.ModelViewer.MainWindowBase;
 using BrawlLib.SSBB.ResourceNodes;
 using System;
@@ -16,6 +16,7 @@ namespace BrawlCrate.UI.Model_Previewer.ModelEditControl
         internal Func<ResourceNode, bool, bool> FighterFileSaveRequested;
         internal Predicate<ResourceNode> FighterOwnsFile;
         internal Action<ResourceNode, string> FighterNativeExportRequested;
+        internal Func<ResourceNode,string> FighterNativeExportFilter;
         internal Predicate<NW4RAnimationNode> FighterAllowsCompanionChannels;
         internal Func<ResourceNode, string> FighterAnimationLabel;
         internal Func<MDL0Node,Studio.Retargeting.BrawlRig> FighterCaptureRig;

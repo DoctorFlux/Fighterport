@@ -153,7 +153,8 @@ namespace BrawlCrate.UI
                         {
                             cancel.ThrowIfCancellationRequested();
                             progress.Report("Copying and verifying the exact original model and motion containers...");
-                            candidate = PrepareLibraryTarget(source);
+                            var editable=NativeGameAdapters.ForNative(source.Reference.Adapter) as INativeEditableTargetAdapter;
+                            candidate=editable!=null?editable.PrepareTarget(source,catalogue.Read(),cancel):PrepareLibraryTarget(source);
                             cancel.ThrowIfCancellationRequested();
                             return candidate;
                         }

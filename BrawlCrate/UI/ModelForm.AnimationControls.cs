@@ -134,6 +134,7 @@ namespace BrawlCrate.UI
         {
             if(modelEditControl1.Playing)throw new InvalidOperationException("Pause playback before setting up or editing controls.");
             var model=modelEditControl1.TargetModel as MDL0Node??throw new InvalidOperationException("Open a supported native model first.");
+            model.NativeEditingBackend?.ValidateSharedRigEvaluation();
             var clip=modelEditControl1.SelectedCHR0;string key=ControlKey();int epoch=++_controlEpoch,frame=modelEditControl1.CurrentFrame;
             ControlLoadRequests++;
             Directory.CreateDirectory(_controlStage);string modelPath=Path.Combine(_controlStage,Guid.NewGuid().ToString("N")+".mdl0"),motionPath=clip==null?null:Path.Combine(_controlStage,Guid.NewGuid().ToString("N")+".chr0");
@@ -159,7 +160,7 @@ namespace BrawlCrate.UI
         private readonly HashSet<string> _protectedMotionBones = new HashSet<string>(StringComparer.Ordinal);
         private string[] _referenceFitControls = new string[0];
         private bool _bodyBindingReady;
-        private bool CanEditBodyBone(string name) => _bodyBindingReady && ReferenceEquals(_loadedControlModel,modelEditControl1.TargetModel) && !_protectedMotionBones.Contains(name);
+        private bool CanEditBodyBone(string name) => modelEditControl1.TargetModel is MDL0Node native&&native.NativeEditingBackend!=null?native.NativeEditingBackend.CanEditAnimationBone(name):_bodyBindingReady && ReferenceEquals(_loadedControlModel,modelEditControl1.TargetModel) && !_protectedMotionBones.Contains(name);
         private void PublishPins(ControlReply reply)
         {
             if(reply.ProtectedMotionBones != null && reply.BoneNames != null)

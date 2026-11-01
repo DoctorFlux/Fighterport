@@ -1,4 +1,4 @@
-using FighterPort.Adapters.Melee;
+﻿using FighterPort.Adapters.Melee;
 using System;
 using System.IO;
 using System.Linq;
@@ -29,6 +29,18 @@ class Program
                     var timer=System.Diagnostics.Stopwatch.StartNew();var inventory=MeleeInventory.Read(source);
                     Console.WriteLine("INVENTORY models "+inventory.Models.Count+" motions "+inventory.Motions.Count+" associated "+inventory.Motions.Count(m=>m.ModelKey!=null)+" issues "+inventory.Issues.Count+" ms "+timer.ElapsedMilliseconds);
                     foreach(var issue in inventory.Issues.Take(8))Console.WriteLine("ISSUE "+issue);
+                    if(args.Contains("--body-policy"))
+                    {
+                        byte[] common=source.Read("PlCo.dat");var policies=new System.Collections.Generic.List<string>();int available=0;
+                        foreach(var model in inventory.Models)
+                        {
+                            var native=MeleeNative.ReadMembers(source.Read(model.File)).SelectMany(MeleeNative.Models).Single(m=>m.Key==model.Key);
+                            var policy=MeleeBoneEditPolicy.Read(native,common);if(policy.Available)available++;
+                            policies.Add(model.File+" | "+model.Key+" | "+MeleeNative.RigHash(native)+" | "+(policy.Available?"body="+policy.BodyJoint+" protected="+string.Join(",",policy.ProtectedJoints):policy.Evidence));
+                        }
+                        Console.WriteLine("NATIVE BODY POLICY available "+available+" unavailable "+(inventory.Models.Count-available));
+                        if(args.Length>2)File.WriteAllLines(args[2]+".body-policy.txt",policies);
+                    }
                     if(args.Contains("--models"))
                     {
                         int passed=0,failed=0,rebuilt=0,fallback=0;var issues=new System.Collections.Generic.List<string>();
@@ -43,6 +55,13 @@ class Program
                                 foreach(var mesh in report.Meshes)foreach(var vertex in mesh.Vertices)
                                 {var point=System.Numerics.Vector3.Transform(vertex.NativePosition,pose.VertexMatrix(mesh,vertex));MeleeNative.Finite(point.X);MeleeNative.Finite(point.Y);MeleeNative.Finite(point.Z);}
                                 if(args.Contains("--roundtrip")){var write=MeleeNativeWriter.PrepareOriginalSnapshot(native.Member);if(MeleeNativeWriter.GraphHash(new HSDRaw.HSDRawFile(write.CopyBytes()))!=write.GraphSha256)throw new Exception("Native graph roundtrip differs.");if(write.Rebuilt)rebuilt++;else fallback++;}
+                                if(args.Contains("--edited-roundtrip"))
+                                {
+                                    float before=native.Root.TX;
+                                    var edited= MeleeNativeWriter.PrepareEditedSnapshot(native.Member,file=>((HSDRaw.Common.HSD_JOBJ)file.Roots.Single(r=>r.Name==native.Symbol).Data).TX=before+.125f);
+                                    var reopened=MeleeNative.ReadMembers(edited.CopyBytes()).SelectMany(MeleeNative.Models).Single(m=>m.Symbol==native.Symbol);
+                                    if(reopened.Root.TX!=before+.125f||native.Root.TX!=before)throw new Exception("Edited native model isolation failed.");
+                                }
                                 passed++;
                             }
                             catch(Exception e){failed++;issues.Add(model.File+" "+model.Symbol+": "+e.Message);}

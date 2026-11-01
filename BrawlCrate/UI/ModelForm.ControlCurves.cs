@@ -29,7 +29,10 @@ namespace BrawlCrate.UI
         {
             if(!_curvePending)return;_curvePending=false;
             if(_curveTarget==null||!(_curveTarget.Parent is CHR0Node clip)||_curveBefore==null)return;
-            string bone=_curveTarget.Name;var before=_curveBefore;var after=NativeControlSnapshot.Capture(clip,new[]{bone});_curveBefore=after;
+            string bone=_curveTarget.Name;var before=_curveBefore;
+            if(CanEditBodyBone(bone)&&modelEditControl1.TargetModel is MDL0Node native&&native.NativeEditingBackend!=null)
+                for(int channel=0;channel<9;channel++)if(_curveTarget.KeyArrays[channel].KeyCount>0)native.NativeEditingBackend.PrepareAnimationChannel(_curveTarget,channel);
+            var after=NativeControlSnapshot.Capture(clip,new[]{bone});_curveBefore=after;
             if(before.ContentKey==after.ContentKey)return;
             Action<NativeControlSnapshot> restore=snapshot=>
             {

@@ -1,4 +1,4 @@
-using BrawlCrate.Studio;
+﻿using BrawlCrate.Studio;
 using BrawlCrate.UI.Model_Previewer.ModelEditControl;
 using BrawlLib.Internal.Windows.Controls.Model_Panel;
 using BrawlLib.Internal.Windows.Controls.ModelViewer.MainWindowBase;
@@ -16,6 +16,7 @@ namespace BrawlCrate.UI
     internal partial class ModelForm
     {
         private FighterProject _fighterProject;
+        internal NativeTargetExportReceipt LastNativeTargetExport {get;private set;}
         private readonly Dictionary<string, ResourceNode> _fighterRoots = new Dictionary<string, ResourceNode>();
         private readonly Dictionary<string, FighterAsset> _fighterAssets = new Dictionary<string, FighterAsset>();
         private readonly Stack<ImportState> _fighterImportUndo = new Stack<ImportState>();
@@ -34,7 +35,11 @@ namespace BrawlCrate.UI
 
         internal static void ValidateFighterProjectAssets(FighterProject project)
         {
-            foreach (FighterAsset asset in project.RegisteredAssets())
+            if(project.NativeTarget!=null)
+            {
+                var adapter=NativeGameAdapters.ForNative(project.NativeTarget.Provider) as INativeEditableTargetAdapter??throw new NotSupportedException("The saved native target adapter is unavailable.");adapter.ValidateTarget(project);
+            }
+            foreach (FighterAsset asset in project.RegisteredAssets().Where(a=>a.Role!="native-source"))
             {
                 using (ResourceNode root = NodeFactory.FromFile(null, asset.WorkingPath))
                 {
@@ -130,6 +135,7 @@ namespace BrawlCrate.UI
             modelEditControl1.FighterResourcesRequested = ShowFighterResources;
             modelEditControl1.FighterOwnsFile = OwnsFighterRoot;
             modelEditControl1.FighterFileSaveRequested = SaveOwnedFighterResource;
+            modelEditControl1.FighterNativeExportFilter=node=>_fighterProject.NativeTarget!=null&&node is CHR0Node?(NativeGameAdapters.ForNative(_fighterProject.NativeTarget.Provider) as INativeTargetExportAdapter)?.AnimationExportFilter:null;
             modelEditControl1.FighterNativeExportRequested = (node, path) => RunFighterAction(() => ExportFighterNode(node, path));
             modelEditControl1.FighterCaptureRig=CaptureFighterPreviewRig;
             modelEditControl1.FighterAllowsCompanionChannels = clip => !_fighterProject.Animations.Any(a =>
@@ -408,6 +414,11 @@ namespace BrawlCrate.UI
                     IModel selected = ChooseFighterModel(ModelPanel.CollectModels(FighterRoot(_fighterProject.Model)),
                         _fighterProject.ModelNodePath);
                     _fighterProject.ModelNodePath = ((ResourceNode) selected).TreePath;
+                    if(selected is MDL0Node nativeModel&&_fighterProject.NativeTarget!=null&&nativeModel.NativeEditingBackend==null)
+                    {
+                        var adapter=NativeGameAdapters.ForNative(_fighterProject.NativeTarget.Provider) as INativeEditableTargetAdapter??throw new NotSupportedException("Native target adapter unavailable.");
+                        nativeModel.NativeEditingBackend=adapter.AttachTarget(_fighterProject,nativeModel);
+                    }
                     modelEditControl1.AppendTarget(selected);
                     modelEditControl1.TargetModel = selected;
                     modelEditControl1.EditingAll = false;
@@ -625,9 +636,11 @@ namespace BrawlCrate.UI
 
             string extension = node is NW4RAnimationNode ? "." + node.ResourceFileType.ToString().ToLowerInvariant() :
                 Path.GetExtension(node.RootNode._origPath);
-            bool retargeted = node is CHR0Node && SelectedFighterAsset()?.Retarget != null;
+            string nativeFilter=modelEditControl1.FighterNativeExportFilter?.Invoke(node);
+            if(nativeFilter!=null)extension=".dat";
+            bool retargeted = nativeFilter==null&&node is CHR0Node && SelectedFighterAsset()?.Retarget != null;
             using (SaveFileDialog dialog = new SaveFileDialog
-                   {Title = "Export New Native Output", Filter = retargeted ? "Native animation (*.chr0)|*.chr0|Brawl motion PAC (*.pac)|*.pac" : "Native resource (*" + extension + ")|*" + extension,
+                   {Title = "Export New Native Output", Filter = nativeFilter ?? (retargeted ? "Native animation (*.chr0)|*.chr0|Brawl motion PAC (*.pac)|*.pac" : (_fighterProject.NativeTarget!=null?"Editable resource master (*":"Native resource (*") + extension + ")|*" + extension),
                        FileName = node.Name + extension, DefaultExt = extension.TrimStart('.'), AddExtension = true})
             {
                 if (dialog.ShowDialog(this) == DialogResult.OK)
@@ -658,6 +671,20 @@ namespace BrawlCrate.UI
         {
             ProtectCharacterWorkspaceOutput(destination);
             (_library??(_library=new AnimationLibrary())).ProtectOutputPath(destination);
+            if(_fighterProject.NativeTarget!=null&&node is CHR0Node nativeClip&&string.Equals(Path.GetExtension(destination),".dat",StringComparison.OrdinalIgnoreCase))
+            {
+                if(SimpleWorkspaceBusy||_pinGesture!=null||modelEditControl1.AwaitingRedoSave)throw new InvalidOperationException("Finish the current native operation before exporting.");
+                if(RegisteredAnimationOwner(nativeClip)?.Id!=_fighterProject.NativeTarget.AnimationMasterId)throw new NotSupportedException("This animation has no reviewed native action-member association. Export an editable master; native slot assignment must be qualified before writing another action.");
+                modelEditControl1.StopAnim();FinishControlCurveEdit();
+                var project=_fighterProject;var target=modelEditControl1.TargetModel as MDL0Node;
+                var binding=project.NativeTarget;string modelContent=project.Model.ContentSha256;
+                string content=NativeAnimationOptimization.SourceContentKey(nativeClip),rig=BrawlCrate.Studio.Retargeting.BrawlRetargeter.SkeletonFingerprint(target);
+                void Current(){if(!ReferenceEquals(project,_fighterProject)||!ReferenceEquals(binding,project.NativeTarget)||project.Model.ContentSha256!=modelContent||target.IsDirty||!OwnsFighterRoot(nativeClip)||modelEditControl1.TargetAnimation!=nativeClip||content!=NativeAnimationOptimization.SourceContentKey(nativeClip)||rig!=BrawlCrate.Studio.Retargeting.BrawlRetargeter.SkeletonFingerprint(target))throw new InvalidOperationException("The target or animation changed during native export.");}
+                var adapter=NativeGameAdapters.ForNative(project.NativeTarget.Provider) as INativeTargetExportAdapter??throw new NotSupportedException("Native target writer unavailable.");
+                LastNativeTargetExport=adapter.ExportAnimation(project,target,nativeClip,destination,System.Threading.CancellationToken.None,Current);
+                _fighterStatus.Text="Exported verified native action member "+Path.GetFileName(destination)+". Whole action-archive installation is separate.";return;
+            }
+            if(_fighterProject.NativeTarget!=null&&string.Equals(Path.GetExtension(destination),".dat",StringComparison.OrdinalIgnoreCase))throw new NotSupportedException("Native model/material/geometry replacement writing is not qualified for this adapter yet. Save the editable project or export an explicitly named authoring master instead.");
             if (TryExportOwnedAnimationCopy(node, destination)) return;
             if (TryExportFighterRetargetPac(node, destination)) return;
             if (node != null && node.RootNode.IsDirty)

@@ -1,4 +1,4 @@
-using BrawlCrate.Studio.Retargeting;
+﻿using BrawlCrate.Studio.Retargeting;
 using BrawlLib.SSBB.ResourceNodes;
 using System;
 using System.Collections.Generic;
@@ -164,7 +164,7 @@ namespace BrawlCrate.Studio
             if(data.Models.Any(m=>m.MotionMountIds==null||m.MotionMountIds.Count>8192||m.MotionMountIds.Any(id=>!mounts.ContainsKey(id))))throw new InvalidDataException("Invalid source-set motion ownership.");
             if(data.GameLocations==null||data.GameLocations.Any(l=>l==null||!Id(l.Id)||!Text(l.Game,128)||!Text(l.GameVersion,256)||!Text(l.Path,32767)||!Text(l.Label,512))||
                 data.GameLocations.Select(l=>l.Id).Distinct().Count()!=data.GameLocations.Count)throw new InvalidDataException("Invalid game/build path configuration.");
-            foreach(var location in data.GameLocations){OrdinaryPath(location.Path);if(location.BaseSourceId!=null&&(!Id(location.BaseSourceId)||location.BaseSourceId==location.Id||location.Game!="Melee"))throw new InvalidDataException("Invalid explicit game-source base association.");}
+            foreach(var location in data.GameLocations){if(location.InventoryIssues==null||location.InventoryIssues.Length>10000||location.InventoryIssues.Any(issue=>!Text(issue,4096)))throw new InvalidDataException("Invalid source inventory diagnostics.");OrdinaryPath(location.Path);if(location.BaseSourceId!=null&&(!Id(location.BaseSourceId)||location.BaseSourceId==location.Id||location.Game!="Melee"))throw new InvalidDataException("Invalid explicit game-source base association.");}
             foreach(var location in data.GameLocations.Where(l=>l.Indexed))
                 if(!Hash(location.ContainerSha256)||!Hash(location.InventorySha256)||location.NativeFiles<1||
                     NativeGameAdapters.ForSource(location.Game,location.Provider)==null||
@@ -311,6 +311,7 @@ namespace BrawlCrate.Studio
                 var location=data.GameLocations.FirstOrDefault(l=>l.Indexed&&l.Game==plan.Source.Game&&l.GameVersion==plan.Source.GameVersion&&l.ContainerSha256==plan.Source.ContainerSha256&&l.Provider==plan.Source.Provider&&l.ToolSha256==plan.Source.ToolSha256&&
                     string.Equals(l.Path,plan.Source.Path,StringComparison.OrdinalIgnoreCase)&&l.InventorySha256==plan.Source.InventorySha256);
                 if(location==null){location=plan.Source;data.GameLocations.Add(location);changed=true;}
+                if(!location.InventoryIssues.SequenceEqual(plan.Issues)){location.InventoryIssues=plan.Issues.ToArray();changed=true;}
                 var mounts=new Dictionary<string,string>();
                 foreach(var input in plan.Mounts)
                 {

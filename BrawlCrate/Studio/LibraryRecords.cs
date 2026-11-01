@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Xml.Serialization;
 
@@ -77,6 +77,8 @@ namespace BrawlCrate.Studio
         public string ToolSha256 { get; set; }
         public string InventorySha256 { get; set; }
         public int NativeFiles { get; set; }
+        [XmlArrayItem("Issue")] public string[] InventoryIssues {get;set;}=new string[0];
+        public bool ShouldSerializeInventoryIssues()=>InventoryIssues?.Length>0;
         public string BaseSourceId { get; set; }
         public string NativeGameId { get; set; }
         public int NativeRevision { get; set; }

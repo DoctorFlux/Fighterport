@@ -25,6 +25,9 @@ namespace BrawlCrate.Studio
         public string Name { get; set; } = "New Fighter";
         public string TargetGame { get; set; } = "Brawl";
         public FighterAsset Model { get; set; }
+        public NativeTargetBinding NativeTarget {get;set;}
+        [XmlArrayItem("Source")] public List<FighterAsset> NativeSources {get;set;}=new List<FighterAsset>();
+        public bool ShouldSerializeNativeSources()=>NativeSources?.Count>0;
         [XmlArrayItem("Animation")] public List<FighterAsset> Animations { get; set; } = new List<FighterAsset>();
         public string ModelNodePath { get; set; }
         public string SelectedAnimation { get; set; }
@@ -137,6 +140,17 @@ namespace BrawlCrate.Studio
             return asset;
         }
 
+        internal FighterAsset CreateNativeMaster(string filename,string role,Action<string> write)
+        {
+            ThrowIfDisposed();
+            // Native sources are opaque owned bytes. Only their registered
+            // adapter interprets them; future formats need no extension list here.
+            if(Path.GetFileName(filename)!=filename||filename.IndexOfAny(Path.GetInvalidFileNameChars())>=0||
+                !(role=="model"&&Path.GetExtension(filename)==".mdl0"||role=="animation"&&Path.GetExtension(filename)==".chr0"||role=="native-source"))throw new ArgumentException("Invalid native master filename or role.");
+            EnsureStageDirectory();var asset=new FighterAsset{Id=Guid.NewGuid().ToString("N"),Role=role,Generated=true,SourcePath=filename};
+            asset.WorkingPath=Path.Combine(_stageDirectory,asset.Id+Path.GetExtension(filename));_stagedAssets.Add(asset);
+            write(asset.WorkingPath);RequireOrdinaryFile(asset.WorkingPath);RequireAssetSize(asset.WorkingPath);asset.SourceSha256=asset.ContentSha256=HashFile(asset.WorkingPath);return asset;
+        }
         /// <summary>Assets are immutable by content hash; descriptor replacement is atomic.</summary>
         public void Save(string manifestPath)
         {
@@ -253,6 +267,7 @@ namespace BrawlCrate.Studio
             if (Model != null) yield return Model;
             if (Animations != null)
                 foreach (FighterAsset asset in Animations) yield return asset;
+            if(NativeSources!=null)foreach(var asset in NativeSources)yield return asset;
         }
 
         public FighterAsset CreateLibraryRevision(LibrarySourceLease source, Retargeting.RetargetResult result)=>CreateLibraryRevision(source,result,null);
@@ -301,8 +316,10 @@ namespace BrawlCrate.Studio
                 throw new InvalidDataException("Unsupported fighter project version: " + SchemaVersion + ".");
             if (string.IsNullOrWhiteSpace(Name) || Name.Length > 200)
                 throw new InvalidDataException("A fighter name must contain 1–200 characters.");
-            if (TargetGame != "Brawl")
-                throw new NotSupportedException("This milestone supports the Brawl / Project M / Project+ target profile.");
+            if (TargetGame != "Brawl" && NativeTarget==null)
+                throw new NotSupportedException("This target game requires a registered native target adapter.");
+            if(NativeSources==null||NativeSources.Count>32)throw new InvalidDataException("Native source snapshot budget exceeded.");
+            NativeTarget?.Validate(this);
             if (Animations == null || Animations.Count > MaximumAnimations)
                 throw new InvalidDataException("The motion file registration limit is 256.");
             if (!Enum.IsDefined(typeof(Retargeting.GroundContactMode),GroundMode) || Frame < 0 || Frame > 10000000 || (SelectedAnimation?.Length ?? 0) > 16384 || (ModelNodePath?.Length ?? 0) > 8192)
@@ -335,15 +352,15 @@ namespace BrawlCrate.Studio
                     asset.ClipReviewedContacts.Select(c=>c.Entry).Distinct(StringComparer.Ordinal).Count()!=asset.ClipReviewedContacts.Count)
                     throw new InvalidDataException("Invalid reviewed contact member identities.");
                 foreach(var contact in asset.ClipReviewedContacts)contact.Recipe.Validate();
-                if (asset.Role != (ReferenceEquals(asset, Model) ? "model" : "animation"))
+                if (asset.Role != (NativeSources.Contains(asset)?"native-source":ReferenceEquals(asset, Model) ? "model" : "animation"))
                     throw new InvalidDataException("An asset has the wrong model or animation role.");
                 if (!ValidHash(asset.SourceSha256) || !ValidHash(asset.ContentSha256) ||
                     string.IsNullOrWhiteSpace(asset.SourcePath) || asset.SourcePath.Length > 32767 || (asset.RigIdentity?.Length ?? 0) > 256)
                     throw new InvalidDataException("An asset source or content identity is invalid.");
                 if (asset.Generated)
                 {
-                    if (asset.Role != "animation" || Path.GetFileName(asset.SourcePath) != asset.SourcePath ||
-                        asset.SourcePath.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || Path.GetExtension(asset.SourcePath) != ".chr0")
+                    if (Path.GetFileName(asset.SourcePath) != asset.SourcePath || asset.SourcePath.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 ||
+                        !(asset.Role=="animation"&&Path.GetExtension(asset.SourcePath)==".chr0" || NativeTarget!=null&&asset.Role=="model"&&Path.GetExtension(asset.SourcePath)==".mdl0" || asset.Role=="native-source"))
                         throw new InvalidDataException("A generated animation needs a plain native filename.");
                 }
                 else LocalPath(asset.SourcePath);
@@ -453,6 +470,7 @@ namespace BrawlCrate.Studio
 
         private void CheckSourceDestination(string path)
         {
+            if(NativeTarget!=null&&new[]{NativeTarget.OriginModelPath,NativeTarget.OriginMotionPath}.Where(p=>p!=null).Any(p=>SamePath(path,p)))throw new InvalidOperationException("Original native game sources are read-only. Choose a separate destination.");
             if (_stagedAssets.Concat(RegisteredAssets()).Any(asset => !asset.Generated && SamePath(path, asset.SourcePath)))
                 throw new InvalidOperationException("A registered source cannot be overwritten. Choose a new output filename.");
         }

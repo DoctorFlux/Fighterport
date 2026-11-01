@@ -1,4 +1,4 @@
-using BrawlCrate.Studio;
+﻿using BrawlCrate.Studio;
 using System;
 using System.Drawing;
 using System.IO;
@@ -15,6 +15,7 @@ namespace BrawlCrate.UI
         readonly ComboBox game=new ComboBox{Name="savedSourceGame",Dock=DockStyle.Fill,DropDownStyle=ComboBoxStyle.DropDown,MaxLength=128};
         readonly TextBox build=new TextBox{Name="savedSourceBuild",Dock=DockStyle.Fill,MaxLength=240},path=new TextBox{Name="savedSourcePath",Dock=DockStyle.Fill,MaxLength=32767};
         readonly Label status=new Label{Name="savedSourceStatus",Dock=DockStyle.Fill,AutoSize=true};
+        readonly Button issues=new WorkspaceButton{Name="savedSourceIssues",Text="Source issues",AutoSize=true};
         readonly Button save=new WorkspaceButton{Name="savedSourceSave",Text="Save changes",AutoSize=true},remove=new WorkspaceButton{Name="savedSourceRemove",Text="Remove",AutoSize=true},undo=new WorkspaceButton{Name="savedSourceUndo",Text="Undo last change",AutoSize=true};
         readonly Button file=new WorkspaceButton{Name="savedSourceFile",Text="Choose disc / file...",AutoSize=true},folder=new WorkspaceButton{Name="savedSourceFolder",Text="Choose game / SD folder...",AutoSize=true};
         readonly TableLayoutPanel editor=new TableLayoutPanel{Name="savedSourceEditor",Dock=DockStyle.Fill,ColumnCount=2,RowCount=4,AutoSize=true};
@@ -44,11 +45,12 @@ namespace BrawlCrate.UI
             folder.Click+=(s,e)=>{using(var choose=new FolderBrowserDialog{Description="Choose game installation, extracted build or Project M / Project+ SD folder",SelectedPath=Directory.Exists(path.Text)?path.Text:""})if(choose.ShowDialog(this)==DialogResult.OK)path.Text=choose.SelectedPath;};
             layout.Controls.Add(new Label{Text="Remove unregisters this source and its library entries. Game files, cached files and saved projects are kept. Indexed paths are verified before relocation.",AutoSize=true,Dock=DockStyle.Fill,Margin=new Padding(0,8,0,6)},0,2);
             status.MinimumSize=new Size(0,Font.Height+8);layout.Controls.Add(status,0,3);
-            var close=new WorkspaceButton{Name="savedSourceClose",Text="Close",AutoSize=true,DialogResult=DialogResult.Cancel};actions.Controls.AddRange(new Control[]{save,remove,undo,close});layout.Controls.Add(actions,0,4);
+            var close=new WorkspaceButton{Name="savedSourceClose",Text="Close",AutoSize=true,DialogResult=DialogResult.Cancel};actions.Controls.AddRange(new Control[]{save,remove,undo,issues,close});layout.Controls.Add(actions,0,4);
+            issues.Click+=(s,e)=>ShowIssues();
             save.Click+=(s,e)=>Run(Save);remove.Click+=(s,e)=>Run(()=>{if(selected==null)return;library.RemoveSavedGameSource(selected);Reload();status.Text="Source removed from the library. Its files and saved target projects were kept.";});
             undo.Click+=(s,e)=>Run(()=>{library.UndoLastUpdate();Reload();status.Text="Last library change undone.";});
             Controls.Add(layout);CancelButton=close;DarkTheme.Apply(this);Reload();
-            foreach(var button in new[]{save,remove,undo,close,file,folder})
+            foreach(var button in new[]{save,remove,undo,issues,close,file,folder})
             {button.Font=Font;button.MinimumSize=new Size(TextRenderer.MeasureText(button.Text,Font).Width+24,Font.Height+18);}
             name.AccessibleDescription="Rename this installation instance without changing its source ID, native content or game/build identity. Multiple Project M installs can have distinct names.";
             path.AccessibleDescription="Edit the saved disc or install/SD path. Indexed content is independently verified before linked paths change.";
@@ -74,10 +76,19 @@ namespace BrawlCrate.UI
         void SelectRow()
         {
             selected=list.CurrentRow?.Tag as string;var source=data.GameLocations.SingleOrDefault(l=>l.Id==selected);
-            save.Enabled=remove.Enabled=source!=null;editor.Enabled=source!=null;
+            save.Enabled=remove.Enabled=source!=null;issues.Enabled=source?.InventoryIssues?.Length>0;issues.Text=issues.Enabled?"Source issues ("+source.InventoryIssues.Length+")":"Source issues";editor.Enabled=source!=null;
             name.Text=source?.Label??"";game.Text=source?.Game??"";build.Text=source?.GameVersion??"";path.Text=source?.Path??"";
             game.Enabled=build.Enabled=source?.Indexed!=true;
             file.Enabled=source!=null&&(!source.Indexed||!source.IsDirectory);folder.Enabled=source!=null&&(!source.Indexed||source.IsDirectory);
+        }
+        void ShowIssues()
+        {
+            var source=data.GameLocations.SingleOrDefault(l=>l.Id==selected);if(source?.InventoryIssues?.Length==0||source==null)return;
+            using(var dialog=new Form{Name="sourceInventoryIssues",Text="Source issues · "+source.Label,ClientSize=new Size(760,420),MinimumSize=new Size(480,260),Font=Font,StartPosition=FormStartPosition.CenterParent,ShowInTaskbar=false,MinimizeBox=false,MaximizeBox=false})
+            {
+                var text=new TextBox{Name="sourceIssueDetails",Multiline=true,ReadOnly=true,Dock=DockStyle.Fill,ScrollBars=ScrollBars.Both,WordWrap=false,Text=string.Join(Environment.NewLine,source.InventoryIssues),AccessibleDescription="Complete retained source inventory diagnostics. Unsupported and unassociated members remain reported; no substitute asset is selected."};
+                var close=new WorkspaceButton{Name="sourceIssuesClose",Text="Close",Dock=DockStyle.Bottom,DialogResult=DialogResult.Cancel,Height=Font.Height+20};dialog.Controls.Add(text);dialog.Controls.Add(close);dialog.CancelButton=close;DarkTheme.Apply(dialog);dialog.ShowDialog(this);
+            }
         }
         void Save()
         {

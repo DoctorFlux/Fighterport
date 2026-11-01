@@ -1,5 +1,14 @@
 # Fighterport master plan
 
+Preview.68 qualifies bounded native Melee target SRT editing/export from
+`36bbb2ce6a626b2936f6a8f3a43c614917387e97`. It reuses the full native viewer,
+Undo and document ownership through shared future-format contracts. Basic SRT
+editing/native member writing does not establish full model, rig-solver or game
+parity. Keep one incomplete G1/M2. See
+[bounded acceptance](MELEE_TARGET_SRT_ACCEPTANCE_2026-11-02.md) and
+[implemented boundary and remaining work](MELEE_TARGET_PROGRESS.md).
+
+
 1 November: the user selects Melee as the next bidirectional native asset adapter,
 including named mod folders and Brawl <-> Melee models/materials/textures/motion.
 Native replacement files precede disc rebuilding. Shared provider/preview work is

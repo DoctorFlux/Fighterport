@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -26,6 +26,23 @@ namespace BrawlCrate.Studio
         void Validate(LibraryGameRequest request,LibraryCatalogue catalogue,CancellationToken cancellation);
         LibraryGamePlan Prepare(LibraryGameRequest request,LibraryCatalogue catalogue,string scratch,CancellationToken cancellation,Action<int,string> progress);
         void Verify(LibraryGamePlan plan,CancellationToken cancellation);
+    }
+    public interface INativeEditableTargetAdapter
+    {
+        FighterProject PrepareTarget(LibrarySourceLease source,LibraryCatalogue catalogue,CancellationToken cancellation);
+        BrawlLib.Modeling.INativeModelEditingBackend AttachTarget(FighterProject project,BrawlLib.SSBB.ResourceNodes.MDL0Node model);
+        void ValidateTarget(FighterProject project);
+    }
+    public sealed class NativeTargetExportReceipt
+    {
+        public string Provider,ResourceKey,Sha256;
+        public int Bytes,SampleTimes,NativeVertices,VerifiedVertexEquations;
+        public double MaximumLocalTranslation,MaximumLocalRotationDegrees,MaximumLocalScale,MaximumWorldPosition,MaximumSurfacePosition,ScaleReference;
+    }
+    public interface INativeTargetExportAdapter
+    {
+        string AnimationExportFilter {get;}
+        NativeTargetExportReceipt ExportAnimation(FighterProject project,BrawlLib.SSBB.ResourceNodes.MDL0Node target,BrawlLib.SSBB.ResourceNodes.CHR0Node clip,string destination,CancellationToken cancellation,Action validateCurrent);
     }
     public interface INativeSourceExportAdapter
     {
@@ -73,16 +90,28 @@ namespace BrawlCrate.Studio
                 finally{foreach(var disc in discs.Values)disc.Dispose();}
             }
         }
-        private sealed class MeleeSources:INativeGameSourceAdapter,INativeSourceExportAdapter
+        private sealed class MeleeSources:INativeGameSourceAdapter,INativeSourceExportAdapter,INativeEditableTargetAdapter,INativeTargetExportAdapter
         {
             public string[] Games=>new[]{"Melee"};
             public string[] ImageExtensions=>new[]{".iso",".gcm"};
             public string[] SourceProviders=>new[]{FighterPort.Adapters.Melee.MeleeSource.DiscProvider,FighterPort.Adapters.Melee.MeleeSource.FolderProvider};
             public string NativeProvider=>MeleeGameSource.NativeProvider;
-            public NativeGameOperation Operations=>NativeGameOperation.Inventory|NativeGameOperation.ModelRead|NativeGameOperation.MotionRead|NativeGameOperation.SourcePreview|NativeGameOperation.TextureRead|NativeGameOperation.OriginalSourceExport;
+            public NativeGameOperation Operations=>NativeGameOperation.Inventory|NativeGameOperation.ModelRead|NativeGameOperation.MotionRead|NativeGameOperation.SourcePreview|NativeGameOperation.TextureRead|NativeGameOperation.OriginalSourceExport|NativeGameOperation.TargetEdit;
             public void Validate(LibraryGameRequest r,LibraryCatalogue c,CancellationToken t)=>MeleeGameSource.Validate(r,c,t);
             public LibraryGamePlan Prepare(LibraryGameRequest r,LibraryCatalogue c,string s,CancellationToken t,Action<int,string> p)=>MeleeGameSource.Prepare(r,c,t,p);
             public void Verify(LibraryGamePlan p,CancellationToken t)=>MeleeGameSource.VerifyPlan(p,t);
+            public FighterProject PrepareTarget(LibrarySourceLease source,LibraryCatalogue catalogue,CancellationToken cancellation)=>MeleeTargetDocument.Prepare(source,catalogue,cancellation);
+            public BrawlLib.Modeling.INativeModelEditingBackend AttachTarget(FighterProject project,BrawlLib.SSBB.ResourceNodes.MDL0Node model)=>MeleeTargetDocument.Attach(project,model);
+            public void ValidateTarget(FighterProject project)=>MeleeTargetDocument.Validate(project);
+            public string AnimationExportFilter=>"Melee native action member (*.dat)|*.dat|Editable animation master (*.chr0)|*.chr0";
+            public NativeTargetExportReceipt ExportAnimation(FighterProject project,BrawlLib.SSBB.ResourceNodes.MDL0Node target,BrawlLib.SSBB.ResourceNodes.CHR0Node clip,string destination,CancellationToken cancellation,Action validateCurrent)
+            {
+                string dependencies=NativeTargetBinding.DependencyKey(project);
+                void Current(){validateCurrent();if(NativeTargetBinding.DependencyKey(project)!=dependencies)throw new InvalidOperationException("Native source, member or costume dependencies changed during export.");MeleeTargetDocument.Validate(project);}
+                Current();var candidate=MeleeTargetExport.Prepare(project,target,clip,cancellation,out var receipt);Current();
+                project.ProtectOutputPath(destination);
+                FighterPort.Adapters.Melee.MeleeNativeWriter.Publish(candidate,destination,new[]{project.NativeTarget.OriginModelPath,project.NativeTarget.OriginMotionPath}.Concat(project.NativeSources.Select(a=>a.WorkingPath)).Where(p=>p!=null),cancellation,Current);return receipt;
+            }
             public void ExportOriginal(LibraryCatalogue c,LibraryAnimation a,LibraryModel m,string d,CancellationToken t)=>MeleeGameSource.ExportOriginal(c,a,m,d,t);
         }
     }

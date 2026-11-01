@@ -1,4 +1,4 @@
-﻿using BrawlLib.Imaging;
+using BrawlLib.Imaging;
 using BrawlLib.Internal;
 using BrawlLib.Internal.IO;
 using BrawlLib.Internal.Windows.Controls.Model_Panel;
@@ -375,6 +375,7 @@ namespace BrawlLib.SSBB.ResourceNodes
         /// </summary>
         public Box GetBox()
         {
+            if(NativeEditingBackend!=null)return NativeEditingBackend.Bounds;
             if (_objList == null)
             {
                 return new Box();
@@ -3017,6 +3018,7 @@ namespace BrawlLib.SSBB.ResourceNodes
 
         public void Detach()
         {
+            NativeEditingBackend?.Dispose();
             _attached = false;
             foreach (MDL0GroupNode g in Children)
             {
@@ -3212,6 +3214,7 @@ namespace BrawlLib.SSBB.ResourceNodes
         public bool _dontUpdateMesh = false;
         private bool _bindFrame = true;
 
+        [Browsable(false)] public INativeModelEditingBackend NativeEditingBackend {get;set;}
         public void ApplyCHR(CHR0Node node, float index)
         {
             _bindFrame = node == null || index == 0;
@@ -3225,11 +3228,12 @@ namespace BrawlLib.SSBB.ResourceNodes
                 }
             }
 
-            WeightMeshes();
+            if(NativeEditingBackend!=null)NativeEditingBackend.Sample(this,node,index);else WeightMeshes();
         }
 
         public void WeightMeshes(ModelPanelViewport v = null)
         {
+            if(NativeEditingBackend!=null){NativeEditingBackend.UpdatePose(this);return;}
             //Multiply matrices
             if (_boneList != null)
             {
@@ -3254,6 +3258,13 @@ namespace BrawlLib.SSBB.ResourceNodes
             }
         }
 
+        // Native backends supply their matrices, then reuse the existing full
+        // vertex/normal weighting path without recalculating a different hierarchy.
+        public void UpdateMeshesFromCurrentMatrices()
+        {
+            foreach(var influence in _influences._influences)influence.CalcMatrix();
+            if(!_dontUpdateMesh&&_objList!=null)foreach(MDL0ObjectNode mesh in _objList)mesh.Weight();
+        }
         public void ApplySRT(SRT0Node node, float index)
         {
             //Transform textures
@@ -3633,6 +3644,7 @@ namespace BrawlLib.SSBB.ResourceNodes
         {
             get
             {
+                if(NativeEditingBackend!=null)return NativeEditingBackend.DrawCalls;
                 Populate();
                 return _objList == null
                     ? new List<DrawCallBase>()

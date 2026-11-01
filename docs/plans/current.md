@@ -1,5 +1,19 @@
 # Current milestone M2 — simpler native workspace
 
+Preview.68-native-target-srt qualifies the bounded Melee body-SRT stage, starting
+`36bbb2ce6a626b2936f6a8f3a43c614917387e97`. The source now owns native model/motion
+snapshots plus exact editable masters in the same full viewer, with existing Undo,
+project reopen, normal-only preview and verified action-member export. Future
+formats use the same adapter contracts. This is not full native model/tool parity;
+keep one incomplete G1/M2. Next implementation is
+native model editing/write mapping and the shared native rig/skin bridge before
+original Next/fitting/IK/contact/optimization can qualify. Do not relax those gates
+or use a display conversion as native rig evidence. Full archive/slot repacking,
+other builds/games and physical/human acceptance remain separate. See
+[bounded acceptance](../MELEE_TARGET_SRT_ACCEPTANCE_2026-11-02.md) and
+[actual code, tests, bounds and open stages](../MELEE_TARGET_PROGRESS.md).
+
+
 1 November: **preview.67-native-melee-source** qualifies the bounded read-only
 source/preview stage. Native Melee target editing/writing is the next OPEN stage;
 then original Next motion and independent asset conversion. Keep ONE G1/M2

@@ -1,4 +1,4 @@
-using HSDRaw;
+﻿using HSDRaw;
 using HSDRaw.Common;
 using HSDRaw.GX;
 using System;
@@ -38,6 +38,7 @@ namespace FighterPort.Adapters.Melee
         public POBJ_FLAG PolygonFlags;
         public bool NativeHidden,NativeEnvelope;
         public int OwnerJoint,SharedJoint=-1,DisplayObject;
+        public string AuthoringObject;
     }
     // Independent display/port projection; never replaces the original HSD graph.
     public static class MeleeProjection
@@ -59,8 +60,15 @@ namespace FighterPort.Adapters.Melee
         {
             var array=values.ToArray();return E("source",A("id",id),E("float_array",A("id",id+"-array"),A("count",array.Length),Join(array)),E("technique_common",E("accessor",A("source","#"+id+"-array"),A("count",array.Length/stride),A("stride",stride),names.Select(n=>E("param",A("name",n),A("type",stride==16?"float4x4":"float"))))));
         }
+        public static int DisplayObjectCount(MeleeNativeModel model)
+        {
+            int count=0;var seen=new HashSet<HSDStruct>();
+            foreach(var joint in MeleeNative.Joints(model.Root))for(var d=joint.Dobj;d!=null;d=d.Next)
+            {if(!seen.Add(d._s))throw new InvalidDataException("Cyclic or shared native DOBJ ownership requires review.");if(++count>4096)throw new InvalidDataException("Native DOBJ budget exceeded.");}
+            return count;
+        }
         public static MeleeProjectionReport Prepare(MeleeNativeModel native)=>Write(native,null,false);
-        public static MeleeProjectionReport Write(MeleeNativeModel native,string directory,bool writeInterchange=true)
+        public static MeleeProjectionReport Write(MeleeNativeModel native,string directory,bool writeInterchange=true,MeleePartVisibility normalDetail=null)
         {
             if(writeInterchange)Directory.CreateDirectory(directory);var report=new MeleeProjectionReport();
             report.Notices.Add("Native HSD source is retained. This independent MDL0 display uses diffuse textures; HSD material effects, visibility/material animation and runtime effects need separate qualification.");
@@ -89,6 +97,7 @@ namespace FighterPort.Adapters.Melee
                 {
                     if(!seenD.Add(d._s))throw new InvalidDataException("Cyclic display object list.");
                     int displayObject=report.DisplayObjects++;
+                    if(normalDetail!=null&&!normalDetail.IsNormalDetail(displayObject))continue;
                     var vertices=new List<MeleeVertex>();var seenP=new HashSet<HSDStruct>();
                     for(var p=d.Pobj;p!=null;p=p.Next)
                     {
@@ -134,7 +143,7 @@ namespace FighterPort.Adapters.Melee
                             }
                         }
                         bool hidden=false;for(int ancestor=ji;ancestor>=0;ancestor=parents[ancestor])hidden|=(joints[ancestor].Flags&JOBJ_FLAG.HIDDEN)!=0;
-                        report.Meshes.Add(new MeleeMesh{Vertices=vertices.Skip(nativeFirst).ToArray(),Material=d.Mobj,ParentFlags=joints[ji].Flags,PolygonFlags=p.Flags,NativeHidden=hidden,NativeEnvelope=nativeEnvelope,OwnerJoint=ji,SharedJoint=sharedId,DisplayObject=displayObject});
+                        report.Meshes.Add(new MeleeMesh{Vertices=vertices.Skip(nativeFirst).ToArray(),Material=d.Mobj,ParentFlags=joints[ji].Flags,PolygonFlags=p.Flags,NativeHidden=hidden,NativeEnvelope=nativeEnvelope,OwnerJoint=ji,SharedJoint=sharedId,DisplayObject=displayObject,AuthoringObject="mesh"+meshIndex+"-node"});
                     }
                     if(vertices.Count==0)continue;
                     string id="mesh"+meshIndex++,mat=id+"-material",fx=id+"-effect",textureId=id+"-texture";HSD_TOBJ tex=null;

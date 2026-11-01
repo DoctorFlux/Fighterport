@@ -1,4 +1,4 @@
-using BrawlCrate.Studio;
+﻿using BrawlCrate.Studio;
 using System;
 using System.Linq;
 using System.Threading;
@@ -18,6 +18,7 @@ namespace BrawlCrate.UI
         private LibrarySourceState _libraryPreviewState;
         private bool LibraryPreviewReady=>LibrarySelection!=null&&_libraryPreviewState==LibrarySourceState.Available&&LibraryCostumeReady&&
             !_libraryReplacingTree&&_librarySearchTimer?.Enabled!=true&&!SimpleWorkspaceSourceNeedsRepair(LibrarySelection);
+        private bool LibraryCanOpenTarget=>LibraryPreviewReady&&(NativeGameAdapters.ForNative(LibrarySelection?.Motion.Provider)?.Operations.HasFlag(NativeGameOperation.TargetEdit)??false);
         private void LibraryBrowseSelectionChanged()
         {
             _libraryCharacterSelection=null;

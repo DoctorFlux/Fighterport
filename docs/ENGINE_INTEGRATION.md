@@ -1,5 +1,16 @@
 # Native Next integration
 
+The Melee target development adds format-neutral editable-target and export
+adapter interfaces around the existing full viewer/document/Undo. Native HSD
+sampling/rendering stays in the adapter backend; original native snapshots and
+exact authoring masters are separate project assets. Native member output is
+serialized/freshly decoded and checked against the current editable master.
+Shared rig/skin qualification remains gated: the existing original Next is not
+replaced and an MDL0 facade cannot stand in for HSD inheritance/envelopes. Future
+formats must implement and qualify those same boundaries. See
+[development evidence and remaining work](MELEE_TARGET_PROGRESS.md).
+
+
 The in-progress Melee adapter adds source-provider/capability registration and a
 prepared native-preview interface around the existing ModelPanel. HSD I/O/material
 rendering stay outside Core and preserve original Next and native document/Undo

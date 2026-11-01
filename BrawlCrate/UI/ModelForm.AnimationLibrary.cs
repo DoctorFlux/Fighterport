@@ -1,4 +1,4 @@
-using BrawlCrate.Studio;
+﻿using BrawlCrate.Studio;
 using BrawlCrate.Studio.Retargeting;
 using BrawlLib.Internal.Windows.Controls.Model_Panel;
 using BrawlLib.SSBB.ResourceNodes;
@@ -271,7 +271,7 @@ namespace BrawlCrate.UI
                 string.Equals(l.Path,indexed.Source.Path,StringComparison.OrdinalIgnoreCase)&&l.InventorySha256==indexed.Source.InventorySha256&&l.ContainerSha256==indexed.Source.ContainerSha256&&l.Provider==indexed.Source.Provider);
             OpenSavedGameLibrary(_library,savedSource);
             _fighterStatus.Text="Added "+indexed.Models.Select(m=>m.Character).Distinct().Count()+" characters · "+added+" native animation resources · "+indexed.Issues.Count+" source issues. Original game remains read-only.";
-            if(indexed.Issues.Count>0)MessageBox.Show(owner,string.Join(Environment.NewLine,indexed.Issues.Take(12)),"Source inventory issues",MessageBoxButtons.OK,MessageBoxIcon.Information);
+            if(indexed.Issues.Count>0)_fighterStatus.Text+=" See Saved games and paths → Source issues for the complete retained diagnostics.";
         }
         private LibraryImportPlan InventoryLibrarySource(LibraryRegistration request)
         {

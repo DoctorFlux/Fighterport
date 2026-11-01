@@ -1,4 +1,4 @@
-using FighterPort.Adapters.Melee;
+﻿using FighterPort.Adapters.Melee;
 using HSDRaw;
 using HSDRaw.Common;
 using HSDRaw.Common.Animation;
@@ -44,7 +44,31 @@ static class NativeCases
     }
     public static void Run(string output)
     {
-        Directory.CreateDirectory(output);var model=Model(5,false);var motion=Motion();var sampler=new MeleePlayback(model,motion);
+        Directory.CreateDirectory(output);
+        var nativeKeys=new[]{new MeleeCurveKey{Frame=0,Value=0,Incoming=1,Outgoing=1},new MeleeCurveKey{Frame=2,Value=2,Incoming=0,Outgoing=-1},new MeleeCurveKey{Frame=4,Value=0,Incoming=0}};
+        var preciseTrack=MeleeMotionWriter.Encode(6,nativeKeys);var precisePlayer=new FOBJ_Player{TrackType=preciseTrack.TrackType,Keys=preciseTrack.GetKeys()};
+        Check(Math.Abs(precisePlayer.GetValue(1)-1.25f)<.000001,"New native float writer preserves incoming Hermite slope: frozen midpoint 1.25");
+        Check(Math.Abs(precisePlayer.GetValue(3)-.75f)<.000001,"New native float writer preserves distinct outgoing slope: frozen midpoint 0.75");
+        Check(precisePlayer.GetValue(4)==0,"New native float writer preserves the actual terminal value");
+        Reject(()=>MeleeMotionWriter.Encode(6,new[]{new MeleeCurveKey{Frame=0},new MeleeCurveKey{Frame=1.5f}}),"Fractional FOBJ waits are rejected, never truncated");
+        var editedMotion=Motion();var motionCandidate=MeleeMotionWriter.Prepare(editedMotion,new[]{new MeleeCurveEdit{Joint=0,Axis=6,Keys=nativeKeys}},4);
+        string cancelledOutput=Path.Combine(output,"cancelled.dat");
+        using(var cancelled=new CancellationTokenSource())
+        {Reject(()=>MeleeNativeWriter.Publish(motionCandidate,cancelledOutput,new string[0],cancelled.Token,()=>cancelled.Cancel()),"Cancellation immediately before native publication commits no output");Check(!File.Exists(cancelledOutput),"Cancelled native publication leaves no destination");}
+        string appeared=Path.Combine(output,"appeared.dat");byte[] sentinel={9,8,7};
+        Reject(()=>MeleeNativeWriter.Publish(motionCandidate,appeared,new string[0],default,()=>File.WriteAllBytes(appeared,sentinel)),"A destination appearing before native rename rejects publication");
+        Check(File.ReadAllBytes(appeared).SequenceEqual(sentinel),"Failed native publication preserves the existing destination bytes");
+        string stale=Path.Combine(output,"stale.dat");Reject(()=>MeleeNativeWriter.Publish(motionCandidate,stale,new string[0],default,()=>throw new InvalidDataException("stale fixture")),"Changed native export dependencies reject the final commit");
+        Check(!File.Exists(stale)&&!Directory.GetFiles(output,"*.candidate").Any(),"Rejected native candidates leave no destination or temporary file");
+        var decodedMotion=MeleeNative.ReadMembers(motionCandidate.CopyBytes()).SelectMany(MeleeNative.Motions).Single();
+        var decodedPlayer=new MeleePlayback(Model(5,false),decodedMotion);
+        Check(Math.Abs(decodedPlayer.Sample(0,1)[6]-1.25f)<.000001&&Math.Abs(decodedPlayer.Sample(0,3)[6]-.75f)<.000001,"Edited native action is evaluated after complete fresh DAT serialization");
+        Check(decodedPlayer.Sample(0,4)[4]==720,"Editing translation leaves the authored full-turn rotation unchanged");
+        var extended=MeleeMotionWriter.Prepare(editedMotion,new[]{new MeleeCurveEdit{Joint=3,Axis=6,Keys=new[]{new MeleeCurveKey{Frame=0,Value=9,Incoming=1,Outgoing=1},new MeleeCurveKey{Frame=4,Value=13,Incoming=1,Outgoing=1}}}},4,default,6);
+        var extendedMotion=MeleeNative.ReadMembers(extended.CopyBytes()).SelectMany(MeleeNative.Motions).Single();
+        Check(new MeleePlayback(Model(5,false),extendedMotion).Sample(3,2)[6]==11,"Explicit native model membership allows animation of an existing previously unanimated helper row");
+        Reject(()=>MeleeMotionWriter.Prepare(editedMotion,new[]{new MeleeCurveEdit{Joint=6,Axis=6,Keys=nativeKeys}},4,default,6),"Native writing never invents a bone outside the explicit target model");
+        var model=Model(5,false);var motion=Motion();var sampler=new MeleePlayback(model,motion);
         Check(sampler.JointCount==6,"Native hierarchy retains unweighted helper joints");
         var scaleRig=Model(2,false);var parent=scaleRig.Root;var child=parent.Child;parent.SX=2;parent.SY=3;parent.SZ=4;parent.Flags&=~JOBJ_FLAG.CLASSICAL_SCALING;
         child.TX=1;child.TY=2;child.TZ=3;child.RZ=(float)(Math.PI/2);
@@ -68,6 +92,10 @@ static class NativeCases
         Check(Math.Abs(point.Y-3)<.00001&&(animatedScaleRig.Root.Flags&JOBJ_FLAG.CLASSICAL_SCALING)==0,"Figatree type overrides animated-joint scale behavior without mutating original native flags");
         animatedScalePose.Sample(null,-1);point=System.Numerics.Vector3.Transform(System.Numerics.Vector3.UnitX,animatedScalePose.World[1]);
         Check(Math.Abs(point.Y-2)<.00001,"Bind display restores original native scale semantics after an animation override");
+        var authoredValues=Enumerable.Range(0,animatedScalePlayer.JointCount).Select(i=>animatedScalePlayer.Sample(i,0)).ToArray();
+        var authoredClassical=Enumerable.Range(0,animatedScalePlayer.JointCount).Select(i=>animatedScalePlayer.UsesClassicalScale(i,(MeleeNative.Joints(animatedScaleRig.Root)[i].Flags&JOBJ_FLAG.CLASSICAL_SCALING)!=0)).ToArray();
+        var authoredPose=new MeleePose(animatedScaleRig);authoredPose.SampleAuthored(authoredValues,authoredClassical);animatedScalePose.Sample(animatedScalePlayer,0);
+        Check(authoredPose.World.SequenceEqual(animatedScalePose.World),"Editable native pose math matches native playback for every joint with unequal parent scales");
         var sharedMesh=new MeleeMesh{OwnerJoint=1,SharedJoint=2};rawVertex.MatrixIndex=0;
         point=System.Numerics.Vector3.Transform(rawVertex.NativePosition,envelopePose.VertexMatrix(sharedMesh,rawVertex));
         Check(Math.Abs(point.X-11)<.000001,"Shared display-list matrix zero uses owner joint directly");
@@ -79,6 +107,7 @@ static class NativeCases
         var visibilityTables=new SBM_PlayerModelLookupTables{CostumeVisibilityLookups=new HSDArrayAccessor<SBM_CostumeLookupTable>{Array=new[]{new SBM_CostumeLookupTable{HighPoly=new HSDArrayAccessor<SBM_LookupTable>{Array=new[]{highGroup}},LowPoly=new HSDArrayAccessor<SBM_LookupTable>{Array=new[]{lowGroup}}}}}};
         visibilityTables._s.SetInt32(0,1);
         var visibility=MeleePartVisibility.Create(visibilityTables,4,"fixture", "procedural");
+        Check(visibility.IsNormalDetail(1)&&!visibility.IsNormalDetail(3),"Normal-detail membership permits shared high/low objects and excludes low-only geometry");
         Check(visibility.Snapshot().SequenceEqual(new[]{true,true,false,false}),"Selected high-detail parts restore shared DOBJ visibility after low-detail initialization");
         visibility.Select(0,1);Check(visibility.Snapshot().SequenceEqual(new[]{false,false,true,false}),"Native visibility variants hide alternate parts without deleting their source geometry");
         visibility.Select(0,-1);Check(!visibility.Snapshot().Any(v=>v),"Explicit hidden part group retains no alternate variant");
@@ -111,6 +140,12 @@ static class NativeCases
         Check(second.GraphSha256==candidate.GraphSha256,"Native export/reopen/re-export preserves its complete graph witness");
         string destinationHash=MeleeSource.Sha256(File.ReadAllBytes(exported));Reject(()=>MeleeNativeWriter.Publish(candidate,exported,new string[0]),"Native export refuses an existing destination without publication");
         Check(MeleeSource.Sha256(File.ReadAllBytes(exported))==destinationHash,"Failed native publication preserves the existing file");
+        byte[] sourceBefore=model.Member.CopyOriginalBytes();
+        var edited=MeleeNativeWriter.PrepareEditedSnapshot(model.Member,file=>((HSD_JOBJ)file.Roots[0].Data).Child.TX=3.25f);
+        var editedModel=MeleeNative.ReadMembers(edited.CopyBytes()).SelectMany(MeleeNative.Models).Single();
+        Check(editedModel.Root.Child.TX==3.25f,"Edited native joint data freshly reopens with the exact authored value");
+        Check(edited.CopyBytes().Zip(sourceBefore,(a,b)=>a==b).Count(same=>!same)<=4,"Same-layout native joint edit changes only its scalar bytes");
+        Check(model.Member.CopyOriginalBytes().SequenceEqual(sourceBefore),"Native edited writing never mutates the original resource");
         var invalid=model.Member.CopyOriginalBytes();invalid[3]^=1;Reject(()=>MeleeNative.ValidateDat(invalid),"DAT physical length mismatch is rejected");
         invalid=model.Member.CopyOriginalBytes();invalid[4]=0x7f;Reject(()=>MeleeNative.ValidateDat(invalid),"DAT out-of-range relocation table is rejected");
         Reject(()=>MeleeSource.ValidateVirtualPath("../Pl.dat"),"Parent-traversal source member is rejected");
@@ -130,6 +165,31 @@ static class NativeCases
         }
         Reject(()=>{using(var source=new MeleeSource(baseFolder,baseFolder)){}},"A mod cannot use itself as its base");
         using(var cancelled=new CancellationTokenSource()){cancelled.Cancel();Reject(()=>{using(var source=new MeleeSource(baseFolder,null,cancelled.Token)){}},"Cancelled source enumeration publishes no partial provider");}
+        var sameA=new MeleeVertex{MatrixIndex=0,NativePosition=System.Numerics.Vector3.One};sameA.Weights.Add(Tuple.Create(1,.25f));sameA.Weights.Add(Tuple.Create(2,.75f));
+        var sameB=new MeleeVertex{MatrixIndex=0,NativePosition=System.Numerics.Vector3.One};sameB.Weights.AddRange(sameA.Weights);
+        var distinct=new MeleeVertex{MatrixIndex=1,NativePosition=System.Numerics.Vector3.One};distinct.Weights.AddRange(sameA.Weights);
+        var witnessMesh=new MeleeMesh{OwnerJoint=0,Vertices=new[]{sameA,sameB,distinct}};
+        var witnesses=new MeleeSurfaceWitnesses(new[]{witnessMesh,new MeleeMesh{OwnerJoint=1,Vertices=new[]{sameA}}});
+        Check(witnesses.SourceVertices==4&&witnesses.EquationCount==3,"Surface verification shares exact duplicate positions only within the same native mesh and matrix slot");
+        sameB.Weights.Reverse();Reject(()=>new MeleeSurfaceWitnesses(new[]{witnessMesh}),"Surface witness sharing rejects changed ordered skin influences");
+        var policyRoot=Joint();var policyTail=policyRoot;for(int i=1;i<6;i++){policyTail.Child=Joint();policyTail=policyTail.Child;}
+        var policyFile=new HSDRawFile();policyFile.Roots.Add(new HSDRootNode{Name="PlyRenamed_Share_joint",Data=policyRoot});
+        var policyModel=MeleeNative.ReadMembers(Bytes(policyFile)).SelectMany(MeleeNative.Models).Single();
+        HSDRaw.Melee.SBM_BoneLookupTable Table(int body)
+        {
+            var table=new HSDRaw.Melee.SBM_BoneLookupTable();var attributes=new HSDAccessor();attributes._s.SetData(Enumerable.Repeat((byte)255,64).ToArray());table._s.SetReference(4,attributes);
+            table.Top=0;table.Trans=1;table.XRot=2;table.YRot=3;table.Hip=(byte)body;
+            // Native parts_num includes unnamed joints; accessor setters rebuild
+            // it from named roles, so restore the fixture's actual native count.
+            table.BoneCount=6;return table;
+        }
+        var commonRoles=new HSDRaw.Melee.SBM_ftLoadCommonData();commonRoles._s.SetData(new byte[0x5c]);
+        commonRoles.BoneTables=new HSDFixedLengthPointerArrayAccessor<HSDRaw.Melee.SBM_BoneLookupTable>{Array=new[]{Table(4)}};
+        var editPolicy=MeleeBoneEditPolicy.Create(policyModel,commonRoles);
+        Check(editPolicy.Available&&editPolicy.BodyJoint==4&&editPolicy.CanEdit(4)&&editPolicy.CanEdit(5),"Native semantic tables authorize existing body descendants without character or bone-name rules");
+        Check(editPolicy.ProtectedJoints.SequenceEqual(new[]{0,1,2,3})&&!editPolicy.CanEdit(0),"Native semantic authorization protects every original body ancestor");
+        commonRoles.BoneTables.Array=new[]{Table(4),Table(5)};Check(!MeleeBoneEditPolicy.Create(policyModel,commonRoles).Available,"Conflicting native semantic tables require review instead of guessing a body or root role");
+        Check(!MeleeBoneEditPolicy.Create(policyModel,null).Available,"Missing native semantic context never opens all bones for editing");
         foreach(int influences in new[]{5,9,17})
         {
             var weighted=Model(influences,true);var projection=MeleeProjection.Write(weighted,Path.Combine(output,"weights-"+influences));

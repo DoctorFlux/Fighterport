@@ -1,5 +1,17 @@
 # Fighterport
 
+2 November — preview.68-native-target-srt qualifies the bounded Melee animation
+editing slice from `36bbb2ce6a626b2936f6a8f3a43c614917387e97`, while full model/tool
+parity remains IN PROGRESS. Shared target/export/opaque-snapshot contracts support
+later adapters; actual body transform fields, native Undo/project reopen and
+verified Figatree member writing have background evidence. Native model editing,
+shared Next/IK/fitting/contact/optimization rig math and full game-file repacking
+are still unqualified. Never substitute the MDL0 facade for authentic HSD skin/
+scale semantics. See [bounded acceptance](docs/MELEE_TARGET_SRT_ACCEPTANCE_2026-11-02.md)
+and [implementation/evidence/open work](docs/MELEE_TARGET_PROGRESS.md).
+ONE G1/M2 remains incomplete; .66 and prior gates remain queued/open.
+
+
 1 November: **preview.67-native-melee-source** qualifies bounded read-only native
 Melee source/library/preview and unchanged model/action-file export from
 `c8a24af492fedfe2e1641c23ccefa8b5aaf06fcb`. Preserve authored HSD envelopes, native

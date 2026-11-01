@@ -304,6 +304,7 @@ namespace BrawlCrate.UI
 
         private void ShowAnimationOptimization()
         {
+            (modelEditControl1.TargetModel as MDL0Node)?.NativeEditingBackend?.ValidateSharedRigEvaluation();
             var editor=modelEditControl1;
             var model=editor.TargetModel as MDL0Node??throw new InvalidOperationException("Open a native target model first.");
             RequireSavedAnimationExportTarget(model);

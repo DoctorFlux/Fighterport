@@ -10,6 +10,7 @@ namespace FighterPort.Adapters.Melee
     // No executable code is run, and no character, offset or revision table is embedded.
     public static class MeleeCostumeBinding
     {
+        public static int FindIndexByJoint(byte[] dol,string joint,string canonicalActor,int costumeCount,CancellationToken cancellation=default)=>FindIndex(dol,null,joint,canonicalActor,costumeCount,cancellation);
         private sealed class Section {internal uint Address;internal int Offset,Size;}
         public static int FindIndex(byte[] dol,string file,string joint,string canonicalActor,int costumeCount,CancellationToken cancellation=default)
         {
@@ -41,7 +42,7 @@ namespace FighterPort.Adapters.Melee
             foreach(var section in sections)for(int offset=section.Offset;offset<=section.Offset+section.Size-12;offset+=4)
             {
                 if((offset&4095)==0)cancellation.ThrowIfCancellationRequested();
-                var record=Record(offset);if(record==null||!string.Equals(record.Item1,file,StringComparison.OrdinalIgnoreCase)||record.Item2!=joint)continue;
+                var record=Record(offset);if(record==null||file!=null&&!string.Equals(record.Item1,file,StringComparison.OrdinalIgnoreCase)||record.Item2!=joint)continue;
                 int first=offset,index=0;
                 while(index<costumeCount-1&&first-12>=section.Offset)
                 {

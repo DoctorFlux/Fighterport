@@ -1,4 +1,4 @@
-using FighterPort.Adapters.Melee;
+﻿using FighterPort.Adapters.Melee;
 using BrawlCrate.Studio.Retargeting;
 using BrawlLib.Internal;
 using BrawlLib.Modeling;
@@ -15,9 +15,9 @@ namespace BrawlCrate.Studio
         private static readonly object ImportGate=new object();
         private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<MDL0Node,MeleeProjectionReport> Reports=new System.Runtime.CompilerServices.ConditionalWeakTable<MDL0Node,MeleeProjectionReport>();
         internal static MeleeProjectionReport Report(MDL0Node model)=>Reports.GetValue(model,m=>throw new InvalidOperationException("Missing immutable HSD geometry preparation."));
-        internal static MDL0Node Project(MeleeNativeModel source,NativeSourceScratch scratch,out string notice)
+        internal static MDL0Node Project(MeleeNativeModel source,NativeSourceScratch scratch,out string notice,MeleePartVisibility normalDetail=null)
         {
-            var report=MeleeProjection.Write(source,scratch.DirectoryPath);notice=string.Join(" ",report.Notices.Distinct());
+            var report=MeleeProjection.Write(source,scratch.DirectoryPath,true,normalDetail);notice=string.Join(" ",report.Notices.Distinct());
             lock(ImportGate)
             {
                 var previous=Collada._importOptions;
@@ -28,12 +28,15 @@ namespace BrawlCrate.Studio
                     {
                         var result=importer.ImportModel(report.ColladaPath,Collada.ImportType.MDL0,false) as MDL0Node;
                         if(result==null)throw new InvalidDataException("Melee display projection failed: "+Collada.Error);
-                        result.Name=source.Symbol;var original=MeleeNative.Joints(source.Root);var bones=result.AllBones.ToArray();
+                        result.Children.ToArray();result.BoneGroup?.Children.ToArray();
+                        result.Name=source.Symbol;var original=MeleeNative.Joints(source.Root);string rigHash=MeleeNative.RigHash(source);var bones=result.AllBones.ToArray();
                         if(original.Length!=bones.Length||bones.Where((b,i)=>b.Name!=MeleeProjection.JointName(i)).Any())
                         {result.Dispose();throw new InvalidDataException("Display projection changed the native joint identity/order.");}
                         for(int i=0;i<bones.Length;i++)
                         {
                             var j=original[i];var b=bones[i].BindState;
+                            NativeJointIdentity.Stamp(bones[i],MeleeGameSource.NativeProvider,rigHash,i);
+                            bones[i].BindState=bones[i].FrameState=new FrameState(new Vector3(j.SX,j.SY,j.SZ),new Vector3(j.RX,j.RY,j.RZ)*(180f/(float)Math.PI),new Vector3(j.TX,j.TY,j.TZ));
                             if((b.Scale-new Vector3(j.SX,j.SY,j.SZ)).TrueDistance(new Vector3())>0.0001f||(b.Translate-new Vector3(j.TX,j.TY,j.TZ)).TrueDistance(new Vector3())>0.0001f)
                             {result.Dispose();throw new InvalidDataException("Display projection changed native bind transforms at joint "+i+"; scale "+b.Scale+" vs "+j.SX+","+j.SY+","+j.SZ+"; translation "+b.Translate+" vs "+j.TX+","+j.TY+","+j.TZ);}
                         }
@@ -45,6 +48,7 @@ namespace BrawlCrate.Studio
                         var reopened=NodeFactory.FromFile(null,nativePath) as MDL0Node;
                         if(reopened==null)throw new InvalidDataException("Native Melee display projection did not reopen.");
                         reopened.Children.ToArray();reopened.BoneGroup?.Children.ToArray();reopened.AllBones.ToArray();
+                        NativeJointIdentity.Bind(reopened,MeleeGameSource.NativeProvider,rigHash,original.Length);
                         Reports.Add(reopened,report);return reopened;
                     }
                 }
@@ -89,10 +93,12 @@ namespace BrawlCrate.Studio
                 lease.MeleeMotionMembers=MeleeNative.ReadMembers(motionBytes,cancellation).ToArray();
                 var motion=lease.MeleeMotionMembers.SelectMany(MeleeNative.Motions).Single(m=>m.Key==clip.ResourceKey&&m.Member.Sha256==clip.ResourceSha256);
                 lease.MeleePlayback=new MeleePlayback(lease.MeleeModel,motion);
-                lease.Model=MeleeLibraryPreview.Project(lease.MeleeModel,lease.Scratch,out lease.PreviewNotice);lease.ModelRoot=lease.Model;lease.ModelPath=lease.Scratch.DirectoryPath;lease.MeleeRenderer=new MeleeNativeRender(lease.Model,MeleeLibraryPreview.Report(lease.Model),lease.MeleeModel);lease.NativePreview=new MeleePreparedPreview(lease);
-                string partNotice;
-                lease.MeleeRenderer.Parts=MeleeGameSource.PrepareParts(data,clip,model,lease.MeleeModel,MeleeLibraryPreview.Report(lease.Model).DisplayObjects,lease.OriginLocks,cancellation,out partNotice);lease.MeleeRenderer.RefreshParts();
-                lease.PreviewNotice="Native HSD preview. "+partNotice+" Material/shape animation and gameplay visibility are not simulated.";
+                string partNotice;var parts=MeleeGameSource.PrepareParts(data,clip,model,lease.MeleeModel,MeleeProjection.DisplayObjectCount(lease.MeleeModel),lease.OriginLocks,cancellation,out partNotice);
+                if(parts==null)throw new InvalidDataException("Normal-detail model visibility could not be verified. No LOD or all-mesh fallback is used. "+partNotice);
+                lease.Model=MeleeLibraryPreview.Project(lease.MeleeModel,lease.Scratch,out lease.PreviewNotice,parts);lease.ModelRoot=lease.Model;lease.ModelPath=lease.Scratch.DirectoryPath;
+                lease.MeleeRenderer=new MeleeNativeRender(lease.Model,MeleeLibraryPreview.Report(lease.Model),lease.MeleeModel);lease.NativePreview=new MeleePreparedPreview(lease);
+                lease.MeleeRenderer.Parts=parts;lease.MeleeRenderer.RefreshParts();
+                lease.PreviewNotice="Normal-detail native HSD preview. "+partNotice+" Material/shape animation and gameplay visibility are not simulated.";
                 var placeholder=new CHR0Node{Name=clip.Name,FrameCount=clip.FrameCount,Loop=false};lease.PreviewAnimation=placeholder;lease.MotionRoot=placeholder;lease.PreviewBundle=new NW4RAnimationNode[0];
                 lease.Reference=new LibraryClipReference{ClipId=clip.Id,Revision=clip.Revision,ModelId=model.Id,Game="Melee",GameVersion=a.GameVersion,Platform="GameCube",BuildEvidence=a.BuildEvidence,Adapter=MeleeGameSource.NativeProvider,ModelMountId=a.Id,MotionMountId=b.Id,ModelKey=model.ResourceKey,MotionKey=clip.ResourceKey,ModelContainerSha256=a.ContainerSha256,MotionContainerSha256=b.ContainerSha256,ModelResourceSha256=model.ResourceSha256,MotionResourceSha256=clip.ResourceSha256,SourceRig=model.SkeletonSha256,RestInterpretation=model.RestInterpretation,AssociationEvidence=clip.AssociationEvidence,NativeVersion=1,FrameCount=clip.FrameCount,Loop=false,TicksPerSecond=60,TimebaseEvidence=clip.TimebaseEvidence,Channel=MeleeGameSource.Channel,GameSourceId=a.GameSourceId,SourceProvider=data.GameLocations.Single(l=>l.Id==a.GameSourceId).Provider,ModelVirtualPath=a.VirtualPath,MotionVirtualPath=b.VirtualPath};
                 cancellation.ThrowIfCancellationRequested();return lease;

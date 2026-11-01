@@ -1,5 +1,15 @@
 # Melee adapter — implementation and qualification
 
+Preview.68 qualifies bounded same-viewer owned animation masters,
+native Undo/project reopen and verified Figatree action-member output through
+shared future-format target/export interfaces. Full native model editing/writing,
+shared Next/IK/fitting/contact/optimization rig math and whole archive repacking
+are still open. Native snapshots remain opaque in shared project storage so later
+formats need no Melee extension assumptions. See
+[bounded acceptance](MELEE_TARGET_SRT_ACCEPTANCE_2026-11-02.md) and
+[implemented boundary and measured development evidence](MELEE_TARGET_PROGRESS.md).
+
+
 Starting Fighterport commit: `c8a24af492fedfe2e1641c23ccefa8b5aaf06fcb`.
 The active checkout/publication route remains DoctorFlux/Fighterport/main.
 Melee is the user-selected next source AND destination. This does not close G1/M2

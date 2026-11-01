@@ -1,4 +1,4 @@
-using BrawlLib.Internal;
+﻿using BrawlLib.Internal;
 using BrawlLib.Internal.Windows.Controls.Model_Panel;
 using BrawlLib.OpenGL;
 using BrawlLib.SSBB.ResourceNodes;
@@ -23,6 +23,7 @@ namespace BrawlCrate.Studio
     {
                 private readonly MeleePose nativePose;
         private readonly List<NativeDraw> draws=new List<NativeDraw>();
+        private readonly List<DrawCallBase> drawCalls=new List<DrawCallBase>();
         private readonly Dictionary<HSDStruct,Texture> textures=new Dictionary<HSDStruct,Texture>();
         private readonly Dictionary<string,int> locations=new Dictionary<string,int>();
         private int program;
@@ -32,7 +33,7 @@ namespace BrawlCrate.Studio
         private bool[] partVisibility;
         internal void RefreshParts(){partVisibility=Parts?.Snapshot();}
         public event EventHandler DrawCallsChanged {add{} remove{}}
-        public List<DrawCallBase> DrawCalls=>draws.Cast<DrawCallBase>().ToList();
+        public List<DrawCallBase> DrawCalls=>drawCalls;
         public bool IsRendering{get;set;}=true;
         public bool Attached=>attached;
         internal MeleeNativeRender(MDL0Node model,MeleeProjectionReport report,MeleeNativeModel nativeModel)
@@ -40,7 +41,8 @@ namespace BrawlCrate.Studio
             nativePose=new MeleePose(nativeModel);
             foreach(var mesh in report.Meshes)
             {
-                var native=new NativeDraw(this,mesh,draws.Count);draws.Add(native);
+                var obj=model.PolygonList.OfType<MDL0ObjectNode>().SingleOrDefault(o=>o.Name==mesh.AuthoringObject);
+                var native=new NativeDraw(this,mesh,draws.Count,obj);draws.Add(native);drawCalls.Add(native);
                 var seen=new HashSet<HSDStruct>();int count=0;
                 for(var tex=mesh.Material?.Textures;tex!=null;tex=tex.Next)
                 {
@@ -56,8 +58,10 @@ namespace BrawlCrate.Studio
         public void PreRender(ModelPanelViewport view){}
         public Box GetBox()
         {
-            var box=Box.ExpandableVolume;foreach(var draw in draws.Where(d=>!d.Mesh.NativeHidden&&(partVisibility==null||partVisibility[d.Mesh.DisplayObject])))foreach(var vertex in draw.Vertices)box.ExpandVolume(vertex.Position);return box;
+            var box=Box.ExpandableVolume;foreach(var draw in draws.Where(d=>d.Visible))foreach(var vertex in draw.Vertices)box.ExpandVolume(vertex.Position);return box;
         }
+        internal System.Numerics.Matrix4x4[] NativeWorld=>nativePose.World;
+        internal void UpdateAuthored(float[][] values,bool[] classical){nativePose.SampleAuthored(values,classical);foreach(var draw in draws)draw.UpdatePose();}
         internal void UpdatePose(MeleePlayback playback,float frame){nativePose.Sample(playback,frame);foreach(var draw in draws)draw.UpdatePose();}
         private sealed class Texture
         {
@@ -88,10 +92,12 @@ namespace BrawlCrate.Studio
             internal readonly MeleeMesh Mesh;
             internal readonly MeleeNativeRender Owner;
             internal readonly int Index;
+            private readonly MDL0ObjectNode authoringObject;
+            internal bool Visible=>!Mesh.NativeHidden&&(authoringObject?.IsRendering??true)&&(Owner.partVisibility==null||Owner.partVisibility[Mesh.DisplayObject]);
             private readonly SkinVertex[][] matrixGroups;
-            internal NativeDraw(MeleeNativeRender owner,MeleeMesh mesh,int index)
+            internal NativeDraw(MeleeNativeRender owner,MeleeMesh mesh,int index,MDL0ObjectNode obj)
             {
-                Owner=owner;Mesh=mesh;Index=index;Vertices=mesh.Vertices.Select(v=>new SkinVertex(v)).ToArray();
+                Owner=owner;Mesh=mesh;Index=index;authoringObject=obj;_render=true;Vertices=mesh.Vertices.Select(v=>new SkinVertex(v)).ToArray();
                 matrixGroups=Vertices.GroupBy(v=>v.Native.MatrixIndex).Select(g=>g.ToArray()).ToArray();
                 foreach(var group in matrixGroups)if(group.Any(v=>!v.Native.Weights.SequenceEqual(group[0].Native.Weights)))throw new InvalidDataException("Native vertex matrix slot has inconsistent envelope data.");
                 UpdatePose();
@@ -109,7 +115,7 @@ namespace BrawlCrate.Studio
             }
             public override int CompareTo(DrawCallBase other)
             {if(!(other is NativeDraw d))return 0;bool a=Mesh.Material?.RenderFlags.HasFlag(RENDER_MODE.XLU)??false,b=d.Mesh.Material?.RenderFlags.HasFlag(RENDER_MODE.XLU)??false;return a==b?Index.CompareTo(d.Index):a?1:-1;}
-            public override void Render(ModelPanelViewport view){if(Owner.IsRendering&&!Mesh.NativeHidden&&(Owner.partVisibility==null||Owner.partVisibility[Mesh.DisplayObject]))Owner.Draw(this,view);}
+            public override void Render(ModelPanelViewport view){if(Owner.IsRendering&&Visible)Owner.Draw(this,view);}
         }
         private int Location(string name){if(!locations.TryGetValue(name,out int value)){value=GL.GetUniformLocation(program,name);locations.Add(name,value);}return value;}
         private void I(string name,int value){int at=Location(name);if(at>=0)GL.Uniform1(at,value);}

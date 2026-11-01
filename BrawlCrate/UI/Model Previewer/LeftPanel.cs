@@ -1841,6 +1841,8 @@ namespace BrawlCrate.UI.Model_Previewer
                     break;
             }
 
+            string nativeFilter=_mainWindow.FighterNativeExportFilter?.Invoke(node);
+            if(nativeFilter!=null)dlgSave.Filter=nativeFilter;
             if (dlgSave.ShowDialog() == DialogResult.OK)
             {
                 if (_mainWindow.FighterNativeExportRequested != null)

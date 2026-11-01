@@ -921,6 +921,7 @@ namespace BrawlLib.Internal.Windows.Controls.ModelViewer.Editors
                 }
                 else
                 {
+                    (TargetModel as MDL0Node)?.NativeEditingBackend?.PrepareAnimationChannel(entry,index);
                     entry.SetKeyframe(index, CurrentFrame - 1, box.Value);
                 }
 

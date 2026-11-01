@@ -1,4 +1,4 @@
-using BrawlCrate.Studio;
+﻿using BrawlCrate.Studio;
 using BrawlCrate.Studio.Retargeting;
 using BrawlCrate.UI;
 using BrawlLib.Internal.Windows.Controls.Model_Panel;
@@ -29,9 +29,9 @@ internal static partial class Program
             await Task.Delay(40);
         }
     }
-    static async Task GameLibrarySelect(ModelForm form, string clipId)
+    static async Task GameLibrarySelect(ModelForm form, string clipId,string searchText="Wait1")
     {
-        var search = (TextBox)Field(form, "_librarySearch"); search.Text = "Wait1";
+        var search = (TextBox)Field(form, "_librarySearch"); search.Text = searchText;
         ((Timer)Field(form, "_librarySearchTimer")).Stop(); Call(form, "RefreshLibrary", clipId);
         var tree = (TreeView)Field(form, "_libraryList");
         await GameLibraryWait(() => !(bool)Field(form, "_libraryReplacingTree") &&

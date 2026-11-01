@@ -38,20 +38,31 @@ namespace FighterPort.Adapters.Melee
                 if(playback!=null)playback.SampleInto(i,frame,v);else{v[0]=j.SX;v[1]=j.SY;v[2]=j.SZ;v[3]=j.RX;v[4]=j.RY;v[5]=j.RZ;v[6]=j.TX;v[7]=j.TY;v[8]=j.TZ;}
                 int p=parents[i];bool parentScale=p>=0&&hasScale[p];Vector3 scale=new Vector3(v[0],v[1],v[2]);
                 bool classical=playback!=null&&frame>=0?playback.UsesClassicalScale(i,(j.Flags&JOBJ_FLAG.CLASSICAL_SCALING)!=0):(j.Flags&JOBJ_FLAG.CLASSICAL_SCALING)!=0;
-                hasScale[i]=!classical||parentScale;
-                cumulativeScale[i]=classical?(parentScale?cumulativeScale[p]:Vector3.One):scale*(parentScale?cumulativeScale[p]:Vector3.One);
-                var unsupported=JOBJ_FLAG.USE_QUATERNION|JOBJ_FLAG.USER_DEFINED_MTX|JOBJ_FLAG.INSTANCE;
-                if((j.Flags&unsupported)!=0)throw new NotSupportedException("Native HSD joint requires an unqualified matrix provider: "+(j.Flags&unsupported));
-                Matrix4x4 local=Matrix4x4.CreateScale(scale);
-                if(parentScale)local*=Matrix4x4.CreateScale(cumulativeScale[p]);
-                local*=Matrix4x4.CreateRotationX(v[3])*Matrix4x4.CreateRotationY(v[4])*Matrix4x4.CreateRotationZ(v[5]);
-                if(parentScale)
-                {
-                    var s=cumulativeScale[p];if(s.X==0||s.Y==0||s.Z==0)throw new NotSupportedException("Native inherited zero-scale compensation requires singular-matrix qualification.");
-                    local*=Matrix4x4.CreateScale(1/s.X,1/s.Y,1/s.Z);
-                }
-                local*=Matrix4x4.CreateTranslation(v[6],v[7],v[8]);World[i]=local*(p<0?Matrix4x4.Identity:World[p]);
+                Evaluate(i,v,classical);
             }
+        }
+        public void SampleAuthored(float[][] authored,bool[] classical)
+        {
+            if(authored==null||authored.Length!=joints.Length||classical==null||classical.Length!=joints.Length)throw new ArgumentException("Native authored pose does not match the owned rig.");
+            for(int i=0;i<joints.Length;i++)
+            {if(authored[i]==null||authored[i].Length<9)throw new ArgumentException("Incomplete native authored SRT.");foreach(float value in authored[i])MeleeNative.Finite(value);Evaluate(i,authored[i],classical[i]);}
+        }
+        private void Evaluate(int i,float[] v,bool classical)
+        {
+            var j=joints[i];int p=parents[i];bool parentScale=p>=0&&hasScale[p];Vector3 scale=new Vector3(v[0],v[1],v[2]);
+            hasScale[i]=!classical||parentScale;
+            cumulativeScale[i]=classical?(parentScale?cumulativeScale[p]:Vector3.One):scale*(parentScale?cumulativeScale[p]:Vector3.One);
+            var unsupported=JOBJ_FLAG.USE_QUATERNION|JOBJ_FLAG.USER_DEFINED_MTX|JOBJ_FLAG.INSTANCE;
+            if((j.Flags&unsupported)!=0)throw new NotSupportedException("Native HSD joint requires an unqualified matrix provider: "+(j.Flags&unsupported));
+            Matrix4x4 local=Matrix4x4.CreateScale(scale);
+            if(parentScale)local*=Matrix4x4.CreateScale(cumulativeScale[p]);
+            local*=Matrix4x4.CreateRotationX(v[3])*Matrix4x4.CreateRotationY(v[4])*Matrix4x4.CreateRotationZ(v[5]);
+            if(parentScale)
+            {
+                var s=cumulativeScale[p];if(s.X==0||s.Y==0||s.Z==0)throw new NotSupportedException("Native inherited zero-scale compensation requires singular-matrix qualification.");
+                local*=Matrix4x4.CreateScale(1/s.X,1/s.Y,1/s.Z);
+            }
+            local*=Matrix4x4.CreateTranslation(v[6],v[7],v[8]);World[i]=local*(p<0?Matrix4x4.Identity:World[p]);
         }
         public Matrix4x4 VertexMatrix(MeleeMesh mesh,MeleeVertex vertex)
         {

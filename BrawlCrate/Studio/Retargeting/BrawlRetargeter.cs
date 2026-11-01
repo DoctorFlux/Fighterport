@@ -219,6 +219,7 @@ namespace BrawlCrate.Studio.Retargeting
         {
             Interlocked.Increment(ref _diagnosticCaptures);
             if(model==null)throw new InvalidDataException("Choose a loaded native model before creating a contact rig.");
+            model.NativeEditingBackend?.ValidateSharedRigEvaluation();
             Walk(model).ToList();
             MDL0BoneNode[] bones=model.AllBones.ToArray();
             var names=bones.Select((b,i)=>new{b.Name,Index=i}).ToDictionary(p=>p.Name,p=>p.Index,StringComparer.Ordinal);
