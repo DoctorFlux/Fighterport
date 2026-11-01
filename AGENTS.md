@@ -1,5 +1,15 @@
 # Fighterport
 
+1 November: **preview.65.6-pole-continuation** fixes between-sample Euler-pole
+guide crossings from `65240305420e7bb825874b1a9ed2172585db55a6`. The generic
+guide now checks any 90+180k pitch crossing before it can introduce an artificial
+180-degree family jump. No reference/solver changes, identity exceptions,
+relaxed limits, root edits or bind/weight changes. Both actual source-key Use
+paths, native/project reopen and the new procedural old-failing counterexample
+pass. All 24 attack cases pass, with 23 prior passing outputs byte-identical;
+the bounded .65.6 slice qualifies. The ONE G1/M2 stays incomplete; .66 is queued. See
+[acceptance and final corpus evidence](docs/POLE_CONTINUATION_ACCEPTANCE_2026-11-01.md).
+
 1 November: the unchanged preview.65.5 forward-tilt/all-five-aerial corpus
 passes 23/24 Peach/Fox and Link/Samus directional cases. Fox → Peach tilt
 retains a fractional native rotation rejection; never substitute a partial

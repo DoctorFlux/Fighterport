@@ -1,5 +1,17 @@
 # Fighterport master plan
 
+1 November — preview.65.6 addresses the generic between-sample Euler-pole guide
+failure in the same ONE incomplete G1/M2. Existing physical guide checks now
+also cover intervals spanning any pitch pole, retaining the same solved motion,
+original anchors/full turns, source-owned roots, binds, all weights and quality/
+work gates. New independent old-failing procedural fixtures and both actual
+source-key Use/native/project reopen paths pass. No character/action exceptions.
+All 24 attack cases pass, with the 23 previous passing outputs byte-identical;
+preview.65.6 qualifies its bounded slice.
+Broader universal/contact/style/game acceptance remains open; preview.66 ledges
+stays queued. See [current plan](plans/current.md) and
+[qualification](POLE_CONTINUATION_ACCEPTANCE_2026-11-01.md).
+
 1 November — unchanged preview.65.5 passes 23/24 neutral-forward-tilt/all-five-
 aerial transfers across Peach ↔ Fox and Link ↔ Samus. Test-only corpus preserves
 roots, all weights/binds and originals; Fox → Peach tilt retains an upstream

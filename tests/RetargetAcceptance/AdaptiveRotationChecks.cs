@@ -93,19 +93,24 @@ internal static partial class Program
                 Check(stopped && RootIdentity() == original, "Adaptive master cancellation preserves the exact native source control");
             }
         }
-        foreach (int pathCase in new[] { 0, 1, 2 })
+        foreach (int pathCase in new[] { 0, 1, 2, 3, 4, 5, 6 })
         {
             bool fullTurns=pathCase==1;
             Vector3 TrueEuler(float time)
             {
                 if (fullTurns) return new Vector3(0, 0, 720 * time);
-                double width=pathCase==2?.00005:.01;
-                double offset=time-(pathCase==2?.822447:.5),radius=Math.Sqrt(offset*offset+width*width);
+                double width=pathCase==2?.00005:pathCase>=3?.0039:.01;
+                double offset=time-(pathCase==2?.822447:pathCase>=3?.0884:.5),radius=Math.Sqrt(offset*offset+width*width);
                 float x=(float)(Math.Atan2(width,offset)*180/Math.PI);
-                return new Vector3(x,(float)(-90+radius*(pathCase==2?.4:20)),-x);
+                var value=new Vector3(x,(float)(-90+radius*(pathCase==2?.4:pathCase>=3?200:20)),-x);
+                if(pathCase==4||pathCase==6)value=new Vector3(value.X,-value.Y,-value.Z);
+                if(pathCase>=5)value+=new Vector3(-360,pathCase==5?720:-720,360);
+                return value;
             }
             var beginning = TrueEuler(0); var ending = TrueEuler(1);
-            var aliasedEnd = new Vector3(ending.X + 180, -180 - ending.Y, ending.Z - 180);
+            float pole=pathCase==4||pathCase==6?90:-90;
+            if(pathCase==5)pole+=720;if(pathCase==6)pole-=720;
+            var aliasedEnd = new Vector3(ending.X + 180, 2*pole - ending.Y, ending.Z + (pathCase==4||pathCase==6?180:-180));
             AdaptiveRotationPose Solved(float time)
             {
                 var exact = TrueEuler(time);
@@ -115,11 +120,12 @@ internal static partial class Program
             }
             var continuous = AdaptiveRotationCurveBaker.Bake(new[] { -1 }, new[] { true }, 1, Solved,
                 (bone, time) => Quaternion.Identity, CancellationToken.None, generatedEulerContinuation: true);
-            Check(continuous.Converged && !continuous.WorkLimitReached && (pathCase==2 || (fullTurns ? continuous.IntegerEulerRebranches == 0 : continuous.IntegerEulerRebranches == 1)),
+            Check(continuous.Converged && !continuous.WorkLimitReached && (pathCase>=2 || (fullTurns ? continuous.IntegerEulerRebranches == 0 : continuous.IntegerEulerRebranches == 1)),
+                pathCase>=3 ? "A between-sample pole crossing is refined before nearest-family extraction can introduce an artificial 180-degree jump at either pole or shifted turn chart" :
                 pathCase==2 ? "Off-midpoint near-pole motion retains its independent orientation reference without an imposed Euler-family change" :
                 fullTurns ? "Generated Euler continuation retains an intentional 720-degree body path and its original integer coefficients" :
                 "Generated Euler continuation follows a smooth near-pole excursion instead of the aliased guide's opposite integer family",
-                new { continuous.Work, continuous.SampleCount, continuous.IntegerEulerRebranches, continuous.MaximumOrientationDegrees });
+                new { pathCase,continuous.Work, continuous.SampleCount, continuous.IntegerEulerRebranches, continuous.MaximumOrientationDegrees });
             using (var encoded = new CHR0Node { Name = "Independent continuous generated body", Version = 4, FrameCount = 2 })
             {
                 var entry = encoded.CreateEntry("Anonymous existing body"); entry.Keyframes.PreserveInterpolation = true;
@@ -132,7 +138,7 @@ internal static partial class Program
                         entry.SetKeyframe(ch + 3, key.Time, Value(key.Value), true, true)._tangent = Value(key.OutgoingSlope);
                 }
                 double maximum = 0;
-                foreach(float time in Enumerable.Range(0,4097).Select(i=>i/4096f).Concat(new[]{.8224468f,.822447f,.8224478f,.137f,.371f,.623f}))
+                foreach(float time in Enumerable.Range(0,4097).Select(i=>i/4096f).Concat(new[]{.8224468f,.822447f,.8224478f,.088399f,.0884f,.088401f,.137f,.371f,.623f}))
                 {
                     var actual = BrawlRetargeter.Rotation(new BrawlLib.Internal.Vector3(entry.GetFrameValue(3, time), entry.GetFrameValue(4, time), entry.GetFrameValue(5, time)));
                     maximum = Math.Max(maximum, SpanAngle(actual, Solved(time).WorldRotations[0]));

@@ -1,5 +1,35 @@
 ﻿# Current milestone M2 — simpler native workspace
 
+1 November — **preview.65.6 between-sample pole continuation**, starting
+`65240305420e7bb825874b1a9ed2172585db55a6`. The generated native Euler guide
+also checks pole crossings between conditioning samples. Its existing physical
+quarter-guide checks/refinement now catch a hidden opposite-family bridge;
+the solved trajectory, original eighth-frame anchors and full turns remain.
+No character/action/name/hash/index rule, solver replacement, root rewrite,
+bind/weight change or relaxed depth/work/quality gate. Original Next, complete
+viewer, native Undo and exact saving remain intact.
+
+The original Fox → Peach tilt rejection reproduces at 0.59494°; the corrected
+master's maximum sampled orientation is 0.01554607° versus unchanged 0.025°.
+A procedural counterexample fails the old guide at 0.78071° and passes the new
+one at both poles/shifted turn charts. 2,021 native assertions include both actual
+source-key Use paths, native/project Save/reopen and owner/selection protections.
+The fresh orthographic side GIF has all 73 frames inspected; eight actual UI PNGs
+and a full-size action PNG are inspected. The optional support-proposal warning
+is preserved; sampled contact passes do not invent reviewed context. See
+[final corpus, measurements and acceptance](../POLE_CONTINUATION_ACCEPTANCE_2026-11-01.md).
+
+Final corpus: **24/24 pass**, 48 dense/default native/contact oracles and 12,960
+default witness times. All 23 prior passing outputs remain byte-identical;
+the formerly rejected tilt is newly successful. Four additional fixed/actual-Use
+oracles pass. **Preview.65.6 qualifies its bounded slice**; local qualified
+package and launcher: `Fighterport-rotation656/native1`.
+
+Keep the ONE G1/M2 incomplete and preview.66 finite static ledges queued. Broader
+anatomy/style/contact/clearance, other costumes, moving supports, runtime/editor,
+physical input/DPI/human, Melee and game acceptance remain open. Promote only
+the final verified .65.6 source/local package, retaining historical failures.
+
 1 November — **test-only forward-tilt/aerial corpus**, starting
 `64eea3dfafc866f101b3bbdd098aa345cbffdebd`. Unchanged preview.65.5 passes
 23/24 exact native members across Peach ↔ Fox and Link ↔ Samus: neutral forward

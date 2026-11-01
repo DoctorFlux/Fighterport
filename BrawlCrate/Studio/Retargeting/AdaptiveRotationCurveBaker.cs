@@ -440,7 +440,13 @@ namespace BrawlCrate.Studio.Retargeting
                 // nearest-family extraction switches at an arbitrary time.
                 // Check the physical orientation of both half-span guides;
                 // refine the guide without changing the solved reference.
-                bool illConditioned = new[] {previous,mid,through}.Any(v=>Math.Abs(Math.Cos(v.Y*Math.PI/180))<.05);
+                bool CrossesPole(float a,float b)=>Math.Ceiling((Math.Min((double)a,b)-90)/180)<=Math.Floor((Math.Max((double)a,b)-90)/180);
+                // Endpoint/midpoint conditioning alone misses a pole between
+                // them. A guide can then bridge opposite Euler families while
+                // the actual orientation skirts the pole; nearest-family
+                // extraction switches by 180 degrees inside that bridge.
+                bool illConditioned = new[] {previous,mid,through}.Any(v=>Math.Abs(Math.Cos(v.Y*Math.PI/180))<.05)||
+                    CrossesPole(previous.Y,mid.Y)||CrossesPole(mid.Y,through.Y);
                 bool guideFailure=false;
                 if(illConditioned)
                 {

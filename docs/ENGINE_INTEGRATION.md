@@ -1,5 +1,16 @@
 ﻿# Native Next integration
 
+Preview.65.6 extends the offline `TraceContinuation` conditioning decision to
+pitch intervals spanning any `90 + 180k` pole. A smooth physical trajectory can
+skirt a pole between guide samples that all lie outside the previous near-pole
+cone; interpolating their opposite Euler families then makes nearest-family
+extraction jump artificially. Existing physical quarter-guide checks and bounded
+refinement now run for those intervals too. The reference trajectory, solved
+anchors, Euler/winding convention, native evaluator/codec, quality/work limits,
+root ownership, all weights/binds, playback, viewer and document/Undo remain.
+No character/action rules or imported-curve rewrite. See
+[counterexample and qualification](POLE_CONTINUATION_ACCEPTANCE_2026-11-01.md).
+
 The 1 November test-only `--retarget-case` boundary seals exact native fixtures,
 calls unchanged production Bake/default source-channel preparation, freshly
 reopens both exports and fingerprints original model/clip ownership including
