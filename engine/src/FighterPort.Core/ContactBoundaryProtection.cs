@@ -10,7 +10,8 @@ public static class ContactBoundaryProtection
     public static string[] ResolveExitRecovery(FighterProject project,AnimationClip clip,BoundaryFitSettings settings,
         ControlRigSetup? controls,ISet<string> protectedMotion,string[] contactBones,int join,int? entryJoin=null)
     {
-        if(!settings.ExitContactRecovery&&!settings.BoundaryContactRecovery)return [];
+        bool recovery=settings.ExitContactRecovery||settings.BoundaryContactRecovery;
+        if(!recovery&&settings.FloorSettings is null)return [];
         var scene=project.Scene;string fingerprint=AnimationControls.Fingerprint(scene);
         int body=controls is null?-1:AnimationControls.ResolveBodyBone(scene,controls);
         var legs=controls?.Chains.Where(c=>c.Role is "Foot.L" or "Foot.R").ToArray()??[];
@@ -23,7 +24,7 @@ public static class ContactBoundaryProtection
             PoseGeometry.Ancestor(scene,body,i)&&PoseGeometry.Ancestor(scene,i,c.Root))).Select(i=>scene.Bones[i].Name).ToHashSet(StringComparer.Ordinal);
         if(settings.MatchReferenceControls)eligible.UnionWith(BoundaryReferenceControls.Resolve(scene,controls));
         var released=contactBones.Where(name=>!protectedMotion.Contains(name)).ToArray();
-        if(released.Length==0)throw new InvalidDataException("No reviewed body/leg contact dependency path is available for boundary recovery.");
+        if(recovery&&released.Length==0)throw new InvalidDataException("No reviewed body/leg contact dependency path is available for boundary recovery.");
         if(released.Any(name=>!eligible.Contains(name)))throw new NotSupportedException("Boundary contact recovery is bounded to reviewed hip/leg dependency paths. Hand, surface or other support paths require a separate recovery adapter.");
         if(released.Any(name=>!settings.Bones.Contains(name,StringComparer.Ordinal)))throw new InvalidDataException("Boundary contact recovery requires the complete reviewed contact dependency mask, excluding protected motion controls.");
         var edited=settings.Bones.Where(name=>!protectedMotion.Contains(name)).Select(name=>Array.FindIndex(scene.Bones,b=>b.Name==name)).ToArray();
@@ -35,7 +36,7 @@ public static class ContactBoundaryProtection
             double end=frame.EndFrame??frame.Frame;
             if(!double.IsFinite(frame.Frame)||!double.IsFinite(end)||frame.Frame<0||end<frame.Frame||end>clip.LastSampleFrame)
                 throw new InvalidDataException("An authored contact interval is invalid; it cannot authorize recovery.");
-            if((settings.BoundaryContactRecovery?(entryJoin.HasValue&&frame.Frame<entryJoin.Value||settings.ExitSamples>0&&end>join):end>join)&&frame.Pins.Any(pin=>Affected(pin.Bone)))throw new NotSupportedException("A fixed/soft contact interval intersects the boundary recovery window. Its anchor and interval remain unchanged.");
+            if((settings.BoundaryContactRecovery||!recovery?(entryJoin.HasValue&&frame.Frame<entryJoin.Value||settings.ExitSamples>0&&end>join):end>join)&&frame.Pins.Any(pin=>Affected(pin.Bone)))throw new NotSupportedException("A fixed/soft contact interval intersects the boundary recovery window. Its anchor and interval remain unchanged.");
         }
         foreach(var pin in project.BonePins??[])
             if(pin.Clip is null||pin.Clip==clip.Id)

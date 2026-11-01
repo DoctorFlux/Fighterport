@@ -19,11 +19,12 @@ internal static partial class Program
         var editor=form.FighterEditor;var model=(MDL0Node)editor.TargetModel;
         var json=new JavaScriptSerializer{MaxJsonLength=32*1024*1024,RecursionLimit=100};
         string motionHash=FighterProject.HashFile(targetMotion),modelHash=(string)Call(form,"NativeControlHash",model,".mdl0");
-        string expectedReference=null;
+        string expectedReference=null;double? reviewedFloor=null;
         if(referenceFixture!=null)
         {
             Check(new FileInfo(referenceFixture).Length<=16384,"Reference fixture is bounded before reading");
             var pin=json.Deserialize<AuthenticFloatDenseFixture>(File.ReadAllText(referenceFixture));
+            reviewedFloor=pin.FittingFloorHeight;
             Check(pin.Schema=="fighterport-authentic-export-fixture-1"&&string.Equals(pin.SourceClipSha256,motionHash,StringComparison.OrdinalIgnoreCase)&&pin.SourceClipName==referenceName&&
                 string.Equals(pin.SourceRigFingerprint,BrawlRetargeter.SkeletonFingerprint(model),StringComparison.OrdinalIgnoreCase),"Target reference is pinned to this exact target rig, native motion file and selected reference identity");
             string Member(ResourceNode n)=>n.Parent==null?"root":Member(n.Parent)+"/"+n.Index;
@@ -64,6 +65,12 @@ internal static partial class Program
                     SimpleControl<CheckBox>(window,"transition_matchReferenceControls").Checked=true;
                     SimpleControl<CheckBox>(window,"transition_binding").Checked=true;
                     SimpleControl<CheckBox>(window,"transition_existingTracksOnly").Checked=false;
+                    if(reviewedFloor.HasValue)
+                    {
+                        SimpleControl<CheckBox>(window,"transition_preventFootDipping").Checked=true;
+                        SimpleControl<NumericUpDown>(window,"transition_floorHeight").Value=(decimal)reviewedFloor.Value;
+                        SimpleControl<CheckBox>(window,"transition_floorReviewed").Checked=true;
+                    }
                     await (Task)Call(window,"PrepareFit");
                     string report=SimpleControl<TextBox>(window,"transitionReport").Text;
                     File.WriteAllText(Path.Combine(output,"fit-report.txt"),report);File.WriteAllText(Path.Combine(output,"fit-options.json"),json.Serialize(window.ReadOptions()));
@@ -75,6 +82,12 @@ internal static partial class Program
                     Check(model.AllBones.All(b=>RecoverySamePose(RecoverySample(fitted,b,fitted.FrameCount-1),RecoverySample(travel.Contains(b.Name)?current:reference,b,travel.Contains(b.Name)?current.FrameCount-1:0))),"Final body/orientation reaches only the target's reference first frame, with attack-owned translation");
                     using(var copy=NativeAnimationOptimization.CopySource(fitted))copy.ExportChecked(Path.Combine(output,"02-fitted.chr0"));
                     ReviewedFitCorpusOracle(model,current,reference,fitted,travel,join,Path.Combine(output,"02-fitted.chr0"),output);
+                    if(reviewedFloor.HasValue)
+                    {
+                        using(var decoded=NodeFactory.FromFile(null,Path.Combine(output,"02-fitted.chr0")) as CHR0Node)
+                        using(var aligned=RecoveryReferenceUnderSourceRoots(model,current,reference,travel))
+                            RecoveryVerifyNativeFloor(model,current,decoded,aligned,setup,join,output,floorHeight:reviewedFloor.Value);
+                    }
                     Check(SetNativeContent(current)==before&&NativeAnimationOptimization.SourceContentKey(reference)==referenceContent,"Independent fitting preview preserves editable retargeted master and immutable own reference");
                     SimpleControl<Button>(window,"applyTransition").PerformClick();
                 }

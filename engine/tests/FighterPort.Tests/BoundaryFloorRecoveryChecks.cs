@@ -20,6 +20,11 @@ internal static class BoundaryFloorRecoveryChecks
         check(fit.Receipt.Version==BoundaryFitting.FloorVersion&&floor.Version==BoundaryFitting.FloorVersion&&floor.MaximumLift>AnalyticDip-.00002&&floor.MaximumLift<AnalyticDip+.0002&&Math.Abs(floor.LiftLimit-.4)<.000002,
             "One generic body-normal envelope clears the analytic dip within the frozen .4 two-link lift budget");
         Verify(basic,fit,check,"analytic");
+        var fk=basic with{Settings=basic.Settings with{ExitContactRecovery=false,PreserveContacts=false,ContactBones=[]}};
+        var fkFit=Fit(fk);
+        check(fkFit.Receipt.Version==BoundaryFitting.FkFloorVersion&&fkFit.Receipt.RecoveredContactBones.Length==0&&fkFit.Receipt.RecoveryWindows is [{Side:"exit",Floor:not null}],
+            "Reviewed FK floor correction needs no invented baked contacts or path release and records its own versioned window");
+        Verify(fk,fkFit,check,"ordinary FK without baked support");
         check(JsonSerializer.Serialize(basic.Project,ProjectStore.Json)==originalJson,"Floor preparation leaves complete scene, authentic weights, source curves and constraints immutable");
         check(floor.BaselinePolicy==BoundaryFloorRecovery.BaselinePolicy&&floor.GeometryHash.Length==64&&floor.AllowedAddedPenetration==PositionBound&&floor.Plane.Reviewed&&floor.Plane.Normal.SequenceEqual(new float[]{0,1,0}),
             "Floor receipt binds the explicit reviewed plane, complete geometry hash and authentic per-region added-penetration baseline");
@@ -32,6 +37,8 @@ internal static class BoundaryFloorRecoveryChecks
             Create(.9f,.9f,.02f,.04f,true,true,61)})
         {
             var varied=Fit(variation);Verify(variation,varied,check,"proportions/volume "+variation.Project.Name);
+            var ordinary=variation with{Settings=variation.Settings with{ExitContactRecovery=false,PreserveContacts=false,ContactBones=[]}};
+            Verify(ordinary,Fit(ordinary),check,"ordinary FK proportions/volume "+variation.Project.Name);
         }
         var weighted=Create(1,1,.04f,.025f,true,true,83,1100);var weightedFit=Fit(weighted);
         Verify(weighted,weightedFit,check,"uncapped weighted geometry");
@@ -75,6 +82,15 @@ internal static class BoundaryFloorRecoveryChecks
         foreach(int time in new[]{0,24})
         {var actualPose=Evaluate(basic.Project.Scene,both.Clip,time);var expectedPose=Evaluate(basic.Project.Scene,basic.Reference,0,new Dictionary<int,Transform>{{0,bothSource.Sample(basic.Project.Scene.Bones[0],time)}});bothEndpoints&=actualPose.Local.Zip(expectedPose.Local).All(p=>Distance(p.First,p.Second));}
         check(bothClear&&bothMiddle&&bothEndpoints&&ReferenceEquals(both.Clip.Tracks[0],bothSource.Tracks[0]),"Independent two-ended skinning verifies both floor windows, authentic endpoints, exact middle and source travel without time reversal");
+        var fkBothSettings=bothSettings with{BoundaryContactRecovery=false,PreserveContacts=false,ContactBones=[]};
+        var fkBoth=BoundaryFitting.Prepare(bothProject,bothSource,bothAnchor,bothAnchor,fkBothSettings);
+        check(fkBoth.Receipt.Version==BoundaryFitting.FkFloorVersion&&fkBoth.Receipt.RecoveryWindows.Length==2&&fkBoth.Receipt.RecoveredContactBones.Length==0&&
+            fkBoth.Clip.Tracks.All(t=>t.Channels.Zip(both.Clip.Tracks.Single(b=>b.Bone==t.Bone).Channels).All(p=>p.First is null?p.Second is null:p.Second is not null&&p.First.Keys.SequenceEqual(p.Second.Keys))),
+            "Ordinary FK entry/exit floor windows match the independently verified two-ended geometry without inventing contact paths");
+        var fkEntry=BoundaryFitting.Prepare(bothProject,bothSource,bothAnchor,null,fkBothSettings with{Protected=[]});
+        check(fkEntry.Receipt.RecoveryWindows is [{Side:"entry",Start:0,End:8,Floor:{MaximumAddedPenetration:<=PositionBound}}]&&
+            fkEntry.Clip.Tracks.Single(t=>t.Bone==basic.Project.Scene.Bones[basic.Body].Name).Channels.Skip(6).All(c=>c!.Keys.All(k=>k.Frame==Math.Truncate(k.Frame))),
+            "Ordinary start-only floor correction uses the same reviewed integer Hermite envelope and bounded receipt");
         var changedVertex=weighted.Project.Scene.Meshes[0].Vertices.ToArray();changedVertex[^1]=changedVertex[^1] with{Position=changedVertex[^1].Position+new Vector3(.003f,0,0)};
         var changedScene=weighted.Project.Scene with{Meshes=[weighted.Project.Scene.Meshes[0] with{Vertices=changedVertex}]};
         var geometryChanged=Fit(weighted with{Project=weighted.Project with{Scene=changedScene}});
@@ -89,6 +105,8 @@ internal static class BoundaryFloorRecoveryChecks
         var renamedProject=basic.Project with{Scene=renamedScene,Clips=[renamedReference,renamedSource],ControlRigs=basic.Project.ControlRigs.Select(r=>r with{SkeletonFingerprint=AnimationControls.Fingerprint(renamedScene)}).ToArray()};
         var renamed=basic with{Project=renamedProject,Source=renamedSource,Reference=renamedReference,Settings=basic.Settings with{Bones=names.Reverse().ToArray(),ContactBones=basic.Ankles.Select(i=>names[i]).Reverse().ToArray()}};
         var renamedFit=Fit(renamed);
+        var renamedFk=renamed with{Settings=renamed.Settings with{ExitContactRecovery=false,PreserveContacts=false,ContactBones=[]}};
+        Verify(renamedFk,Fit(renamedFk),check,"ordinary FK renamed/reversed storage");
         check(fit.Clip.Tracks.All(track=>track.Channels.Zip(renamedFit.Clip.Tracks.Single(t=>t.Bone==names[Array.FindIndex(basic.Project.Scene.Bones,b=>b.Name==track.Bone)]).Channels)
             .All(p=>p.First is null?p.Second is null:p.Second is not null&&p.First.Keys.SequenceEqual(p.Second.Keys))),
             "Shared floor recovery has identical keys/tangents under renamed bindings and reversed clip/mask storage");
@@ -124,7 +142,12 @@ internal static class BoundaryFloorRecoveryChecks
         check(Reject(basic with{Settings=basic.Settings with{FloorSettings=basic.Settings.FloorSettings! with{Reviewed=false}}},"reviewed")&&
             Reject(basic with{Settings=basic.Settings with{FloorSettings=new([0,2,0],0,true,"Not normalized")}},"normalized"),
             "Missing review or non-unit support planes reject instead of inferring floor context");
-        check(Reject(basic with{Settings=basic.Settings with{ExitContactRecovery=false}},"requires explicit"),"Floor correction cannot bypass explicit reviewed contact-path release");
+        check(Reject(basic with{Settings=basic.Settings with{ExitContactRecovery=false}},"preserved contact"),"Floor correction cannot bypass explicit reviewed contact-path release");
+        var unreviewed=fk.Project.ControlRigs[0];
+        check(Reject(fk with{Project=fk.Project with{ControlRigs=[unreviewed with{Chains=unreviewed.Chains.Select(c=>c with{Reviewed=false}).ToArray()}]}},"reviewed"),
+            "Ordinary floor correction refuses unreviewed leg bindings instead of inferring limb identities");
+        check(Reject(fk with{Source=fk.Source with{Loop=true}},"non-looping")&&Reject(fk with{Settings=fk.Settings with{Components=TransformComponents.Rotation}},"all S/R/T"),
+            "Ordinary floor correction retains stored-loop and partial-component qualification gates");
         var noGeometry=basic with{Project=basic.Project with{Scene=basic.Project.Scene with{Meshes=[]}}};
         check(Reject(noGeometry,"geometry"),"Missing weighted foot geometry fails closed instead of substituting joint positions");
         var pin=new ContactPin(Guid.NewGuid(),"Original hard anchor",basic.Ankles[0],Vector3.Zero,Vector3.Zero,Quaternion.Identity,true,"Original reviewed fixture pin");
@@ -192,7 +215,8 @@ internal static class BoundaryFloorRecoveryChecks
     static void Verify(Fixture f,BoundaryFitResult fit,Action<bool,string> check,string label)
     {
         var scene=f.Project.Scene;int join=f.Source.SampleCount-f.Settings.ExitSamples,last=f.Source.SampleCount-1;var body=scene.Bones[f.Body];
-        bool root=ReferenceEquals(f.Source.Tracks[0],fit.Clip.Tracks.Single(t=>t.Bone==f.Source.Tracks[0].Bone));
+        var rootTrack=f.Source.Tracks.Single(t=>t.Bone==scene.Bones[0].Name);
+        bool root=ReferenceEquals(rootTrack,fit.Clip.Tracks.Single(t=>t.Bone==rootTrack.Bone));
         bool prefix=true,clearance=true;double max=0;
         var times=new SortedSet<double>();for(int i=0;i<=last*64;i++)times.Add(i/64d);for(int i=join;i<last;i++){times.Add(i+.37);times.Add(i+.73);}
         foreach(double at in times)
@@ -217,7 +241,7 @@ internal static class BoundaryFloorRecoveryChecks
         var hip=fit.Clip.Tracks.Single(t=>t.Bone==body.Name);
         check(hip.Channels.Skip(6).All(c=>c!.Keys.All(k=>k.Frame==Math.Truncate(k.Frame))&&BoundaryFitting.Derivative(c,last,false)==0&&BoundaryFitting.Derivative(c,last)==0),
             label+": only native integral translation knots are committed and frozen endpoint incoming/outgoing slopes remain zero");
-        check(fit.Receipt.FloorRecovery is {Evaluations:<=200000,KnotCount:<=8192} receipt&&receipt.MaximumAddedPenetration<=PositionBound&&receipt.MaximumLift<=receipt.LiftLimit,
+        check((fit.Receipt.FloorRecovery??fit.Receipt.RecoveryWindows.Single().Floor) is {Evaluations:<=200000,KnotCount:<=8192} receipt&&receipt.MaximumAddedPenetration<=PositionBound&&receipt.MaximumLift<=receipt.LiftLimit,
             label+": explicit bounded receipt reports actual region clearance and finite work/lift limits");
     }
     static bool Descendant(Scene scene,int parent,int bone){for(int i=bone;i>=0;i=scene.Bones[i].Parent)if(i==parent)return true;return false;}

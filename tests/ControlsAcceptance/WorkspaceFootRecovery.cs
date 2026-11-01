@@ -30,7 +30,7 @@ internal static partial class Program
         return result;
     }
 
-    static void RecoveryVerifyNativeFloor(MDL0Node model, CHR0Node source, CHR0Node fitted, CHR0Node alignedReference, ControlReply setup, int join, string output,int? windowEnd=null,string label=null)
+    static void RecoveryVerifyNativeFloor(MDL0Node model, CHR0Node source, CHR0Node fitted, CHR0Node alignedReference, ControlReply setup, int join, string output,int? windowEnd=null,string label=null,double floorHeight=0)
     {
         var vertices = model.PolygonList.OfType<MDL0ObjectNode>().Where(o => o.Vertices != null).SelectMany(o => o.Vertices).ToArray();
         var regions = new Dictionary<string, int[]>();
@@ -44,7 +44,7 @@ internal static partial class Program
         Dictionary<string, double> Measure(CHR0Node clip, float time)
         {
             model.ResetToBindState(); model.ApplySHP(null, 0); model.ApplyCHR(clip, time + 1);
-            return regions.ToDictionary(r => r.Key, r => r.Value.Min(i => (double)vertices[i].WeightedPosition._y));
+            return regions.ToDictionary(r => r.Key, r => r.Value.Min(i => (double)vertices[i].WeightedPosition._y-floorHeight));
         }
         int last=windowEnd??source.FrameCount-1;
         var times = Enumerable.Range(join * 64, (last - join) * 64 + 1).Select(i => i / 64f)

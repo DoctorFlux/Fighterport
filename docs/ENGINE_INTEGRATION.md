@@ -1,5 +1,18 @@
 ﻿# Native Next integration
 
+Preview.65.7 reuses the existing offline `BoundaryFloorRecovery` body-normal
+envelope for ordinary FK fits as `fk-boundary-floor-1`. Unlike baked-path recovery,
+it releases no contact paths. Exact reviewed body/legs, complete authentic weighted
+regions, explicit plane context, non-looping first-frame references and all S/R/T
+are required. Existing contact/pin closures still block conflicting correction.
+One shared envelope handles either/both windows, preserving source travel and
+zero correction/slope at the original joins and reference endpoints. The native
+recipe validator accepts its versioned windows through the existing storage
+envelope and preserves legacy reads. A single optional checkbox uses existing
+Advanced plane review; no new document owner or playback work. Corrected export
+copies retain the existing Exact-only absolute-contact gate. See
+[qualification](FK_FLOOR_RECOVERY_ACCEPTANCE_2026-11-01.md).
+
 The target-owned endpoint test boundary accepts additive exact-reference and
 optional assisted binding fixture data. It verifies the native protected
 ancestor path/body against the sealed rig and uses normal metadata-only control

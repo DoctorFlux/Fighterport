@@ -1,5 +1,18 @@
 ﻿# Current milestone M2 — simpler native workspace
 
+1 November — **preview.65.7-reviewed-fk-floor qualifies its bounded slice**,
+from `3b359b9d0f39ff3201b2c8adf69e3d09525accc7`. The existing reviewed static-plane
+guard also corrects ordinary FK fits without inventing baked contacts. Exact
+reviewed hip/leg geometry and explicit floor review remain required. Keep attack
+travel/all weights, exact joins/middle/Wait1 endpoints, native Undo and existing
+0.0002/20%-leg limits. No character/action numerical exceptions, solver replacement
+or codec changes. Four tilt recoveries pass fresh native clearance/Save/reopen;
+worst added dip is 0.0000002683 units. 436 Core + 19 skin + 523 native checks and
+four inspected side comparisons qualify this bounded improvement. App/launcher:
+`Fighterport-floor657/native1`. Planted contacts, minimal/floating recovery and
+broad anatomy/game acceptance stay open; ONE G1/M2 incomplete and .66 queued.
+See [cause, native before/after measurements and coverage](../FK_FLOOR_RECOVERY_ACCEPTANCE_2026-11-01.md).
+
 1 November — **test-only target-owned ending corpus**, starting
 `48bc309dcaf69ea2724f04c770b094be51eae4f6`. Unchanged preview.65.6 tests
 Peach ↔ Fox and Link ↔ Samus: neutral forward tilt → own Wait1 frame 1, all five

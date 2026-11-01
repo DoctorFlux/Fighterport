@@ -41,7 +41,8 @@ namespace BrawlCrate.Studio
 
         internal static string[] ReviewExitRecovery(TransitionFitOptions options,int frames,bool loop,string[] contactBones,ISet<string> protectedMotion,bool currentBinding)
         {
-            if(options.PreventFootDipping&&(!options.ExitContactRecovery&&!options.BoundaryContactRecovery||!options.FloorReviewed||double.IsNaN(options.FloorHeight)||double.IsInfinity(options.FloorHeight)||float.IsInfinity((float)options.FloorHeight)))throw new InvalidOperationException("Preventing extra foot dipping requires exit contact recovery and explicit review of the finite native floor plane and authentic source/reference penetration baseline.");
+            if(options.PreventFootDipping&&(!options.FloorReviewed||double.IsNaN(options.FloorHeight)||double.IsInfinity(options.FloorHeight)||float.IsInfinity((float)options.FloorHeight)))throw new InvalidOperationException("Preventing extra foot dipping requires explicit review of the finite native floor plane and authentic source/reference penetration baseline.");
+            if(options.PreventFootDipping&&(!currentBinding||loop||options.Components!=7||options.Entry==null&&options.Exit==null||options.Entry!=null&&(!options.EntryFrozen||options.EntryFrame!=0)||options.Exit!=null&&(!options.ExitFrozen||options.ExitFrame!=0)))throw new InvalidOperationException("Reviewed floor correction requires current hip/leg bindings, a non-looping animation, all components and frozen first-frame references.");
             if(!options.ExitContactRecovery&&!options.BoundaryContactRecovery)return new string[0];
             if(options.ExitContactRecovery&&options.BoundaryContactRecovery)throw new InvalidOperationException("Use either legacy exit recovery or start/end recovery.");
             if(loop)throw new NotSupportedException("Exit contact recovery requires a non-looping attack. Stored-loop wrap adaptation remains separate work.");

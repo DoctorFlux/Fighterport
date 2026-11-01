@@ -97,14 +97,16 @@ namespace BrawlCrate.Studio
             Check("contacts","Preserve existing contact trajectories").Checked=preserveContactsByDefault;
             Check("exitContactRecovery","Allow reviewed hip / leg exit recovery");
             Label("Hip / leg adaptation changes reviewed support paths only inside enabled transitions on a non-looping attack. Each reference uses its first frozen pose. Fixed pins and overlapping timed contacts block conflicting changes; the motion-position control keeps the attack curves.");
-            var preventDipping=Check("preventFootDipping","Prevent extra foot dipping in transitions");
+            var preventDipping=Check("preventFootDipping","Prevent extra foot dipping (review floor in Advanced)");
             var floorHeight=Number("floorHeight","Reviewed native floor height (Y)",-100000,100000,4);floorHeight.Value=0;
             var floorReviewed=Check("floorReviewed","I reviewed the plane and penetration baseline");
             matchControls.CheckedChanged+=(s,e)=>floorReviewed.Checked=false;
             Label("The floor guard prevents additional dipping beyond the original motion or authentic first reference pose at the same selected control policy. It preserves authored endpoint penetration; it does not promise absolute zero penetration. Review the plane and this baseline explicitly before preparing.");
-            void FloorState(){preventDipping.Enabled=B("exitContactRecovery")||B("boundaryContactRecovery");floorHeight.Enabled=floorReviewed.Enabled=preventDipping.Enabled&&preventDipping.Checked;}
-            ((CheckBox)inputs["exitContactRecovery"]).CheckedChanged+=(s,e)=>{if(!B("exitContactRecovery")&&!B("boundaryContactRecovery"))preventDipping.Checked=false;FloorState();};
-            ((CheckBox)inputs["boundaryContactRecovery"]).CheckedChanged+=(s,e)=>{if(B("boundaryContactRecovery"))((CheckBox)inputs["exitContactRecovery"]).Checked=false;else if(!B("exitContactRecovery"))preventDipping.Checked=false;FloorState();};
+            preventDipping.AccessibleDescription="Optional reviewed-plane clearance correction for ordinary body fitting or contact recovery. Requires reviewed native hips/legs and floor height in Advanced. Keeps source travel, joins and reference endpoints exact; existing contact and pin protections remain binding.";
+            hints.SetToolTip(preventDipping,preventDipping.AccessibleDescription);
+            void FloorState(){floorHeight.Enabled=floorReviewed.Enabled=preventDipping.Checked;}
+            ((CheckBox)inputs["exitContactRecovery"]).CheckedChanged+=(s,e)=>FloorState();
+            ((CheckBox)inputs["boundaryContactRecovery"]).CheckedChanged+=(s,e)=>{if(B("boundaryContactRecovery"))((CheckBox)inputs["exitContactRecovery"]).Checked=false;FloorState();};
             ((CheckBox)inputs["exitContactRecovery"]).CheckedChanged+=(s,e)=>{if(B("exitContactRecovery"))((CheckBox)inputs["boundaryContactRecovery"]).Checked=false;};
             preventDipping.CheckedChanged+=(s,e)=>{floorReviewed.Checked=false;FloorState();};
             floorHeight.ValueChanged+=(s,e)=>floorReviewed.Checked=false;FloorState();
@@ -125,12 +127,13 @@ namespace BrawlCrate.Studio
             // Keep the everyday flow short. Preserve all native options and names
             // under an explicit disclosure, rather than introducing a second mode.
             var basic=new HashSet<string>{"transition_entryEnabled","transition_entry","library_entry","transition_entrySamplesLabel","transition_entrySamples","preview_entry","transition_exitEnabled","transition_exit","library_exit","transition_exitStartLabel","transition_exitStart","preview_exit","transitionBoth","transitionRanges","transition_boundaryContactRecovery","transition_binding","transitionRecoveryHint","transition_existingTracksOnly","transitionExistingTrackHint"};
+            basic.Add("transition_preventFootDipping");
             var allFields=fields.Controls.Cast<Control>().ToArray();
             // Title and introduction remain visible; everything else is classified
             // explicitly by control identity so translated captions do not matter.
             foreach(var control in allFields.Skip(2).Where(c=>!basic.Contains(c.Name)))advanced.Controls.Add(control);
             var ordered=new[]{"transition_entryEnabled","transition_entry","library_entry","transition_entrySamplesLabel","transition_entrySamples","preview_entry","transitionBoth","transition_exitEnabled","transition_exit","library_exit","transition_exitStartLabel","transition_exitStart","preview_exit","transitionRanges","transition_existingTracksOnly","transitionExistingTrackHint","transition_boundaryContactRecovery","transitionRecoveryHint","transition_binding"};
-            ordered=new[]{"transition_binding"}.Concat(ordered.Where(n=>n!="transition_binding")).ToArray();
+            ordered=new[]{"transition_binding"}.Concat(ordered.Where(n=>n!="transition_binding")).Concat(new[]{"transition_preventFootDipping"}).ToArray();
             for(int i=0;i<ordered.Length;i++){var c=fields.Controls.Cast<Control>().Single(v=>v.Name==ordered[i]);fields.Controls.SetChildIndex(c,i+2);}
             // FlowLayout caches fixed-height native editor requests across font
             // changes. A plain slot gives those editors their actual current

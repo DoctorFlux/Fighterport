@@ -1,5 +1,15 @@
 # Fighterport
 
+1 November: **preview.65.7-reviewed-fk-floor** qualifies ordinary FK fitting with
+an optional reviewed static-plane guard. Require exact reviewed hips/leg chains,
+complete authentic weights and explicit plane review; never invent baked support
+or release pins/contacts. Preserve source travel, original joins/middle/endpoints,
+full viewer/Next and unchanged numeric/work limits. Four prior tilt dips pass
+fresh native checks, worst added penetration 0.0000002683. No character/action
+exceptions. Keep ONE G1/M2 incomplete and .66 queued; minimal/planted recovery,
+broader anatomy and game acceptance stay open. See
+[acceptance](docs/FK_FLOOR_RECOVERY_ACCEPTANCE_2026-11-01.md).
+
 1 November: test-only own-Wait1/Fall endpoint corpus passes 24/24 native
 endpoint/preservation workflows with assisted exact-rig role review. All four
 tilt recoveries retain measured foot dipping; do not promote them as contact

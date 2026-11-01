@@ -36,6 +36,22 @@ internal static partial class Program
             SimpleControl<Button>(dialog,"reviewSave").PerformClick();
         };
         try{await (Task)Call(form,"ReviewControlSetup");}finally{form.ControlReviewReady=null;}
+        if(fixture.FittingFootChains!=null)
+        {
+            Check(fixture.FittingFootChains.Count==2&&new[]{"Foot.L","Foot.R"}.All(fixture.FittingFootChains.ContainsKey),"Assisted floor fixture explicitly identifies both exact native foot chains");
+            foreach(var pair in fixture.FittingFootChains)
+            {
+                var chain=setup.Chains.Single(c=>c.Role==pair.Key);
+                Check(new[]{chain.Root,chain.Middle,chain.Effector}.Select(i=>setup.BoneNames[i]).SequenceEqual(pair.Value)&&pair.Value.Length==3,
+                    "Explicit foot fixture agrees with the complete existing native structural proposal");
+                form.ControlReviewReady=dialog=>{
+                    SimpleControl<ComboBox>(dialog,"reviewIkRole").SelectedItem=pair.Key;
+                    SimpleControl<CheckBox>(dialog,"reviewApplyIk").Checked=true;
+                    SimpleControl<Button>(dialog,"reviewSave").PerformClick();
+                };
+                try{await (Task)Call(form,"ReviewControlSetup");}finally{form.ControlReviewReady=null;}
+            }
+        }
         var reviewed=await Await<ControlReply>(Call(form,"LoadControls"));
         Check(roles.All(pair=>reviewed.Roles.Any(r=>r.Reviewed&&r.Role==pair.Key&&r.Bone.HasValue&&reviewed.BoneNames[r.Bone.Value]==pair.Value))&&
             (string)Call(form,"NativeControlHash",model,".mdl0")==modelBefore,

@@ -181,7 +181,7 @@ public static class BoundaryFloorRecovery
         if(maximumAdded>PositionBound)
             throw new NotSupportedException("Floor recovery did not converge at independent 1/64-frame/.37/.73 witnesses within the integral-key envelope. No result was published.");
         if(maximumLift>liftLimit)throw new NotSupportedException("The independently sampled floor correction exceeds the reviewed leg-length lift budget.");
-        var receipt=new BoundaryFloorReceipt(settings.BoundaryContactRecovery?BoundaryFitting.BoundaryFloorVersion:BoundaryFitting.FloorVersion,GeometryHash(scene,legs),settings.MatchReferenceControls?ReferenceControlBaselinePolicy:BaselinePolicy,
+        var receipt=new BoundaryFloorReceipt(!settings.BoundaryContactRecovery&&!settings.ExitContactRecovery?BoundaryFitting.FkFloorVersion:settings.BoundaryContactRecovery?BoundaryFitting.BoundaryFloorVersion:BoundaryFitting.FloorVersion,GeometryHash(scene,legs),settings.MatchReferenceControls?ReferenceControlBaselinePolicy:BaselinePolicy,
             plane with{Normal=plane.Normal.ToArray()},maximumLift,maximumAdded,evaluations,validationTimes.Length,amplitude==0?0:3*(span+1),
             regions.Select((r,i)=>new BoundaryFloorRegionReceipt(r.Role,scene.Bones[r.Bone].Name,r.Points.Length,r.LegacyPoints,
                 measurements[i].Source,measurements[i].Reference,measurements[i].Before,measurements[i].After,measurements[i].Added)).ToArray())

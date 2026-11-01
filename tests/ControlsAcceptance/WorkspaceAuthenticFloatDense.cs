@@ -29,6 +29,8 @@ internal static partial class Program
         public string TargetRigFingerprint { get; set; }
         public Dictionary<string,string> FittingRoles { get; set; }
         public string FittingBindingEvidence { get; set; }
+        public Dictionary<string,string[]> FittingFootChains { get; set; }
+        public double? FittingFloorHeight { get; set; }
     }
 
     // Dedicated background fixture driver, activated after preview.63.

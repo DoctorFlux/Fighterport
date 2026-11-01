@@ -1,5 +1,14 @@
 # Fighterport master plan
 
+1 November — preview.65.7 qualifies reviewed-plane correction for ordinary FK
+fitting inside the same ONE incomplete G1/M2. Four Peach/Fox and Link/Samus tilt
+recoveries now pass the unchanged added-penetration bound with exact attack
+travel, all weights and target-owned Wait1 frame-1 endpoints. Existing protections,
+original Next/viewer and native Undo remain. No character/action numerical rules
+or invented contacts. Minimal/planted recovery and broader contact/game quality
+remain open; .66 ledges stays queued. See [current plan](plans/current.md) and
+[qualification](FK_FLOOR_RECOVERY_ACCEPTANCE_2026-11-01.md).
+
 1 November — test-only target-owned ending corpus passes 24 endpoint/preservation
 workflows across Peach/Fox and Link/Samus, both directions: tilt → Wait1 frame 1,
 all five aerials → Fall frame 1. Native Apply/Undo/Redo and Save/reopen preserve
