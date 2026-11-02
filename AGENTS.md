@@ -1,5 +1,13 @@
 # Fighterport
 
+2 November — preview.79-bt3-direct-library opens a saved BT3 USA ISO as a
+read-only form → costume → native action tree in the shared library. The
+saved path remains path-only; no fake editable catalogue clips or game-file
+extraction are created. Inspect BT3 is available from that tree. Mesh/texture
+preview, target editing, retargeting and writing remain OPEN. See
+[bounded evidence](docs/BT3_DIRECT_LIBRARY_2026-11-02.md). Keep one incomplete
+G1/M2 and the existing Brawl/Melee viewer/Next gates.
+
 2 November — preview.78-bt3-native-pose-inspection reads native BT3 pmdl
 skeleton and packed local motion from the supplied USA ISO. It distinguishes
 form, costume and action choices in the compact inspector. Background checks

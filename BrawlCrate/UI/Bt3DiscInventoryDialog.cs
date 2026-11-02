@@ -72,6 +72,17 @@ namespace BrawlCrate.UI
             characters.EndUpdate();
             characters.SelectedItem=characters.Items.OfType<Bt3DiscInventory.Bt3FighterSlot>().FirstOrDefault(f=>f.Slot==prior)??characters.Items.Cast<object>().FirstOrDefault();
         }
+        internal void SelectNative(Bt3DiscInventory.Bt3FighterSlot fighter,Bt3DiscInventory.Bt3Resource costume,int action)
+        {
+            if(fighter==null)return;
+            search.Text="Form "+fighter.Slot.ToString("D3");
+            characters.SelectedItem=characters.Items.OfType<Bt3DiscInventory.Bt3FighterSlot>()
+                .FirstOrDefault(f=>ReferenceEquals(f,fighter));
+            if(costume!=null)costumes.SelectedItem=costumes.Items.OfType<Choice>()
+                .FirstOrDefault(c=>ReferenceEquals(c.Resource,costume));
+            if(action>=0)motions.SelectedItem=motions.Items.OfType<Choice>()
+                .FirstOrDefault(c=>c.Action==action);
+        }
         private void RefreshResources()
         {
             exportChoice=null;costumes.Items.Clear();motions.Items.Clear();

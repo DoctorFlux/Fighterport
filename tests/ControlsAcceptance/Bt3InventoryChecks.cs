@@ -147,4 +147,53 @@ internal static partial class Program
             " costumes="+first.Costumes.Length+" bank members="+first.MotionMembers[0].Length+"/"+first.MotionMembers[1].Length+
             " first pack bytes="+native.Bytes+" sha256="+digest);
     }
+
+    static async Task Bt3DirectLibraryChecks(string[] args,string output)
+    {
+        if(!PrivateDesktop)throw new InvalidOperationException("BT3 direct library acceptance requires the private desktop.");
+        string priorRoot=Environment.GetEnvironmentVariable("FIGHTERPORT_LIBRARY_ROOT");
+        try
+        {
+            string root=Path.Combine(output,"direct-disc-library");
+            Environment.SetEnvironmentVariable("FIGHTERPORT_LIBRARY_ROOT",root);
+            var library=new AnimationLibrary(root);
+            library.RememberGameSource(Bt3DiscInventory.Game,"SLUS-21678",args[0]);
+            var saved=library.Read().GameLocations.Single();
+            using(var source=new GameSourceDialog(library.Read().GameLocations.ToArray(),library))
+            {
+                var browse=source.Controls.Find("discContinue",true).OfType<Button>().Single();
+                Check(browse.Text=="Browse saved disc","Saved BT3 source offers direct browsing instead of another registration");
+                Call(source,"Continue");
+                Check(source.DialogResult==DialogResult.OK&&source.ExistingSourceId==saved.Id,
+                    "Opening the saved BT3 source preserves its exact registration identity");
+            }
+            using(var startup=MainForm.StartViewerApplication())
+            {
+                var form=(ModelForm)Field(MainForm.Instance,"_fighterForm");
+                form.WindowState=FormWindowState.Normal;form.ClientSize=new System.Drawing.Size(1500,850);
+                Call(form,"UseSharedSourceLibrary");
+                await LibraryQuerySettled(form);
+                var tree=SimpleControl<TreeView>(form,"libraryClips");
+                var discNode=tree.Nodes.Cast<TreeNode>().Single(n=>n.Text.StartsWith(Bt3DiscInventory.Game,StringComparison.Ordinal));
+                Check(discNode.Nodes.Count==161&&discNode.Nodes.Cast<TreeNode>().All(n=>n.Text.StartsWith("Form ")),
+                    "Saved BT3 disc browses all native forms directly in the library instead of showing not indexed");
+                var midNode=discNode.Nodes.Cast<TreeNode>().Single(n=>n.Text.StartsWith("Form 001 "));
+                midNode.Expand();await LibraryQuerySettled(form);
+                Check(midNode.Nodes.Count==8&&midNode.Nodes.Cast<TreeNode>().All(n=>n.Text.StartsWith("Costume ")),
+                    "Each BT3 form expands to its own available costumes");
+                var alternate=midNode.Nodes[1];alternate.Expand();await LibraryQuerySettled(form);
+                var idleRow=alternate.Nodes.Cast<TreeNode>().Single(n=>n.Text.StartsWith("Idle · Action 000"));
+                tree.SelectedNode=idleRow;Application.DoEvents();
+                Check(SimpleControl<Button>(form,"libraryPreviewOriginal").Text=="Inspect BT3"&&
+                    !SimpleControl<Button>(form,"libraryUseOnTarget").Enabled&&
+                    !SimpleControl<Button>(form,"libraryOpenTarget").Enabled&&
+                    SimpleControl<TextBox>(form,"libraryDetails").Text.Contains("Costume 1"),
+                    "BT3 library action has exact form/costume context and no unqualified preview or retarget commands");
+                await CaptureWindow(form,Path.Combine(output,"bt3-direct-library.png"));
+            }
+            Check(!library.Read().GameLocations.Single().Indexed&&library.Read().Clips.Count==0,
+                "Direct disc browsing creates no fake editable or previewable catalogue clips");
+        }
+        finally{Environment.SetEnvironmentVariable("FIGHTERPORT_LIBRARY_ROOT",priorRoot);}
+    }
 }

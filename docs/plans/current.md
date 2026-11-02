@@ -1,5 +1,13 @@
 # Current milestone M2 — simpler native workspace
 
+2 November: preview.79 lets the saved BT3 USA ISO appear in the shared library
+as exact form, costume and native-action choices instead of “Saved location —
+not indexed.” Browse and Inspect BT3 read the original disc without extracting
+its assets or fabricating previewable catalogue clips. Source/model rendering,
+Open as target, retargeting, edited native writing and other BT3 builds remain
+OPEN in this one incomplete G1/M2. See
+[bounded evidence](../BT3_DIRECT_LIBRARY_2026-11-02.md).
+
 2 November: preview.78 adds read-only BT3 native skeleton/pose inspection from
 the saved USA ISO. Form/character slot, costume and action are separate
 choices; Goku (Mid) base and Super Saiyan each use their own exact motion

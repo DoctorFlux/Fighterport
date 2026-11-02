@@ -40,7 +40,7 @@ namespace BrawlCrate.UI
         private bool _libraryRestoreExpansions;
         private sealed class LibraryGroup {internal List<LibrarySearchItem> Items;internal bool Character,DirectAnimations;internal HashSet<string> DuplicateNames;internal int Loaded,BatchEnd;internal LibraryBranch[] Models;}
         private sealed class LibraryBranch {internal string Name,Text,ToolTip;internal LibraryGroup Group;internal bool HasSelection;}
-        private sealed class LibraryGameBranch {internal string Name,Text,ToolTip;internal bool Indexed;internal LibraryBranch[] Characters;}
+        private sealed class LibraryGameBranch {internal string Name,Text,ToolTip;internal bool Indexed;internal LibraryBranch[] Characters;internal Bt3DiscInventory Bt3;internal Bt3DiscInventory.Bt3FighterSlot[] Bt3Forms;internal string Bt3Issue;}
         private readonly Queue<Action> _libraryTreeWork=new Queue<Action>();
         private bool _libraryClearingTree,_libraryReplacingTree,_libraryApplyingExpansion;
         private int _libraryTreeGeneration;
@@ -135,7 +135,7 @@ namespace BrawlCrate.UI
             sourceMenu.Opening+=(sender,e)=>{var item=LibrarySelection;exportOriginal.Enabled=!SimpleWorkspaceBusy&&item?.Model!=null&&NativeGameAdapters.ForNative(item.Motion.Provider) is INativeSourceExportAdapter;};_libraryList.ContextMenuStrip=sourceMenu;
             _libraryPopulateTimer=new System.Windows.Forms.Timer{Interval=8};
             _libraryPopulateTimer.Tick+=(s,e)=>RunFighterAction(ProcessLibraryTreeWork);
-            _libraryList.BeforeExpand+=(s,e)=>{if(_libraryReplacingTree&&!_libraryApplyingExpansion){e.Cancel=true;return;}PopulateLibraryGroup(e.Node);};
+            _libraryList.BeforeExpand+=(s,e)=>{if(_libraryReplacingTree&&!_libraryApplyingExpansion){e.Cancel=true;return;}if(!PopulateBt3Branch(e.Node))PopulateLibraryGroup(e.Node);};
             _libraryList.AfterSelect+=(s,e)=>{if(_libraryUpdatingTree)return;if(e.Node?.Name=="libraryMore"&&e.Node.Parent!=null){var parent=e.Node.Parent;PopulateLibraryGroup(parent,true);_libraryList.SelectedNode=parent;}LibraryBrowseSelectionChanged();};
             _libraryList.AfterCollapse+=(s,e)=>{if(_libraryUpdatingTree||e.Node==null)return;if(e.Node.Level==0)_libraryCollapsedGames.Add(e.Node.Name);else if(e.Node.Level==1){_libraryCollapsedCharacters.Add(e.Node.Name);_libraryExpandedCharacters.Remove(e.Node.Name);}else if(e.Node.Level==2){_libraryCollapsedModels.Add(e.Node.Name);_libraryExpandedModels.Remove(e.Node.Name);}};
             _libraryList.AfterExpand+=(s,e)=>{if(_libraryUpdatingTree||e.Node==null)return;if(e.Node.Level==0)_libraryCollapsedGames.Remove(e.Node.Name);else if(e.Node.Level==1){_libraryCollapsedCharacters.Remove(e.Node.Name);_libraryExpandedCharacters.Add(e.Node.Name);}else if(e.Node.Level==2){_libraryCollapsedModels.Remove(e.Node.Name);_libraryExpandedModels.Add(e.Node.Name);}};layout.Controls.Add(_libraryList,0,2);
@@ -208,6 +208,8 @@ namespace BrawlCrate.UI
         {
             long selectionStart=Stopwatch.GetTimestamp();
             _libraryLastTarget=modelEditControl1.TargetModel;
+            _libraryPreview.Text="Load as source";
+            if(UpdateBt3LibrarySelection()){MeasureLibraryUi(7,selectionStart);return;}
             var item=LibrarySelection;bool available=!_libraryReplacingTree&&!_librarySearchTimer.Enabled&&item?.State==LibrarySourceState.Available;
             UpdateLibraryCostumes(item);
             string previewKey=item==null?null:_library.DirectoryPath+"|"+item.Clip.Id+"|"+_librarySearchGeneration;
@@ -293,6 +295,7 @@ namespace BrawlCrate.UI
         }
         private void PreviewLibraryOriginal()
         {
+            if(OpenSelectedBt3Inspector())return;
             var item=LibrarySelection;if(item==null)return;
             CancelLibraryAutoPreview();PauseSourceOperation();
             string model=SelectedLibraryCostume?.ModelId??item.Model?.Id;

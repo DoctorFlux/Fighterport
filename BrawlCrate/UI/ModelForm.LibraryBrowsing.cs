@@ -13,19 +13,22 @@ namespace BrawlCrate.UI
     {
         // Prepare only metadata off-thread. Tree nodes and native handles belong
         // exclusively to the UI thread; no model/animation decoding happens here.
-        private static LibraryGameBranch[] PlanLibraryOutline(List<LibrarySearchItem> items,string[] configured,string selected,LibraryGameLocation[] locations,bool includeEmptySources)
+        private LibraryGameBranch[] PlanLibraryOutline(List<LibrarySearchItem> items,string[] configured,string selected,LibraryGameLocation[] locations,LibraryQuery query,bool includeEmptySources)
         {
             string Scope(LibrarySearchItem item)=>item.Motion.GameSourceId==null?"game:"+item.Motion.Game:"source:"+item.Motion.GameSourceId;
             var groups=items.GroupBy(Scope).ToDictionary(g=>g.Key,g=>g.ToList());
             var sources=locations.ToDictionary(l=>"source:"+l.Id);
-            var keys=groups.Keys.Concat(includeEmptySources?sources.Keys:Enumerable.Empty<string>())
+            var bt3Locations=locations.Where(l=>l.Game==Bt3DiscInventory.Game&&
+                (query.GameSourceId==null||query.GameSourceId==l.Id)&&!query.FavoritesOnly&&query.Channel==null&&query.Availability==null&&
+                Bt3QueryMatch(l.Game+" "+l.GameVersion+" "+l.Label,query.GameBuildText));
+            var keys=groups.Keys.Concat(includeEmptySources?sources.Keys:Enumerable.Empty<string>()).Concat(bt3Locations.Select(l=>"source:"+l.Id))
                 .Concat(configured.Where(g=>!locations.Any(l=>l.Game==g)).Select(g=>"game:"+g)).Distinct();
             return keys.Select(scope=>{
                 var rows=groups.TryGetValue(scope,out var found)?found:new List<LibrarySearchItem>();sources.TryGetValue(scope,out var location);
                 string game=location?.Game??rows.FirstOrDefault()?.Motion.Game??scope.Substring(5);
                 string sourceLabel=location==null?game:game+" · "+location.Label;
                 if(location!=null&&locations.Count(l=>l.Game==game&&l.Label==location.Label)>1)sourceLabel+=" · "+location.GameVersion+" ["+location.Id.Substring(0,8)+"]";
-                return new LibraryGameBranch{Name=scope,Text=sourceLabel,Indexed=location?.Indexed??rows.Count>0,ToolTip=location==null?game:location.GameVersion+" · "+location.Path,Characters=rows
+                var branch=new LibraryGameBranch{Name=scope,Text=sourceLabel,Indexed=location?.Indexed??rows.Count>0,ToolTip=location==null?game:location.GameVersion+" · "+location.Path,Characters=rows
                     .GroupBy(i=>i.Model?.Character??i.Clip.SourceCharacter??"Unverified",StringComparer.Ordinal)
                     .OrderBy(g=>g.Key,StringComparer.OrdinalIgnoreCase).Select(character=>{
                         var clips=character.ToList();
@@ -52,6 +55,18 @@ namespace BrawlCrate.UI
                             ToolTip=clips.Count+" indexed animations · "+game,HasSelection=models.Any(m=>m.HasSelection),
                             Group=new LibraryGroup{Items=clips,Character=true,Models=models}};
                     }).ToArray()};
+                if(location?.Game==Bt3DiscInventory.Game)
+                {
+                    try
+                    {
+                        branch.Bt3=GetBt3BrowseInventory(location);
+                        branch.Bt3Forms=branch.Bt3.Fighters.Where(f=>Bt3QueryMatch(f.Display,query.Text)&&
+                            Bt3QueryMatch(f.Display,query.CharacterModelText)).ToArray();
+                    }
+                    catch(Exception error)when(error is IOException||error is InvalidDataException||error is UnauthorizedAccessException)
+                    {branch.Bt3Issue=error.Message;branch.Bt3Forms=new Bt3DiscInventory.Bt3FighterSlot[0];}
+                }
+                return branch;
             }).OrderBy(g=>g.Text,StringComparer.OrdinalIgnoreCase).ToArray();
         }
 
@@ -80,7 +95,8 @@ namespace BrawlCrate.UI
                 var result=await Task.Run(()=>{
                     if(generation!=_librarySearchGeneration)return null;
                     var rows=catalogue.Browse(query);
-                    return Tuple.Create(PlanLibraryOutline(rows,query.HasFilters?new string[0]:catalogue.ConfiguredGames,selected,catalogue.Read().GameLocations.ToArray(),!query.HasFilters),rows.Count,catalogue.ClipCount,catalogue.CanUndo,catalogue.Channels);
+                    var planned=PlanLibraryOutline(rows,query.HasFilters?new string[0]:catalogue.ConfiguredGames,selected,catalogue.Read().GameLocations.ToArray(),query,!query.HasFilters);
+                    return Tuple.Create(planned,rows.Count,catalogue.ClipCount,catalogue.CanUndo,catalogue.Channels);
                 });
                 if(result==null||IsDisposed||_libraryPane.IsDisposed||generation!=_librarySearchGeneration||!ReferenceEquals(catalogue,_library))return;
                 UpdateLibraryChannels(result.Item5);
@@ -91,15 +107,18 @@ namespace BrawlCrate.UI
                 try{_libraryList.SelectedNode=null;}finally{_libraryUpdatingTree=false;}
                 foreach(var game in result.Item1)
                     _libraryTreeWork.Enqueue(()=>{
-                        var node=new TreeNode(game.Text){Name=game.Name,ToolTipText=game.ToolTip};_libraryList.Nodes.Add(node);
-                        node.Nodes.Add(game.Characters.Length==0?(game.Indexed?"No matching animations":"Saved location — not indexed"):"Loading characters...");
+                        var node=new TreeNode(game.Text){Name=game.Name,ToolTipText=game.ToolTip,Tag=game.Bt3};_libraryList.Nodes.Add(node);
+                        node.Nodes.Add(game.Bt3!=null?"Loading native forms...":game.Bt3Issue!=null?"BT3 disc unavailable · "+game.Bt3Issue:
+                            game.Characters.Length==0?(game.Indexed?"No matching animations":"Saved location — not indexed"):"Loading characters...");
                         if(!_libraryCollapsedGames.Contains(game.Name))ExpandLibraryBranch(node);
+                        if(game.Bt3!=null)QueueBt3Forms(node,game.Bt3,game.Bt3Forms);
                         foreach(var character in game.Characters)
                             _libraryTreeWork.Enqueue(()=>AddLibraryBranch(node,character));
-                        if(game.Characters.Length>0)_libraryTreeWork.Enqueue(()=>node.Nodes.RemoveAt(0));
+                        if(game.Characters.Length>0&&game.Bt3==null)_libraryTreeWork.Enqueue(()=>node.Nodes.RemoveAt(0));
                     });
                 _libraryTreeCompleted=()=>{
-                    _libraryPage.Text=result.Item3==0?"No clips":result.Item2+" matches · "+result.Item3+" total";
+                    _libraryPage.Text=result.Item3==0&&result.Item1.Any(g=>g.Bt3!=null)?"BT3 direct disc browse · native preview pending":
+                        result.Item3==0?"No clips":result.Item2+" matches · "+result.Item3+" total";
                     _libraryUndo.Enabled=result.Item4;UpdateLibrarySelection();if(selectId!=null)QueueLibraryAutoPreview();
                 };
                 _libraryPopulateTimer.Start();

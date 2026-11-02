@@ -1,11 +1,13 @@
 # Native Next integration
 
 BT3 PS2 USA is currently an independent, read-only disc inventory boundary:
-ISO9660/AFS numeric slot and member identities feed an inspector and exact
-original-byte export. It is intentionally not registered as an editable native
-source/target adapter because model, texture and motion decoding are not yet
-verified. A saved BT3 ISO path remains path-only in the shared library. Future
-BT3 decoding and writing must qualify the existing `NativeGameOperation`
+ISO9660/AFS numeric slot and member identities feed an inspector, exact
+original-byte export and a direct library tree. A saved BT3 ISO path remains
+path-only in the shared catalogue; the tree reads the verified disc on demand
+and creates no fake clip/model records or extracted files. It is intentionally
+not registered as an editable native source/target adapter because native mesh,
+texture, full skin and write support are not yet verified. Future BT3 decoding
+and writing must qualify the existing `NativeGameOperation`
 capabilities separately and preserve native rig/skin, timing and project
 ownership; see [bounded evidence](BT3_DISC_INVENTORY_2026-11-02.md).
 

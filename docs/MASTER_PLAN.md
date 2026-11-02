@@ -1,5 +1,12 @@
 # Fighterport master plan
 
+Preview.79 exposes a saved BT3 USA disc as a read-only direct library tree of
+exact forms, costumes and native actions. It removes the misleading empty
+“not indexed” branch for this verified build without claiming a rendered or
+editable BT3 source. Mesh/texture rendering, native target ownership,
+retargeting and writing stay open in the ONE incomplete G1/M2. See
+[acceptance](BT3_DIRECT_LIBRARY_2026-11-02.md).
+
 Preview.78 adds a bounded read-only BT3 native pose reader and keeps exact
 form/character, costume and action selection separate. The supplied disc's
 161 slots and 698 costumes passed action-0 skeleton association; BT3 models

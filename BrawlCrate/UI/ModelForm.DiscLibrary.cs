@@ -26,14 +26,24 @@ namespace BrawlCrate.UI
                     if(dialog.ExistingSourceId!=null)
                     {
                         OpenSavedGameLibrary(shared,shared.Read().GameLocations.Single(l=>l.Id==dialog.ExistingSourceId));
-                        _fighterStatus.Text="Opened saved "+dialog.Request.Game+" library. Choose a character, animation and costume; no game extraction was repeated.";
+                        _fighterStatus.Text=dialog.Request.Game==Bt3DiscInventory.Game?
+                            "Browsing saved BT3 disc directly. Choose a form, costume and action to inspect native pose data.":
+                            "Opened saved "+dialog.Request.Game+" library. Choose a character, animation and costume; no game extraction was repeated.";
                     }
                     else if(dialog.PathOnly)
                     {
                         shared.RememberGameSource(dialog.Request.Game,dialog.Request.GameVersion,dialog.Request.Path);
                         _sharedSourceLibrary=shared;
-                        _fighterStatus.Text="Saved "+dialog.Request.Game+" source location for later use. This source has not been indexed.";
-                        if(ReferenceEquals(_library,shared))RefreshLibrary();
+                        _fighterStatus.Text=dialog.Request.Game==Bt3DiscInventory.Game?
+                            "Saved BT3 disc. Its forms, costumes and native actions are available for direct read-only browsing.":
+                            "Saved "+dialog.Request.Game+" source location for later use. This source has not been indexed.";
+                        if(dialog.Request.Game==Bt3DiscInventory.Game)
+                        {
+                            var saved=shared.Read().GameLocations.Last(l=>l.Game==dialog.Request.Game&&l.GameVersion==dialog.Request.GameVersion&&
+                                string.Equals(l.Path,dialog.Request.Path,StringComparison.OrdinalIgnoreCase));
+                            OpenSavedGameLibrary(shared,saved);
+                        }
+                        else if(ReferenceEquals(_library,shared))RefreshLibrary();
                     }
                     else IndexLibraryGameSource(this, dialog.Request);
                 }
