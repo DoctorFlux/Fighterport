@@ -18,7 +18,9 @@ namespace BrawlCrate.UI
         private LibrarySourceState _libraryPreviewState;
         private bool LibraryPreviewReady=>LibrarySelection!=null&&_libraryPreviewState==LibrarySourceState.Available&&LibraryCostumeReady&&
             !_libraryReplacingTree&&_librarySearchTimer?.Enabled!=true&&!SimpleWorkspaceSourceNeedsRepair(LibrarySelection);
-        private bool LibraryCanOpenTarget=>LibraryPreviewReady&&(NativeGameAdapters.ForNative(LibrarySelection?.Motion.Provider)?.Operations.HasFlag(NativeGameOperation.TargetEdit)??false);
+        private bool LibraryCanOpenTarget=>
+            LibraryPreviewReady&&(NativeGameAdapters.ForNative(LibrarySelection?.Motion.Provider)?.Operations.HasFlag(NativeGameOperation.TargetEdit)??false)||
+            _libraryList?.SelectedNode?.Tag is Bt3BrowseChoice choice&&ResolveBt3Choice(choice)!=null&&!_libraryReplacingTree;
         private void LibraryBrowseSelectionChanged()
         {
             _libraryCharacterSelection=null;
@@ -28,7 +30,7 @@ namespace BrawlCrate.UI
                 if(_libraryLease!=null)ReleaseLibraryPreview();
                 if(_libraryList.SelectedNode?.Tag is Bt3DiscInventory)ReleaseBt3Preview();
             }
-            else ReleaseBt3Preview();
+            else{ReleaseBt3Preview();if(_bt3Selectors!=null)_bt3Selectors.Visible=false;}
             if(_libraryList.SelectedNode?.Tag is LibraryGroup group)
                 _libraryCharacterSelection=group.Items.Where(i=>i.Model!=null&&(i.Clip.Channel=="CHR0 skeletal"||i.Clip.Channel==MeleeGameSource.Channel)&&i.State==LibrarySourceState.Available)
                     .GroupBy(i=>i.Model.Id).OrderByDescending(g=>g.Count()).ThenBy(g=>g.Key,StringComparer.Ordinal).FirstOrDefault()?

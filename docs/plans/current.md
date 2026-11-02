@@ -1,5 +1,14 @@
 # Current milestone M2 — simpler native workspace
 
+2 November: preview.81 groups BT3 native forms under character rows, exposes
+Transform and Costume dropdowns, includes the indexed battle-damaged variants
+and defaults to the first normal costume. Open as target now shows the selected
+native BT3 model/textures and supported primary-bank animation in a large
+**read-only** ModelPanel with playback and frame scrubbing. It preserves the
+existing editable project; BT3 native target editing, Use on This Model,
+retargeting, fitting and writing remain OPEN in this one incomplete G1/M2.
+See [bounded acceptance](../BT3_CHARACTER_TARGET_VIEW_2026-11-02.md).
+
 2 November: preview.80 renders a selected BT3 SLUS-21678 form, costume and
 decodable skeletal action in the small read-only native source viewport. It
 reads pmdl weighted strips, seam triangles and referenced GS textures directly

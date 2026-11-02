@@ -1,5 +1,13 @@
 # Fighterport master plan
 
+Preview.81 makes BT3 disc browsing character → primary-bank action, with exact
+form/transform and normal or battle-damaged costume dropdowns. The first normal
+costume is the default. Open as target uses a large read-only native BT3 viewer
+with playback and scrubbing; it does not create an editable CHR0/BRRES target.
+Native BT3 target ownership, editing, cross-game retargeting, fitting and
+writing remain open in the ONE incomplete G1/M2. See
+[acceptance](BT3_CHARACTER_TARGET_VIEW_2026-11-02.md).
+
 Preview.80 adds read-only BT3 source model, costume texture and skeletal-action
 rendering to the existing small ModelPanel. The supplied USA ISO's 698 costume
 packs decode native textured geometry; the chosen source action plays without

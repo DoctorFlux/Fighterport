@@ -173,5 +173,31 @@ namespace BrawlCrate.Studio
         };
         internal static string Get(int slot) => slot >= 0 && slot < Names.Length ? Names[slot] : null;
         internal static int Count => Names.Length;
+        // Presentation grouping of the inspected roster. The native slot is
+        // still the identity of every form, model and action. Keep uncertain
+        // relationships separate rather than borrowing another slot's data.
+        private static readonly int[] CharacterSlots=BuildCharacterSlots();
+        private static int[] BuildCharacterSlots()
+        {
+            var result=new int[Names.Length];for(int slot=0;slot<result.Length;slot++)result[slot]=slot;
+            int[][] groups={
+                new[]{1,2},new[]{3,4,5,6},new[]{7,8,9,10},
+                new[]{14,15,16},new[]{17,18,19},new[]{29,30},
+                new[]{31,32,33},new[]{34,35,36,37,38},
+                new[]{39,40},new[]{41,42,43},new[]{44,45},
+                new[]{46,47},new[]{48,49,50},new[]{51,52},
+                new[]{53,54},new[]{66,67},new[]{71,72},
+                new[]{73,74},new[]{75,76},new[]{77,78},
+                new[]{80,81},new[]{82,83},new[]{91,92,93,94,95},
+                new[]{105,106,107,108},new[]{112,113,114,115,116,117},
+                new[]{118,119},new[]{121,122},new[]{123,124},
+                new[]{126,127},new[]{129,130},new[]{131,132,133},
+                new[]{135,136},new[]{137,138},new[]{140,141,142,143},
+                new[]{152,153},new[]{159,160}
+            };
+            foreach(var group in groups)foreach(int slot in group)result[slot]=group[0];
+            return result;
+        }
+        internal static int CharacterSlot(int slot)=>slot>=0&&slot<CharacterSlots.Length?CharacterSlots[slot]:slot;
     }
 }

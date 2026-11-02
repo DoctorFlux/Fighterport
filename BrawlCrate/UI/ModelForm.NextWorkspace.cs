@@ -114,7 +114,8 @@ namespace BrawlCrate.UI
                 if (item.Name == "nextAddSourceToLibrary")
                 { item.Enabled = !busy && _sessionSourceLibrary != null && ReferenceEquals(_library, _sessionSourceLibrary); continue; }
                 if (item.Name == "nextPreviewLibraryOriginal" || item.Name == "nextOpenLibraryTarget")
-                { item.Enabled = !busy && LibraryPreviewReady && (item.Name != "nextOpenLibraryTarget" || LibraryCanOpenTarget); continue; }
+                { item.Enabled = !busy && (item.Name == "nextOpenLibraryTarget"?LibraryCanOpenTarget:
+                    LibraryPreviewReady||_libraryList?.SelectedNode?.Tag is Bt3BrowseChoice); continue; }
                 if (item.Name == "nextLoadSourceFiles" || item.Name == "nextSharedLibrary" || item.Name == "nextAddBrawlDisc" || item.Name == "nextLibrarySources" || item.Name == "nextSavedGameSources")
                 { item.Enabled = !busy; continue; }
                 item.Enabled = !busy && target && (item.Name == "nextReviewResults" || item.Name == "nextExportReviewedSet" ||

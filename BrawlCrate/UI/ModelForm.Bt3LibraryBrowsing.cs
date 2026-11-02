@@ -17,10 +17,21 @@ namespace BrawlCrate.UI
         {
             internal Bt3DiscInventory Inventory;
             internal Bt3DiscInventory.Bt3FighterSlot Form;
+            internal Bt3DiscInventory.Bt3FighterSlot[] Forms;
             internal Bt3DiscInventory.Bt3Resource Costume,Motion;
             internal int Action=-1;
             internal bool Loaded;
         }
+        private sealed class Bt3CostumeOption
+        {
+            internal Bt3DiscInventory.Bt3Resource Resource;
+            internal int Number;
+            internal bool Damaged;
+            public override string ToString()=>"Costume "+(Number+1)+(Damaged?" · Battle damaged":" · Normal");
+        }
+        private TableLayoutPanel _bt3Selectors;
+        private ComboBox _bt3Transform, _bt3Costume;
+        private bool _bt3UpdatingSelectors;
         private readonly object _bt3BrowseCacheGate=new object();
         private readonly Dictionary<string,Lazy<Bt3DiscInventory>> _bt3BrowseCache=new Dictionary<string,Lazy<Bt3DiscInventory>>(StringComparer.OrdinalIgnoreCase);
         private Bt3NativeRender _bt3Renderer;
@@ -29,6 +40,77 @@ namespace BrawlCrate.UI
         private CancellationTokenSource _bt3PreviewCancel;
         private System.Windows.Forms.Timer _bt3PreviewTimer;
         private int _bt3PreviewEpoch;
+
+        private Control BuildBt3Selectors()
+        {
+            _bt3Selectors=new TableLayoutPanel{Name="bt3NativeSelectors",Dock=DockStyle.Fill,Visible=false,
+                ColumnCount=2,RowCount=2,Margin=Padding.Empty};
+            _bt3Selectors.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,86));
+            _bt3Selectors.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
+            _bt3Selectors.Controls.Add(new Label{Text="Transform",AutoSize=false,Dock=DockStyle.Fill,AutoEllipsis=true},0,0);
+            _bt3Selectors.Controls.Add(new Label{Text="Costume",AutoSize=false,Dock=DockStyle.Fill,AutoEllipsis=true},0,1);
+            _bt3Transform=new ComboBox{Name="bt3Transform",Dock=DockStyle.Fill,DropDownStyle=ComboBoxStyle.DropDownList,
+                AccessibleName="BT3 form or transformation"};
+            _bt3Costume=new ComboBox{Name="bt3Costume",Dock=DockStyle.Fill,DropDownStyle=ComboBoxStyle.DropDownList,
+                AccessibleName="BT3 costume and battle damage"};
+            _bt3Selectors.Controls.Add(_bt3Transform,1,0);_bt3Selectors.Controls.Add(_bt3Costume,1,1);
+            _bt3Transform.SelectedIndexChanged+=(s,e)=>{
+                if(_bt3UpdatingSelectors)return;
+                UpdateBt3Costumes();UpdateBt3LibrarySelection();QueueBt3Preview();
+            };
+            _bt3Costume.SelectedIndexChanged+=(s,e)=>{
+                if(_bt3UpdatingSelectors)return;
+                UpdateBt3LibrarySelection();QueueBt3Preview();
+            };
+            return _bt3Selectors;
+        }
+        private void UpdateBt3Costumes()
+        {
+            var form=_bt3Transform?.SelectedItem as Bt3DiscInventory.Bt3FighterSlot;
+            _bt3UpdatingSelectors=true;
+            try
+            {
+                _bt3Costume.Items.Clear();
+                if(form!=null)foreach(var resource in form.Costumes)
+                {
+                    int native=resource.AfsIndex-(Bt3DiscInventory.FighterAfsBase+form.Slot*10);
+                    _bt3Costume.Items.Add(new Bt3CostumeOption{Resource=resource,Number=native%4,Damaged=native>=4});
+                }
+                _bt3Costume.SelectedItem=_bt3Costume.Items.Cast<Bt3CostumeOption>().FirstOrDefault(c=>!c.Damaged)
+                    ??_bt3Costume.Items.Cast<Bt3CostumeOption>().FirstOrDefault();
+            }
+            finally{_bt3UpdatingSelectors=false;}
+        }
+        private void UpdateBt3Selectors(Bt3BrowseChoice choice)
+        {
+            if(_bt3Selectors==null)return;
+            bool visible=choice?.Forms?.Length>0;
+            _bt3Selectors.Visible=visible;
+            if(!visible)return;
+            var selected=_bt3Transform.SelectedItem as Bt3DiscInventory.Bt3FighterSlot;
+            if(selected!=null&&choice.Forms.Contains(selected))return;
+            _bt3UpdatingSelectors=true;
+            try
+            {
+                _bt3Transform.Items.Clear();_bt3Transform.Items.AddRange(choice.Forms.Cast<object>().ToArray());
+                _bt3Transform.SelectedItem=choice.Form??choice.Forms[0];
+            }
+            finally{_bt3UpdatingSelectors=false;}
+            UpdateBt3Costumes();
+        }
+        private Bt3BrowseChoice ResolveBt3Choice(Bt3BrowseChoice choice)
+        {
+            if(choice==null)return null;
+            var form=_bt3Transform?.SelectedItem as Bt3DiscInventory.Bt3FighterSlot??choice.Form;
+            if(form==null||choice.Forms!=null&&!choice.Forms.Contains(form))return null;
+            var costume=(_bt3Costume?.SelectedItem as Bt3CostumeOption)?.Resource??form.Costumes.FirstOrDefault();
+            if(costume==null||!form.Costumes.Contains(costume))return null;
+            int action=Math.Max(0,choice.Action);
+            var motion=form.MotionMembers[0].FirstOrDefault(m=>m.PackIndex==action+1&&m.Bytes>=10);
+            if(motion==null)return null;
+            return new Bt3BrowseChoice{Inventory=choice.Inventory,Forms=choice.Forms,Form=form,Costume=costume,
+                Motion=motion,Action=action};
+        }
 
         private void CancelBt3PreviewLoad()
         {
@@ -63,9 +145,9 @@ namespace BrawlCrate.UI
         {
             CancelBt3PreviewLoad();
             if(choice==null||SimpleWorkspaceBusy||IsDisposed||Disposing)return;
-            var costume=choice.Costume??choice.Form.Costumes.FirstOrDefault();
-            var action=choice.Motion??choice.Form.MotionMembers[0].FirstOrDefault(m=>m.PackIndex==1&&m.Bytes>=10);
-            if(costume==null||action==null)return;
+            var exact=ResolveBt3Choice(choice);
+            if(exact==null){ReleaseBt3Preview();_libraryOriginalLabel.Text="This action is unavailable for the selected transformation.";return;}
+            var costume=exact.Costume;var action=exact.Motion;
             var priorScene=ReferenceEquals(_bt3PreviewChoice?.Costume,costume)?_bt3Renderer?.Scene:null;
             int epoch=_bt3PreviewEpoch;var cancel=new CancellationTokenSource();_bt3PreviewCancel=cancel;
             _libraryOriginalLabel.Text="Loading original BT3 model, textures and action...";
@@ -85,15 +167,16 @@ namespace BrawlCrate.UI
                     return Tuple.Create(scene,motion);
                 },cancel.Token);
                 if(cancel.IsCancellationRequested||epoch!=_bt3PreviewEpoch||IsDisposed||Disposing||
-                    !ReferenceEquals(_libraryList?.SelectedNode?.Tag,choice)||_libraryPane?.Visible!=true)return;
+                    !ReferenceEquals(_libraryList?.SelectedNode?.Tag,choice)||_libraryPane?.Visible!=true||
+                    !ReferenceEquals(_bt3Transform.SelectedItem,exact.Form)||
+                    !ReferenceEquals((_bt3Costume.SelectedItem as Bt3CostumeOption)?.Resource,costume))return;
                 if(prepared.Item1!=null)
                 {
                     ReleaseLibraryPreview();_bt3Renderer=new Bt3NativeRender(prepared.Item1);
                     _libraryViewport.CreateControl();_libraryViewport.Capture();
                     _libraryViewport.ClearAll();_libraryViewport.AddTarget(_bt3Renderer);
                 }
-                _bt3Motion=prepared.Item2;_bt3PreviewChoice=new Bt3BrowseChoice{Costume=costume,Form=choice.Form,Inventory=choice.Inventory,
-                    Motion=action,Action=action.PackIndex-1};
+                _bt3Motion=prepared.Item2;_bt3PreviewChoice=exact;
                 _libraryTime=0;_libraryScrubbing=true;
                 try{_libraryFrame.Maximum=Math.Max(1,_bt3Motion.Length+1);_libraryFrame.Value=1;}
                 finally{_libraryScrubbing=false;}
@@ -136,18 +219,22 @@ namespace BrawlCrate.UI
 
         private void QueueBt3Forms(TreeNode parent,Bt3DiscInventory inventory,Bt3DiscInventory.Bt3FighterSlot[] forms)
         {
-            foreach(var form in forms)
+            foreach(var group in forms.GroupBy(f=>Bt3CharacterNames.CharacterSlot(f.Slot)).OrderBy(g=>g.Key))
+            {
+                var family=group.ToArray();var form=family[0];
                 _libraryTreeWork.Enqueue(()=>{
                     if(parent.TreeView!=_libraryList)return;
-                    var row=new TreeNode(form.Display){Name="bt3-form:"+parent.Name+":"+form.Slot.ToString("D3"),
-                        Tag=new Bt3BrowseChoice{Inventory=inventory,Form=form},
-                        ToolTipText="Exact native form slot "+form.Slot.ToString("D3")+" · choose a costume, then an action"};
-                    row.Nodes.Add("Expand to choose costume");parent.Nodes.Add(row);
+                    var row=new TreeNode(Bt3CharacterNames.Get(group.Key)??form.Display)
+                    {Name="bt3-character:"+parent.Name+":"+group.Key.ToString("D3"),
+                        Tag=new Bt3BrowseChoice{Inventory=inventory,Form=form,Forms=family},
+                        ToolTipText=family.Length+" native form(s) · choose a transformation and costume below"};
+                    row.Nodes.Add("Expand to browse native actions");parent.Nodes.Add(row);
                 });
+            }
             _libraryTreeWork.Enqueue(()=>{
                 if(parent.TreeView!=_libraryList)return;
                 if(parent.Nodes.Count>0)parent.Nodes.RemoveAt(0);
-                if(forms.Length==0)parent.Nodes.Add("No matching BT3 forms");
+                if(forms.Length==0)parent.Nodes.Add("No matching BT3 characters");
             });
         }
 
@@ -157,36 +244,24 @@ namespace BrawlCrate.UI
             if(!(node?.Tag is Bt3BrowseChoice choice))return false;
             if(choice.Loaded)return true;
             choice.Loaded=true;
-            if(choice.Costume==null)
+            var actions=choice.Forms.SelectMany(form=>form.MotionMembers[0])
+                .Where(m=>m.PackIndex>0&&m.PackIndex<=0x19E&&m.Bytes>=10)
+                .Select(m=>m.PackIndex-1).Distinct().OrderBy(a=>a).ToArray();
+            foreach(int action in actions)
             {
-                foreach(var costume in choice.Form.Costumes)
-                    _libraryTreeWork.Enqueue(()=>{
-                        if(node.TreeView!=_libraryList)return;
-                        int index=costume.AfsIndex-(Bt3DiscInventory.FighterAfsBase+choice.Form.Slot*10);
-                        var row=new TreeNode("Costume "+index+" · native model + textures")
-                        {Name="bt3-costume:"+choice.Form.Slot.ToString("D3")+":"+index,
-                            Tag=new Bt3BrowseChoice{Inventory=choice.Inventory,Form=choice.Form,Costume=costume},
-                            ToolTipText=costume.Identity+" · "+costume.Bytes+" original bytes"};
-                        row.Nodes.Add("Expand to choose native action");node.Nodes.Add(row);
-                    });
-            }
-            else
-            {
-                foreach(var motion in choice.Form.MotionMembers[0].Where(m=>m.PackIndex>0&&m.PackIndex<=0x19E&&m.Bytes>=10))
-                    _libraryTreeWork.Enqueue(()=>{
-                        if(node.TreeView!=_libraryList)return;
-                        int action=motion.PackIndex-1;
-                        var row=new TreeNode((action==0?"Idle · ":"")+"Action "+action.ToString("D3")+" · original member")
-                        {Name="bt3-action:"+choice.Form.Slot.ToString("D3")+":"+choice.Costume.AfsIndex+":"+action.ToString("D3"),
-                            Tag=new Bt3BrowseChoice{Inventory=choice.Inventory,Form=choice.Form,Costume=choice.Costume,Motion=motion,Action=action},
-                            ToolTipText=motion.Identity+" · "+motion.Bytes+" original bytes · preview when its native skeletal data decodes"};
-                        node.Nodes.Add(row);
-                    });
+                _libraryTreeWork.Enqueue(()=>{
+                    if(node.TreeView!=_libraryList)return;
+                    var row=new TreeNode((action==0?"Idle · ":"")+"Action "+action.ToString("D3"))
+                    {Name="bt3-action:"+choice.Form.Slot.ToString("D3")+":"+action.ToString("D3"),
+                        Tag=new Bt3BrowseChoice{Inventory=choice.Inventory,Form=choice.Form,Forms=choice.Forms,Action=action},
+                        ToolTipText="Exact action "+action.ToString("D3")+" of the transformation selected below"};
+                    node.Nodes.Add(row);
+                });
             }
             _libraryTreeWork.Enqueue(()=>{
                 if(node.TreeView!=_libraryList)return;
                 if(node.Nodes.Count>0)node.Nodes.RemoveAt(0);
-                if(node.Nodes.Count==0)node.Nodes.Add(choice.Costume==null?"No costumes in this form":"No verified action members");
+                if(node.Nodes.Count==0)node.Nodes.Add("No indexed native actions");
             });
             _libraryPopulateTimer.Start();return true;
         }
@@ -197,17 +272,20 @@ namespace BrawlCrate.UI
             var choice=selected as Bt3BrowseChoice;
             var inventory=selected as Bt3DiscInventory??choice?.Inventory;
             if(inventory==null)return false;
-            UpdateLibraryCostumes(null);_libraryPreview.Text=choice?.Form==null?"Inspect BT3":"Preview Original";
+            UpdateLibraryCostumes(null);UpdateBt3Selectors(choice);
+            _libraryPreview.Text=choice?.Form==null?"Inspect BT3":"Preview Original";
             _libraryPreview.Enabled=!SimpleWorkspaceBusy&&!_libraryReplacingTree;
-            _libraryUse.Enabled=_libraryOpenTarget.Enabled=_libraryRepair.Enabled=false;
+            _libraryUse.Enabled=_libraryRepair.Enabled=false;
+            var exact=ResolveBt3Choice(choice);
+            _libraryOpenTarget.Enabled=exact!=null&&!SimpleWorkspaceBusy&&!_libraryReplacingTree;
+            _libraryOpenTarget.AccessibleDescription="Show this exact BT3 transformation, costume and action in the large native target viewport. Native editing and writing are not yet available.";
             if(_bt3Renderer==null)_libraryOriginalLabel.Text="BT3 source preview · choose a form, costume or action";
-            _libraryDetails.Text=choice==null?"Browse the saved BT3 disc directly. Expand a form, choose its costume, then choose a native action. Inspect reads its original pose data.":
-                choice.Form.Display+Environment.NewLine+
-                (choice.Costume==null?"Choose a costume for this form.":
-                    "Costume "+(choice.Costume.AfsIndex-(Bt3DiscInventory.FighterAfsBase+choice.Form.Slot*10))+" · "+choice.Costume.Identity+Environment.NewLine+
-                    (choice.Motion==null?"Choose an action. Action 000 is idle.":
-                        "Action "+choice.Action.ToString("D3")+" · "+choice.Motion.Identity+" · "+choice.Motion.Bytes+" original bytes."))+Environment.NewLine+
-                "Read-only native mesh, texture and action preview. Retargeting and target editing remain unavailable.";
+            _libraryDetails.Text=choice==null?"Browse the saved BT3 disc by character. Choose a transformation and costume below, then choose an action.":
+                (exact==null?"This action is unavailable for the selected transformation.":
+                    exact.Form.Display+Environment.NewLine+
+                    (_bt3Costume.SelectedItem?.ToString()??"Costume")+" · "+exact.Costume.Identity+Environment.NewLine+
+                    "Action "+exact.Action.ToString("D3")+" · "+exact.Motion.Identity+" · "+exact.Motion.Bytes+" original bytes.")+
+                Environment.NewLine+"Native source and large target viewing; BT3 editing, retargeting and writing remain unavailable.";
             UpdateLibraryFavorite();UpdateSimpleWorkspace();return true;
         }
 
@@ -221,7 +299,8 @@ namespace BrawlCrate.UI
             CancelLibraryAutoPreview();PauseSourceOperation();
             using(var dialog=new Bt3DiscInventoryDialog(inventory))
             {
-                if(choice!=null)dialog.SelectNative(choice.Form,choice.Costume,choice.Action);
+                var exact=ResolveBt3Choice(choice);
+                if(exact!=null)dialog.SelectNative(exact.Form,exact.Costume,exact.Action);
                 dialog.ShowDialog(this);
             }
             return true;

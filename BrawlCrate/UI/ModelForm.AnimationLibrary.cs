@@ -351,6 +351,8 @@ namespace BrawlCrate.UI
         }
         private void DisposeAnimationLibrary()
         {
+            CloseBt3TargetView(false);
+            _bt3TargetTimer?.Dispose();
             if(_animationLibraryDisposed)return;
             _animationLibraryDisposed=true;
             ResetBatchReview(); ResetLoopInspection();

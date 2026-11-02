@@ -599,6 +599,7 @@ namespace BrawlCrate.UI
             // Native layout can raise its fill editor while a text/size change
             // settles. Restore visible overlays after that layout, without
             // forcing another editor resize on unchanged status notifications.
+            if(_bt3TargetHost?.Visible==true)_bt3TargetHost.BringToFront();
             foreach (Control pane in new Control[] { _batchReviewPane, _loopInspectionPane, _libraryPane, _simpleWorkspaceTask })
                 if (pane?.Visible == true && pane.Dock == DockStyle.None &&
                     _simpleWorkspaceBody.Controls.GetChildIndex(pane) != 0) pane.BringToFront();

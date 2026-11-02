@@ -60,8 +60,10 @@ namespace BrawlCrate.UI
                     try
                     {
                         branch.Bt3=GetBt3BrowseInventory(location);
-                        branch.Bt3Forms=branch.Bt3.Fighters.Where(f=>Bt3QueryMatch(f.Display,query.Text)&&
-                            Bt3QueryMatch(f.Display,query.CharacterModelText)).ToArray();
+                        branch.Bt3Forms=branch.Bt3.Fighters.GroupBy(f=>Bt3CharacterNames.CharacterSlot(f.Slot))
+                            .Where(group=>group.Any(f=>Bt3QueryMatch(f.Display,query.Text)&&
+                                Bt3QueryMatch(f.Display,query.CharacterModelText)))
+                            .SelectMany(group=>group).ToArray();
                     }
                     catch(Exception error)when(error is IOException||error is InvalidDataException||error is UnauthorizedAccessException)
                     {branch.Bt3Issue=error.Message;branch.Bt3Forms=new Bt3DiscInventory.Bt3FighterSlot[0];}
@@ -117,7 +119,7 @@ namespace BrawlCrate.UI
                         if(game.Characters.Length>0&&game.Bt3==null)_libraryTreeWork.Enqueue(()=>node.Nodes.RemoveAt(0));
                     });
                 _libraryTreeCompleted=()=>{
-                    _libraryPage.Text=result.Item3==0&&result.Item1.Any(g=>g.Bt3!=null)?"BT3 direct disc browse · native preview pending":
+                    _libraryPage.Text=result.Item3==0&&result.Item1.Any(g=>g.Bt3!=null)?"BT3 disc · choose character and action":
                         result.Item3==0?"No clips":result.Item2+" matches · "+result.Item3+" total";
                     _libraryUndo.Enabled=result.Item4;UpdateLibrarySelection();if(selectId!=null)QueueLibraryAutoPreview();
                 };

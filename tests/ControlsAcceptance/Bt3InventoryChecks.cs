@@ -26,6 +26,14 @@ internal static partial class Program
             first.MotionMembers[0].Length>0&&first.MotionMembers[1].Length>0,
             "Fighter model/costume packs and both motion-bank members resolve directly from ISO without extraction");
         var mid=inventory.Fighters[1];
+        if(args.Contains("--bt3-bank-probe"))
+            foreach(var member in mid.MotionMembers[1].Where(m=>m.Bytes>=10).Take(12))
+            {
+                try{var motion=Bt3NativeAssetReader.ReadMotion(inventory.ReadOwned(member,4*1024*1024),member.PackIndex-1);
+                    Console.WriteLine("TRACE BT3 auxiliary "+member.Identity+" frames="+motion.Length+" tracks="+motion.Tracks.Length);}
+                catch(Exception error)when(error is InvalidDataException||error is OverflowException)
+                {Console.WriteLine("TRACE BT3 auxiliary "+member.Identity+" unsupported="+error.Message);}
+            }
         var pmdl=inventory.ModelMember(mid,mid.Costumes[0]);
         var skeleton=Bt3NativeAssetReader.ReadSkeleton(inventory.ReadOwned(pmdl,4*1024*1024));
         if(args.Contains("--bt3-mesh"))
@@ -203,20 +211,45 @@ internal static partial class Program
                 await LibraryQuerySettled(form);
                 var tree=SimpleControl<TreeView>(form,"libraryClips");
                 var discNode=tree.Nodes.Cast<TreeNode>().Single(n=>n.Text.StartsWith(Bt3DiscInventory.Game,StringComparison.Ordinal));
-                Check(discNode.Nodes.Count==161&&discNode.Nodes.Cast<TreeNode>().All(n=>n.Text.StartsWith("Form ")),
-                    "Saved BT3 disc browses all native forms directly in the library instead of showing not indexed");
-                var midNode=discNode.Nodes.Cast<TreeNode>().Single(n=>n.Text.StartsWith("Form 001 "));
+                Check(discNode.Nodes.Count<161&&discNode.Nodes.Count>100&&
+                    discNode.Nodes.Cast<TreeNode>().Any(n=>n.Text=="Goku (Med)"),
+                    "Saved BT3 disc groups exact native forms under character rows");
+                var midNode=discNode.Nodes.Cast<TreeNode>().Single(n=>n.Text=="Goku (Med)");
                 midNode.Expand();await LibraryQuerySettled(form);
-                Check(midNode.Nodes.Count==8&&midNode.Nodes.Cast<TreeNode>().All(n=>n.Text.StartsWith("Costume ")),
-                    "Each BT3 form expands to its own available costumes");
-                var alternate=midNode.Nodes[1];alternate.Expand();await LibraryQuerySettled(form);
-                var idleRow=alternate.Nodes.Cast<TreeNode>().Single(n=>n.Text.StartsWith("Idle · Action 000"));
+                Check(midNode.Nodes.Count>400&&midNode.Nodes.Cast<TreeNode>().All(n=>n.Text.Contains("Action ")),
+                    "Character row exposes the native action list without costume nesting");
+                var idleRow=midNode.Nodes.Cast<TreeNode>().Single(n=>n.Text.StartsWith("Idle · Action 000"));
                 tree.SelectedNode=idleRow;Application.DoEvents();
+                var transform=SimpleControl<ComboBox>(form,"bt3Transform");
+                var costume=SimpleControl<ComboBox>(form,"bt3Costume");
+                Console.WriteLine("TRACE BT3 selectors preview="+SimpleControl<Button>(form,"libraryPreviewOriginal").Text+
+                    " use="+SimpleControl<Button>(form,"libraryUseOnTarget").Enabled+
+                    " target="+SimpleControl<Button>(form,"libraryOpenTarget").Enabled+
+                    " transforms="+transform.Items.Count+" costumes="+costume.Items.Count+" selected="+costume.Text);
                 Check(SimpleControl<Button>(form,"libraryPreviewOriginal").Text=="Preview Original"&&
                     !SimpleControl<Button>(form,"libraryUseOnTarget").Enabled&&
-                    !SimpleControl<Button>(form,"libraryOpenTarget").Enabled&&
-                    SimpleControl<TextBox>(form,"libraryDetails").Text.Contains("Costume 1"),
-                    "BT3 library action has exact form/costume context and keeps unqualified retarget commands disabled");
+                    SimpleControl<Button>(form,"libraryOpenTarget").Enabled&&transform.Items.Count==2&&
+                    costume.Items.Count==8&&costume.Text.Contains("Normal"),
+                    "BT3 character uses transform and costume dropdowns and defaults to undamaged costume");
+                await CaptureWindow(form,Path.Combine(output,"bt3-character-dropdowns.png"));
+                form.ClientSize=new System.Drawing.Size(1050,700);
+                Call(form,"SetWorkspaceTextSize",175);Call(form,"UpdateSimpleWorkspace");
+                await Task.Delay(75);Application.DoEvents();
+                var selectors=SimpleControl<TableLayoutPanel>(form,"bt3NativeSelectors");
+                var pane=SimpleControl<Panel>(form,"animationLibraryPane");
+                Console.WriteLine("TRACE BT3 compact pane="+pane.Bounds+" visible="+pane.Visible+
+                    " selector="+selectors.Bounds+" selectorVisible="+selectors.Visible+
+                    " form="+form.ClientRectangle+" dock="+pane.Dock+
+                    " index="+pane.Parent.Controls.GetChildIndex(pane));
+                Check(pane.Visible&&InClient(selectors,pane)&&selectors.Visible&&
+                    (pane.Dock!=DockStyle.None||pane.Parent.Controls.GetChildIndex(pane)==0)&&
+                    transform.Bounds.Right<=selectors.ClientSize.Width&&
+                    costume.Bounds.Right<=selectors.ClientSize.Width&&
+                    costume.Bounds.Bottom<=selectors.ClientSize.Height,
+                    "BT3 transform and costume selectors fit the compact workspace at 175% text");
+                await CaptureSimpleWorkspace(form,Path.Combine(output,"bt3-character-compact.png"));
+                Call(form,"SetWorkspaceTextSize",100);form.ClientSize=new System.Drawing.Size(1500,850);
+                Application.DoEvents();
                 if(args.Contains("--bt3-render"))
                 {
                     await Wait(()=>Field(form,"_bt3Renderer") is Bt3NativeRender);
@@ -274,10 +307,7 @@ internal static partial class Program
                         FighterProject.HashFile(Path.Combine(output,"bt3-goku-mid-costume1-idle-first.png"))!=
                         FighterProject.HashFile(Path.Combine(output,"bt3-goku-mid-costume1-idle-frame30.png")),
                         "Native action scrubbing changes rendered pixels without changing the target");
-                    var transformed=discNode.Nodes.Cast<TreeNode>().Single(n=>n.Text.StartsWith("Form 002 "));
-                    transformed.Expand();await LibraryQuerySettled(form);
-                    var transformedCostume=transformed.Nodes[0];transformedCostume.Expand();await LibraryQuerySettled(form);
-                    tree.SelectedNode=transformedCostume.Nodes.Cast<TreeNode>().Single(n=>n.Text.StartsWith("Idle · Action 000"));
+                    transform.SelectedIndex=1;
                     await Wait(()=>Field(form,"_bt3Renderer") is Bt3NativeRender newRenderer&&
                         !ReferenceEquals(newRenderer,renderer));
                     panel.Capture();panel.Invalidate();panel.Update();
@@ -287,18 +317,16 @@ internal static partial class Program
                         FighterProject.HashFile(Path.Combine(output,"bt3-goku-mid-super-saiyan-idle.png"))!=
                         FighterProject.HashFile(Path.Combine(output,"bt3-goku-mid-costume1-idle-first.png")),
                         "Separate BT3 transformation uses its own textured costume and motion bank");
-                    var unsupported=discNode.Nodes.Cast<TreeNode>().Single(n=>n.Text.StartsWith("Form 022 "));
+                    var unsupported=discNode.Nodes.Cast<TreeNode>().Single(n=>n.Text=="Piccolo (Early)");
                     unsupported.Expand();await LibraryQuerySettled(form);
-                    var unsupportedCostume=unsupported.Nodes[0];unsupportedCostume.Expand();await LibraryQuerySettled(form);
-                    tree.SelectedNode=unsupportedCostume.Nodes.Cast<TreeNode>().Single(n=>n.Text.StartsWith("Action 400 "));
+                    tree.SelectedNode=unsupported.Nodes.Cast<TreeNode>().Single(n=>n.Text.StartsWith("Action 400"));
                     await Wait(()=>SimpleControl<Label>(form,"libraryOriginalLabel").Text.StartsWith("BT3 preview unavailable:"));
                     Check(Field(form,"_bt3Renderer")==null&&
                         SimpleControl<Label>(form,"libraryOriginalLabel").Text.Contains("bounded motion buffer"),
                         "Unsupported native action clears the previous preview and reports the reason");
-                    var seamForm=discNode.Nodes.Cast<TreeNode>().Single(n=>n.Text.StartsWith("Form 007 "));
+                    var seamForm=discNode.Nodes.Cast<TreeNode>().Single(n=>n.Text=="Goku (GT)");
                     seamForm.Expand();await LibraryQuerySettled(form);
-                    var seamCostume=seamForm.Nodes[0];seamCostume.Expand();await LibraryQuerySettled(form);
-                    tree.SelectedNode=seamCostume.Nodes.Cast<TreeNode>().Single(n=>n.Text.StartsWith("Idle · Action 000"));
+                    tree.SelectedNode=seamForm.Nodes.Cast<TreeNode>().Single(n=>n.Text.StartsWith("Idle · Action 000"));
                     await Wait(()=>Field(form,"_bt3Renderer") is Bt3NativeRender seamRenderer&&
                         seamRenderer.Scene.SeamTriangleCount>0);
                     var withSeam=(Bt3NativeRender)Field(form,"_bt3Renderer");
@@ -307,6 +335,56 @@ internal static partial class Program
                         image.Save(Path.Combine(output,"bt3-native-seam-costume-idle.png"));
                     Check(withSeam.RenderCount>0&&withSeam.Scene.SeamTriangleCount>0,
                         "Costume with native seam triangles renders its complete weighted source mesh");
+
+                    tree.SelectedNode=idleRow;
+                    await Wait(()=>Field(form,"_bt3Renderer") is Bt3NativeRender);
+                    SimpleControl<Button>(form,"libraryOpenTarget").PerformClick();
+                    await Wait(()=>Field(form,"_bt3TargetRenderer") is Bt3NativeRender);
+                    var targetPanel=SimpleControl<BrawlLib.Internal.Windows.Controls.Model_Panel.ModelPanel>(form,"bt3TargetViewport");
+                    var targetRenderer=(Bt3NativeRender)Field(form,"_bt3TargetRenderer");
+                    var targetForm=SimpleControl<ComboBox>(form,"bt3TargetTransform");
+                    var targetCostume=SimpleControl<ComboBox>(form,"bt3TargetCostume");
+                    var targetAction=SimpleControl<ComboBox>(form,"bt3TargetAction");
+                    Check(targetPanel.Visible&&targetForm.Items.Count==2&&targetAction.Items.Count>400&&
+                        targetCostume.Text.Contains("Normal")&&targetRenderer.Scene.TriangleCount>1000,
+                        "Open as target shows the exact native character and its animations in the large viewport");
+                    await CaptureSimpleWorkspace(form,Path.Combine(output,"bt3-large-target.png"));
+                    targetPanel.Capture();targetPanel.Invalidate();targetPanel.Update();
+                    using(var image=targetPanel.GetScreenshot(targetPanel.ClientRectangle,false))
+                        image.Save(Path.Combine(output,"bt3-target-idle-first.png"));
+                    var targetFrame=SimpleControl<TrackBar>(form,"bt3TargetFrame");
+                    targetFrame.Value=Math.Min(30,targetFrame.Maximum);
+                    targetPanel.Capture();targetPanel.Invalidate();targetPanel.Update();
+                    using(var image=targetPanel.GetScreenshot(targetPanel.ClientRectangle,false))
+                        image.Save(Path.Combine(output,"bt3-target-idle-frame30.png"));
+                    Check(targetFrame.Maximum>30&&
+                        FighterProject.HashFile(Path.Combine(output,"bt3-target-idle-first.png"))!=
+                        FighterProject.HashFile(Path.Combine(output,"bt3-target-idle-frame30.png")),
+                        "Large native target viewport follows animation scrubbing without changing an editable project");
+                    targetFrame.Value=1;
+                    SimpleControl<Button>(form,"bt3TargetPlay").PerformClick();
+                    await Wait(()=>targetFrame.Value>1);
+                    SimpleControl<Button>(form,"bt3TargetPlay").PerformClick();
+                    Check(targetFrame.Value>1&&SimpleControl<Button>(form,"bt3TargetPlay").Text=="Play",
+                        "Native target animation plays and pauses from already-decoded motion");
+                    targetAction.SelectedIndex=1;
+                    await Wait(()=>SimpleControl<Label>(form,"bt3TargetCaption").Text.Contains("action 001"));
+                    Check(ReferenceEquals(((Bt3NativeRender)Field(form,"_bt3TargetRenderer")).Scene,targetRenderer.Scene),
+                        "Changing a native target action reuses the selected costume geometry");
+                    targetForm.SelectedIndex=1;
+                    await Wait(()=>SimpleControl<Label>(form,"bt3TargetCaption").Text.Contains("Super Saiyan"));
+                    targetCostume.SelectedIndex=4;
+                    await Wait(()=>SimpleControl<Label>(form,"bt3TargetCaption").Text.Contains("Battle damaged"));
+                    Check(targetCostume.Text.Contains("Battle damaged")&&
+                        ((Bt3NativeRender)Field(form,"_bt3TargetRenderer")).RenderCount>=0,
+                        "Native target transform and battle-damaged costume use their own exact model resources");
+                    targetPanel.Capture();targetPanel.Invalidate();targetPanel.Update();
+                    using(var image=targetPanel.GetScreenshot(targetPanel.ClientRectangle,false))
+                        image.Save(Path.Combine(output,"bt3-target-super-saiyan-damaged.png"));
+                    SimpleControl<Button>(form,"bt3TargetBack").PerformClick();
+                    Check(!SimpleControl<TableLayoutPanel>(form,"bt3NativeTargetView").Visible&&
+                        SimpleControl<BrawlCrate.UI.Model_Previewer.ModelEditControl.ModelEditControl>(form,"modelEditControl1").Visible,
+                        "Returning from BT3 target viewing restores the original editable project view");
                 }
                 await CaptureWindow(form,Path.Combine(output,"bt3-direct-library.png"));
             }

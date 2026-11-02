@@ -1,5 +1,17 @@
 # Native Next integration
 
+Preview.81 adds a BT3 direct-library browse presentation and a separate native
+read-only target ModelPanel. Character grouping is UI metadata; exact form,
+costume pack and primary-bank action member identities are frozen for source
+preview or large target loading. Costume slots 4–7 are displayed as battle-
+damaged variants of normal slots 0–3; a normal costume is selected by default.
+Playback evaluates an already-decoded `Bt3NativeAssetReader.Motion` and makes
+no disc/solver call per tick. The original FighterProject, BrawlCrate editor
+and Next retargeter retain ownership when the BT3 view closes. This viewer is
+not a BT3 editable target adapter: native bone-channel ownership, Undo,
+retargeting, fitting, Save and writing need separate qualification. See
+[bounded evidence](BT3_CHARACTER_TARGET_VIEW_2026-11-02.md).
+
 BT3 PS2 USA is currently an independent, read-only disc and source-preview boundary:
 ISO9660/AFS numeric slot and member identities feed an inspector, exact
 original-byte export, a direct library tree and native textured source rendering.

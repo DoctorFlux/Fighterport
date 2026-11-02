@@ -28,6 +28,7 @@ namespace BrawlCrate.UI
             _sourcePreviewTransport=transport;
             foreach(Control control in new Control[]{_libraryOriginalLabel,_libraryViewport,transport})catalogue.Controls.Remove(control);
             _sourcePreviewHost.Controls.Add(BuildLibraryCostumeRow(),0,0);
+            _sourcePreviewHost.Controls.Add(BuildBt3Selectors(),0,0);
             var destinations=new TableLayoutPanel{Name="libraryLoadDestinations",Dock=DockStyle.Fill,ColumnCount=2,RowCount=1,Margin=Padding.Empty};
             destinations.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,50));destinations.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,50));
             foreach(var button in new[]{_libraryPreview,_libraryOpenTarget}){button.AutoSize=false;button.Dock=DockStyle.Fill;}
@@ -79,8 +80,12 @@ namespace BrawlCrate.UI
             }
             ApplyWorkspaceLibraryTextSize(layout);
             _libraryPane.AutoScroll=false;
+            if(_bt3Selectors!=null)
+                _bt3Selectors.ColumnStyles[0].Width=TextRenderer.MeasureText("Transform",WorkspaceAppearance.Font).Width+12;
             layout.RowStyles[4].Height = Math.Max(line * 3 + 8, WorkspaceAppearance.Pixels(48));
-            _sourcePreviewHost.RowStyles[0].Height = _libraryCostumeRow.Visible ? Math.Max(line+12,WorkspaceAppearance.Pixels(32)) : 0;
+            _sourcePreviewHost.RowStyles[0].Height = _bt3Selectors?.Visible==true?
+                Math.Max(line*2+18,WorkspaceAppearance.Pixels(58)):
+                _libraryCostumeRow.Visible?Math.Max(line+12,WorkspaceAppearance.Pixels(32)):0;
             _sourcePreviewHost.RowStyles[1].Height = Math.Max(line + 16, WorkspaceAppearance.Pixels(38));
             _sourcePreviewHost.RowStyles[2].Height = Math.Max(line + 8, WorkspaceAppearance.Pixels(24));
             // The preview is a small native viewport, independent of text size.
@@ -97,10 +102,10 @@ namespace BrawlCrate.UI
             }
             _sourcePreviewTransport.ColumnStyles[0].Width=Math.Max(WorkspaceAppearance.Pixels(72),_sourcePauseWidth);
 
-            bool loaded = _libraryLease != null;
+            bool loaded = _libraryLease != null || _bt3Renderer != null;
             _sourcePartsButton.Visible=_libraryLease?.MeleeRenderer?.Parts!=null;_sourcePartsButton.Enabled=!SimpleWorkspaceBusy;
             _libraryPlay.Enabled = _libraryFrame.Enabled = loaded && !SimpleWorkspaceBusy;
-            if (!loaded)
+            if (!loaded && !(_libraryList?.SelectedNode?.Tag is Bt3BrowseChoice))
                 _libraryOriginalLabel.Text = "Source preview · select a character or animation";
 
             // A useful catalogue and the fixed source viewport remain available

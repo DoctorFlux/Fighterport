@@ -1,5 +1,14 @@
 # Fighterport
 
+2 November — preview.81-bt3-character-target-view groups exact BT3 forms by
+character for library browsing, uses Transform and Costume dropdowns, lists
+battle-damaged costume variants and defaults to the first normal costume.
+Open as target provides a large read-only native model/animation viewer with
+playback and scrubbing while preserving the existing editable project. Native
+BT3 target editing, retargeting, fitting, Save and export remain OPEN. See
+[bounded evidence](docs/BT3_CHARACTER_TARGET_VIEW_2026-11-02.md). Keep the
+one incomplete G1/M2 and background-only verification.
+
 2 November — preview.80-bt3-native-source-preview renders the selected BT3
 SLUS-21678 form, costume textures and decoded skeletal action in the existing
 small read-only source viewport. The pmdl VIF strips, two-influence weights,

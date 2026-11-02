@@ -118,6 +118,8 @@ namespace BrawlCrate.UI
 
         private void OpenLibraryAsTarget()
         {
+            if(_libraryList?.SelectedNode?.Tag is Bt3BrowseChoice)
+            {OpenBt3TargetView();return;}
             var nativeAdapter=NativeGameAdapters.ForNative(LibrarySelection?.Motion.Provider);
             if(nativeAdapter!=null&&!nativeAdapter.Operations.HasFlag(NativeGameOperation.TargetEdit))
                 throw new NotSupportedException("This adapter's native target editing/export is not qualified yet. Original source preview remains available.");
