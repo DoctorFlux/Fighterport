@@ -1,5 +1,16 @@
 # Current milestone M2 — simpler native workspace
 
+2 November: preview.88 enables an explicitly reviewed **BT3 → Brawl CHR0
+draft** from the exact selected disc form, costume and action through the
+existing Next solver and native Model Previewer. Unequal root-control chains
+use checked order-preserving bindings; the original Next route remains
+unchanged. Fresh decoded CHR0 checks, Mario/Snake project Save/reopen,
+original Next regression and a private-desktop Use on This Model/cancel flow
+passed. Exact native BT3 source snapshots and target content identity are
+retained in project provenance. Contacts, loop semantics, broad form/action
+quality, Melee output, BT3 model writing and actual game acceptance remain
+OPEN in the same incomplete G1/M2. See [bounded evidence](../BT3_BRAWL_DRAFT_2026-11-02.md).
+
 2 November: preview.87 prepares exact read-only BT3 source leases for selected
 form, costume and action, retaining separate costume-pack, pmdl and packed
 motion hashes. The source rig keeps every native joint and two-pivot skin

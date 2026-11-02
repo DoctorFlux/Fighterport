@@ -1,5 +1,16 @@
 # Native Next integration
 
+Preview.88 adds an adapter-side BT3 source bridge to the existing
+`HumanoidRetargeter` and `WindowedNativeCurveBaker`. Only a Brawl MDL0 target
+currently produces a CHR0 review draft. A native BT3 sampler remains the
+source owner; checked ancestor mappings preserve the source-local actor
+motion when the two games have different control-chain lengths. The original
+Next equal-depth path is unchanged. The candidate is serialized, freshly
+reopened and checked before a user-reviewed import. Project provenance owns
+exact BT3 costume/action snapshots and content hashes. Contacts, BT3 loop
+semantics, Melee target output and model writing remain distinct adapter
+gates; see [acceptance](BT3_BRAWL_DRAFT_2026-11-02.md).
+
 Preview.82 adds an independent BT3 BPE motion owner for the shared ModelPanel.
 The BT3 session reuses the exact viewport/control regions and restores the
 underlying Brawl/Melee document on exit. It does not make the original native

@@ -1,5 +1,14 @@
 # Fighterport
 
+2 November — preview.88-bt3-brawl-draft enables native BT3 form/costume/action
+selection as a reviewed Brawl CHR0 draft through the original Next solver and
+Model Previewer. Exact source member snapshots and hashes survive project
+Save/reopen; decoded curve, root-motion and original Next regressions passed
+for recorded local fixtures. Contact quality, BT3 loop semantics, Melee output,
+target-native model writing and actual game acceptance remain OPEN. See
+[bounded evidence](docs/BT3_BRAWL_DRAFT_2026-11-02.md). Keep one incomplete
+G1/M2 and background-only testing.
+
 2 November — preview.87-bt3-source-rig introduces a read-only exact BT3
 form/costume/action lease with separate native hashes and a full two-pivot
 skin/pose bridge. All 698 indexed costumes met the sampled skin-position

@@ -266,8 +266,12 @@ namespace BrawlCrate.UI
             UpdateLibraryCostumes(null);UpdateBt3Selectors(choice);
             _libraryPreview.Text=choice?.Form==null?"Inspect BT3":"Preview Original";
             _libraryPreview.Enabled=!SimpleWorkspaceBusy&&!_libraryReplacingTree;
-            _libraryUse.Enabled=_libraryRepair.Enabled=false;
+            _libraryRepair.Enabled=false;
             var exact=ResolveBt3Choice(choice);
+            _libraryUse.Enabled=exact!=null&&!SimpleWorkspaceBusy&&!_libraryReplacingTree&&
+                _fighterProject?.TargetGame=="Brawl"&&_fighterProject.NativeTarget==null&&
+                modelEditControl1.TargetModel is BrawlLib.SSBB.ResourceNodes.MDL0Node;
+            _libraryUse.AccessibleDescription="Use this exact BT3 form, costume and action on the current Brawl target. The resulting native CHR0 is a review draft; contact and game acceptance remain open.";
             _libraryOpenTarget.Enabled=exact!=null&&!SimpleWorkspaceBusy&&!_libraryReplacingTree;
             _libraryOpenTarget.AccessibleDescription="Open this exact BT3 form, costume and action in the shared Model Previewer. Native bone keys can be edited and saved as an independent BPE motion member.";
             if(_bt3Renderer==null)_libraryOriginalLabel.Text="BT3 source preview · choose a form, costume or action";

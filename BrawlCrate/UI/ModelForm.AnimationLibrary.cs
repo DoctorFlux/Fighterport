@@ -363,6 +363,7 @@ namespace BrawlCrate.UI
         }
         private void UseLibraryOnTarget()
         {
+            if(_libraryList?.SelectedNode?.Tag is Bt3BrowseChoice){UseBt3OnTarget();return;}
             var item=LibrarySelection;
             if(item==null||!(modelEditControl1.TargetModel is MDL0Node target))return;
             // A source preview selected moments ago may still be loading. It

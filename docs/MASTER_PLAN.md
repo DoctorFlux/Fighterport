@@ -1,5 +1,14 @@
 # Fighterport master plan
 
+Preview.88 opens the first BT3 source-to-target porting path: an exact native
+BT3 action can enter the existing Next solver and become an independent,
+reviewed Brawl CHR0 draft in the original Model Previewer. Project Save keeps
+the source costume/action bytes and hashes; decoded target curves pass the
+unchanged fractional witness bounds for the recorded fixtures. Contact,
+loop, broad action/form, Melee target writing, target-native model/texture
+transfer and game acceptance remain separate gates in the single incomplete
+G1/M2. See [bounded evidence](BT3_BRAWL_DRAFT_2026-11-02.md).
+
 Preview.87 adds a read-only BT3 source lease and native two-pivot skin/pose
 bridge for exact form, costume and action members. It verifies selected
 source hashes and feeds the existing format-neutral Next pose evaluator in

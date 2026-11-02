@@ -156,6 +156,24 @@ internal static partial class Program
                     " maximum native/bridge skin difference="+max);
                 Check(source.Vertices.Length==scene.TriangleCount*3&&source.MaximumBindSplit<.0001f&&max<.00001f,
                     "BT3 native source rig keeps every two-pivot skin weight and motion pose within a measured float bound");
+                if(args.Contains("--bt3-bake-samples")&&(pair.Item3==1||pair.Item1.Slot==2))
+                {
+                    string fixture=Path.Combine(".local","optimization-next-bake-draft","mario","next-target-before.mdl0");
+                    if(!File.Exists(fixture))throw new FileNotFoundException("BT3 sample bake target is unavailable.",fixture);
+                    using(var target=NodeFactory.FromFile(null,fixture) as MDL0Node)
+                    using(var candidate=BrawlCrate.Studio.Retargeting.BrawlRetargeter.BakeBt3(lease,
+                        BrawlCrate.Studio.Retargeting.BrawlRetargeter.Capture(target)))
+                    {
+                        string path=Path.Combine(output,"bt3-form"+pair.Item1.Slot.ToString("D3")+"-action"+pair.Item3.ToString("D3")+"-to-mario.chr0");
+                        candidate.Animation.ExportChecked(path);
+                        using(var reopened=NodeFactory.FromFile(null,path) as CHR0Node)
+                            Check(reopened!=null&&reopened.FrameCount==motion.Length+1&&
+                                reopened.Children.OfType<CHR0EntryNode>().Any(),
+                                "Distinct BT3 form/action makes a freshly reopened native Brawl review draft");
+                        Console.WriteLine("TRACE BT3 sample form="+pair.Item1.Slot+" action="+pair.Item3+
+                            " bytes="+new FileInfo(path).Length+" "+candidate.OptimizationReport);
+                    }
+                }
                 if(args.Contains("--bt3-plan-probe")&&pair.Item3==0&&pair.Item1.Slot==1)
                 {
                     int available=0,qualified=0;
@@ -167,19 +185,87 @@ internal static partial class Program
                         {
                             using(var target=NodeFactory.FromFile(null,fixture) as MDL0Node)
                             {
+                                if(args.Contains("--bt3-next-regression")&&character=="mario")
+                                {
+                                    string stage=Path.Combine(output,"original-next-regression");Directory.CreateDirectory(stage);
+                                    NativeOptimizationNextBakeChecks(fixture,target,stage);
+                                }
                                 var rig=BrawlCrate.Studio.Retargeting.BrawlRetargeter.Capture(target);
-                                var plan=new BrawlCrate.Studio.Retargeting.HumanoidRetargeter(source.Rig,rig.Rig);
-                                int samples=0;
+                                var binding=Bt3TrajectoryBinding.Prepare(source,rig.Rig);
+                                var defaultPlan=new BrawlCrate.Studio.Retargeting.HumanoidRetargeter(source.Rig,rig.Rig);
+                                Console.WriteLine("TRACE default root mappings="+string.Join(",",defaultPlan.Mapping.Where(m=>defaultPlan.SourceMotionControls.Contains(m.SourceIndex)||defaultPlan.TargetMotionControls.Contains(m.TargetIndex)).Select(m=>m.Role+":"+m.Source+"->"+m.Target))+
+                                    " proposed="+string.Join(",",binding.Select(p=>source.Rig.Joints[p.Key].Name+"->"+rig.Rig.Joints[p.Value].Name)));
+                                var plan=new BrawlCrate.Studio.Retargeting.HumanoidRetargeter(source.Rig,rig.Rig,binding);
+                                Console.WriteLine("TRACE BT3 source control path="+string.Join(",",plan.SourceMotionControls.Select(i=>source.Rig.Joints[i].Name+
+                                    ":"+motion.Tracks.Any(t=>t.Bone==scene.Skeleton.Bones[i].Id)))+
+                                    " target control path="+string.Join(",",plan.TargetMotionControls.Select(i=>rig.Rig.Joints[i].Name))+
+                                    " target motion role="+(rig.Rig.Roles.TryGetValue("motion",out int motionRole)?rig.Rig.Joints[motionRole].Name:"unavailable"));
+                                foreach(int index in plan.SourceMotionControls)
+                                {
+                                    float position=0;double angle=0;
+                                    for(int quarter=0;quarter<=motion.Length*4;quarter++)
+                                    {
+                                        var sample=source.Sample(quarter*.25f).Local[index];
+                                        var bind=source.Rig.Joints[index].Bind;
+                                        position=Math.Max(position,System.Numerics.Vector3.Distance(sample.Translation,bind.Translation));
+                                        angle=Math.Max(angle,BrawlCrate.Studio.Retargeting.ContactMotion.EndOrientationDegrees(sample.Rotation,bind.Rotation));
+                                    }
+                                    Console.WriteLine("TRACE BT3 control "+source.Rig.Joints[index].Name+" max translation="+position+" max rotation="+angle);
+                                }
+                                int samples=0;float maximumTravelError=0;
                                 for(int quarter=0;quarter<=motion.Length*4;quarter++)
                                 {
-                                    var pose=plan.Evaluate(source.Sample(quarter*.25f),false);
+                                    var sourcePose=source.Sample(quarter*.25f);
+                                    var pose=plan.Evaluate(sourcePose,false);
                                     if(pose.Pose.Local.Length!=rig.Bones.Length)
                                         throw new InvalidDataException("Native BT3 source sample changed the target rig's joint count.");
+                                    int sourceRoot=plan.SourceMotionControls.Last(),targetRoot=rig.Rig.Roles["motion"];
+                                    var sourceTravel=sourcePose.Point(sourceRoot)-source.Rig.Rest.Point(sourceRoot);
+                                    var targetTravel=pose.Pose.Point(targetRoot)-rig.Rig.Rest.Point(targetRoot);
+                                    maximumTravelError=Math.Max(maximumTravelError,System.Numerics.Vector3.Distance(sourceTravel,targetTravel));
                                     samples++;
                                 }
                                 Console.WriteLine("TRACE BT3 to "+character+" plan mappings="+plan.Mapping.Length+
-                                    " quarter-frame samples="+samples+" target joints="+rig.Bones.Length+" unavailable="+
+                                    " quarter-frame samples="+samples+" max actor travel error="+maximumTravelError+
+                                    " root bindings="+string.Join(",",binding.Select(p=>source.Rig.Joints[p.Key].Name+"->"+rig.Rig.Joints[p.Value].Name))+
+                                    " target joints="+rig.Bones.Length+" unavailable="+
                                     string.Join(",",plan.UnavailableEndEffectors));
+                                if(maximumTravelError>.005f)throw new InvalidDataException("BT3 actor travel differs after source-local root transfer.");
+                                if(args.Contains("--bt3-bake-probe"))
+                                {
+                                    using(var cancelled=new CancellationTokenSource())
+                                    {
+                                        cancelled.Cancel();bool cancellationRejected=false;
+                                        try{using(var skipped=BrawlCrate.Studio.Retargeting.BrawlRetargeter.BakeBt3(lease,rig,cancelled.Token)){} }
+                                        catch(OperationCanceledException){cancellationRejected=true;}
+                                        Check(cancellationRejected,"Cancelled BT3 transfer produces no target animation or project change");
+                                    }
+                                    using(var result=BrawlCrate.Studio.Retargeting.BrawlRetargeter.BakeBt3(lease,rig))
+                                    {
+                                        string candidate=Path.Combine(output,"bt3-to-brawl-"+character+"-action000.chr0");
+                                        result.Animation.ExportChecked(candidate);
+                                        using(var reopened=NodeFactory.FromFile(null,candidate) as CHR0Node)
+                                            Check(reopened!=null&&reopened.FrameCount==motion.Length+1&&
+                                                reopened.Children.OfType<CHR0EntryNode>().Any(e=>e.Name=="TransN"),
+                                                "BT3 native source creates an independently reopened Brawl target animation with actor motion");
+                                        Console.WriteLine("TRACE BT3 native target bytes="+new FileInfo(candidate).Length+
+                                            " SHA256="+FighterProject.HashFile(candidate)+" "+result.OptimizationReport);
+                                        using(var project=FighterProject.Create("BT3 transfer draft"))
+                                        {
+                                            project.Model=project.StageAsset(fixture,"model");
+                                            var revision=project.CreateBt3Revision(lease,result);
+                                            project.Animations.Add(revision);
+                                            string saved=Path.Combine(output,"bt3-"+character+"-draft.fpstudio");project.Save(saved);
+                                            using(var opened=FighterProject.Open(saved))
+                                            using(var savedClip=NodeFactory.FromFile(null,opened.Animations.Single().WorkingPath) as CHR0Node)
+                                                Check(savedClip!=null&&savedClip.FrameCount==result.Animation.FrameCount&&
+                                                    opened.NativeSources.Count==2&&opened.Animations.Single().Retarget.ReviewDraft&&
+                                                    opened.Animations.Single().Retarget.Bt3.MotionSha256==lease.MotionSha256&&
+                                                    opened.NativeSources.Any(a=>a.Id==opened.Animations.Single().Retarget.SourceAnimationId),
+                                                    "BT3 draft, exact native costume/action snapshots and source provenance survive project Save/reopen");
+                                        }
+                                    }
+                                }
                                 qualified++;
                             }
                         }
@@ -736,6 +822,57 @@ internal static partial class Program
                         "Returning from BT3 target viewing restores the original editable project view");
                 }
                 await CaptureWindow(form,Path.Combine(output,"bt3-direct-library.png"));
+            }
+            if(args.Contains("--bt3-port-ui"))
+            {
+                string fixture=Path.Combine(".local","optimization-next-bake-draft","mario","next-target-before.mdl0");
+                if(!File.Exists(fixture))throw new FileNotFoundException("BT3 port UI fixture is unavailable.",fixture);
+                using(var project=FighterProject.Create("BT3 port UI"))
+                using(var port=new ModelForm())
+                {
+                    port.InitializeFighterProject(project);port.Show();
+                    Call(port,"ImportFighterModel",fixture);
+                    await Wait(()=>port.FighterEditor.TargetModel is MDL0Node);
+                    Call(port,"UseSharedSourceLibrary");await LibraryQuerySettled(port);
+                    var tree=SimpleControl<TreeView>(port,"libraryClips");
+                    var disc=tree.Nodes.Cast<TreeNode>().Single(n=>n.Text.StartsWith(Bt3DiscInventory.Game,StringComparison.Ordinal));
+                    var character=disc.Nodes.Cast<TreeNode>().Single(n=>n.Text=="Goku (Mid)");
+                    character.Expand();await LibraryQuerySettled(port);
+                    tree.SelectedNode=character.Nodes.Cast<TreeNode>().Single(n=>n.Text==Bt3ActionLabels.Describe(0));
+                    Check(SimpleControl<Button>(port,"libraryUseOnTarget").Enabled,
+                        "Exact BT3 action enables Use on This Model for an open Brawl target");
+                    using(var mapping=Modal("Skeleton Mapping",window=>{window.Controls.OfType<Button>()
+                        .Single(b=>b.Text=="Use Mapping").PerformClick();}))
+                    using(var review=Modal("Review BT3 transfer",window=>
+                    {
+                        Check(SimpleControl<TextBox>(window,"bt3TransferDetails").Text.Contains("review draft"),
+                            "BT3 transfer review identifies its unresolved contact and game acceptance");
+                        CaptureDialog(window,output,"bt3-transfer-review.png");
+                        SimpleControl<Button>(window,"bt3TransferAdd").PerformClick();
+                    }))Call(port,"UseLibraryOnTarget");
+                    Check(project.Animations.Count==1&&project.Animations[0].Retarget?.Bt3!=null&&
+                        port.FighterEditor.TargetAnimation is CHR0Node,
+                        "BT3 Use on This Model imports the reviewed independent CHR0 into the native target viewer");
+                    await Wait(()=>Field(port,"_bt3Renderer") is Bt3NativeRender);
+                    var bt3SourcePanel=SimpleControl<BrawlLib.Internal.Windows.Controls.Model_Panel.ModelPanel>(port,"libraryOriginalViewport");
+                    bt3SourcePanel.Capture();bt3SourcePanel.Invalidate();bt3SourcePanel.Update();
+                    Console.WriteLine("TRACE BT3 post-port source viewport="+bt3SourcePanel.Bounds+
+                        " visible="+bt3SourcePanel.Visible+" renders="+((Bt3NativeRender)Field(port,"_bt3Renderer")).RenderCount);
+                    using(var image=bt3SourcePanel.GetScreenshot(bt3SourcePanel.ClientRectangle,false))
+                        image.Save(Path.Combine(output,"bt3-source-after-port.png"));
+                    Check(SimpleControl<Label>(port,"libraryOriginalLabel").Text.Contains("Original")&&
+                        ((Bt3NativeRender)Field(port,"_bt3Renderer")).RenderCount>0,
+                        "Original BT3 costume and action preview resumes beside the editable target after transfer");
+                    await CaptureWindow(port,Path.Combine(output,"bt3-port-brawl-review-draft.png"));
+                    string selected=project.SelectedAnimation;int frame=project.Frame;
+                    using(var mapping=Modal("Skeleton Mapping",window=>window.Controls.OfType<Button>()
+                        .Single(b=>b.Text=="Use Mapping").PerformClick()))
+                    using(var review=Modal("Review BT3 transfer",window=>SimpleControl<Button>(window,"bt3TransferCancel").PerformClick()))
+                        Call(port,"UseLibraryOnTarget");
+                    Check(project.Animations.Count==1&&project.NativeSources.Count==2&&
+                        project.SelectedAnimation==selected&&project.Frame==frame,
+                        "Cancelling BT3 transfer review leaves target animation, frame and exact source registrations unchanged");
+                }
             }
             Check(!library.Read().GameLocations.Single().Indexed&&library.Read().Clips.Count==0,
                 "Direct disc browsing creates no fake editable or previewable catalogue clips");

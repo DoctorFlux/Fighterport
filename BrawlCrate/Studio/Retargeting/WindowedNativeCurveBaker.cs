@@ -12,7 +12,8 @@ namespace BrawlCrate.Studio.Retargeting
         internal const int WindowFrames=8;
         internal const long WindowWork=2000000,MaximumKeys=2000000;
         internal static AdaptiveRotationBake Bake(int[] parents,bool[] editable,int last,Func<float,AdaptiveRotationPose> sample,
-            Func<int,float,Quaternion> frozen,CancellationToken token,float[] mandatory,NativeRetargetConstants constants,Action<int,int> progress=null)
+            Func<int,float,Quaternion> frozen,CancellationToken token,float[] mandatory,NativeRetargetConstants constants,Action<int,int> progress=null,
+            double translationTolerance=.0002)
         {
             if(parents==null||editable==null||parents.Length<1||parents.Length>512||parents.Length!=editable.Length||last<0||last>4096||
                 9L*(last+1)*parents.Length>MaximumKeys||sample==null||frozen==null||mandatory!=null&&(mandatory.Length>MaximumKeys||mandatory.Any(t=>float.IsNaN(t)||float.IsInfinity(t)||t<0||t>last)))
@@ -29,7 +30,7 @@ namespace BrawlCrate.Studio.Retargeting
                 int at=Array.BinarySearch(points,(float)start);if(at<0)at=~at;
                 var sectionPoints=new List<float>();for(int i=at;i<points.Length&&points[i]<=start+length;i++)sectionPoints.Add(points[i]);
                 var part=AdaptiveRotationCurveBaker.Bake(parents,editable,start+length,sample,frozen,token,
-                    maximumWork:WindowWork,generatedEulerContinuation:true,
+                    maximumWork:WindowWork,translationTolerance:translationTolerance,generatedEulerContinuation:true,
                     mandatoryTimes:sectionPoints.ToArray(),invariants:constants,initialEuler:continuation,firstFrame:start);
                 result.Work+=part.Work;result.SampleCount+=part.SampleCount;result.WindowCount++;
                 result.MaximumWindowWork=Math.Max(result.MaximumWindowWork,part.Work);result.ProvenConstantGroups+=part.ProvenConstantGroups;
@@ -119,7 +120,15 @@ namespace BrawlCrate.Studio.Retargeting
                             double error=ContactMotion.EndOrientationDegrees(actual.Orientation[bone],expected.WorldRotations[bone]);
                             if(error>.025||expected.Translations!=null&&Vector3.Distance(actual.Local[bone].Translation,expected.Translations[bone])>.0002||
                                 expected.Scales!=null&&Maximum(actual.Local[bone].Scale-expected.Scales[bone])>.00001)
-                                throw new InvalidDataException("Decoded native master exceeds its unchanged full-quality bound at frame "+time+", bone "+bone+" ("+target.Bones[bone].Name+", native entry "+(candidate.FindChild(target.Bones[bone].Name,false)!=null?"present":"absent")+"); orientation "+error+" degrees; local "+ContactMotion.EndOrientationDegrees(actual.Local[bone].Rotation,expected.LocalRotations[bone])+". No result was imported.");
+                            {
+                                var prepared=BrawlRetargeter.Sample(target,candidate,time);
+                                throw new InvalidDataException("Decoded native master exceeds its unchanged full-quality bound at frame "+time+", bone "+bone+" ("+target.Bones[bone].Name+", native entry "+(candidate.FindChild(target.Bones[bone].Name,false)!=null?"present":"absent")+"); orientation "+error+" degrees; local "+ContactMotion.EndOrientationDegrees(actual.Local[bone].Rotation,expected.LocalRotations[bone])+
+                                    "; translation "+(expected.Translations==null?0:Vector3.Distance(actual.Local[bone].Translation,expected.Translations[bone]))+
+                                    "; prepared translation "+(expected.Translations==null?0:Vector3.Distance(prepared.Local[bone].Translation,expected.Translations[bone]))+
+                                    "; expected XYZ "+expected.Translations?[bone]+"; decoded XYZ "+actual.Local[bone].Translation+
+                                    "; baked maximum translation "+bake.MaximumTranslationError+
+                                    "; scale "+(expected.Scales==null?0:Maximum(actual.Local[bone].Scale-expected.Scales[bone]))+". No result was imported.");
+                            }
                         }
                     }
                 }

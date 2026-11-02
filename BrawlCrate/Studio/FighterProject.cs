@@ -271,6 +271,54 @@ namespace BrawlCrate.Studio
         }
 
         public FighterAsset CreateLibraryRevision(LibrarySourceLease source, Retargeting.RetargetResult result)=>CreateLibraryRevision(source,result,null);
+        internal FighterAsset CreateBt3Revision(Bt3SourceLease source, Retargeting.RetargetResult result)
+        {
+            if(source==null||result==null)throw new ArgumentNullException(source==null?nameof(source):nameof(result));
+            if(Model==null||TargetGame!="Brawl"||NativeTarget!=null||source.ModelSha256!=result.SourceRig||
+                result.Animation.FrameCount!=source.Source.Motion.Length+1||result.Animation.Loop)
+                throw new InvalidDataException("The native BT3 draft does not match this Brawl target or its exact source action.");
+            if(Animations.Count>=MaximumAnimations)throw new InvalidOperationException("The animation registration limit is 256.");
+            int needed=new[]{source.CostumeSha256,source.MotionSha256}.Distinct(StringComparer.Ordinal)
+                .Count(hash=>!NativeSources.Any(a=>a.Generated&&a.Role=="native-source"&&a.ContentSha256==hash));
+            if(NativeSources.Count+needed>32)
+                throw new InvalidOperationException("This project has no room for another exact native source pair.");
+            FighterAsset Snapshot(string hash,string name,Bt3DiscInventory.Bt3Resource member)
+            {
+                var existing=NativeSources.FirstOrDefault(a=>a.Generated&&a.Role=="native-source"&&a.ContentSha256==hash);
+                if(existing!=null)return existing;
+                var bytes=source.Inventory.ReadOwned(member,4*1024*1024);
+                var asset=CreateNativeMaster(name,"native-source",path=>File.WriteAllBytes(path,bytes));
+                if(asset.ContentSha256!=hash)throw new InvalidDataException("The frozen BT3 member differs from its verified lease.");
+                return asset;
+            }
+            source.VerifyUnchanged();
+            var costume=Snapshot(source.CostumeSha256,"bt3-costume-"+source.Form.Slot.ToString("D3")+".pmdl",source.Costume);
+            var motion=Snapshot(source.MotionSha256,"bt3-action-"+source.Form.Slot.ToString("D3")+"-"+source.Action.ToString("D3")+".bpe",source.ActionMember);
+            var generated=CreateAnimation("BT3 "+source.Form.Slot.ToString("D3")+" action "+source.Action.ToString("D3")+" (draft).chr0",result.Animation.ExportChecked);
+            generated.RigIdentity=result.TargetRig;
+            generated.Retarget=new RetargetProvenance{
+                Algorithm=Retargeting.HumanoidRetargeter.Algorithm,MotionControlPolicy=Retargeting.HumanoidRetargeter.MotionControlPolicy,
+                ReviewDraft=true,SourceModelPath=source.Inventory.Path,SourceModelSha256=source.CostumeSha256,
+                SourceRig=result.SourceRig,SourceAnimationId=motion.Id,SourceClip=source.Identity,
+                FromProfile=result.Plan.Source.Profile,ToProfile=result.Plan.Target.Profile,
+                LegScale=result.Plan.LegScale,ArmScale=result.Plan.ArmScale,MaximumLimbResidual=result.MaximumLimbResidual,
+                ClampedLimbSamples=result.ClampedLimbSamples,GroundMode=GroundMode,
+                IgnoredSourceBones=result.IgnoredSourceBones,
+                Mapping=result.Plan.Mapping.Select(m=>new RetargetBoneBinding{Role=m.Role,Source=m.Source,Target=m.Target}).ToList(),
+                Bt3=new Bt3SourceReference{Volume=source.Inventory.Volume,FormSlot=source.Form.Slot,
+                    CostumeMember=source.Costume.Identity,Action=source.Action,MotionMember=source.ActionMember.Identity,
+                    CostumeAssetId=costume.Id,MotionAssetId=motion.Id,CostumeSha256=source.CostumeSha256,
+                    MotionSha256=source.MotionSha256,RigSha256=source.ModelSha256,
+                    TargetModelSha256=HashFile(Model.WorkingPath)}
+            };
+            source.VerifyUnchanged();
+            using(var decoded=BrawlLib.SSBB.ResourceNodes.NodeFactory.FromFile(null,generated.WorkingPath) as BrawlLib.SSBB.ResourceNodes.CHR0Node)
+                if(decoded==null||decoded.FrameCount!=result.Animation.FrameCount||decoded.Loop!=result.Animation.Loop)
+                    throw new InvalidDataException("The BT3 target draft did not reopen as its exact native animation.");
+            if(!NativeSources.Contains(costume))NativeSources.Add(costume);
+            if(!NativeSources.Contains(motion))NativeSources.Add(motion);
+            return generated;
+        }
         public FighterAsset CreateLibraryRevision(LibrarySourceLease source, Retargeting.RetargetResult result,NativeTimingFit timing)
         {
             if(source==null)throw new ArgumentNullException(nameof(source));
@@ -380,7 +428,7 @@ namespace BrawlCrate.Studio
                             m.Role.Length > 128 || m.Source.Length > 128 || m.Target.Length > 128) ||
                         string.IsNullOrWhiteSpace(p.SourceModelPath) || p.SourceModelPath.Length > 32767 ||
                         string.IsNullOrEmpty(p.SourceClip) || p.SourceClip.Length > 8192 ||
-                        !Guid.TryParseExact(p.SourceAnimationId, "N", out _) || (p.Library==null && !Animations.Any(a => a.Id == p.SourceAnimationId)) ||
+                        !Guid.TryParseExact(p.SourceAnimationId, "N", out _) || (p.Library==null && p.Bt3==null && !Animations.Any(a => a.Id == p.SourceAnimationId)) ||
                         !engine&&(!Retargeting.RigMath.Finite(p.LegScale) || p.LegScale <= 0 || !Retargeting.RigMath.Finite(p.ArmScale) || p.ArmScale <= 0) ||
                         !Retargeting.RigMath.Finite(p.MaximumContactResidual) || p.MaximumContactResidual<0 ||
                         !Retargeting.RigMath.Finite(p.MaximumPelvisCorrection) || p.MaximumPelvisCorrection<0 ||
@@ -388,6 +436,22 @@ namespace BrawlCrate.Studio
                         p.PlantedFootSamples>131080 || p.PlantedHandSamples>131080 || p.PlantedBodySamples>524320 || p.LockedContactSamples>786480)
                         throw new InvalidDataException("The retarget provenance is invalid.");
                     p.OriginalSupport?.Validate();
+                    if(p.Bt3!=null)
+                    {
+                        var bt=p.Bt3;
+                        var modelSource=NativeSources.SingleOrDefault(a=>a.Id==bt.CostumeAssetId);
+                        var motionSource=NativeSources.SingleOrDefault(a=>a.Id==bt.MotionAssetId);
+                        if(!p.ReviewDraft||p.Library!=null||p.SourceAnimationId!=bt.MotionAssetId||
+                            string.IsNullOrWhiteSpace(bt.Volume)||bt.Volume.Length>64||bt.FormSlot<0||bt.FormSlot>1024||bt.Action<0||bt.Action>4096||
+                            string.IsNullOrWhiteSpace(bt.CostumeMember)||bt.CostumeMember.Length>256||
+                            string.IsNullOrWhiteSpace(bt.MotionMember)||bt.MotionMember.Length>256||
+                            !ValidHash(bt.CostumeSha256)||!ValidHash(bt.MotionSha256)||!ValidHash(bt.RigSha256)||
+                            !ValidHash(bt.TargetModelSha256)||
+                            bt.RigSha256!=p.SourceRig||bt.CostumeSha256!=p.SourceModelSha256||
+                            modelSource==null||motionSource==null||!modelSource.Generated||!motionSource.Generated||
+                            modelSource.ContentSha256!=bt.CostumeSha256||motionSource.ContentSha256!=bt.MotionSha256)
+                            throw new InvalidDataException("The exact BT3 source snapshots or review status are invalid.");
+                    }
                     if(p.OriginalSupport!=null&&(p.OriginalSupport.SourceRig!=p.SourceRig||p.OriginalSupport.TargetRig!=asset.RigIdentity))
                         throw new InvalidDataException("The original support context lost its exact source/target association.");
                     LocalPath(p.SourceModelPath);
@@ -607,6 +671,7 @@ namespace BrawlCrate.Studio
 
     public sealed class RetargetProvenance
     {
+        public Bt3SourceReference Bt3 {get;set;}
         public NativeSupportEvidence OriginalSupport {get;set;}
         public Retargeting.RetargetKeyframeMode KeyframeMode {get;set;}
         public string KeyframeReceipt {get;set;}
@@ -678,6 +743,23 @@ namespace BrawlCrate.Studio
                 throw new InvalidDataException("Sparse motion requires separately labelled historical dense statistics; dense contacts cannot qualify changed curves.");
             DenseReferenceStatistics.Validate();
         }
+    }
+
+    // Exact native members remain project-owned even when the disc moves or
+    // becomes unavailable. A draft does not claim contact or game acceptance.
+    public sealed class Bt3SourceReference
+    {
+        public string Volume {get;set;}
+        public int FormSlot {get;set;}
+        public string CostumeMember {get;set;}
+        public int Action {get;set;}
+        public string MotionMember {get;set;}
+        public string CostumeAssetId {get;set;}
+        public string MotionAssetId {get;set;}
+        public string CostumeSha256 {get;set;}
+        public string MotionSha256 {get;set;}
+        public string RigSha256 {get;set;}
+        public string TargetModelSha256 {get;set;}
     }
     public sealed class RetargetDenseReferenceStatistics
     {

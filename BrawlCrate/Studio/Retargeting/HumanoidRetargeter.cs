@@ -51,7 +51,12 @@ namespace BrawlCrate.Studio.Retargeting
         public string[] TopologyAdaptations {get;}
         private readonly Dictionary<int,Tuple<Quaternion,Quaternion>> localFrames=new Dictionary<int,Tuple<Quaternion,Quaternion>>();
 
-        public HumanoidRetargeter(Rig source, Rig target)
+        public HumanoidRetargeter(Rig source, Rig target):this(source,target,null){}
+
+        // A native adapter may supply checked, exact ancestor-control pairs
+        // when the games use different control-chain lengths. Null retains the
+        // original Next equal-depth behavior for every existing caller.
+        public HumanoidRetargeter(Rig source, Rig target, IReadOnlyDictionary<int,int> trajectoryBindings)
         {
             Source = source; Target = target;
             sharedTorso=SkeletonCharacterizer.HasSharedTorso(source.Joints,source.Roles)||SkeletonCharacterizer.HasSharedTorso(target.Joints,target.Roles);
@@ -81,10 +86,27 @@ namespace BrawlCrate.Studio.Retargeting
             int[] aPath=AncestorPath(source),bPath=AncestorPath(target);
             SourceMotionControls=aPath;TargetMotionControls=bPath;
             var mapping=Mapping.ToList();
-            if(aPath.Length==bPath.Length)for(int i=0;i<aPath.Length;i++)
-                if(!mapping.Any(m=>m.SourceIndex==aPath[i] || m.TargetIndex==bPath[i]))
-                    mapping.Add(new RetargetMap{Role="trajectory."+i,SourceIndex=aPath[i],TargetIndex=bPath[i],
-                        Source=source.Joints[aPath[i]].Name,Target=target.Joints[bPath[i]].Name});
+            if(trajectoryBindings==null)
+            {
+                if(aPath.Length==bPath.Length)for(int i=0;i<aPath.Length;i++)
+                    if(!mapping.Any(m=>m.SourceIndex==aPath[i] || m.TargetIndex==bPath[i]))
+                        mapping.Add(new RetargetMap{Role="trajectory."+i,SourceIndex=aPath[i],TargetIndex=bPath[i],
+                            Source=source.Joints[aPath[i]].Name,Target=target.Joints[bPath[i]].Name});
+            }
+            else
+            {
+                var pairs=trajectoryBindings.Select(p=>new{p.Key,p.Value,SourceOrder=Array.IndexOf(aPath,p.Key),TargetOrder=Array.IndexOf(bPath,p.Value)})
+                    .OrderBy(p=>p.SourceOrder).ToArray();
+                if(pairs.Any(p=>p.SourceOrder<0||p.TargetOrder<0)||pairs.Select(p=>p.Value).Distinct().Count()!=pairs.Length||
+                    pairs.Zip(pairs.Skip(1),(a,b)=>a.TargetOrder<b.TargetOrder).Any(inOrder=>!inOrder)||
+                    pairs.Any(p=>mapping.Any(m=>(m.SourceIndex==p.Key||m.TargetIndex==p.Value)&&
+                        (m.SourceIndex!=p.Key||m.TargetIndex!=p.Value))))
+                    throw new InvalidDataException("Source motion controls must map in ancestor order to distinct target motion controls.");
+                foreach(var pair in pairs)
+                    if(!mapping.Any(m=>m.SourceIndex==pair.Key&&m.TargetIndex==pair.Value))
+                        mapping.Add(new RetargetMap{Role="trajectory."+pair.SourceOrder,SourceIndex=pair.Key,TargetIndex=pair.Value,
+                            Source=source.Joints[pair.Key].Name,Target=target.Joints[pair.Value].Name});
+            }
             Mapping=mapping.OrderBy(m=>m.TargetIndex).ToArray();
             _byTarget = Mapping.ToDictionary(m => m.TargetIndex);
             trajectory=Mapping.LastOrDefault(IsTrajectory);
