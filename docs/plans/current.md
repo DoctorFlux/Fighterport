@@ -1,5 +1,15 @@
 # Current milestone M2 — simpler native workspace
 
+2 November: preview.73-legacy-viewer-presentation changes only Fighterport's
+default presentation policy. The reported active-desktop frozen viewer after
+Melee Fox then Falco Wait1 on Brawl Fox remains OPEN until physical retest.
+The complete new local package passed 54 private-desktop checks: Falco became
+the exact current 241-frame native clip, native mouse handling returned,
+playback and clip switching changed poses and pixels, and target binds/weights
+were unchanged. DXGI causation is an inference, not a reproduced bug. See
+[acceptance](../VIEWER_LEGACY_PRESENTATION_2026-11-02.md). Keep the same one
+incomplete G1/M2; preview.66 finite ledges remains queued.
+
 2 November follow-up: the reported post-retarget whole-window freeze remains
 OPEN. A private-desktop replay from `5314efe0a0fffc9d2abe4a39bd6bf93768c5024f`
 imported Melee Fox then Falco Wait1 into one Brawl Fox target, then exercised a

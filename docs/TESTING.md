@@ -221,6 +221,11 @@ normal exit and unchanged project bytes. The default run also simulates loss of
 the presentation backend and checks the same native pose after legacy fallback.
 `-ExpectLegacy` with `FIGHTERPORT_DISABLE_DXGI=1` validates the initial fallback.
 
+Since preview.73, Fighterport sets `FIGHTERPORT_DISABLE_DXGI=1` by default
+before creating the native viewer. An explicit process value of `0` restores
+the optional DXGI path for controlled diagnosis. Private-desktop tests of the
+legacy path do not establish active-monitor presentation or input acceptance.
+
 For smooth-60 acceptance use `Run-PlaybackSoak.ps1 -MinimumFps 58
 -MinimumDisplayedFps 58 -PresentMonPath <official-console-executable>`, with
 both the model's original MotionEtc project and its saved target-native revision.

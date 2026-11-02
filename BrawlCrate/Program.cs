@@ -100,6 +100,14 @@ Full changelog and documentation can be viewed from the help menu.";
 
         static Program()
         {
+            // The private-desktop sequential viewer path uses native GL swaps,
+            // while the reported active-desktop freeze can use the optional
+            // DXGI interop presenter. Keep that presenter opt-in until its
+            // repeated-import path is qualified on physical displays.
+            // Setting this variable to 0 explicitly retains the DXGI path for
+            // controlled diagnosis without changing the native model viewer.
+            if (Environment.GetEnvironmentVariable("FIGHTERPORT_DISABLE_DXGI") == null)
+                Environment.SetEnvironmentVariable("FIGHTERPORT_DISABLE_DXGI", "1");
             Application.EnableVisualStyles();
 
             // Keep V2 preferences separate, with no migration from BrawlCrate or V1.

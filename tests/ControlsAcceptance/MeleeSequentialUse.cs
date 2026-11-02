@@ -41,6 +41,10 @@ internal static partial class Program
         using(var startup=MainForm.StartViewerApplication())
         {
             var form=(ModelForm)Field(MainForm.Instance,"_fighterForm");
+            if(Environment.GetEnvironmentVariable("FIGHTERPORT_TEST_VIEWER_INPUT_PATH")=="1" &&
+                Environment.GetEnvironmentVariable("FIGHTERPORT_DISABLE_DXGI")!="0")
+                Check(Environment.GetEnvironmentVariable("FIGHTERPORT_DISABLE_DXGI")=="1",
+                    "Fighterport defaults repeated native viewing to the legacy GL presentation path");
             string phase="startup";long lastPulse=Stopwatch.GetTimestamp();
             using(var heartbeat=new Timer{Interval=50})
             try
@@ -65,6 +69,7 @@ internal static partial class Program
                 CHR0Node first=null;
                 bool failedBakeRegression=Environment.GetEnvironmentVariable("FIGHTERPORT_TEST_FAILED_BAKE_RECOVERY")=="1";
                 bool thirdUse=failedBakeRegression||Environment.GetEnvironmentVariable("FIGHTERPORT_TEST_THIRD_USE")=="1";
+                bool inputPath=Environment.GetEnvironmentVariable("FIGHTERPORT_TEST_VIEWER_INPUT_PATH")=="1";
                 string singleActor=Environment.GetEnvironmentVariable("FIGHTERPORT_TEST_SINGLE_ACTOR");
                 string[] actors=singleActor!=null?new[]{singleActor}:thirdUse?new[]{"Fox","Falco","Peach"}:new[]{"Fox","Falco"};
                 int useIndex=0;
@@ -145,10 +150,31 @@ internal static partial class Program
                         return;
                     }
                     if(failure!=null)throw failure;
+                    if(inputPath)
+                    {
+                        var live=editor.SelectedCHR0;var panel=editor.ModelPanel;
+                        Console.WriteLine("SEQUENTIAL "+actor+" immediate target frame count="+live?.FrameCount+
+                            " source="+sourceItem.Clip.FrameCount+" enabled="+editor.Enabled+"/"+panel.Enabled+
+                            " visible="+panel.Visible+" controlBusy="+Field(form,"_controlBusy"));
+                        Check(live!=null&&live.FrameCount==sourceItem.Clip.FrameCount,
+                            "Use selects the new "+actor+" native result before automatic control setup");
+                        Check(editor.Enabled&&panel.Enabled&&panel.Visible&&panel.IsHandleCreated,
+                            "The native viewer remains enabled and visible immediately after "+actor+" Use");
+                    }
                     if(actor=="Falco"&&Environment.GetEnvironmentVariable("FIGHTERPORT_TEST_QUICK_SECOND")=="1")
                         Check((int)Field(form,"_libraryAutoEpoch")>autoEpochBefore,"Use cancels the in-flight source preview before publishing the target result");
                     phase=actor+" automatic controls";var setup=Stopwatch.StartNew();await SimpleControlsReady(form);
                     Console.WriteLine("SEQUENTIAL "+actor+" automatic controls ready after "+setup.Elapsed.TotalSeconds.ToString("0.0")+" s");
+                    if(inputPath)
+                    {
+                        var panel=editor.ModelPanel;var mouse=Stopwatch.StartNew();
+                        Call(editor,"modelPanel1_MouseMove",panel,new MouseEventArgs(MouseButtons.None,0,2,2,0));
+                        Call(editor,"modelPanel1_MouseDown",panel,new MouseEventArgs(MouseButtons.Left,1,2,2,0));
+                        Call(editor,"modelPanel1_MouseUp",panel,new MouseEventArgs(MouseButtons.Left,1,2,2,0));
+                        Console.WriteLine("SEQUENTIAL "+actor+" native mouse handlers returned after "+mouse.Elapsed.TotalMilliseconds.ToString("0")+" ms");
+                        Check(mouse.ElapsedMilliseconds<2000&&panel.Enabled&&panel.CurrentViewport.AllowSelection,
+                            "Native mouse movement and click handling remain responsive after "+actor+" Use");
+                    }
                     if(actor=="Falco"&&Environment.GetEnvironmentVariable("FIGHTERPORT_TEST_QUICK_SECOND")=="1")
                     {await GameLibraryWait(()=>Field(form,"_libraryLease") is LibrarySourceLease preview&&preview.Reference.ClipId==sourceItem.Clip.Id,"The selected original Falco preview did not resume after Use.");Check(true,"Original source preview resumes after the target import");}
                     phase=actor+" viewer";
@@ -163,16 +189,20 @@ internal static partial class Program
                     {
                         // A fresh native control setup must not silently eat the
                         // viewer's Play command after a second result is added.
-                        Call(form,"InvalidateControls");
-                        await Wait(()=>(bool)Field(form,"_controlBusy"));
-                        editor.SetFrame(1);editor.PlayAnim();await Task.Delay(350);
-                        int setupPlaybackFrame=editor.CurrentFrame;editor.StopAnim();
-                        Check(setupPlaybackFrame>1,"Target playback remains available while read-only control setup is pending");
-                        await SimpleControlsReady(form);
+                        if(!inputPath)
+                        {
+                            Call(form,"InvalidateControls");
+                            await Wait(()=>(bool)Field(form,"_controlBusy"));
+                            editor.SetFrame(1);editor.PlayAnim();await Task.Delay(350);
+                            int setupPlaybackFrame=editor.CurrentFrame;editor.StopAnim();
+                            Check(setupPlaybackFrame>1,"Target playback remains available while read-only control setup is pending");
+                            await SimpleControlsReady(form);
+                        }
                         var firstRow=editor.leftPanel.listAnims.Items.Cast<ListViewItem>().Single(i=>ReferenceEquals(i.Tag,first));
                         firstRow.Selected=true;firstRow.Focused=true;
                         editor.SetFrame(Math.Min(7,first.FrameCount));
                         Check(ReferenceEquals(editor.SelectedCHR0,first)&&editor.CurrentFrame==Math.Min(7,first.FrameCount),"Viewer returns to the first result after the second Use");
+                        if(inputPath)await VerifyViewerMotion(form,target,first,"Fox reselected after "+actor+" Use");
                         await CaptureSimpleWorkspace(form,Path.Combine(output,useIndex==2?"first-result-reselected.png":"first-result-reselected-after-third.png"));
                     }
                 }

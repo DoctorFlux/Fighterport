@@ -1,5 +1,16 @@
 # Fighterport master plan
 
+Preview.73 makes the existing native GL swap path the default for Fighterport
+because the reported active-desktop viewer still freezes after the Fox→Falco
+sequence, while the same private-desktop replay has used legacy GL and stayed
+responsive. This is a bounded presentation mitigation, not proof that DXGI is
+the cause or that the physical freeze is resolved. The full Model Previewer,
+original Next, source-local roots and weights remain. The complete candidate
+passed 54 background checks for exact result selection, native mouse handlers,
+playback, clip switching and changing pixels. See
+[evidence](VIEWER_LEGACY_PRESENTATION_2026-11-02.md). Keep one incomplete G1/M2;
+active-desktop input/display and game acceptance remain open.
+
 Preview.72 qualifies a bounded renderer presentation fallback, cancellation
 of an in-flight source preview during target import, and native float-resolution
 refinement at a recorded source boundary. A private-desktop replay

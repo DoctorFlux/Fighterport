@@ -1,5 +1,15 @@
 # Fighterport
 
+2 November — preview.73-legacy-viewer-presentation makes the existing native
+OpenGL swap path Fighterport's default after a second report of a frozen
+active-desktop viewport. The physical freeze was not reproduced on private
+desktops, so its cause and active-display resolution remain OPEN. The exact
+Brawl Fox target, then Melee Fox and Falco Wait1 Use sequence passed 54
+background checks with selected clips, native input handlers, playback and
+changed pixels. Read [evidence](docs/VIEWER_LEGACY_PRESENTATION_2026-11-02.md).
+Full BrawlCrate Model Previewer, original Next, root policy and all weights
+remain; ONE G1/M2 stays incomplete.
+
 2 November — preview.72-sequential-use-recovery qualifies bounded
 native viewport, library-preview and recorded-boundary bake guards from `85f8b9b28d402250bb61c9af994693f600806be7`.
 An occluded accelerated presenter now falls back to the existing native GL
