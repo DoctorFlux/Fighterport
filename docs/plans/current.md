@@ -1,5 +1,19 @@
 # Current milestone M2 — simpler native workspace
 
+2 November: preview.72-sequential-use-recovery qualifies bounded
+native presentation, source-preview cancellation and recorded-breakpoint
+refinement from
+`85f8b9b28d402250bb61c9af994693f600806be7`. Melee Fox then Falco Wait1
+on the same Brawl Fox target passed 46 private-desktop checks using a copied
+saved catalogue, including actual Use-result import, viewport pixel changes,
+playback, target preservation and restored original preview. The indefinite
+active-desktop hang reported by the user was not reproduced and stays OPEN.
+An independent procedural frame-7 source-key step passes native CHR0
+serialize/reopen at all recorded witnesses without relaxing the existing
+quality or work bounds; unrecorded discontinuities still fail.
+See [evidence](../VIEWER_PRESENTATION_RECOVERY_2026-11-02.md). ONE G1/M2 remains
+incomplete; preview.66 finite ledges stays queued.
+
 2 November: preview.71-viewer-playback-recovery qualifies the bounded viewer
 guard correction from `359b6473915e117fdb8e8407e8f87804af63b175`.
 Automatic read-only control setup no longer silently consumes Play after a

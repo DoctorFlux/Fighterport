@@ -1,5 +1,17 @@
 # Fighterport master plan
 
+Preview.72 qualifies a bounded renderer presentation fallback, cancellation
+of an in-flight source preview during target import, and native float-resolution
+refinement at a recorded source boundary. A private-desktop replay
+against a copied saved catalogue passed, including Fox then Falco Wait1 and
+changing target viewport pixels. The user's indefinite active-desktop hang was
+not reproduced, so it remains open for a direct follow-up on the new package.
+The source-key step reproduced the newly reported near-frame-7 failure in a
+procedural fixture and passed real CHR0 serialization/reopen after the fix;
+the unspecified real third transfer is not yet reproduced.
+See [evidence](VIEWER_PRESENTATION_RECOVERY_2026-11-02.md). Keep one incomplete
+G1/M2, the full native viewer/Next, source-local roots and all weights.
+
 Preview.71 fixes a silent native Play block during automatic read-only control
 setup after repeated library retargeting. Control edits remain guarded and the
 original Next/native viewer ownership is unchanged. The same-target Fox then

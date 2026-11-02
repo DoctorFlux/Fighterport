@@ -15,6 +15,13 @@ internal static partial class Program
     static async Task MeleeSharedBridge(string[] args,string output,AnimationLibrary library)
     {
         var disc=args[Array.IndexOf(args,"--bridge-brawl")+1];
+        string savedLibrary=Environment.GetEnvironmentVariable("FIGHTERPORT_TEST_SAVED_LIBRARY_ROOT");
+        if(!string.IsNullOrEmpty(savedLibrary))
+        {
+            var catalogue=new AnimationLibrary(savedLibrary);var data=catalogue.Read();
+            Check(data.GameLocations.Any(l=>l.Game=="Brawl")&&data.GameLocations.Any(l=>l.Game=="Melee"),"The preserved user catalogue contains both exact game-source families");
+            await MeleeSequentialUse(output,catalogue,catalogue);return;
+        }
         var brawlLibrary=library;string fixtureIndex=Environment.GetEnvironmentVariable("FIGHTERPORT_TEST_BRAWL_LIBRARY");
         if(!string.IsNullOrEmpty(fixtureIndex))
         {brawlLibrary=new AnimationLibrary(fixtureIndex);Check(brawlLibrary.Read().GameLocations.Any(l=>l.Game=="Brawl"&&string.Equals(Path.GetFullPath(l.Path),Path.GetFullPath(disc),StringComparison.OrdinalIgnoreCase)),"Reused test catalogue identifies the exact supplied Brawl disc; native files are verified again on Open");}

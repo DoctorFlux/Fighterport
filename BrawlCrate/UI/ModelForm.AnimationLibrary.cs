@@ -352,26 +352,34 @@ namespace BrawlCrate.UI
         {
             var item=LibrarySelection;
             if(item==null||!(modelEditControl1.TargetModel is MDL0Node target))return;
-            // A second 60 Hz OpenGL preview must not compete with the target.
-            _libraryTimer.Stop();_libraryPlay.Text="Play";
-            modelEditControl1.StopAnim();
-            var loaded=LoadSelectedLibrarySource();if(loaded==null)return;
-            using(var source=loaded)
-            using(var result=BakeWithProgress(source.Model,target,source.Animation))
+            // A source preview selected moments ago may still be loading. It
+            // must not publish a new GL viewport while the native retarget
+            // dialog and target import are using their own frozen resources.
+            CancelLibraryAutoPreview();
+            try
             {
-                if(result==null)return;
-                // Capture the current editable target bytes, including any unsaved native edits.
-                var targetRoot=FighterRoot(_fighterProject.Model);
-                if(targetRoot.IsDirty){targetRoot.Merge();targetRoot.ExportChecked(_fighterProject.Model.WorkingPath);}
-                var asset=_fighterProject.CreateLibraryRevision(source,result);
-                var root=FighterRoot(asset); // Validate native decoding before the atomic visible import.
-                RememberFighterImport();_fighterProject.Animations.Add(asset);
-                _fighterProject.SelectedAnimation=FighterAnimationKey(asset,root);_fighterProject.Frame=1;
-                RebuildFighterScene();
-                if(result.Contacts.FloorEnabled)modelEditControl1.QueueGroundContactView();else modelEditControl1.QueueFrameFighterModel();
-                MarkFighterChanged();UpdateFighterStatus();
-                _fighterStatus.Text="Added independent target revision: "+source.Animation.Name+" · "+RetargetKeyframes.ModeLabel(result.KeyframeMode)+" · Original source resolved and verified automatically.";
+                // A second 60 Hz OpenGL preview must not compete with the target.
+                _libraryTimer.Stop();_libraryPlay.Text="Play";
+                modelEditControl1.StopAnim();
+                var loaded=LoadSelectedLibrarySource();if(loaded==null)return;
+                using(var source=loaded)
+                using(var result=BakeWithProgress(source.Model,target,source.Animation))
+                {
+                    if(result==null)return;
+                    // Capture the current editable target bytes, including any unsaved native edits.
+                    var targetRoot=FighterRoot(_fighterProject.Model);
+                    if(targetRoot.IsDirty){targetRoot.Merge();targetRoot.ExportChecked(_fighterProject.Model.WorkingPath);}
+                    var asset=_fighterProject.CreateLibraryRevision(source,result);
+                    var root=FighterRoot(asset); // Validate native decoding before the atomic visible import.
+                    RememberFighterImport();_fighterProject.Animations.Add(asset);
+                    _fighterProject.SelectedAnimation=FighterAnimationKey(asset,root);_fighterProject.Frame=1;
+                    RebuildFighterScene();
+                    if(result.Contacts.FloorEnabled)modelEditControl1.QueueGroundContactView();else modelEditControl1.QueueFrameFighterModel();
+                    MarkFighterChanged();UpdateFighterStatus();
+                    _fighterStatus.Text="Added independent target revision: "+source.Animation.Name+" · "+RetargetKeyframes.ModeLabel(result.KeyframeMode)+" · Original source resolved and verified automatically.";
+                }
             }
+            finally{if(!IsDisposed)QueueLibraryAutoPreview();}
         }
         private LibrarySourceLease LoadLibrarySource(string clipId)
         {

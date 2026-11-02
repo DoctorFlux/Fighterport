@@ -82,6 +82,7 @@ namespace BrawlCrate.Studio.Retargeting
     {
         private const long MaximumNativeKeys = 2000000;
         private const int MaximumDepth = 20;
+        private const int MaximumRecordedBoundaryDepth = 24;
         private static readonly float[] Training = Enumerable.Range(1, 7).Select(i => i / 8f).ToArray();
         // Independent fractions and near-boundary witnesses expose steep IK
         // extension/pole curvature that an eighth-frame training grid misses.
@@ -144,6 +145,7 @@ namespace BrawlCrate.Studio.Retargeting
             private readonly bool generatedContinuation;
             private readonly double[] hierarchyBudgets;
             private readonly float[] mandatory;
+            private readonly HashSet<float> recordedBoundaries;
             private readonly NativeRetargetConstants invariants;
             private readonly Vector3[] initialEuler;
             private readonly HashSet<float> validationTimes=new HashSet<float>();
@@ -179,6 +181,7 @@ namespace BrawlCrate.Studio.Retargeting
                 hierarchyBudgets=levels.Select(level=>orientationTolerance*.99*level/maximumLevel).ToArray();
                 if(mandatoryTimes!=null&&(mandatoryTimes.Length>2000000||mandatoryTimes.Any(time=>!Finite(time)||time<first||time>last)))throw new ArgumentException("Invalid bounded native reference breakpoints.");
                 var points=(mandatoryTimes??new float[0]).Distinct().OrderBy(time=>time).ToArray();
+                recordedBoundaries=new HashSet<float>(points);
                 mandatory=points.Concat(points.Skip(1).Select((end,index)=>points[index]+(end-points[index])*.5f)).Distinct().OrderBy(time=>time).ToArray();
             }
 
@@ -263,7 +266,16 @@ namespace BrawlCrate.Studio.Retargeting
                             fixedBoundaryFailure |= endpoint > tolerance;
                         }
                 float middle = first + (end - first) * .5f;
-                if (maximum > tolerance && !fixedBoundaryFailure && depth < MaximumDepth && middle > first && middle < end)
+                // A source-authored boundary can change on the very next
+                // representable float time. Twenty binary subdivisions of a
+                // one-frame span still leave two floats beside an integer
+                // boundary, so an otherwise representable native step is
+                // falsely rejected. Only a recorded breakpoint earns the
+                // final float-resolution subdivisions; all existing motion
+                // bounds and the operation-work limit remain unchanged.
+                bool recordedBoundary=recordedBoundaries.Contains(first)||recordedBoundaries.Contains(end);
+                int depthLimit=recordedBoundary?MaximumRecordedBoundaryDepth:MaximumDepth;
+                if (maximum > tolerance && !fixedBoundaryFailure && depth < depthLimit && middle > first && middle < end)
                 {
                     Refine(bone, first, middle, kind, depth + 1, output);
                     Refine(bone, middle, end, kind, depth + 1, output);

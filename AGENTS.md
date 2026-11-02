@@ -1,5 +1,18 @@
 # Fighterport
 
+2 November — preview.72-sequential-use-recovery qualifies bounded
+native viewport, library-preview and recorded-boundary bake guards from `85f8b9b28d402250bb61c9af994693f600806be7`.
+An occluded accelerated presenter now falls back to the existing native GL
+swap path, and Use on This Model cancels an in-flight original-source preview
+before target publication, then resumes it. A private-desktop replay of Melee
+Fox then Falco Wait1 on Brawl Fox using a copied saved catalogue passed 46
+native checks. This does not reproduce or close the user's reported indefinite
+active-desktop window hang. A procedural source-key step near frame 7 now
+survives native CHR0 serialize/reopen under unchanged bounds; see
+[evidence](docs/VIEWER_PRESENTATION_RECOVERY_2026-11-02.md).
+Keep the full native viewer, original Next, all weights and source-local roots.
+ONE G1/M2 remains incomplete; .66 stays queued.
+
 2 November — preview.71-viewer-playback-recovery qualifies the bounded
 sequential native Use fix from `359b6473915e117fdb8e8407e8f87804af63b175`.
 The main viewer can play while automatic read-only control setup loads after

@@ -14,6 +14,47 @@ internal static partial class Program
     static int AdaptiveBudgetChecks(string output,bool useProofs=true)
     {
         Directory.CreateDirectory(output);
+        AdaptiveRotationPose BoundaryStep(float t)
+        {
+            var angle=t<7?0f:28f;
+            var e=new Vector3(angle,0,0);var q=BrawlRetargeter.Rotation(new BrawlLib.Internal.Vector3(e.X,e.Y,e.Z));
+            return new AdaptiveRotationPose{EulerDegrees=new[]{e},LocalRotations=new[]{q},WorldRotations=new[]{q}};
+        }
+        var boundary=WindowedNativeCurveBaker.Bake(new[]{-1},new[]{true},8,BoundaryStep,(b,t)=>Quaternion.Identity,CancellationToken.None,new[]{7f},null);
+        Console.WriteLine("BOUNDARY STEP "+new JavaScriptSerializer().Serialize(new{boundary.Converged,boundary.Work,boundary.SampleCount,boundary.FirstUnresolvedFirstFrame,boundary.FirstUnresolvedLastFrame,boundary.FirstUnresolvedError,boundary.FailureWitness}));
+        Check(boundary.Converged&&boundary.Tracks.Length==1&&boundary.Work<2000000,
+            "A recorded source-key step at an integer boundary fits within the unchanged fractional quality and work bounds");
+        var unrecorded=WindowedNativeCurveBaker.Bake(new[]{-1},new[]{true},8,BoundaryStep,(b,t)=>Quaternion.Identity,CancellationToken.None,new float[0],null);
+        Check(!unrecorded.Converged&&unrecorded.UnresolvedIntervals>0&&!unrecorded.WorkLimitReached,
+            "An unrecorded discontinuity still fails rather than inventing a source boundary or relaxing quality limits");
+        AdaptiveRotationPose FractionalStep(float t)=>BoundaryStep(t<7.25f?6f:7f);
+        var fractional=WindowedNativeCurveBaker.Bake(new[]{-1},new[]{true},8,FractionalStep,(b,t)=>Quaternion.Identity,CancellationToken.None,new[]{7.25f},null);
+        Check(fractional.Converged&&fractional.Work<2000000,
+            "A recorded fractional source-key step also fits without a character or integer-frame exception",new{fractional.Work,fractional.SampleCount});
+        using(var nativeStep=new CHR0Node{Name="Recorded source-boundary step",Version=4,FrameCount=9,Loop=false})
+        {
+            var entry=nativeStep.CreateEntry("anonymous-body");entry.Keyframes.PreserveInterpolation=true;
+            foreach(var key in boundary.Tracks.Single().Rotation)for(int axis=0;axis<3;axis++)
+            {
+                float V(Vector3 v)=>axis==0?v.X:axis==1?v.Y:v.Z;
+                entry.SetKeyframe(axis+3,key.Time,V(key.Value),true,true)._tangent=V(key.IncomingSlope);
+                if(V(key.IncomingSlope)!=V(key.OutgoingSlope))entry.SetKeyframe(axis+3,key.Time,V(key.Value),true,true)._tangent=V(key.OutgoingSlope);
+            }
+            PreciseCHR0EntryNode.Promote(nativeStep);
+            string stepPath=Path.Combine(output,"recorded-boundary-step.chr0");nativeStep.ExportChecked(stepPath);
+            using(var reopened=NodeFactory.FromFile(null,stepPath) as CHR0Node)
+            {
+                Check(reopened!=null&&reopened.FrameCount==9&&!reopened.Loop&&reopened.Version==4,
+                    "The recorded step retains native CHR0 timing and terminal metadata after fresh reopen");
+                var decoded=(CHR0EntryNode)reopened.Children[0];double maximum=0;
+                foreach(float time in boundary.ValidationTimes.Concat(new[]{6.875f,6.999999f,BitConverter.ToSingle(BitConverter.GetBytes(BitConverter.ToInt32(BitConverter.GetBytes(7f),0)-1),0),7f,7.001f}).Distinct())
+                {
+                    var actual=BrawlRetargeter.Rotation(new BrawlLib.Internal.Vector3(decoded.GetFrameValue(3,time),decoded.GetFrameValue(4,time),decoded.GetFrameValue(5,time)));
+                    maximum=Math.Max(maximum,SpanAngle(actual,BoundaryStep(time).WorldRotations[0]));
+                }
+                Check(maximum<=.025,"Fresh native decode preserves the recorded source-boundary step at all bake witnesses and adjacent float times",new{maximum,boundary.Work,boundary.SampleCount});
+            }
+        }
         const int count=128,last=160;
         var fixture=CoordinateFixture("opaque-budget-",1,.3f,0,Quaternion.Identity);
         var joints=fixture.Rig.Joints.Concat(Enumerable.Range(20,count-20).Select(b=>new RigJoint("anonymous-helper-"+b,

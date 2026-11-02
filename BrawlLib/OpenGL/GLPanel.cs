@@ -471,10 +471,24 @@ namespace BrawlLib.OpenGL
                     //Display newly rendered back buffer
                     if (_dxgi != null)
                     {
-                        try { _dxgi.Present(); }
+                        try
+                        {
+                            _dxgi.Present();
+                            if (_dxgi.IsOccluded)
+                            {
+                                // DXGI_STATUS_OCCLUDED is a successful HRESULT,
+                                // so the exception fallback never runs. Its
+                                // swap chain is not displaying the new frame.
+                                // Keep the native GL back buffer visible through
+                                // the established legacy swap path instead.
+                                _dxgi.Dispose(); _dxgi = null;
+                                _presentationUnavailable = true;
+                                _ctx.Swap();
+                            }
+                        }
                         catch (Exception error) when (error is System.Runtime.InteropServices.COMException || error is System.ComponentModel.Win32Exception || error is InvalidOperationException)
                         {
-                            _dxgi.Dispose(); _dxgi = null; _presentationUnavailable = true;
+                            _dxgi?.Dispose(); _dxgi = null; _presentationUnavailable = true;
                             _ctx.Swap();
                         }
                     }
