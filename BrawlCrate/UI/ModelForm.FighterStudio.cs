@@ -647,8 +647,7 @@ namespace BrawlCrate.UI
                 {
                     try
                     {
-                        ExportFighterNode(node, dialog.FileName);
-                        return true;
+                        return ExportFighterNode(node, dialog.FileName);
                     }
                     catch (Exception ex)
                     {
@@ -667,26 +666,36 @@ namespace BrawlCrate.UI
             ExportFighterNode(node, destination);
         }
 
-        private void ExportFighterNode(ResourceNode node, string destination)
+        private bool ExportFighterNode(ResourceNode node, string destination)
         {
             ProtectCharacterWorkspaceOutput(destination);
             (_library??(_library=new AnimationLibrary())).ProtectOutputPath(destination);
             if(_fighterProject.NativeTarget!=null&&node is CHR0Node nativeClip&&string.Equals(Path.GetExtension(destination),".dat",StringComparison.OrdinalIgnoreCase))
             {
                 if(SimpleWorkspaceBusy||_pinGesture!=null||modelEditControl1.AwaitingRedoSave)throw new InvalidOperationException("Finish the current native operation before exporting.");
-                if(RegisteredAnimationOwner(nativeClip)?.Id!=_fighterProject.NativeTarget.AnimationMasterId)throw new NotSupportedException("This animation has no reviewed native action-member association. Export an editable master; native slot assignment must be qualified before writing another action.");
+                if(!OwnsFighterRoot(nativeClip))throw new InvalidOperationException("Choose a project-owned target animation before exporting.");
+                var adapter=NativeGameAdapters.ForNative(_fighterProject.NativeTarget.Provider) as INativeTargetExportAdapter??throw new NotSupportedException("Native target writer unavailable.");
+                var selectedAction=_fighterProject.NativeTarget.Member(nativeClip);
+                if(selectedAction==null)
+                {
+                    if(!(adapter is INativeActionDestinationExportAdapter))throw new NotSupportedException("This native format has no qualified destination-action writer.");
+                    using(var review=new NativeActionDestinationDialog(nativeClip.Name,_fighterProject.NativeTarget.Members))
+                    {if(review.ShowDialog(this)!=DialogResult.OK)return false;selectedAction=review.SelectedAction;}
+                    if(selectedAction==null)return false;
+                }
                 modelEditControl1.StopAnim();FinishControlCurveEdit();
                 var project=_fighterProject;var target=modelEditControl1.TargetModel as MDL0Node;
                 var binding=project.NativeTarget;string modelContent=project.Model.ContentSha256;
                 string content=NativeAnimationOptimization.SourceContentKey(nativeClip),rig=BrawlCrate.Studio.Retargeting.BrawlRetargeter.SkeletonFingerprint(target);
                 void Current(){if(!ReferenceEquals(project,_fighterProject)||!ReferenceEquals(binding,project.NativeTarget)||project.Model.ContentSha256!=modelContent||target.IsDirty||!OwnsFighterRoot(nativeClip)||modelEditControl1.TargetAnimation!=nativeClip||content!=NativeAnimationOptimization.SourceContentKey(nativeClip)||rig!=BrawlCrate.Studio.Retargeting.BrawlRetargeter.SkeletonFingerprint(target))throw new InvalidOperationException("The target or animation changed during native export.");}
-                var adapter=NativeGameAdapters.ForNative(project.NativeTarget.Provider) as INativeTargetExportAdapter??throw new NotSupportedException("Native target writer unavailable.");
-                LastNativeTargetExport=adapter.ExportAnimation(project,target,nativeClip,destination,System.Threading.CancellationToken.None,Current);
-                _fighterStatus.Text="Exported verified native action member "+Path.GetFileName(destination)+". Whole action-archive installation is separate.";return;
+                LastNativeTargetExport=adapter is INativeActionDestinationExportAdapter actionWriter
+                    ?actionWriter.ExportAnimationToAction(project,target,nativeClip,selectedAction,destination,System.Threading.CancellationToken.None,Current)
+                    :adapter.ExportAnimation(project,target,nativeClip,destination,System.Threading.CancellationToken.None,Current);
+                _fighterStatus.Text="Exported verified native action member "+Path.GetFileName(destination)+". Whole action-archive installation is separate.";return true;
             }
             if(_fighterProject.NativeTarget!=null&&string.Equals(Path.GetExtension(destination),".dat",StringComparison.OrdinalIgnoreCase))throw new NotSupportedException("Native model/material/geometry replacement writing is not qualified for this adapter yet. Save the editable project or export an explicitly named authoring master instead.");
-            if (TryExportOwnedAnimationCopy(node, destination)) return;
-            if (TryExportFighterRetargetPac(node, destination)) return;
+            if (TryExportOwnedAnimationCopy(node, destination)) return true;
+            if (TryExportFighterRetargetPac(node, destination)) return true;
             if (node != null && node.RootNode.IsDirty)
             {
                 MarkFighterChanged();
@@ -717,6 +726,7 @@ namespace BrawlCrate.UI
 
             RecordLibraryExport(node, fullDestination);
             _fighterStatus.Text = "Exported and reopened " + Path.GetFileName(fullDestination) + ". Reference native route; export optimization is not qualified for this container/context.";
+            return true;
         }
 
         internal bool OwnsFighterRoot(ResourceNode root)

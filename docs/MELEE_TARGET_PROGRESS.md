@@ -1,5 +1,13 @@
 # Melee target editing foundation — implementation progress
 
+2 November preview.74 adds reviewed exact action-member selection for native
+DAT export of independently authored target animations that satisfy the
+current Melee writer's timing and loop gates. The standalone output is a
+new file, not action-archive installation. A saved Brawl → Melee Wait1
+result with fractional authored keys remains unrepresentable by the
+qualified integer-wait FOBJ writer. See
+[bounded evidence](NATIVE_ANIMATION_DESTINATION_2026-11-02.md).
+
 2 November shared rig/skin, complete animation-set, original Next, IK and fitting
 work continues from `cbf814e3b7c164022f54ff119e29c7048af0a379`. See
 [the bounded bridge implementation and evidence](MELEE_SHARED_BRIDGE_2026-11-02.md).

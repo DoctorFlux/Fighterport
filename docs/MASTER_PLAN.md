@@ -1,5 +1,14 @@
 # Fighterport master plan
 
+Preview.74 qualifies reviewed Melee native action destinations for
+independently authored target clips that pass the existing native timebase,
+loop, rig and full-motion gates. It preserves the full Model Previewer,
+original Next, editable masters and Brawl native export behavior. A saved
+Brawl → Melee Wait1 master with 3,258 fractional keys is safely rejected by
+the current integer-wait FOBJ writer; native cross-game time conversion is
+still open. See [bounded evidence](NATIVE_ANIMATION_DESTINATION_2026-11-02.md).
+Keep one incomplete G1/M2; no broader game acceptance is inferred.
+
 Preview.73 makes the existing native GL swap path the default for Fighterport
 because the reported active-desktop viewer still freezes after the Fox→Falco
 sequence, while the same private-desktop replay has used legacy GL and stayed

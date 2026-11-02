@@ -1,5 +1,15 @@
 # Native Next integration
 
+Preview.74 adds an optional `INativeActionDestinationExportAdapter` at the
+existing native target export boundary. It lets an independently authored
+target animation choose an exact owned Melee action member for a verified
+standalone DAT copy. The selected member and current clip/rig/source
+dependencies are frozen through publication; no project schema or Next
+retargeter change is required. Brawl's CHR0/PAC paths remain separate.
+Each future native format needs its own qualified destination writer and
+reader, with fresh output evaluation against that same target master.
+See [bounded evidence and limitations](NATIVE_ANIMATION_DESTINATION_2026-11-02.md).
+
 The Melee target development adds format-neutral editable-target and export
 adapter interfaces around the existing full viewer/document/Undo. Native HSD
 sampling/rendering stays in the adapter backend; original native snapshots and

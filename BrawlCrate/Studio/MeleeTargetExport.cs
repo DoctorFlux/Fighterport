@@ -10,15 +10,19 @@ namespace BrawlCrate.Studio
     internal static class MeleeTargetExport
     {
         internal static MeleeWriteCandidate Prepare(FighterProject project,MDL0Node target,CHR0Node clip,CancellationToken cancellation,out NativeTargetExportReceipt receipt)
+            =>Prepare(project,target,clip,project.NativeTarget.Member(clip),cancellation,out receipt);
+        internal static MeleeWriteCandidate Prepare(FighterProject project,MDL0Node target,CHR0Node clip,NativeAnimationMember destinationAction,CancellationToken cancellation,out NativeTargetExportReceipt receipt)
         {
             MeleeTargetDocument.Validate(project);
             if(target==null||clip==null)throw new InvalidDataException("Select the owned target animation.");
+            if(destinationAction==null)throw new NotSupportedException("Choose an exact owned Melee destination action before exporting this animation.");
             if(project.Model.ContentSha256!=project.NativeTarget.AuthoringModelSha256||target.IsDirty)
                 throw new NotSupportedException("Native model edits need their own verified HSD writer before this motion can be exported for that changed rig. The editable project is preserved.");
-            var native=MeleeTargetDocument.OriginalModel(project);var source=MeleeTargetDocument.OriginalMotion(project,clip);
+            var native=MeleeTargetDocument.OriginalModel(project);var source=MeleeTargetDocument.OriginalMotion(project,destinationAction);
+            bool replaceAll=project.NativeTarget.Member(clip)?.MotionKey!=destinationAction.MotionKey;
             using(var baselineRoot=NodeFactory.FromFile(null,project.NativeSources.Single(a=>a.Id==project.NativeTarget.AnimationBaselineSource).WorkingPath))
             {
-                var member=project.NativeTarget.Member(clip);var baseline=(member==null?baselineRoot:BrawlLibrarySource.Resolve(baselineRoot,member.EntryKey)) as CHR0Node;
+                var baseline=BrawlLibrarySource.Resolve(baselineRoot,destinationAction.EntryKey) as CHR0Node;
                 if(baseline==null)throw new InvalidDataException("Owned native authoring baseline is unavailable.");
                 if(clip.Loop!=baseline.Loop)throw new NotSupportedException("Melee runtime looping is owned by the action context. A CHR0 preview-loop change is not silently written as a game rule.");
                 var names=new HashSet<string>(Enumerable.Range(0,MeleeNative.Joints(native.Root).Length).Select(MeleeProjection.JointName));
@@ -33,7 +37,7 @@ namespace BrawlCrate.Studio
                     var current=entries.SingleOrDefault(e=>e.Name==name)?.KeyArrays[axis];
                     var original=baseline.Children.OfType<CHR0EntryNode>().SingleOrDefault(e=>e.Name==name)?.KeyArrays[axis];
                     var a=current?.Entries.ToArray();var b=original?.Entries.ToArray();
-                    if((a?.Length??0)==(b?.Length??0)&&(a==null||a.Length==0||a.Zip(b,(x,y)=>x._index==y._index&&Bits(x._value)==Bits(y._value)&&Bits(x._tangent)==Bits(y._tangent)).All(equal=>equal)))continue;
+                    if(!replaceAll&&(a?.Length??0)==(b?.Length??0)&&(a==null||a.Length==0||a.Zip(b,(x,y)=>x._index==y._index&&Bits(x._value)==Bits(y._value)&&Bits(x._tangent)==Bits(y._tangent)).All(equal=>equal)))continue;
                     var keys=new List<MeleeCurveKey>();double factor=axis>=3&&axis<6?Math.PI/180:1;
                     if(a!=null)foreach(var group in a.GroupBy(k=>k._index))
                     {

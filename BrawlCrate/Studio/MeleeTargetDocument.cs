@@ -92,6 +92,12 @@ namespace BrawlCrate.Studio
         {
             if(project.NativeTarget.Members.Length==0)return OriginalMotion(project);
             var member=project.NativeTarget.Member(clip)??throw new NotSupportedException("This animation has no exact native action association. Export an editable master or review a destination action first.");
+            return OriginalMotion(project,member);
+        }
+        internal static MeleeNativeMotion OriginalMotion(FighterProject project,NativeAnimationMember member)
+        {
+            if(member==null||!project.NativeTarget.Members.Any(m=>m.EntryKey==member.EntryKey&&m.MotionKey==member.MotionKey&&m.ResourceSha256==member.ResourceSha256))
+                throw new InvalidDataException("The selected destination action is not an owned native member.");
             var source=project.NativeSources.Single(s=>s.Id==project.NativeTarget.MotionSource);
             return MeleeNative.ReadMembers(File.ReadAllBytes(source.WorkingPath)).SelectMany(MeleeNative.Motions).Single(m=>m.Key==member.MotionKey&&m.Member.Sha256==member.ResourceSha256);
         }

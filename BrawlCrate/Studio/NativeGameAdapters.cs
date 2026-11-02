@@ -44,6 +44,12 @@ namespace BrawlCrate.Studio
         string AnimationExportFilter {get;}
         NativeTargetExportReceipt ExportAnimation(FighterProject project,BrawlLib.SSBB.ResourceNodes.MDL0Node target,BrawlLib.SSBB.ResourceNodes.CHR0Node clip,string destination,CancellationToken cancellation,Action validateCurrent);
     }
+    // An unassociated target clip needs an explicit, owned destination action.
+    // Future game adapters can supply their own destination selection here.
+    public interface INativeActionDestinationExportAdapter:INativeTargetExportAdapter
+    {
+        NativeTargetExportReceipt ExportAnimationToAction(FighterProject project,BrawlLib.SSBB.ResourceNodes.MDL0Node target,BrawlLib.SSBB.ResourceNodes.CHR0Node clip,NativeAnimationMember action,string destination,CancellationToken cancellation,Action validateCurrent);
+    }
     public interface INativeSourceExportAdapter
     {
         void ExportOriginal(LibraryCatalogue catalogue,LibraryAnimation clip,LibraryModel model,string destination,CancellationToken cancellation);
@@ -90,13 +96,13 @@ namespace BrawlCrate.Studio
                 finally{foreach(var disc in discs.Values)disc.Dispose();}
             }
         }
-        private sealed class MeleeSources:INativeGameSourceAdapter,INativeSourceExportAdapter,INativeEditableTargetAdapter,INativeTargetExportAdapter
+        private sealed class MeleeSources:INativeGameSourceAdapter,INativeSourceExportAdapter,INativeEditableTargetAdapter,INativeActionDestinationExportAdapter
         {
             public string[] Games=>new[]{"Melee"};
             public string[] ImageExtensions=>new[]{".iso",".gcm"};
             public string[] SourceProviders=>new[]{FighterPort.Adapters.Melee.MeleeSource.DiscProvider,FighterPort.Adapters.Melee.MeleeSource.FolderProvider};
             public string NativeProvider=>MeleeGameSource.NativeProvider;
-            public NativeGameOperation Operations=>NativeGameOperation.Inventory|NativeGameOperation.ModelRead|NativeGameOperation.MotionRead|NativeGameOperation.SourcePreview|NativeGameOperation.TextureRead|NativeGameOperation.OriginalSourceExport|NativeGameOperation.TargetEdit|NativeGameOperation.RetargetSource;
+            public NativeGameOperation Operations=>NativeGameOperation.Inventory|NativeGameOperation.ModelRead|NativeGameOperation.MotionRead|NativeGameOperation.SourcePreview|NativeGameOperation.TextureRead|NativeGameOperation.OriginalSourceExport|NativeGameOperation.TargetEdit|NativeGameOperation.RetargetSource|NativeGameOperation.NativeMotionWrite;
             public void Validate(LibraryGameRequest r,LibraryCatalogue c,CancellationToken t)=>MeleeGameSource.Validate(r,c,t);
             public LibraryGamePlan Prepare(LibraryGameRequest r,LibraryCatalogue c,string s,CancellationToken t,Action<int,string> p)=>MeleeGameSource.Prepare(r,c,t,p);
             public void Verify(LibraryGamePlan p,CancellationToken t)=>MeleeGameSource.VerifyPlan(p,t);
@@ -105,10 +111,17 @@ namespace BrawlCrate.Studio
             public void ValidateTarget(FighterProject project)=>MeleeTargetDocument.Validate(project);
             public string AnimationExportFilter=>"Melee native action member (*.dat)|*.dat|Editable animation master (*.chr0)|*.chr0";
             public NativeTargetExportReceipt ExportAnimation(FighterProject project,BrawlLib.SSBB.ResourceNodes.MDL0Node target,BrawlLib.SSBB.ResourceNodes.CHR0Node clip,string destination,CancellationToken cancellation,Action validateCurrent)
+                =>ExportAnimationToAction(project,target,clip,project.NativeTarget.Member(clip),destination,cancellation,validateCurrent);
+            public NativeTargetExportReceipt ExportAnimationToAction(FighterProject project,BrawlLib.SSBB.ResourceNodes.MDL0Node target,BrawlLib.SSBB.ResourceNodes.CHR0Node clip,NativeAnimationMember action,string destination,CancellationToken cancellation,Action validateCurrent)
             {
+                if(project==null||target==null||clip==null)throw new ArgumentNullException("A native target and clip are required.");
+                if(action==null)throw new InvalidOperationException("Choose an exact native destination action for this animation before exporting.");
                 string dependencies=NativeTargetBinding.DependencyKey(project);
-                void Current(){validateCurrent();if(NativeTargetBinding.DependencyKey(project)!=dependencies)throw new InvalidOperationException("Native source, member or costume dependencies changed during export.");MeleeTargetDocument.Validate(project);}
-                Current();var candidate=MeleeTargetExport.Prepare(project,target,clip,cancellation,out var receipt);Current();
+                string actionKey=action?.MotionKey,actionHash=action?.ResourceSha256;
+                string clipContent=NativeAnimationOptimization.SourceContentKey(clip);
+                string rig=BrawlCrate.Studio.Retargeting.BrawlRetargeter.SkeletonFingerprint(target);
+                void Current(){validateCurrent?.Invoke();if(NativeTargetBinding.DependencyKey(project)!=dependencies||!project.NativeTarget.Members.Any(m=>m.MotionKey==actionKey&&m.ResourceSha256==actionHash)||NativeAnimationOptimization.SourceContentKey(clip)!=clipContent||target.IsDirty||BrawlCrate.Studio.Retargeting.BrawlRetargeter.SkeletonFingerprint(target)!=rig)throw new InvalidOperationException("Native target, clip, action or costume dependencies changed during export.");MeleeTargetDocument.Validate(project);}
+                Current();var candidate=MeleeTargetExport.Prepare(project,target,clip,action,cancellation,out var receipt);Current();
                 project.ProtectOutputPath(destination);
                 FighterPort.Adapters.Melee.MeleeNativeWriter.Publish(candidate,destination,new[]{project.NativeTarget.OriginModelPath,project.NativeTarget.OriginMotionPath}.Concat(project.NativeSources.Select(a=>a.WorkingPath)).Where(p=>p!=null),cancellation,Current);return receipt;
             }

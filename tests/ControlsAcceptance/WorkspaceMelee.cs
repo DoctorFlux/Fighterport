@@ -15,6 +15,33 @@ internal static partial class Program
     {
         if(!PrivateDesktop)throw new InvalidOperationException("Melee UI acceptance requires the private desktop.");
         MeleeMasterBridgeChecks(output);
+        if(args.Contains("--melee-native-project"))
+        {
+            string path=args[Array.IndexOf(args,"--melee-native-project")+1];
+            using(var project=FighterProject.Open(path))
+            using(var modelRoot=NodeFactory.FromFile(null,project.Model.WorkingPath))
+            using(var clipRoot=NodeFactory.FromFile(null,project.Animations.Single(a=>a.Retarget!=null).WorkingPath))
+            {
+                var target=BrawlLibrarySource.Resources(modelRoot).Select(r=>r.Item1).OfType<MDL0Node>().Single();
+                var clip=BrawlLibrarySource.Resources(clipRoot).Select(r=>r.Item1).OfType<CHR0Node>().Single();
+                var member=project.NativeTarget.Members.Single(m=>m.Name=="Wait1");
+                Check(project.NativeTarget.Member(clip)==null,"Cross-game result has no native Melee action association");
+                var writer=(INativeActionDestinationExportAdapter)NativeGameAdapters.ForNative(project.NativeTarget.Provider);
+                string destination=Path.Combine(output,"cross-game-native-action.dat");
+                int fractional=clip.Children.OfType<CHR0EntryNode>().Sum(e=>e.KeyArrays.Sum(array=>array.Entries.Count(key=>key._index!=(float)Math.Floor(key._index))));
+                Console.WriteLine("TRACE cross-game native writer fractional authored keys="+fractional+" frames="+clip.FrameCount);
+                bool guarded=false;
+                try
+                {
+                    var receipt=writer.ExportAnimationToAction(project,target,clip,member,destination,CancellationToken.None,()=>{});
+                    Check(receipt.ResourceKey==member.MotionKey&&receipt.SampleTimes>clip.FrameCount,"Cross-game target result writes a verified native Melee action member");
+                }
+                catch(NotSupportedException error)when(error.Message.Contains("integer frame waits"))
+                {guarded=true;Console.WriteLine("OPEN cross-game native output: "+error.Message);}
+                Check(!guarded||fractional>0&&!File.Exists(destination),"Unrepresentable fractional native times reject without a published DAT");
+            }
+            return;
+        }
         string image=args[0],previous=Environment.GetEnvironmentVariable("FIGHTERPORT_LIBRARY_ROOT");
         Environment.SetEnvironmentVariable("FIGHTERPORT_LIBRARY_ROOT",Path.Combine(output,"library"));
         try
@@ -169,6 +196,50 @@ internal static partial class Program
                     Check(form.FighterProject.TargetGame=="Melee"&&form.FighterProject.NativeTarget!=null&&form.FighterEditor.TargetModel is MDL0Node&&form.FighterEditor.SelectedCHR0!=null,"Melee model and selected motion are owned editable target masters");
                     var target=(MDL0Node)form.FighterEditor.TargetModel;var clip=form.FighterEditor.SelectedCHR0;var nativeBackend=target.NativeEditingBackend as MeleeModelEditingBackend;
                     Check(nativeBackend!=null,"Main target uses authentic native Melee skinning instead of the projection skinning path");
+                    if(args.Contains("--melee-native-destinations"))
+                    {
+                        var binding=form.FighterProject.NativeTarget;
+                        var own=binding.Member(clip);
+                        var other=binding.Members.FirstOrDefault(m=>m.Name==nextIdleArg&&m.MotionKey!=own.MotionKey);
+                        Check(other!=null,"Another exact native action is available for explicit destination review");
+                        using(var review=new NativeActionDestinationDialog(clip.Name,binding.Members))
+                        {
+                            Check(review.SelectedAction==null,"Native destination review never preselects a possibly unrelated action");
+                            using(FlowModal("nativeActionChoice",dialog=>
+                            {
+                                var choice=SimpleControl<ComboBox>(dialog,"nativeActionChoice");
+                                choice.SelectedIndex=Array.FindIndex(choice.Items.Cast<string>().ToArray(),name=>name.Contains("["+other.MotionKey+"]"));
+                                CaptureDialog(dialog,output,"review-native-destination.png");
+                                SimpleControl<Button>(dialog,"nativeActionConfirm").PerformClick();
+                            }))Check(review.ShowDialog(form)==DialogResult.OK&&review.SelectedAction.MotionKey==other.MotionKey,"Native action review confirms only the exact selected member");
+                        }
+                        using(var cancelled=new NativeActionDestinationDialog(clip.Name,binding.Members))
+                        using(FlowModal("nativeActionCancel",dialog=>SimpleControl<Button>(dialog,"nativeActionCancel").PerformClick()))
+                            Check(cancelled.ShowDialog(form)==DialogResult.Cancel&&cancelled.SelectedAction==null,"Cancelling native action review leaves no destination selected");
+                        string originalContent=LifecycleContent(clip),modelHash=MeleeNative.RigHash(MeleeTargetDocument.OriginalModel(form.FighterProject));
+                        int originalFrame=form.FighterEditor.CurrentFrame;
+                        string outputPath=Path.Combine(output,"explicit-native-destination.dat");
+                        var writer=(INativeActionDestinationExportAdapter)NativeGameAdapters.ForNative(binding.Provider);
+                        var receipt=writer.ExportAnimationToAction(form.FighterProject,target,clip,other,outputPath,CancellationToken.None,()=>
+                        {
+                            if(!ReferenceEquals(form.FighterEditor.SelectedCHR0,clip)||LifecycleContent(clip)!=originalContent)throw new InvalidOperationException("Editable clip changed during native output.");
+                        });
+                        var saved=MeleeNative.ReadMembers(File.ReadAllBytes(outputPath)).SelectMany(MeleeNative.Motions).Single();
+                        Check(saved.Symbol==MeleeTargetDocument.OriginalMotion(form.FighterProject,other).Symbol&&receipt.ResourceKey==other.MotionKey&&receipt.SampleTimes>clip.FrameCount,"Explicit destination writes and freshly reopens the chosen native action member");
+                        string copyPath=Path.Combine(output,"independent-authoring-copy.chr0"),copyOutput=Path.Combine(output,"independent-native-destination.dat");
+                        clip.ExportChecked(copyPath);
+                        using(var independent=NodeFactory.FromFile(null,copyPath) as CHR0Node)
+                        {
+                            Check(independent!=null&&binding.Member(independent)==null,"A separate authored result has no implicit Melee action association");
+                            bool missingRejected=false;string missingPath=Path.Combine(output,"unreviewed-destination.dat");
+                            try{writer.ExportAnimation(form.FighterProject,target,independent,missingPath,CancellationToken.None,()=>{});}catch(InvalidOperationException){missingRejected=true;}
+                            Check(missingRejected&&!File.Exists(missingPath),"An unassociated result cannot silently choose a native action destination");
+                            var separateReceipt=writer.ExportAnimationToAction(form.FighterProject,target,independent,other,copyOutput,CancellationToken.None,()=>{});
+                            Check(separateReceipt.ResourceKey==other.MotionKey&&MeleeNative.ReadMembers(File.ReadAllBytes(copyOutput)).SelectMany(MeleeNative.Motions).Single().Symbol==saved.Symbol,"Unassociated animation exports through reviewed exact action destination and native reopen");
+                        }
+                        Check(LifecycleContent(clip)==originalContent&&form.FighterEditor.CurrentFrame==originalFrame&&MeleeNative.RigHash(MeleeTargetDocument.OriginalModel(form.FighterProject))==modelHash,"Native output preserves exact current master, frame and authentic rig");
+                        return;
+                    }
                     Check(MeleeLibraryPreview.Report(((LibrarySourceLease)Field(form,"_libraryLease")).Model).Meshes.All(mesh=>((LibrarySourceLease)Field(form,"_libraryLease")).MeleeRenderer.Parts.IsNormalDetail(mesh.DisplayObject)),"Native authoring projection contains normal-detail geometry only");
                     form.FighterEditor.SetFrame(12);form.FighterEditor.FrameFighterModel();await CaptureSimpleWorkspace(form,Path.Combine(output,"melee-editable-main.png"));
                     if(actorArg=="Mario")foreach(var dimensions in new[]{new Size(1700,950),new Size(1050,900)})foreach(int textSize in new[]{100,175})
@@ -238,10 +309,12 @@ internal static partial class Program
                     {
                         ModelForm.ValidateFighterProjectAssets(reopened);
                         Check(reopened.TargetGame=="Melee"&&reopened.NativeSources.Count>=3,"Project Save/reopen retains owned Melee source snapshots and exact editable masters");
-                        using(var reopenedClip=NodeFactory.FromFile(null,reopened.Animations[0].WorkingPath) as CHR0Node)Check(LifecycleContent(reopenedClip)==content,"Project reopen preserves exact authored Melee animation curves");
+                        using(var reopenedRoot=NodeFactory.FromFile(null,reopened.Animations[0].WorkingPath))
+                        {var reopenedClip=BrawlLibrarySource.Resolve(reopenedRoot,form.FighterProject.NativeTarget.Member(clip).EntryKey) as CHR0Node;Check(reopenedClip!=null&&LifecycleContent(reopenedClip)==content,"Project reopen preserves exact authored Melee animation curves");}
                     }
                     var loaded=FighterProject.Open(projectPath);bool adopted=false;
                     try{adopted=form.ReplaceLibraryTarget(loaded);Check(adopted,"Saved Melee project reopens into the existing editable main viewer");}finally{if(!adopted)loaded.Dispose();}
+                    await SimpleControlsReady(form);
                     Check(form.FighterEditor.TargetModel is MDL0Node loadedModel&&loadedModel.NativeEditingBackend!=null&&LifecycleContent(form.FighterEditor.SelectedCHR0)==content,"Full native target backend and exact curves recover after actual project reopen");
                     string reopenedOutput=Path.Combine(output,"reopened-native-action.dat");form.ExportFighterResource(reopenedOutput);
                     Check(FighterProject.HashFile(reopenedOutput)==form.FighterProject.NativeTarget.NativeMotionSha256,"Native action export remains byte-exact after project Save/reopen");
@@ -254,6 +327,7 @@ internal static partial class Program
                         Check(editedAdopted,"Saved edited Melee project reopens into the same main viewer");
                     }
                     finally{if(!editedAdopted)editedLoaded.Dispose();}
+                    await SimpleControlsReady(form);
                     Check(LifecycleContent(form.FighterEditor.SelectedCHR0)==editedContent,"Actual main-view reopen retains exact body edits and protected curves");
                     string editedReopenedOutput=Path.Combine(output,"reopened-edited-native-action.dat");form.ExportFighterResource(editedReopenedOutput);
                     Check(FighterProject.HashFile(editedReopenedOutput)==FighterProject.HashFile(nativeEdited),"Edited native output remains deterministic after project Save and actual reopen");

@@ -1,5 +1,15 @@
 # Fighterport
 
+2 November — preview.74-native-animation-destinations adds explicit review
+of an owned Melee action destination for an independently authored target
+animation. A private-desktop native DAT write/reopen passed, as did the
+existing Melee edit/reopen and Brawl export routes. The saved Brawl → Melee
+Wait1 result retains 3,258 fractional keys and is rejected by the current
+integer-wait FOBJ writer without publishing a DAT. See
+[bounded evidence](docs/NATIVE_ANIMATION_DESTINATION_2026-11-02.md). Full
+cross-game native motion export, model writing, container installation and
+game acceptance remain OPEN in the same incomplete G1/M2.
+
 2 November — preview.73-legacy-viewer-presentation makes the existing native
 OpenGL swap path Fighterport's default after a second report of a frozen
 active-desktop viewport. The physical freeze was not reproduced on private

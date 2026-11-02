@@ -1,5 +1,17 @@
 # Current milestone M2 — simpler native workspace
 
+2 November: preview.74-native-animation-destinations adds reviewed Melee
+action-member selection for independently authored target clips and keeps
+Brawl's existing native export route. The Melee candidate replaces all
+destination tracks, freshly reopens and compares against the finished target
+master before publishing a separate DAT. Private-desktop destination,
+existing Melee editing/reopen and Brawl export cases passed. A real Brawl →
+Melee Wait1 result has 3,258 fractional keys that the current integer-wait
+Melee FOBJ writer cannot represent; it is rejected with no output. Native
+cross-game time conversion, model writing and archive installation remain
+OPEN in the same incomplete G1/M2. See
+[acceptance](../NATIVE_ANIMATION_DESTINATION_2026-11-02.md).
+
 2 November: preview.73-legacy-viewer-presentation changes only Fighterport's
 default presentation policy. The reported active-desktop frozen viewer after
 Melee Fox then Falco Wait1 on Brawl Fox remains OPEN until physical retest.
