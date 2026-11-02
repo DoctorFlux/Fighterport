@@ -39,6 +39,7 @@ public static class AnimationControls
     {
         using var stream=new MemoryStream();using(var w=new BinaryWriter(stream,Encoding.UTF8,true))
             foreach(var b in scene.Bones){w.Write(b.Name);w.Write(b.Parent);foreach(var x in b.Rest.Channels())w.Write(x);}
+        if(scene.NativeEvaluation is {} native)using(var w=new BinaryWriter(stream,Encoding.UTF8,true))w.Write("Native:"+native.Identity);
         return Convert.ToHexString(SHA256.HashData(stream.ToArray()));
     }
     public static string DeformChecksum(Scene scene)
@@ -47,6 +48,21 @@ public static class AnimationControls
         {
             w.Write(Fingerprint(scene));foreach(var mesh in scene.Meshes)foreach(var v in mesh.Vertices)
             {w.Write(v.Position.X);w.Write(v.Position.Y);w.Write(v.Position.Z);if(v.Influences.Length>0){w.Write(int.MinValue);w.Write(v.InfluenceCount);}for(int i=0;i<v.InfluenceCount;i++){w.Write(v.JointAt(i));w.Write(v.WeightAt(i));}}
+            if(scene.NativeEvaluation is {} native)
+            {
+                w.Write("NativeEvaluation-v1");
+                foreach(var j in native.Joints)
+                {
+                    w.Write(j.CompensatedScale);w.Write(j.AnimationCompensatedScale.HasValue);if(j.AnimationCompensatedScale.HasValue)w.Write(j.AnimationCompensatedScale.Value);
+                    w.Write(j.Skeleton);w.Write(j.SkeletonRoot);w.Write(j.HasInverseBind);
+                    var m=j.InverseBind;foreach(float x in new[]{m.M11,m.M12,m.M13,m.M14,m.M21,m.M22,m.M23,m.M24,m.M31,m.M32,m.M33,m.M34,m.M41,m.M42,m.M43,m.M44})w.Write(x);
+                }
+                foreach(var v in scene.Meshes.SelectMany(m=>m.Vertices))
+                {
+                    w.Write(v.NativeSkin is not null);if(v.NativeSkin is not {} point)continue;
+                    w.Write(point.Skin.Owner);w.Write(point.Skin.SharedJoint);w.Write(point.Skin.Envelope);w.Write(point.Skin.MatrixIndex);
+                }
+            }
         }
         return Convert.ToHexString(SHA256.HashData(stream.ToArray()));
     }

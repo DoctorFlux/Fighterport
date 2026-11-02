@@ -1,5 +1,17 @@
 # Current milestone M2 — simpler native workspace
 
+2 November: preview.69-melee-shared-bridge qualifies the bounded shared native
+rig/skin, complete character animation-set, original Next and own-reference
+fitting slice from `cbf814e3b7c164022f54ff119e29c7048af0a379`. Both actual
+Use-button directions for Mario and Fox Wait1, reviewed native IK/Undo and
+target-owned Wait1 endpoint fitting pass background tests. Authentic inverse
+binds, all influences, native scale policy, source-local roots and the original
+viewer/Undo remain. See [bounded evidence](../MELEE_SHARED_BRIDGE_2026-11-02.md).
+Nonuniform/reflected coalesced torso scale, native contact evidence, new Melee
+destination slots, full archive/model writing, other game adapters and game
+acceptance retain explicit gates. No character/action numerical exceptions or
+new document owner. One G1/M2 stays incomplete; .66 remains queued.
+
 Preview.68-native-target-srt qualifies the bounded Melee body-SRT stage, starting
 `36bbb2ce6a626b2936f6a8f3a43c614917387e97`. The source now owns native model/motion
 snapshots plus exact editable masters in the same full viewer, with existing Undo,

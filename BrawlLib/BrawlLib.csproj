@@ -631,4 +631,5 @@ BrawlLib Copyright © 2009 - 2019 Bryan Moulton, BlackJax96, libertyernie, Sammi
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
   </ItemGroup>
+  <ItemGroup><Compile Include="../shared/NativeEvaluation.cs" Link="Modeling/NativeEvaluation.cs" /></ItemGroup>
 </Project>

@@ -12,6 +12,16 @@ internal static partial class Program
 {
     static void MeleeMasterBridgeChecks(string output)
     {
+        var policies=new[]{new FighterPort.NativeEvaluation.JointPolicy{SkeletonRoot=true,HasInverseBind=true,InverseBind=System.Numerics.Matrix4x4.Identity},new FighterPort.NativeEvaluation.JointPolicy{Skeleton=true,HasInverseBind=true,InverseBind=System.Numerics.Matrix4x4.CreateTranslation(-2,0,0)}};
+        var owner=new FighterPort.NativeEvaluation.SkinPolicy{Owner=0,Envelope=true};
+        var parents=new[]{-1,0};var worlds=new[]{System.Numerics.Matrix4x4.Identity,System.Numerics.Matrix4x4.CreateTranslation(3,0,0)};
+        var point=new System.Numerics.Vector3(4,1,0);var bones=new[]{0,1};var weights=new[]{.25f,.75f};
+        var exact=System.Numerics.Vector3.Transform(point,FighterPort.NativeEvaluation.EvaluationMath.SkinMatrix(policies,parents,worlds,owner,bones,weights));
+        var prepared=FighterPort.NativeEvaluation.EvaluationMath.StaticWeights(policies,owner,point,bones,weights);
+        var staticResult=prepared.Aggregate(System.Numerics.Vector3.Zero,(sum,i)=>sum+System.Numerics.Vector3.Transform(i.Local,worlds[i.Joint])*i.Weight);
+        Check(System.Numerics.Vector3.Distance(exact,staticResult)<1e-6,"Prepared static skin equations match the complete native evaluator without discarding influence weights");
+        var dynamicPolicies=new[]{policies[0],policies[1],new FighterPort.NativeEvaluation.JointPolicy{HasInverseBind=true,InverseBind=System.Numerics.Matrix4x4.Identity}};
+        Check(FighterPort.NativeEvaluation.EvaluationMath.StaticWeights(dynamicPolicies,new FighterPort.NativeEvaluation.SkinPolicy{Owner=2,Envelope=true},point,bones,weights)==null,"Moving native owner basis retains the general skin evaluator rather than a static approximation");
         byte[] Serialize(HSDRawFile file){using(var stream=new MemoryStream()){file.Save(stream,bufferAlign:false,optimize:false,trim:false);return stream.ToArray();}}
         var root=new HSD_JOBJ{SX=2,SY=3,SZ=-4,RY=9.25f,RZ=-.6f,TX=5,TY=2,TZ=-3};
         root.Child=new HSD_JOBJ{SX=1,SY=1,SZ=1,RY=1.7f,TX=3};

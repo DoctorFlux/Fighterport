@@ -1,5 +1,14 @@
 # Fighterport master plan
 
+Preview.69 qualifies a bounded, reusable native rig/skin bridge for original
+Next, IK and fitting, plus complete per-character Melee target animation sets.
+Mario and Fox Wait1 pass actual Brawl↔Melee Use, native IK Undo/Redo and fitting
+to their target's own Wait1 first frame on private desktops. Authentic native
+binds, weights, scale semantics, source-local roots and the full viewer remain.
+See [bounded evidence](MELEE_SHARED_BRIDGE_2026-11-02.md). Native model writing,
+new Melee destination slots, full archive repacking, broader anatomy/contact
+quality and game acceptance remain open within the one incomplete G1/M2.
+
 Preview.68 qualifies bounded native Melee target SRT editing/export from
 `36bbb2ce6a626b2936f6a8f3a43c614917387e97`. It reuses the full native viewer,
 Undo and document ownership through shared future-format contracts. Basic SRT

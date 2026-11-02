@@ -30,6 +30,11 @@ namespace BrawlCrate.Studio
         public string AuthoringAnimationSha256 {get;set;}
         public int CostumeIndex {get;set;}=-1;
         public int[] PartChoices {get;set;}
+        public NativeAnimationMember[] Members {get;set;}=new NativeAnimationMember[0];
+        public string[] UnavailableAnimations {get;set;}=new string[0];
+        internal static string EntryKey(BrawlLib.SSBB.ResourceNodes.ResourceNode node)
+        {var indices=new List<int>();while(node.Parent!=null){indices.Add(node.Index);node=node.Parent;}indices.Reverse();return "$"+(indices.Count==0?"":"/"+string.Join("/",indices));}
+        internal NativeAnimationMember Member(BrawlLib.SSBB.ResourceNodes.CHR0Node clip)=>Members.SingleOrDefault(m=>m.EntryKey==EntryKey(clip)&&m.Name==clip.Name);
         internal static string DependencyKey(FighterProject project)=>new System.Web.Script.Serialization.JavaScriptSerializer{MaxJsonLength=1024*1024}.Serialize(new
         {
             Binding=project.NativeTarget,
@@ -42,7 +47,15 @@ namespace BrawlCrate.Studio
             foreach(string id in new[]{ModelSource,MotionSource,ContextSource,CommonSource,ExecutableSource,AnimationBaselineSource}.Where(s=>s!=null))if(!project.NativeSources.Any(a=>a.Id==id))throw new InvalidDataException("Native target lost an owned source snapshot.");
             if(string.IsNullOrEmpty(AnimationMasterId)||AnimationMasterId.Length!=32||AnimationMasterId.Any(c=>!Uri.IsHexDigit(c)))throw new InvalidDataException("Invalid native animation member association.");
             if(ModelSource==null||MotionSource==null||AnimationBaselineSource==null||project.Model==null||project.Animations.Count==0)throw new InvalidDataException("Native target requires model and animation masters and native originals.");
+            if(Members==null||Members.Length>4096||Members.Any(m=>m==null||string.IsNullOrEmpty(m.EntryKey)||string.IsNullOrEmpty(m.MotionKey)||m.ResourceSha256==null||m.ResourceSha256.Length!=64)||Members.Select(m=>m.EntryKey).Distinct().Count()!=Members.Length)throw new InvalidDataException("Invalid native animation member associations.");
             foreach(string path in new[]{OriginModelPath,OriginMotionPath})if(path!=null&&path.Length>32767)throw new InvalidDataException("Native target source provenance exceeds its bound.");
         }
+    }
+    public sealed class NativeAnimationMember
+    {
+        public string EntryKey {get;set;}
+        public string Name {get;set;}
+        public string MotionKey {get;set;}
+        public string ResourceSha256 {get;set;}
     }
 }

@@ -54,6 +54,7 @@ namespace BrawlCrate.Studio
     public sealed class WorkspaceClipLink {public string Key {get;set;}public string Id {get;set;}}
     internal sealed class ControlReply
     {
+        public NativeRigSample[] NativeSamples {get;set;}
         public string ContactContextJson {get;set;}
         public bool RecoverySteps {get;set;}
         public ReviewedContactRow[] ContactRanges {get;set;}
@@ -73,6 +74,7 @@ namespace BrawlCrate.Studio
         public NativeWorkspaceControls[] WorkspaceControls {get;set;}public string PoseState {get;set;}
         public string SelectedMotion {get;set;}public string SelectedEntry {get;set;}public int DisplayFrame {get;set;}
     }
+    internal sealed class NativeRigSample {public float Frame {get;set;}public float[][] World {get;set;}public float[][] Surface {get;set;}}
     internal sealed class ControlPin
     {
         public string Id {get;set;} public int Bone {get;set;} public string BoneName {get;set;} public string Name {get;set;} public bool Soft {get;set;}

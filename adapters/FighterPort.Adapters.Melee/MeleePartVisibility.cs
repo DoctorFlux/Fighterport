@@ -18,6 +18,7 @@ namespace FighterPort.Adapters.Melee
         public bool IsNormalDetail(int displayObject)=>displayObject>=0&&displayObject<normalDetail.Length&&normalDetail[displayObject];
         public int VariantCount(int group)=>groups[group].Length;
         public int Choice(int group)=>choices[group];
+        public MeleePartVisibility Copy(){var copy=new MeleePartVisibility(groups,hidden,displayCount,SourceSha256,SourceKey);Array.Copy(choices,copy.choices,choices.Length);return copy;}
         public string SourceSha256 {get;}
         public string SourceKey {get;}
         private MeleePartVisibility(int[][][] groups,int[] hidden,int count,string hash,string key)

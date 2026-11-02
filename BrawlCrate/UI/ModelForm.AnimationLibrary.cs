@@ -214,7 +214,7 @@ namespace BrawlCrate.UI
             if(previewKey!=_libraryPreviewStateKey)
             {_libraryPreviewStateKey=previewKey;_libraryPreviewState=item==null?LibrarySourceState.Missing:_library.GetPreviewState(item.Clip.Id);}
             bool preview=LibraryPreviewReady;
-            _libraryPreview.Enabled=preview;_libraryUse.Enabled=available&&LibraryCostumeReady&&!SimpleWorkspaceSourceNeedsRepair(item)&&item?.Clip.Channel=="CHR0 skeletal"&&modelEditControl1.TargetModel is MDL0Node;
+            _libraryPreview.Enabled=preview;_libraryUse.Enabled=available&&LibraryCostumeReady&&!SimpleWorkspaceSourceNeedsRepair(item)&&(NativeGameAdapters.ForNative(item?.Motion.Provider)?.Operations.HasFlag(NativeGameOperation.RetargetSource)??false)&&modelEditControl1.TargetModel is MDL0Node;
             _libraryOpenTarget.Enabled=preview&&!SimpleWorkspaceBusy&&(NativeGameAdapters.ForNative(item?.Motion.Provider)?.Operations.HasFlag(NativeGameOperation.TargetEdit)??false);
             _libraryRepair.Enabled=SimpleWorkspaceSourceNeedsRepair(item)&&!_libraryReplacingTree&&!_librarySearchTimer.Enabled;
             UpdateLibraryRetargetHint();

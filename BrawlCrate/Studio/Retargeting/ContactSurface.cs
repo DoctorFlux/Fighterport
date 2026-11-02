@@ -14,8 +14,13 @@ namespace BrawlCrate.Studio.Retargeting
     public sealed class SkinPoint
     {
         public SkinWeight[] Weights { get; set; }
+        public FighterPort.NativeEvaluation.NativeVertex Native {get;set;}
+        public SkinPoint[] Samples {get;set;}
+        public bool StaticNativeWeights {get;set;}
         public Vector3 Evaluate(RigPose pose)
         {
+            if(Samples!=null)return Samples.Aggregate(Vector3.Zero,(v,p)=>v+p.Evaluate(pose))/Samples.Length;
+            if(Native!=null&&!StaticNativeWeights)return Vector3.Transform(Native.Position,FighterPort.NativeEvaluation.EvaluationMath.SkinMatrix(pose.Rig.NativeEvaluation.Joints,pose.Rig.Parents,pose.World,Native.Skin,Native.Joints,Native.Weights));
             Vector3 result = Vector3.Zero;
             foreach (SkinWeight w in Weights) result += Vector3.Transform(w.Local, pose.World[w.Joint]) * w.Weight;
             return result;
@@ -43,7 +48,7 @@ namespace BrawlCrate.Studio.Retargeting
         }
         internal SkinPoint LowestPoint(RigPose pose,out float minimum)
         {
-            if(points.Length>32)return (support??(support=new SkinSupportTree(points,pose.Rig))).Lowest(pose,out minimum);
+            if(points.Length>32&&points.All(p=>p.Native==null||p.StaticNativeWeights))return (support??(support=new SkinSupportTree(points,pose.Rig))).Lowest(pose,out minimum);
             minimum=float.MaxValue;SkinPoint result=null;
             foreach(var point in points){float height=Vector3.Dot(point.Evaluate(pose),pose.Rig.GroundNormal);if(height<minimum){minimum=height;result=point;}}
             return result;
@@ -57,7 +62,7 @@ namespace BrawlCrate.Studio.Retargeting
                 float total=g.Sum(w=>w.Weight);
                 return new SkinWeight{Joint=g.Key,Weight=total/patch.Length,Local=g.Aggregate(Vector3.Zero,(v,w)=>v+w.Local*w.Weight)/total};
             }).ToArray();
-            return new SkinPoint{Weights=weights};
+            return new SkinPoint{Weights=weights,Samples=pose.Rig.NativeEvaluation==null?null:patch};
         }
         public SurfaceSample Sample(RigPose pose)
         {

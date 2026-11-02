@@ -109,6 +109,21 @@ namespace BrawlCrate.Studio.Retargeting
                 // needlessly moves an already-supported body and slows baking.
                 if(contactsSatisfied)break;
                 Vector3[] positions=pose.World.Select(m=>m.Translation).ToArray();
+                RigPose[] nativePlus=null,nativeMinus=null;float[] nativeStep=null;
+                if(pose.Rig.NativeEvaluation!=null&&(!pose.Rig.StaticNativeSkin||pose.Local.Any(t=>t.Scale.X<=0||Math.Abs(t.Scale.X-t.Scale.Y)>1e-6f||Math.Abs(t.Scale.X-t.Scale.Z)>1e-6f)))
+                {
+                    nativePlus=new RigPose[count];nativeMinus=new RigPose[count];nativeStep=new float[count];
+                    for(int column=0;column<count;column++)
+                    {
+                        float epsilon=column<3?Math.Max(.00001f,length*.0001f):.001f;nativeStep[column]=epsilon;
+                        var translation=Vector3.Zero;var rotations=new Vector3[joints.Length];
+                        if(column<3){if(column==0)translation.X=epsilon;else if(column==1)translation.Y=epsilon;else translation.Z=epsilon;}
+                        else{int joint=(column-3)/3,axis=(column-3)%3;rotations[joint]=axis==0?new Vector3(epsilon,0,0):axis==1?new Vector3(0,epsilon,0):new Vector3(0,0,epsilon);}
+                        nativePlus[column]=new RigPose(pose.Rig,pose.Local);nativeMinus[column]=new RigPose(pose.Rig,pose.Local);
+                        ApplyBodyStep(nativePlus[column],pose.Local,pelvis,controlForBone,translation,rotations,1,endOrientations);
+                        ApplyBodyStep(nativeMinus[column],pose.Local,pelvis,controlForBone,translation,rotations,-1,endOrientations);
+                    }
+                }
                 var normal=new double[count,count];var rhs=new double[count];
                 foreach(var row in rows)
                 {
@@ -129,6 +144,7 @@ namespace BrawlCrate.Studio.Retargeting
                         jacobian[4+joint*3]=derivative.Y*row.DerivativeWeight;
                         jacobian[5+joint*3]=derivative.Z*row.DerivativeWeight;
                     }
+                    if(nativePlus!=null)for(int c=0;c<count;c++)jacobian[c]=Vector3.Dot(row.Point.Evaluate(nativePlus[c])-row.Point.Evaluate(nativeMinus[c]),row.Axis)/(2*nativeStep[c])*row.DerivativeWeight;
                     AddContactEquation(normal,rhs,jacobian,row.Error*row.Weight);
                 }
                 // A small positional penalty retains the authored pose where
@@ -139,6 +155,12 @@ namespace BrawlCrate.Studio.Retargeting
                 {
                     Vector3 error=positions[bone]-reference[bone];
                     int used=0;
+                    if(nativePlus!=null)
+                    {
+                        for(int c=0;c<count;c++){columns[c]=(nativePlus[c].Point(bone)-nativeMinus[c].Point(bone))/(2*nativeStep[c]);indices[used++]=c;}
+                    }
+                    else
+                    {
                     if(Descendant(pose.Rig,bone,pelvis))
                     {
                         columns[0]=Vector3.UnitX;columns[1]=Vector3.UnitY;columns[2]=Vector3.UnitZ;
@@ -153,6 +175,7 @@ namespace BrawlCrate.Studio.Retargeting
                         columns[index+1]=new Vector3(offset.Z,0,-offset.X);
                         columns[index+2]=new Vector3(-offset.Y,offset.X,0);
                         indices[used++]=index;indices[used++]=index+1;indices[used++]=index+2;
+                    }
                     }
                     for(int a=0;a<used;a++)
                     {

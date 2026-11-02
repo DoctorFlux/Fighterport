@@ -28,7 +28,6 @@ namespace BrawlCrate.Studio
         }
         internal static CHR0Node Prepare(MeleeNativeModel model,MeleeNativeMotion motion,string name)
         {
-            if(motion.Figatree?.Nodes.Any(n=>n.Tracks.Any(t=>t.StartFrame!=0))==true)throw new NotSupportedException("Editable conversion of nonzero native FOBJ start offsets is not qualified. No timing is silently rebaked or truncated.");
             var playback=new MeleePlayback(model,motion);var bind=MeleeNative.Joints(model.Root);var output=new CHR0Node{Name=name,FrameCount=checked((int)Math.Ceiling(motion.LastFrame)+1),Loop=false};
             try
             {
@@ -37,8 +36,9 @@ namespace BrawlCrate.Studio
                 int count=0;
                 for(int bone=0;bone<playback.JointCount;bone++)
                 {
-                    var tracks=playback.Tracks(bone).Where(t=>MeleePlayback.Axis(t.TrackType)>=0&&t.Keys.Count>0).ToArray();if(tracks.Length==0)continue;
+                    var tracks=playback.Tracks(bone).Where(t=>MeleePlayback.Axis(t.TrackType)>=0&&t.Keys.Count>0).ToArray();if(tracks.Length==0&&playback.Tracks(bone).Count==0)continue;
                     var entry=new PreciseCHR0EntryNode{Name=MeleeProjection.JointName(bone)};output.AddChild(entry);entry.Keyframes.PreserveInterpolation=true;
+                    entry.ClassicScaleOff=!playback.UsesClassicalScale(bone,(bind[bone].Flags&HSDRaw.Common.JOBJ_FLAG.CLASSICAL_SCALING)!=0);
                     foreach(var track in tracks)
                     {
                         int axis=MeleePlayback.Axis(track.TrackType);double factor=axis>=3&&axis<6?180/Math.PI:1;

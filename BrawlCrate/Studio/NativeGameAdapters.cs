@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -96,7 +96,7 @@ namespace BrawlCrate.Studio
             public string[] ImageExtensions=>new[]{".iso",".gcm"};
             public string[] SourceProviders=>new[]{FighterPort.Adapters.Melee.MeleeSource.DiscProvider,FighterPort.Adapters.Melee.MeleeSource.FolderProvider};
             public string NativeProvider=>MeleeGameSource.NativeProvider;
-            public NativeGameOperation Operations=>NativeGameOperation.Inventory|NativeGameOperation.ModelRead|NativeGameOperation.MotionRead|NativeGameOperation.SourcePreview|NativeGameOperation.TextureRead|NativeGameOperation.OriginalSourceExport|NativeGameOperation.TargetEdit;
+            public NativeGameOperation Operations=>NativeGameOperation.Inventory|NativeGameOperation.ModelRead|NativeGameOperation.MotionRead|NativeGameOperation.SourcePreview|NativeGameOperation.TextureRead|NativeGameOperation.OriginalSourceExport|NativeGameOperation.TargetEdit|NativeGameOperation.RetargetSource;
             public void Validate(LibraryGameRequest r,LibraryCatalogue c,CancellationToken t)=>MeleeGameSource.Validate(r,c,t);
             public LibraryGamePlan Prepare(LibraryGameRequest r,LibraryCatalogue c,string s,CancellationToken t,Action<int,string> p)=>MeleeGameSource.Prepare(r,c,t,p);
             public void Verify(LibraryGamePlan p,CancellationToken t)=>MeleeGameSource.VerifyPlan(p,t);

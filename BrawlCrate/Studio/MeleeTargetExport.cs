@@ -1,4 +1,4 @@
-﻿using FighterPort.Adapters.Melee;
+using FighterPort.Adapters.Melee;
 using BrawlLib.SSBB.ResourceNodes;
 using System;
 using System.Collections.Generic;
@@ -15,13 +15,16 @@ namespace BrawlCrate.Studio
             if(target==null||clip==null)throw new InvalidDataException("Select the owned target animation.");
             if(project.Model.ContentSha256!=project.NativeTarget.AuthoringModelSha256||target.IsDirty)
                 throw new NotSupportedException("Native model edits need their own verified HSD writer before this motion can be exported for that changed rig. The editable project is preserved.");
-            var native=MeleeTargetDocument.OriginalModel(project);var source=MeleeTargetDocument.OriginalMotion(project);
-            using(var baseline=NodeFactory.FromFile(null,project.NativeSources.Single(a=>a.Id==project.NativeTarget.AnimationBaselineSource).WorkingPath) as CHR0Node)
+            var native=MeleeTargetDocument.OriginalModel(project);var source=MeleeTargetDocument.OriginalMotion(project,clip);
+            using(var baselineRoot=NodeFactory.FromFile(null,project.NativeSources.Single(a=>a.Id==project.NativeTarget.AnimationBaselineSource).WorkingPath))
             {
+                var member=project.NativeTarget.Member(clip);var baseline=(member==null?baselineRoot:BrawlLibrarySource.Resolve(baselineRoot,member.EntryKey)) as CHR0Node;
                 if(baseline==null)throw new InvalidDataException("Owned native authoring baseline is unavailable.");
                 if(clip.Loop!=baseline.Loop)throw new NotSupportedException("Melee runtime looping is owned by the action context. A CHR0 preview-loop change is not silently written as a game rule.");
                 var names=new HashSet<string>(Enumerable.Range(0,MeleeNative.Joints(native.Root).Length).Select(MeleeProjection.JointName));
                 var entries=clip.Children.Cast<CHR0EntryNode>().ToArray();
+                foreach(var entry in entries)
+                {var originalEntry=baseline.Children.OfType<CHR0EntryNode>().SingleOrDefault(e=>e.Name==entry.Name);if(originalEntry!=null&&entry.ClassicScaleOff!=originalEntry.ClassicScaleOff)throw new NotSupportedException("Native animation scale interpretation changed. Its runtime flag writer needs separate qualification; no output was published.");}
                 if(entries.Any(e=>!names.Contains(e.Name))||entries.Select(e=>e.Name).Distinct().Count()!=entries.Length)throw new InvalidDataException("Native export needs exact target-joint bindings; an animation entry is unmatched or ambiguous.");
                 var changes=new List<MeleeCurveEdit>();
                 for(int joint=0;joint<names.Count;joint++)for(int axis=0;axis<9;axis++)
@@ -43,7 +46,7 @@ namespace BrawlCrate.Studio
                 float last=clip.FrameCount==baseline.FrameCount?source.LastFrame:clip.FrameCount-1;
                 var candidate=MeleeMotionWriter.Prepare(source,changes,last,cancellation,names.Count);
                 var decoded=MeleeNative.ReadMembers(candidate.CopyBytes(),cancellation).SelectMany(MeleeNative.Motions).Single(m=>m.Symbol==source.Symbol);
-                receipt=Verify(native,source,decoded,clip,last,cancellation);receipt.Provider=project.NativeTarget.Provider;receipt.ResourceKey=project.NativeTarget.MotionKey;receipt.Sha256=candidate.Sha256;receipt.Bytes=candidate.Length;return candidate;
+                receipt=Verify(native,source,decoded,clip,last,cancellation);receipt.Provider=project.NativeTarget.Provider;receipt.ResourceKey=source.Key;receipt.Sha256=candidate.Sha256;receipt.Bytes=candidate.Length;return candidate;
             }
         }
         private static int Bits(float value)=>BitConverter.ToInt32(BitConverter.GetBytes(value),0);

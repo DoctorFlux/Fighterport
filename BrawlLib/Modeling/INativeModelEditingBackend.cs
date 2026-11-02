@@ -13,6 +13,8 @@ namespace BrawlLib.Modeling
         // A format must qualify its native hierarchy/skin semantics before the
         // shared rig solver or geometry-dependent optimization may consume it.
         void ValidateSharedRigEvaluation();
+        FighterPort.NativeEvaluation.NativeRigData CaptureEvaluation();
+        INativeModelEditingBackend CreateSnapshotBackend(MDL0Node model);
         bool CanEditAnimationBone(string name);
         void PrepareAnimationChannel(CHR0EntryNode entry,int channel);
         void UpdatePose(MDL0Node model);

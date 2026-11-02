@@ -1,4 +1,4 @@
-﻿using BrawlCrate.Studio;
+using BrawlCrate.Studio;
 using BrawlCrate.UI;
 using FighterPort.Adapters.Melee;
 using BrawlLib.SSBB.ResourceNodes;
@@ -35,6 +35,7 @@ internal static partial class Program
             int added=await Task.Run(()=>library.RegisterGame(plan));var catalogue=library.Read();
             Check(catalogue.GameLocations.Single().InventoryIssues.SequenceEqual(plan.Issues),"Complete source inventory diagnostics survive catalogue Save/reopen");
             Check(added==plan.Clips.Count&&catalogue.GameLocations.Single().Provider==MeleeSource.DiscProvider,"Melee inventory publishes and fresh catalogue load validates its native provider");
+            if(args.Contains("--melee-shared-bridge")){await MeleeSharedBridge(args,output,library);return;}
             string actorArg=args.Contains("--melee-target-character")?args[Array.IndexOf(args,"--melee-target-character")+1]:"Mario";
             string nextIdleArg=args.Contains("--melee-target-next")?args[Array.IndexOf(args,"--melee-target-next")+1]:"Wait2";
             string idleArg=args.Contains("--melee-target-idle")?args[Array.IndexOf(args,"--melee-target-idle")+1]:"Wait1";

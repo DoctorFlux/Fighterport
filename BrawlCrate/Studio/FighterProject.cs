@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -146,7 +146,7 @@ namespace BrawlCrate.Studio
             // Native sources are opaque owned bytes. Only their registered
             // adapter interprets them; future formats need no extension list here.
             if(Path.GetFileName(filename)!=filename||filename.IndexOfAny(Path.GetInvalidFileNameChars())>=0||
-                !(role=="model"&&Path.GetExtension(filename)==".mdl0"||role=="animation"&&Path.GetExtension(filename)==".chr0"||role=="native-source"))throw new ArgumentException("Invalid native master filename or role.");
+                !(role=="model"&&Path.GetExtension(filename)==".mdl0"||role=="animation"&&new[]{".chr0",".brres"}.Contains(Path.GetExtension(filename))||role=="native-source"))throw new ArgumentException("Invalid native master filename or role.");
             EnsureStageDirectory();var asset=new FighterAsset{Id=Guid.NewGuid().ToString("N"),Role=role,Generated=true,SourcePath=filename};
             asset.WorkingPath=Path.Combine(_stageDirectory,asset.Id+Path.GetExtension(filename));_stagedAssets.Add(asset);
             write(asset.WorkingPath);RequireOrdinaryFile(asset.WorkingPath);RequireAssetSize(asset.WorkingPath);asset.SourceSha256=asset.ContentSha256=HashFile(asset.WorkingPath);return asset;
@@ -285,7 +285,7 @@ namespace BrawlCrate.Studio
                 throw new InvalidDataException("The source-bound bake does not match this source or target project.");
             string safe=new string(sourceName.Select(c=>Path.GetInvalidFileNameChars().Contains(c)?'_':c).ToArray());
             var generated=CreateAnimation(safe+" (library).chr0",result.Animation.ExportChecked);
-            var map=result.Plan.Mapping.Select(m=>new RetargetBoneBinding{Role=m.Role,Source=m.Source,Target=m.Target}).ToList();
+            var map=result.Plan.Source.Roles.Keys.Intersect(result.Plan.Target.Roles.Keys).Select(role=>new RetargetBoneBinding{Role=role,Source=result.Plan.Source.Joints[result.Plan.Source.Roles[role]].Name,Target=result.Plan.Target.Joints[result.Plan.Target.Roles[role]].Name}).Concat(result.Plan.Mapping.Where(m=>m.Role.StartsWith("trajectory.",StringComparison.Ordinal)).Select(m=>new RetargetBoneBinding{Role=m.Role,Source=m.Source,Target=m.Target})).ToList();
             var reference=source.Copy();
             reference.TargetRig=result.TargetRig;reference.TargetModelContentSha256=HashFile(Model.WorkingPath);
             using(var sha=SHA256.Create())reference.MappingSha256=BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(
@@ -360,7 +360,7 @@ namespace BrawlCrate.Studio
                 if (asset.Generated)
                 {
                     if (Path.GetFileName(asset.SourcePath) != asset.SourcePath || asset.SourcePath.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 ||
-                        !(asset.Role=="animation"&&Path.GetExtension(asset.SourcePath)==".chr0" || NativeTarget!=null&&asset.Role=="model"&&Path.GetExtension(asset.SourcePath)==".mdl0" || asset.Role=="native-source"))
+                        !(asset.Role=="animation"&&(Path.GetExtension(asset.SourcePath)==".chr0"||NativeTarget!=null&&Path.GetExtension(asset.SourcePath)==".brres") || NativeTarget!=null&&asset.Role=="model"&&Path.GetExtension(asset.SourcePath)==".mdl0" || asset.Role=="native-source"))
                         throw new InvalidDataException("A generated animation needs a plain native filename.");
                 }
                 else LocalPath(asset.SourcePath);
@@ -400,8 +400,8 @@ namespace BrawlCrate.Studio
                             link.SourceRig!=p.SourceRig||link.TargetRig!=asset.RigIdentity||!ValidHash(link.TargetModelContentSha256)||!ValidHash(link.MappingSha256)||!ValidHash(link.InitialBakeSha256)||
                             string.IsNullOrWhiteSpace(link.Game)||string.IsNullOrWhiteSpace(link.GameVersion)||string.IsNullOrWhiteSpace(link.BuildEvidence)||
                             string.IsNullOrWhiteSpace(link.ModelKey)||string.IsNullOrWhiteSpace(link.MotionKey)||string.IsNullOrWhiteSpace(link.AssociationEvidence)||
-                            link.Adapter!=BrawlLibrarySource.Provider||link.Channel!="CHR0 skeletal"||link.TicksPerSecond!=60||link.FrameCount<1||link.FrameCount>4096||
-                            (link.NativeVersion!=4&&link.NativeVersion!=5)||(link.LastExportSha256!=null&&!ValidHash(link.LastExportSha256)))
+                            !((link.Adapter==BrawlLibrarySource.Provider&&link.Channel=="CHR0 skeletal")||(link.Adapter==MeleeGameSource.NativeProvider&&link.Channel==MeleeGameSource.Channel))||link.TicksPerSecond!=60||link.FrameCount<1||link.FrameCount>4096||
+                            (link.NativeVersion!=4&&link.NativeVersion!=5&&!(link.Adapter==MeleeGameSource.NativeProvider&&link.NativeVersion==1))||(link.LastExportSha256!=null&&!ValidHash(link.LastExportSha256)))
                             throw new InvalidDataException("The immutable library reference is invalid.");
                         if(link.GameSourceId!=null&&(!Guid.TryParseExact(link.GameSourceId,"N",out _)||!ValidHash(link.GameSourceSha256)||
                             string.IsNullOrWhiteSpace(link.ModelVirtualPath)||string.IsNullOrWhiteSpace(link.MotionVirtualPath)))

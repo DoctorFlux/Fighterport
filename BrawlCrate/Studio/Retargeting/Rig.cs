@@ -12,8 +12,9 @@ namespace BrawlCrate.Studio.Retargeting
     {
         public Vector3 Translation, Scale;
         public Quaternion Rotation;
+        public bool? CompensatedScale;
         public JointTransform(Vector3 translation, Quaternion rotation, Vector3 scale)
-        { Translation = translation; Rotation = Quaternion.Normalize(rotation); Scale = scale; }
+        { Translation = translation; Rotation = Quaternion.Normalize(rotation); Scale = scale; CompensatedScale=null; }
     }
 
     public sealed class RigJoint
@@ -31,6 +32,9 @@ namespace BrawlCrate.Studio.Retargeting
         public RigJoint[] Joints { get; }
         public Dictionary<string, int> Roles { get; }
         public RigPose Rest { get; }
+        public FighterPort.NativeEvaluation.NativeRigData NativeEvaluation {get;}
+        internal int[] Parents {get;}
+        public bool StaticNativeSkin {get;internal set;}
         internal int[][] Branches { get; }
         internal bool[][] Ancestors { get; }
         public float HeadRadius { get; }
@@ -47,9 +51,11 @@ namespace BrawlCrate.Studio.Retargeting
         public float GroundHeight { get; set; }
         public Rig(string name, string profile, IEnumerable<RigJoint> joints, IDictionary<string, int> roles, float headRadius)
             : this(name, profile, joints, roles, headRadius, null, null) { }
-        public Rig(string name, string profile, IEnumerable<RigJoint> joints, IDictionary<string, int> roles, float headRadius, Vector3? coordinateUp = null, Quaternion? coordinateFrame = null)
+        public Rig(string name, string profile, IEnumerable<RigJoint> joints, IDictionary<string, int> roles, float headRadius, Vector3? coordinateUp = null, Quaternion? coordinateFrame = null,FighterPort.NativeEvaluation.NativeRigData nativeEvaluation=null)
         {
-            Name = name; Profile = profile; Joints = joints.ToArray(); Roles = new Dictionary<string, int>(roles);
+            Name = name; Profile = profile; Joints = joints.ToArray(); Roles = new Dictionary<string, int>(roles);NativeEvaluation=nativeEvaluation;
+            Parents=Joints.Select(j=>j.Parent).ToArray();
+            if(nativeEvaluation!=null&&nativeEvaluation.Joints.Length!=Joints.Length)throw new InvalidDataException("Native evaluation policies do not match the original hierarchy.");
             if (coordinateFrame.HasValue)
             {
                 Quaternion frame = coordinateFrame.Value;
@@ -80,7 +86,7 @@ namespace BrawlCrate.Studio.Retargeting
                     !RigMath.Finite(Joints[i].Bind.Rotation.Z) || !RigMath.Finite(Joints[i].Bind.Rotation.W) ||
                     !RigMath.Finite(Joints[i].Bind.Scale) || Joints[i].Bind.Scale.X <= 0 || Joints[i].Bind.Scale.Y <= 0 || Joints[i].Bind.Scale.Z <= 0)
                     throw new InvalidDataException("The retarget rig has an invalid hierarchy or nonpositive bind scale.");
-            if (Roles.Values.Any(i => i < 0 || i >= Joints.Length) || Roles.Values.Distinct().Count() != Roles.Count)
+            if (Roles.Values.Any(i => i < 0 || i >= Joints.Length) || Roles.GroupBy(r=>r.Value).Any(g=>g.Count()>1&&!(g.Select(p=>p.Key).OrderBy(k=>k,StringComparer.Ordinal).SequenceEqual(new[]{"chest","spine"})&&SkeletonCharacterizer.HasSharedTorso(Joints,Roles))))
                 throw new InvalidDataException("Humanoid roles must identify distinct existing joints.");
             // A world-space edit only changes this joint and its descendants.
             // Cache the topologically ordered branches once, rather than
@@ -103,6 +109,8 @@ namespace BrawlCrate.Studio.Retargeting
         public JointTransform[] Local { get; }
         public Matrix4x4[] World { get; }
         public Quaternion[] Orientation { get; }
+        private readonly Vector3[] cumulativeScale;
+        private readonly bool[] inheritedScale;
         private int revision,planeRevision=-1;
         private Vector3 planeNormal;
         private readonly double[] groundPlanes;
@@ -110,7 +118,7 @@ namespace BrawlCrate.Studio.Retargeting
         {
             Rig = rig; Local = local == null ? rig.Joints.Select(j => j.Bind).ToArray() : (JointTransform[])local.Clone();
             if (Local.Length != rig.Joints.Length) throw new ArgumentException("Pose and rig joint counts differ.");
-            World = new Matrix4x4[Local.Length]; Orientation = new Quaternion[Local.Length];
+            World = new Matrix4x4[Local.Length]; Orientation = new Quaternion[Local.Length];cumulativeScale=new Vector3[Local.Length];inheritedScale=new bool[Local.Length];
             groundPlanes=new double[Local.Length*4];Update();
         }
         public Vector3 Point(int i) => new Vector3(World[i].M41, World[i].M42, World[i].M43);
@@ -118,6 +126,7 @@ namespace BrawlCrate.Studio.Retargeting
         {
             Rig=reference.Rig;Local=(JointTransform[])local.Clone();
             World=(Matrix4x4[])reference.World.Clone();Orientation=(Quaternion[])reference.Orientation.Clone();
+            cumulativeScale=(Vector3[])reference.cumulativeScale.Clone();inheritedScale=(bool[])reference.inheritedScale.Clone();
             groundPlanes=new double[Local.Length*4];
             var changed=new bool[Local.Length];foreach(int joint in changedBones)changed[joint]=true;
             for(int joint=0;joint<Local.Length;joint++)
@@ -136,6 +145,7 @@ namespace BrawlCrate.Studio.Retargeting
         {
                 JointTransform value = Local[i]; int parent = Rig.Joints[i].Parent;
                 Matrix4x4 local = Matrix4x4.CreateScale(value.Scale) * Matrix4x4.CreateFromQuaternion(value.Rotation) * Matrix4x4.CreateTranslation(value.Translation);
+                if(Rig.NativeEvaluation!=null)local=FighterPort.NativeEvaluation.EvaluationMath.Local(value.Scale,value.Rotation,value.Translation,parent,value.CompensatedScale??Rig.NativeEvaluation.Joints[i].CompensatedScale,cumulativeScale,inheritedScale,i);
                 World[i] = parent < 0 ? local : local * World[parent];
                 Orientation[i] = parent < 0 ? value.Rotation : Quaternion.Normalize(Orientation[parent] * value.Rotation);
                 if (!RigMath.Finite(Point(i))) throw new InvalidDataException("Retargeting produced a non-finite joint pose.");

@@ -95,7 +95,7 @@ namespace BrawlCrate.Studio.Retargeting
             foreach(string missing in result.Missing)result.Warnings.Add("Assign "+missing+" before retargeting.");
             return result;
         }
-        private static void InferGeometry(Rig rig,SkeletonCharacterization result)
+        internal static void InferGeometry(Rig rig,SkeletonCharacterization result)
         {
             var p=rig.Rest.World.Select(m=>m.Translation).ToArray();int count=p.Length;
             var children=Enumerable.Range(0,count).Select(i=>Enumerable.Range(0,count).Where(j=>rig.Joints[j].Parent==i).ToArray()).ToArray();
@@ -105,6 +105,14 @@ namespace BrawlCrate.Studio.Retargeting
             Func<int,int,bool> legBranch=(parent,child)=>subtree(child).Length>=3 &&
                 subtree(child).Min(j=>p[j].Y)<p[parent].Y-height*0.2f && subtree(child).Max(j=>p[j].Y)<p[parent].Y+height*0.1f;
             Action<string,int> put=(role,index)=>{if(index>=0 && !result.Roles.ContainsKey(role) && !result.Roles.Values.Contains(index)){result.Roles.Add(role,index);result.Evidence.Add(role,"bind geometry + hierarchy (review orientation)");}};
+            if(!result.Roles.ContainsKey("chest")&&new[]{"left.upperArm","right.upperArm","neck","spine"}.All(result.Roles.ContainsKey))
+            {
+                int junction=result.Roles["neck"];
+                while(junction>=0&&!(desc(result.Roles["left.upperArm"],junction)&&desc(result.Roles["right.upperArm"],junction)))junction=rig.Joints[junction].Parent;
+                int Branch(int child){while(child>=0&&rig.Joints[child].Parent!=junction)child=rig.Joints[child].Parent;return child;}
+                if(junction>=0&&desc(junction,result.Roles["spine"])&&new[]{"left.upperArm","right.upperArm","neck"}.Select(roleName=>Branch(result.Roles[roleName])).Distinct().Count()==3&&(!result.Roles.Values.Contains(junction)||junction==result.Roles["spine"]))
+                {result.Roles.Add("chest",junction);result.Evidence.Add("chest","unique native arm/neck branch junction below the declared spine");}
+            }
             if(!result.Roles.ContainsKey("pelvis"))
             {
                 var possible=Enumerable.Range(0,count).Where(i=>children[i].Count(c=>legBranch(i,c))>=2 &&
@@ -192,9 +200,9 @@ namespace BrawlCrate.Studio.Retargeting
             return Enumerable.Range(0,rig.Joints.Length).Where(i=>i!=lower&&rig.Ancestors[i][lower])
                 .All(i=>rig.Joints[i].Bind.Translation==Vector3.Zero);
         }
-        public static void Validate(RigJoint[] joints,IDictionary<string,int> roles)
+        public static void Validate(RigJoint[] joints,IDictionary<string,int> roles,FighterPort.NativeEvaluation.NativeRigData nativeEvaluation=null)
         {
-            var rig=new Rig("Validation","Humanoid",joints,roles,1);
+            var rig=new Rig("Validation","Humanoid",joints,roles,1,nativeEvaluation:nativeEvaluation);
             var missing=CoreRoles.Where(r=>!roles.ContainsKey(r)&&!(r.EndsWith(".hand",StringComparison.Ordinal)&&HasTerminalArm(rig,roles,r.Split('.')[0]))).ToArray();
             if(missing.Length>0)throw new InvalidDataException("Skeleton mapping needs: "+string.Join(", ",missing)+". Use Review Skeleton Mapping.");
             foreach(string side in new[]{"left","right"})foreach(string[] chain in new[]{new[]{"upperArm","lowerArm","hand"},new[]{"upperLeg","lowerLeg","foot"}})
@@ -207,6 +215,13 @@ namespace BrawlCrate.Studio.Retargeting
                 }
             foreach(var pair in new[]{new[]{"pelvis","spine"},new[]{"spine","chest"},new[]{"chest","neck"},new[]{"neck","head"}})
             {int node=roles[pair[1]];while(node>=0&&node!=roles[pair[0]])node=joints[node].Parent;if(node<0)throw new InvalidDataException("Invalid torso hierarchy at "+pair[1]);}
+        }
+        internal static bool HasSharedTorso(RigJoint[] joints,IDictionary<string,int> roles)
+        {
+            if(!new[]{"spine","chest","neck","left.upperArm","right.upperArm"}.All(roles.ContainsKey)||roles["spine"]!=roles["chest"])return false;
+            int torso=roles["spine"];
+            int Branch(int bone){while(bone>=0&&joints[bone].Parent!=torso)bone=joints[bone].Parent;return bone;}
+            var branches=new[]{"neck","left.upperArm","right.upperArm"}.Select(role=>Branch(roles[role])).ToArray();return branches.All(b=>b>=0)&&branches.Distinct().Count()==3;
         }
     }
 }

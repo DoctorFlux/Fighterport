@@ -893,6 +893,7 @@ namespace BrawlLib.Internal.Windows.Controls.ModelViewer.Editors
                     {
                         entry = SelectedAnimation.CreateEntry();
                         entry.Name = bone.Name;
+                        (TargetModel as MDL0Node)?.NativeEditingBackend?.PrepareAnimationChannel(entry,index);
 
                         FrameState state = bone.BindState;
                         float* p = (float*) &state;

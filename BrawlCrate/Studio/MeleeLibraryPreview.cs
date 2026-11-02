@@ -1,4 +1,4 @@
-﻿using FighterPort.Adapters.Melee;
+using FighterPort.Adapters.Melee;
 using BrawlCrate.Studio.Retargeting;
 using BrawlLib.Internal;
 using BrawlLib.Modeling;
@@ -36,6 +36,7 @@ namespace BrawlCrate.Studio
                         {
                             var j=original[i];var b=bones[i].BindState;
                             NativeJointIdentity.Stamp(bones[i],MeleeGameSource.NativeProvider,rigHash,i);
+                            bones[i].ClassicScale=(j.Flags&HSDRaw.Common.JOBJ_FLAG.CLASSICAL_SCALING)!=0;
                             bones[i].BindState=bones[i].FrameState=new FrameState(new Vector3(j.SX,j.SY,j.SZ),new Vector3(j.RX,j.RY,j.RZ)*(180f/(float)Math.PI),new Vector3(j.TX,j.TY,j.TZ));
                             if((b.Scale-new Vector3(j.SX,j.SY,j.SZ)).TrueDistance(new Vector3())>0.0001f||(b.Translate-new Vector3(j.TX,j.TY,j.TZ)).TrueDistance(new Vector3())>0.0001f)
                             {result.Dispose();throw new InvalidDataException("Display projection changed native bind transforms at joint "+i+"; scale "+b.Scale+" vs "+j.SX+","+j.SY+","+j.SZ+"; translation "+b.Translate+" vs "+j.TX+","+j.TY+","+j.TZ);}
@@ -78,7 +79,6 @@ namespace BrawlCrate.Studio
     {
         private LibrarySourceLease OpenMelee(LibraryCatalogue data,LibraryAnimation clip,string modelId,CancellationToken cancellation,bool preview)
         {
-            if(!preview)throw new NotSupportedException("Melee native original preview is available. Animation transfer and native target authoring require the next separately qualified adapter stage.");
             if(State(data,clip,true)!=LibrarySourceState.Available)throw new InvalidDataException("The exact Melee source or model association is unavailable.");
             var choices=MeleeGameSource.Costumes(data,clip);string chosen=modelId??clip.ModelId;
             if(!choices.Any(c=>c.ModelId==chosen&&c.Available))throw new InvalidDataException("Choose a verified same-source Melee costume with the exact associated rig.");
@@ -99,8 +99,10 @@ namespace BrawlCrate.Studio
                 lease.MeleeRenderer=new MeleeNativeRender(lease.Model,MeleeLibraryPreview.Report(lease.Model),lease.MeleeModel);lease.NativePreview=new MeleePreparedPreview(lease);
                 lease.MeleeRenderer.Parts=parts;lease.MeleeRenderer.RefreshParts();
                 lease.PreviewNotice="Normal-detail native HSD preview. "+partNotice+" Material/shape animation and gameplay visibility are not simulated.";
-                var placeholder=new CHR0Node{Name=clip.Name,FrameCount=clip.FrameCount,Loop=false};lease.PreviewAnimation=placeholder;lease.MotionRoot=placeholder;lease.PreviewBundle=new NW4RAnimationNode[0];
-                lease.Reference=new LibraryClipReference{ClipId=clip.Id,Revision=clip.Revision,ModelId=model.Id,Game="Melee",GameVersion=a.GameVersion,Platform="GameCube",BuildEvidence=a.BuildEvidence,Adapter=MeleeGameSource.NativeProvider,ModelMountId=a.Id,MotionMountId=b.Id,ModelKey=model.ResourceKey,MotionKey=clip.ResourceKey,ModelContainerSha256=a.ContainerSha256,MotionContainerSha256=b.ContainerSha256,ModelResourceSha256=model.ResourceSha256,MotionResourceSha256=clip.ResourceSha256,SourceRig=model.SkeletonSha256,RestInterpretation=model.RestInterpretation,AssociationEvidence=clip.AssociationEvidence,NativeVersion=1,FrameCount=clip.FrameCount,Loop=false,TicksPerSecond=60,TimebaseEvidence=clip.TimebaseEvidence,Channel=MeleeGameSource.Channel,GameSourceId=a.GameSourceId,SourceProvider=data.GameLocations.Single(l=>l.Id==a.GameSourceId).Provider,ModelVirtualPath=a.VirtualPath,MotionVirtualPath=b.VirtualPath};
+                var master=MeleeAnimationMaster.Prepare(lease.MeleeModel,motion,clip.Name);lease.Animation=master;lease.PreviewAnimation=master;lease.MotionRoot=master;lease.PreviewBundle=new NW4RAnimationNode[0];
+                var common=data.Mounts.SingleOrDefault(m=>m.GameSourceId==b.GameSourceId&&string.Equals(System.IO.Path.GetFileName(m.VirtualPath),"PlCo.dat",StringComparison.OrdinalIgnoreCase));
+                lease.Model.NativeEditingBackend=new MeleeModelEditingBackend(lease.Model,lease.MeleeModel,motion,parts,common==null?null:MeleeGameSource.Read(common,cancellation),lease.MeleeRenderer);
+                lease.Reference=new LibraryClipReference{ClipId=clip.Id,Revision=clip.Revision,ModelId=model.Id,Game="Melee",GameVersion=a.GameVersion,Platform="GameCube",BuildEvidence=a.BuildEvidence,Adapter=MeleeGameSource.NativeProvider,ModelMountId=a.Id,MotionMountId=b.Id,ModelKey=model.ResourceKey,MotionKey=clip.ResourceKey,ModelContainerSha256=a.ContainerSha256,MotionContainerSha256=b.ContainerSha256,ModelResourceSha256=model.ResourceSha256,MotionResourceSha256=clip.ResourceSha256,SourceRig=model.SkeletonSha256,RestInterpretation=model.RestInterpretation,AssociationEvidence=clip.AssociationEvidence,NativeVersion=1,FrameCount=clip.FrameCount,Loop=false,TicksPerSecond=60,TimebaseEvidence=clip.TimebaseEvidence,Channel=MeleeGameSource.Channel,GameSourceId=a.GameSourceId,GameSourceSha256=data.GameLocations.Single(l=>l.Id==a.GameSourceId).ContainerSha256,SourceProvider=data.GameLocations.Single(l=>l.Id==a.GameSourceId).Provider,ModelVirtualPath=a.VirtualPath,MotionVirtualPath=b.VirtualPath};
                 cancellation.ThrowIfCancellationRequested();return lease;
             }
             catch{lease.Dispose();throw;}
@@ -114,7 +116,7 @@ namespace BrawlCrate.Studio
                 if(clip==null||data.Generation!=lease.CatalogueGeneration||clip.MountId!=lease.PreviewMotionMount||clip.ModelId!=lease.Reference.ModelId&&!MeleeGameSource.Costumes(data,clip).Any(c=>c.ModelId==modelId)||State(data,clip)!=LibrarySourceState.Available)return false;
                 var motion=lease.MeleeMotionMembers.SelectMany(MeleeNative.Motions).Single(m=>m.Key==clip.ResourceKey&&m.Member.Sha256==clip.ResourceSha256);
                 var playback=new MeleePlayback(lease.MeleeModel,motion);var reference=lease.Reference.Copy();reference.ClipId=clip.Id;reference.Revision=clip.Revision;reference.MotionKey=clip.ResourceKey;reference.MotionResourceSha256=clip.ResourceSha256;reference.FrameCount=clip.FrameCount;reference.TimebaseEvidence=clip.TimebaseEvidence;
-                lease.MeleePlayback=playback;lease.Reference=reference;lease.PreviewAnimation.Name=clip.Name;lease.PreviewAnimation.FrameCount=clip.FrameCount;return true;
+                var master=MeleeAnimationMaster.Prepare(lease.MeleeModel,motion,clip.Name);lease.MotionRoot.Dispose();lease.Animation=master;lease.PreviewAnimation=master;lease.MotionRoot=master;lease.MeleePlayback=playback;lease.Reference=reference;return true;
             }
         }
     }

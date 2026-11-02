@@ -2,7 +2,7 @@ using System.Text.Json;
 using FighterPort.Core;
 using FighterPort.Adapters.Brawl;
 
-sealed record BoundaryRequest(string? EntryMotion,string? ExitMotion,double EntryFrame,double ExitFrame,bool EntryFrozen,bool ExitFrozen,double EntryRate,double ExitRate,BoundaryFitSettings Settings);
+sealed record BoundaryRequest(string? EntryMotion,string? ExitMotion,double EntryFrame,double ExitFrame,bool EntryFrozen,bool ExitFrozen,double EntryRate,double ExitRate,BoundaryFitSettings Settings,FighterPort.NativeEvaluation.NativeRigData? EntryNativeRig=null,FighterPort.NativeEvaluation.NativeRigData? ExitNativeRig=null);
 // Init properties survive the project serializer's intentional exclusion of
 // getter-only computed properties. An anonymous wrapper serialized as {}.
 sealed record BoundaryReceiptEnvelope(BoundaryFitReceipt Receipt,TransitionRecipe? Transition);
@@ -11,7 +11,7 @@ sealed partial class ControlSession
     async Task<object> Transition(Request request)
     {
         var options=request.Boundary??throw new InvalidDataException("Choose transition reference settings.");
-        var source=await adapter.ImportAsync(request.Model!,request.Motion!);var clip=source.Clips.Single();
+        var source=await ImportNative(request.Model!,request.Motion!,request.NativeRig);var clip=source.Clips.Single();
         var state=string.IsNullOrEmpty(request.State)?null:JsonSerializer.Deserialize<ControlState>(request.State,ProjectStore.Json);
         string fingerprint=AnimationControls.Fingerprint(source.Scene);
         if(state is not null)
@@ -19,15 +19,15 @@ sealed partial class ControlSession
             if(state.Fingerprint!=fingerprint||state.Setup.SkeletonFingerprint!=fingerprint)throw new InvalidDataException("Saved controls belong to another native rig revision.");
             clip=clip with{Id=state.Clip};source=source with{Clips=[clip],Contacts=state.Contacts,AuthoringContacts=state.AuthoringContacts,BonePins=state.BonePins,ControlRigs=[state.Setup]};
         }
-        async Task<BoundaryAnchor?> Reference(string? path,double frame,bool frozen,double rate)
+        async Task<BoundaryAnchor?> Reference(string? path,double frame,bool frozen,double rate,FighterPort.NativeEvaluation.NativeRigData? nativeRig)
         {
             if(string.IsNullOrEmpty(path))return null;
-            var native=await adapter.ImportAsync(request.Model!,path);
+            var native=await ImportNative(request.Model!,path,nativeRig??request.NativeRig);
             return new(native.Clips.Single(),AnimationControls.Fingerprint(native.Scene),frame,frozen,rate);
         }
-        var entry=await Reference(options.EntryMotion,options.EntryFrame,options.EntryFrozen,options.EntryRate);
-        var exit=await Reference(options.ExitMotion,options.ExitFrame,options.ExitFrozen,options.ExitRate);
-        state??=new(fingerprint,clip.Id,BrawlControlProfiles.SetUp(source),[],[],null,[]);
+        var entry=await Reference(options.EntryMotion,options.EntryFrame,options.EntryFrozen,options.EntryRate,options.EntryNativeRig);
+        var exit=await Reference(options.ExitMotion,options.ExitFrame,options.ExitFrozen,options.ExitRate,options.ExitNativeRig);
+        state??=new(fingerprint,clip.Id,ReviewedBinding(source,BrawlControlProfiles.SetUp(source),request.TargetBinding),[],[],null,[]);
         source=source with{ControlRigs=[state.Setup]};
         var fit=await Task.Run(()=>BoundaryFitting.Prepare(source,clip,entry,exit,options.Settings));
         // Recovery permission lives in the exact transition receipt. Preserve

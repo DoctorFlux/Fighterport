@@ -50,6 +50,15 @@ static class NativeCases
         Check(Math.Abs(precisePlayer.GetValue(1)-1.25f)<.000001,"New native float writer preserves incoming Hermite slope: frozen midpoint 1.25");
         Check(Math.Abs(precisePlayer.GetValue(3)-.75f)<.000001,"New native float writer preserves distinct outgoing slope: frozen midpoint 0.75");
         Check(precisePlayer.GetValue(4)==0,"New native float writer preserves the actual terminal value");
+        var rawOffset=MeleeMotionWriter.Encode(6,new[]{new MeleeCurveKey{Frame=0,Value=0,Incoming=1,Outgoing=1},new MeleeCurveKey{Frame=4,Value=4,Incoming=1,Outgoing=1}});
+        MeleeNativeMotion OffsetMotion(short offset)
+        {
+            rawOffset.StartFrame=offset;var f=new HSDRawFile();f.Roots.Add(new HSDRootNode{Name="PlyOffset_Share_ACTION_Test_figatree",Data=new HSD_FigaTree{Type=1,FrameCount=4,Nodes=new List<FigaTreeNode>{new FigaTreeNode{Tracks=new List<HSD_Track>{rawOffset}}}}});return MeleeNative.ReadMembers(Bytes(f)).SelectMany(MeleeNative.Motions).Single();
+        }
+        var offsetRig=Model(2,false);offsetRig.Root.TX=13;var offsetPlayer=new MeleePlayback(offsetRig,OffsetMotion(2));
+        Check(offsetPlayer.Sample(0,0)[6]==2&&offsetPlayer.Sample(0,.5f)[6]==2.5f&&offsetPlayer.Sample(0,2)[6]==4,"Positive native start offset evaluates raw Hermite time plus offset without rebaking a prefix");
+        offsetPlayer=new MeleePlayback(offsetRig,OffsetMotion(-2));
+        Check(offsetPlayer.Sample(0,0)[6]==13&&offsetPlayer.Sample(0,1)[6]==13&&offsetPlayer.Sample(0,2)[6]==0&&offsetPlayer.Sample(0,3)[6]==1,"Negative native start offset retains the authentic bind until the runtime starts the track");
         Reject(()=>MeleeMotionWriter.Encode(6,new[]{new MeleeCurveKey{Frame=0},new MeleeCurveKey{Frame=1.5f}}),"Fractional FOBJ waits are rejected, never truncated");
         var editedMotion=Motion();var motionCandidate=MeleeMotionWriter.Prepare(editedMotion,new[]{new MeleeCurveEdit{Joint=0,Axis=6,Keys=nativeKeys}},4);
         string cancelledOutput=Path.Combine(output,"cancelled.dat");

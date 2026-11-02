@@ -1,5 +1,12 @@
 # Melee target editing foundation — implementation progress
 
+2 November shared rig/skin, complete animation-set, original Next, IK and fitting
+work continues from `cbf814e3b7c164022f54ff119e29c7048af0a379`. See
+[the bounded bridge implementation and evidence](MELEE_SHARED_BRIDGE_2026-11-02.md).
+The per-action archive verification and cross-game workflow in that increment
+supersede the selected-action-only preparation described below for preview.68.
+Native model writing and native destination-slot installation remain separate gates.
+
 Starting commit: `36bbb2ce6a626b2936f6a8f3a43c614917387e97`.
 Active product: `.local/Fighterport`, public DoctorFlux/Fighterport/main.
 Preview.68 qualifies the bounded native target SRT slice inside the ONE

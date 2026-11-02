@@ -23,6 +23,7 @@ namespace BrawlCrate.Studio
                 if(bones.Length==0)throw new InvalidDataException("Populate the existing native rig before reviewing it.");
                 var transport=new System.Web.Script.Serialization.JavaScriptSerializer();
                 using(var writer=new BinaryWriter(stream,Encoding.UTF8,true))foreach(var bone in bones){writer.Write(bone.Name);writer.Write(Array.IndexOf(bones,bone.Parent as MDL0BoneNode));for(int i=0;i<9;i++){float value=bone.BindState[i];writer.Write(float.Parse(transport.Serialize(value),System.Globalization.CultureInfo.InvariantCulture));}}
+                if(model.NativeEditingBackend!=null)using(var writer=new BinaryWriter(stream,Encoding.UTF8,true))writer.Write("Native:"+model.NativeEditingBackend.CaptureEvaluation().Identity);
                 using(var sha=SHA256.Create())return BitConverter.ToString(sha.ComputeHash(stream.ToArray())).Replace("-","");
             }
         }

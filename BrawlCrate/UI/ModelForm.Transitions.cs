@@ -1,4 +1,4 @@
-﻿using BrawlCrate.Studio;
+using BrawlCrate.Studio;
 using BrawlCrate.Studio.Retargeting;
 using BrawlLib.SSBB.ResourceNodes;
 using System;
@@ -102,6 +102,7 @@ namespace BrawlCrate.UI
                 }
                 IEnumerable<ResourceNode> Walk(ResourceNode root){yield return root;foreach(var c in root.Children)foreach(var n in Walk(c))yield return n;}
                 ResourceNode a=CopyRoot(model.RootNode,"before-model"),b=CopyRoot(model.RootNode,"after-model");var beforeModel=Walk(a).OfType<MDL0Node>().Single(m=>NativeControlHash(m,".mdl0")==modelHash);var afterModel=Walk(b).OfType<MDL0Node>().Single(m=>NativeControlHash(m,".mdl0")==modelHash);
+                if(model.NativeEditingBackend!=null){beforeModel.NativeEditingBackend=model.NativeEditingBackend.CreateSnapshotBackend(beforeModel);afterModel.NativeEditingBackend=model.NativeEditingBackend.CreateSnapshotBackend(afterModel);}
                 var references=modelEditControl1.ModelPanel._resourceList.Select(r=>r.RootNode).Distinct()
                     .Where(r=>r!=model.RootNode&&NativeFittingPreviewSnapshot.HasTextureDependencies(r))
                     .Select((r,i)=>CopyRoot(r,"reference-"+i)).ToArray();
@@ -130,7 +131,7 @@ namespace BrawlCrate.UI
                         Snapshot(selected,"source");string entry=options.Entry==null?null:Snapshot(choices.Single(c=>c.Key==options.Entry),"entry"),exit=options.Exit==null?null:Snapshot(choices.Single(c=>c.Key==options.Exit),"exit");
                         if(client==null)client=new AnimationControlClient();var session=client;
                         var floorSettings=options.PreventFootDipping?new{Normal=new[]{0f,1f,0f},Height=(float)options.FloorHeight,Reviewed=options.FloorReviewed,Evidence="Explicit native Y="+options.FloorHeight.ToString("R",System.Globalization.CultureInfo.InvariantCulture)+" plane reviewed for selected boundary windows; authentic source/reference penetration baseline accepted."}:null;
-                        var reply=await session.Send(new{Operation="transition-prepare",Model=modelPath,Motion=sourcePath,State=state,Boundary=new{EntryMotion=entry,ExitMotion=exit,options.EntryFrame,options.ExitFrame,options.EntryFrozen,options.ExitFrozen,options.EntryRate,options.ExitRate,Settings=new{options.EntrySamples,options.ExitSamples,options.Components,options.Bones,options.Protected,options.PreserveRootTranslation,options.NearestEquivalentAngles,options.OptimizeRotationPaths,options.ExistingTracksOnly,options.MatchReferenceControls,options.PreserveContacts,options.ExitContactRecovery,options.BoundaryContactRecovery,ContactBones=contactBones,FloorSettings=floorSettings}}});
+                        var reply=await session.Send(new{Operation="transition-prepare",Model=modelPath,Motion=sourcePath,NativeRig=NativeEngineRig(model,source),TargetBinding=EngineBinding(model),State=state,Boundary=new{EntryMotion=entry,ExitMotion=exit,EntryNativeRig=options.Entry==null?null:NativeEngineRig(model,choices.Single(c=>c.Key==options.Entry).Clip),ExitNativeRig=options.Exit==null?null:NativeEngineRig(model,choices.Single(c=>c.Key==options.Exit).Clip),options.EntryFrame,options.ExitFrame,options.EntryFrozen,options.ExitFrozen,options.EntryRate,options.ExitRate,Settings=new{options.EntrySamples,options.ExitSamples,options.Components,options.Bones,options.Protected,options.PreserveRootTranslation,options.NearestEquivalentAngles,options.OptimizeRotationPaths,options.ExistingTracksOnly,options.MatchReferenceControls,options.PreserveContacts,options.ExitContactRecovery,options.BoundaryContactRecovery,ContactBones=contactBones,FloorSettings=floorSettings}}});
                         current();if(client!=session||window.IsDisposed)throw new OperationCanceledException("Transition fitting cancelled.");
                         foreach(var proof in hashes)if(NativeControlHash(choices.Single(c=>c.Key==proof.Key).Clip,".chr0")!=proof.Value)throw new InvalidOperationException("A reference changed during preparation; stale output discarded.");
                         if(reply.Tracks.Sum(t=>t.Channels.Sum(c=>c.Length))>200000)throw new InvalidOperationException("This fit exceeds the 200000 native-key review budget. Fit fewer bones or a smaller clip.");

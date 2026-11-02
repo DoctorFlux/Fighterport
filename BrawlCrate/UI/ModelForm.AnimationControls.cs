@@ -146,7 +146,7 @@ namespace BrawlCrate.UI
             string modelHash=FighterProject.HashFile(modelPath);
             try
             {
-                var reply=await _controlEngine.Send(new{Operation="load",Model=modelPath,Motion=motionPath,State=ControlState(key),TargetBinding=EngineBinding(model),Frame=Math.Max(0,frame-1)});
+                var reply=await _controlEngine.Send(new{Operation="load",Model=modelPath,Motion=motionPath,NativeRig=NativeEngineRig(model,clip),State=ControlState(key),TargetBinding=EngineBinding(model),Frame=Math.Max(0,frame-1)});
                 if(IsDisposed||epoch!=_controlEpoch||modelEditControl1.TargetModel!=model||modelEditControl1.SelectedCHR0!=clip||ControlKey()!=key||modelEditControl1.CurrentFrame!=frame||NativeControlHash(model,".mdl0")!=modelHash||ControlClipIdentity(clip)!=clipHash){_controlReloadRequested=true;throw new InvalidOperationException("The model, animation or frame changed; the stale setup was discarded.");}
                 _loadedControlKey=key;_loadedControlModel=model;_loadedControlClip=clip;_controlBoneNames=reply.BoneNames;modelEditControl1.AnimationAuthoringBones=reply.BoneNames;StoreControls(key,reply.State);PublishPins(reply);
                 _loadedControlModelHash=modelHash;_loadedControlClipHash=clipHash;

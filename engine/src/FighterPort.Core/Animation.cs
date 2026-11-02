@@ -79,6 +79,7 @@ public record AnimationClip(Guid Id, string Name, int SampleCount, RationalRate 
 
 public sealed record EvaluatedPose(Transform[] Local, Matrix4x4[] World, Matrix4x4[] Skin)
 {
+    public Scene? NativeScene {get;init;}
     public Vector3[][]? GeometryPositions {get;init;}
     public double Seconds {get;init;}
 }
@@ -107,17 +108,26 @@ public static class AnimationService
         int n=scene.Bones.Length;
         var inverse=BindCache.GetValue(scene,static s=>new(s)).Inverse;
         var world=new Matrix4x4[n]; var skin=new Matrix4x4[n]; var local=new Transform[n];
+        var cumulative=new Vector3[n];var hasScale=new bool[n];
         for(int i=0;i<n;i++)
         {
             var b=scene.Bones[i];
             local[i]=overrides?.GetValueOrDefault(i) ?? clip?.Sample(b,frame) ?? b.Rest;
             world[i]=local[i].Matrix * (b.Parent<0?Matrix4x4.Identity:world[b.Parent]);
+            if(scene.NativeEvaluation is {} native)
+            {
+                var t=local[i];var rotation=Quaternion.CreateFromRotationMatrix((Transform.Identity with{Rotation=t.Rotation}).Matrix);
+                bool compensate=clip is null?native.Joints[i].CompensatedScale:native.Joints[i].AnimationCompensatedScale??native.Joints[i].CompensatedScale;
+                world[i]=FighterPort.NativeEvaluation.EvaluationMath.Local(t.Scale,rotation,t.Translation,b.Parent,compensate,cumulative,hasScale,i)*(b.Parent<0?Matrix4x4.Identity:world[b.Parent]);
+            }
             skin[i]=inverse[i]*world[i];
         }
-        return new(local,world,skin){Seconds=clip is null?0:frame/clip.Rate.FramesPerSecond};
+        return new(local,world,skin){Seconds=clip is null?0:frame/clip.Rate.FramesPerSecond,NativeScene=scene.NativeEvaluation is null?null:scene};
     }
     public static Vector3 Skin(Vertex v, EvaluatedPose pose)
     {
+        if(v.NativeSkin is {} point&&pose.NativeScene?.NativeEvaluation is {} native)
+            return Vector3.Transform(point.Position,FighterPort.NativeEvaluation.EvaluationMath.SkinMatrix(native.Joints,pose.NativeScene.Bones.Select(b=>b.Parent).ToArray(),pose.World,point.Skin,point.Joints,point.Weights));
         var p=Vector3.Zero;
         for(int i=0;i<v.InfluenceCount;i++) if(v.WeightAt(i)!=0) p+=Vector3.Transform(v.Position,pose.Skin[(int)v.JointAt(i)])*v.WeightAt(i);
         return p;

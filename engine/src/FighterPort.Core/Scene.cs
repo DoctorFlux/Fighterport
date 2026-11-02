@@ -24,6 +24,7 @@ public record Transform(Vector3 Scale, Vector3 Rotation, Vector3 Translation)
 public record Bone(string Name, int Parent, Transform Rest);
 public record Vertex(Vector3 Position, Vector3 Normal, Vector2 UV, Vector4 Joints, Vector4 Weights, Vector4 Color)
 {
+    public FighterPort.NativeEvaluation.NativeVertex? NativeSkin {get;init;}
     [JsonIgnore] public SkinInfluence[] Influences {get;init;}=[];
     [JsonPropertyName("Influences"),JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
     public SkinInfluence[]? InfluenceData {get=>Influences.Length==0?null:Influences;init=>Influences=value??[];}
@@ -75,6 +76,7 @@ public record NativeAnimationLayer(Guid Id,string Name,string Kind,int SampleCou
 }
 public record Scene(string Name, Bone[] Bones, Mesh[] Meshes)
 {
+    public FighterPort.NativeEvaluation.NativeRigData? NativeEvaluation {get;init;}
     public Guid SkeletonRevision { get; init; } = Guid.NewGuid();
     public Material[] Materials { get; init; }=[];
     public TextureImage[] Textures { get; init; }=[];
@@ -84,11 +86,29 @@ public record Scene(string Name, Bone[] Bones, Mesh[] Meshes)
         if (Bones.Select(b=>b.Name).Distinct().Count()!=Bones.Length) throw new InvalidDataException("Duplicate bone identities require an explicit mapping.");
         foreach(var t in Textures)if(t.Width is <=0 or >4096 || t.Height is <=0 or >4096 || t.Rgba.Length!=t.Width*t.Height*4)throw new InvalidDataException("Invalid or over-budget texture buffer.");
         for (int i=0;i<Bones.Length;i++) if (Bones[i].Parent < -1 || Bones[i].Parent >= i) throw new InvalidDataException("Bones must be ordered parent before child.");
+        if(NativeEvaluation is {} native)
+        {
+            if(string.IsNullOrWhiteSpace(native.Identity)||native.Joints is null||native.Joints.Length!=Bones.Length||native.Roles is null||native.Roles.Values.Any(i=>i<0||i>=Bones.Length))throw new InvalidDataException("Native evaluation policy does not match this rig.");
+            foreach(var j in native.Joints)
+            {
+                if(j is null)throw new InvalidDataException("Missing native joint policy.");
+                var m=j.InverseBind;if(j.HasInverseBind&&new[]{m.M11,m.M12,m.M13,m.M14,m.M21,m.M22,m.M23,m.M24,m.M31,m.M32,m.M33,m.M34,m.M41,m.M42,m.M43,m.M44}.Any(x=>!float.IsFinite(x)))throw new InvalidDataException("Nonfinite authored inverse bind.");
+            }
+        }
         foreach (var mesh in Meshes)
         {
             if (mesh.Indices.Any(x=>x>=mesh.Vertices.Length)) throw new InvalidDataException("Invalid triangle index.");
             foreach(var v in mesh.Vertices)
+            {
                 if(!SkinInfluences.Valid(v.Joints,v.Weights,v.Influences,Bones.Length))throw new InvalidDataException("Invalid or inconsistent complete skin joint/weight data.");
+                if(v.NativeSkin is {} point)
+                {
+                    var p=point.Skin;
+                    if(NativeEvaluation is null||p is null||p.Owner<0||p.Owner>=Bones.Length||p.SharedJoint< -1||p.SharedJoint>=Bones.Length||p.MatrixIndex<0||p.SharedJoint>=0&&p.MatrixIndex>1||point.Position!=v.Position||point.Joints is null||point.Weights is null||point.Joints.Length!=point.Weights.Length||point.Joints.Length>v.InfluenceCount||p.Envelope&&point.Joints.Length==0)
+                        throw new InvalidDataException("Invalid native skin ownership or complete influence data.");
+                    for(int i=0;i<point.Joints.Length;i++)if(point.Joints[i]!=v.JointAt(i)||point.Weights[i]!=v.WeightAt(i))throw new InvalidDataException("Native skin influences differ from the authentic mesh.");
+                }
+            }
         }
     }
 }

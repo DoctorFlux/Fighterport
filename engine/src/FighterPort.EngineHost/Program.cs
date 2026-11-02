@@ -22,7 +22,7 @@ while(await Console.In.ReadLineAsync() is {} line)
 
 sealed record BindingReview(string Fingerprint,Dictionary<string,string> Roles,float[] Right,float[] Up,float[] Forward,string Evidence);
 sealed record SetupReview(string? Role,int[]? Bones,float[]? Pole,Dictionary<string,int?> Roles,string Evidence);
-sealed record Request(string Operation,string? Model=null,string? Motion=null,string? State=null,double Frame=0,int Bone=0,string? Pin=null,float[]? Values=null,bool Follow=false,string? SourceModel=null,bool Fit=true,BindingReview? SourceBinding=null,BindingReview? TargetBinding=null,string? Name=null,int SampleCount=60,string? Path=null,string? TargetId=null,string? SceneId=null,string? Game=null,string? Platform=null,string? Build=null,string? Mode=null,string? Package=null,string? Output=null,WorkspaceMotion[]? Motions=null,string? ClipKey=null,SetupReview? Review=null,FittingOptions? Fitting=null,string? SourceAssociation=null,string? SourceRegistration=null,BoundaryRequest? Boundary=null,EditorSlotIntent[]? Slots=null,ContactBakeOptions? ContactEdit=null,string[]? ContactProtection=null,ContactBakeReceipt? ContactProof=null,OptimizationRequest? Optimization=null,GroundContactSettings? ContactSurface=null,string? ReviewedContactsJson=null,ReviewedContactRangeEdit[]? ReviewedRangeEdits=null,ReviewedContactSetReceipt? ReviewedContactProof=null,string? NativeSupportJson=null,ProtectedInterval[]? ReviewedProtectedRanges=null,int? ReviewedCorrectionStart=null,ProtectedInterval? ReviewedFittingMiddle=null,bool ReviewFittedRecovery=false);
+sealed record Request(string Operation,string? Model=null,string? Motion=null,string? State=null,double Frame=0,int Bone=0,string? Pin=null,float[]? Values=null,bool Follow=false,string? SourceModel=null,bool Fit=true,BindingReview? SourceBinding=null,BindingReview? TargetBinding=null,string? Name=null,int SampleCount=60,string? Path=null,string? TargetId=null,string? SceneId=null,string? Game=null,string? Platform=null,string? Build=null,string? Mode=null,string? Package=null,string? Output=null,WorkspaceMotion[]? Motions=null,string? ClipKey=null,SetupReview? Review=null,FittingOptions? Fitting=null,string? SourceAssociation=null,string? SourceRegistration=null,BoundaryRequest? Boundary=null,EditorSlotIntent[]? Slots=null,ContactBakeOptions? ContactEdit=null,string[]? ContactProtection=null,ContactBakeReceipt? ContactProof=null,OptimizationRequest? Optimization=null,GroundContactSettings? ContactSurface=null,string? ReviewedContactsJson=null,ReviewedContactRangeEdit[]? ReviewedRangeEdits=null,ReviewedContactSetReceipt? ReviewedContactProof=null,string? NativeSupportJson=null,ProtectedInterval[]? ReviewedProtectedRanges=null,int? ReviewedCorrectionStart=null,ProtectedInterval? ReviewedFittingMiddle=null,bool ReviewFittedRecovery=false,FighterPort.NativeEvaluation.NativeRigData? NativeRig=null,FighterPort.NativeEvaluation.NativeRigData? SourceNativeRig=null,double[]? SampleFrames=null);
 sealed record ControlState(string Fingerprint,Guid Clip,ControlRigSetup Setup,ContactFrame[] Contacts,ContactPin[] AuthoringContacts,EditorBonePin[]? BonePins,Dictionary<int,Transform> AuthoringPose,string? BindingKey=null);
 sealed record PinView(string Id,int Bone,string BoneName,string Name,bool Soft,float[] Position,float[] Rotation);
 sealed record KeyView(float Frame,float Value,float Tangent)
@@ -49,7 +49,7 @@ sealed partial class ControlSession
         if(r.Operation=="hello")return new {Ok=true,Protocol=1,Engine="FighterPort.Core",NativeRate=60};
         if(r.Operation=="retarget")
         {
-            var donor=await adapter.ImportAsync(r.SourceModel!,r.Motion!);var target=await adapter.ImportModelAsync(r.Model!);
+            var donor=await ImportNative(r.SourceModel!,r.Motion!,r.SourceNativeRig);var target=await ImportNative(r.Model!,null,r.NativeRig);
             var sourceSetup=ReviewedBinding(donor,BrawlControlProfiles.SetUp(donor),r.SourceBinding);var targetSetup=ReviewedBinding(target,BrawlControlProfiles.SetUp(target),r.TargetBinding);
             if(sourceSetup.Axes is null||targetSetup.Axes is null)return new{Ok=true,NeedsRigReview=true,ReviewSource=sourceSetup.Axes is null,ReviewTarget=targetSetup.Axes is null};
             var output=await Task.Run(()=>RetargetService.Bake(donor,donor.Clips.Single(),sourceSetup,target,targetSetup,useContacts:false,fitting:new(){AutomaticFitting=r.Fit,AutomaticContacts=false}));
@@ -63,9 +63,10 @@ sealed partial class ControlSession
                 Mapping=RetargetBoneMapping.Build(donor.Scene,sourceSetup,target.Scene,targetSetup).Bones.Select(b=>new{b.Role,Source=donor.Scene.Bones[b.Source].Name,Target=target.Scene.Bones[b.Target].Name}).ToArray(),
                 Diagnostics=output.Diagnostics.Select(d=>d.Message).Concat(output.LostChannels).ToArray()};
         }
+        if(r.Operation=="native-rig-samples")return await NativeSamples(r);
         if(r.Operation=="load")
         {
-            edit?.Cancel();edit=null;var p=string.IsNullOrEmpty(r.Motion)?await adapter.ImportModelAsync(r.Model!):await adapter.ImportAsync(r.Model!,r.Motion!);
+            edit?.Cancel();edit=null;var p=await ImportNative(r.Model!,r.Motion,r.NativeRig);
             var state=string.IsNullOrEmpty(r.State)?null:JsonSerializer.Deserialize<ControlState>(r.State,ProjectStore.Json);
             if(state is not null)
             {
@@ -96,7 +97,7 @@ sealed partial class ControlSession
                 setup=reviewed;d.Transaction("Review animation controls",p=>p with{ControlRigs=p.ControlRigs.Where(c=>c.SkeletonFingerprint!=reviewed.SkeletonFingerprint).Append(reviewed).ToArray()});return Reply();
             case "create-animation":
                 if(edit is not null)throw new InvalidOperationException("Finish the current gesture before creating an animation.");
-                if(r.SampleCount<1||r.SampleCount>65535)throw new InvalidDataException("Choose 1–65535 native animation frames.");
+                if(r.SampleCount<1||r.SampleCount>65535)throw new InvalidDataException("Choose 1â€“65535 native animation frames.");
                 d.CreateAnimation(r.Name??"NewAnimation",r.SampleCount,new(60,1),true);
                 return new{Ok=true,Name=d.Clip.Name,SampleCount=d.Clip.SampleCount,Loop=d.Clip.Loop,Tracks=d.Clip.Tracks.Select(t=>NativeTrack(d.Project.Scene,t)).ToArray(),State=State(),Pose=d.Evaluate().Local.Select(t=>t.Channels()).ToArray(),BoneNames=d.Project.Scene.Bones.Select(b=>b.Name).ToArray(),Pins=Pins()};
             case "pin":
@@ -191,6 +192,7 @@ sealed partial class ControlSession
     }
     static ControlRigSetup ReviewedBinding(FighterProject project,ControlRigSetup original,BindingReview? review)
     {
+        if(review is null&&project.Scene.NativeEvaluation is not null)review=NativeBinding(project);
         if(review is null)return original;
         var scene=project.Scene;if(review.Fingerprint!=AnimationControls.Fingerprint(scene)||string.IsNullOrWhiteSpace(review.Evidence))throw new InvalidDataException("Binding review belongs to another exact native rest/hierarchy revision or has no evidence.");
         Vector3 Axis(float[] values){if(values.Length!=3||values.Any(v=>!float.IsFinite(v)))throw new InvalidDataException("Invalid reviewed axes.");return new(values[0],values[1],values[2]);}

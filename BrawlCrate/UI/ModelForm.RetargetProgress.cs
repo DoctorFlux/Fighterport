@@ -60,6 +60,8 @@ namespace BrawlCrate.UI
             using(var targetCopy=NodeFactory.FromFile(null,targetPath) as MDL0Node)
             using(var clipCopy=NodeFactory.FromFile(null,clipPath) as CHR0Node)
             {
+            if(source.NativeEditingBackend!=null)sourceCopy.NativeEditingBackend=source.NativeEditingBackend.CreateSnapshotBackend(sourceCopy);
+            if(target.NativeEditingBackend!=null)targetCopy.NativeEditingBackend=target.NativeEditingBackend.CreateSnapshotBackend(targetCopy);
             BrawlRig sourceRig=BrawlRetargeter.Capture(sourceCopy,sourceReview.Rig.Roles.ToDictionary(p=>p.Key,p=>sourceReview.Bones[p.Value].Name),sourceReview.Rig.CoordinateUp,sourceReview.Rig.CoordinateFrame),targetRig=BrawlRetargeter.Capture(targetCopy,targetReview.Rig.Roles.ToDictionary(p=>p.Key,p=>targetReview.Bones[p.Value].Name),targetReview.Rig.CoordinateUp,targetReview.Rig.CoordinateFrame);
             foreach(var entry in clipCopy.Children.OfType<CHR0EntryNode>())
                 for(int channel=0;channel<9;channel++){int populated=entry.Keyframes[channel].KeyCount;}
@@ -152,7 +154,9 @@ namespace BrawlCrate.UI
         private MDL0Node RetargetPreviewModel(ResourceNode root,string content)
         {
             if(root==null)throw new InvalidDataException("The independent retarget review snapshot could not be opened.");
-            return BrawlLib.Internal.Windows.Controls.Model_Panel.ModelPanel.CollectModels(root).OfType<MDL0Node>().Single(m=>NativeControlHash(m,".mdl0")==content);
+            var model=BrawlLib.Internal.Windows.Controls.Model_Panel.ModelPanel.CollectModels(root).OfType<MDL0Node>().Single(m=>NativeControlHash(m,".mdl0")==content);
+            if(modelEditControl1.TargetModel is MDL0Node target&&target.NativeEditingBackend!=null)model.NativeEditingBackend=target.NativeEditingBackend.CreateSnapshotBackend(model);
+            return model;
         }
     }
 }

@@ -46,6 +46,7 @@ namespace BrawlCrate.Studio
             try
             {
                 if(result.Contacts==null)throw new InvalidOperationException("Complete original Next support context is unavailable for this result.");
+                if(result.Plan.Source.NativeEvaluation!=null||result.Plan.Target.NativeEvaluation!=null)throw new InvalidOperationException("Native affine skin support requires its own versioned complete evidence writer. The finished animation is retained; legacy Brawl support points are not substituted for native geometry.");
                 evidence.Json=new JavaScriptSerializer{MaxJsonLength=8*1024*1024,RecursionLimit=100}.Serialize(result.Contacts.CaptureOriginalEvidence());
                 if(evidence.Json.Length>8*1024*1024)throw new InvalidOperationException("Complete support context exceeds the bounded project review capacity.");
                 evidence.Ranges=result.Contacts.CaptureOriginalRanges();

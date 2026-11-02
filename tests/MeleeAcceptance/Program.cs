@@ -16,6 +16,14 @@ class Program
                 if(args.Length>1&&args[1]=="--probe")
                 {
                     var native=MeleeNative.ReadMembers(source.Read(args[2])).SelectMany(MeleeNative.Models).Single();
+                    if(args.Contains("--rig-roles"))
+                    {
+                        var policy=MeleeBoneEditPolicy.Read(native,source.Read("PlCo.dat"));foreach(var role in policy.Roles)Console.WriteLine("ROLE "+role.Key+" "+role.Value);
+                        var joints=MeleeNative.Joints(native.Root);var parents=Enumerable.Repeat(-1,joints.Length).ToArray();
+                        for(int i=0;i<joints.Length;i++)for(var child=joints[i].Child;child!=null;child=child.Next)parents[Array.FindIndex(joints,j=>j._s==child._s)]=i;
+                        var bind=new MeleePose(native);for(int i=0;i<joints.Length;i++)Console.WriteLine("JOINT "+i+" parent "+parents[i]+" world "+bind.World[i].Translation);
+                        return 0;
+                    }
                     var report=MeleeProjection.Prepare(native);var pose=new MeleePose(native);
                     foreach(var mesh in report.Meshes)foreach(var vertex in mesh.Vertices)pose.VertexMatrix(mesh,vertex);
                     Console.WriteLine("POSE PASS "+native.Symbol+" DOBJ "+report.DisplayObjects);

@@ -84,6 +84,8 @@ public static class ContactGeometry
     public static Vector3? Normal(ContactPin pin,EvaluatedPose pose)=>pin.PlaneNormal is {} normal?pin.Reference is {} reference?Vector3.Normalize(Vector3.TransformNormal(normal,reference.Evaluate(pose))):normal:null;
     public static Vector3 Point(SkinSurfacePoint point,EvaluatedPose pose)
     {
+        if(pose.NativeScene is {} native&&point.Mesh>=0&&point.Mesh<native.Meshes.Length&&point.Vertex>=0&&point.Vertex<native.Meshes[point.Mesh].Vertices.Length)
+            return AnimationService.Skin(native.Meshes[point.Mesh].Vertices[point.Vertex],pose);
         var position=pose.GeometryPositions is {} geometry&&point.Mesh>=0&&point.Mesh<geometry.Length&&point.Vertex>=0&&point.Vertex<geometry[point.Mesh].Length?geometry[point.Mesh][point.Vertex]:point.Position;
         var value=Vector3.Zero;for(int j=0;j<point.InfluenceCount;j++)if(point.WeightAt(j)>0)value+=Vector3.Transform(position,pose.Skin[(int)point.JointAt(j)])*point.WeightAt(j);return value;
     }

@@ -47,11 +47,15 @@ namespace BrawlCrate.Studio.Retargeting
         public string[] UnavailableEndEffectors { get; }
         private readonly Dictionary<int, RetargetMap> _byTarget;
         private readonly RetargetMap trajectory;
+        private readonly bool sharedTorso;
+        public string[] TopologyAdaptations {get;}
         private readonly Dictionary<int,Tuple<Quaternion,Quaternion>> localFrames=new Dictionary<int,Tuple<Quaternion,Quaternion>>();
 
         public HumanoidRetargeter(Rig source, Rig target)
         {
             Source = source; Target = target;
+            sharedTorso=SkeletonCharacterizer.HasSharedTorso(source.Joints,source.Roles)||SkeletonCharacterizer.HasSharedTorso(target.Joints,target.Roles);
+            TopologyAdaptations=sharedTorso?new[]{"An existing native torso junction serves spine and chest; one target joint is written once. No bone or bind is added."}:new string[0];
             // Native adapters may map motion pivots, toes, fingers and props,
             // but the solver must not require a Brawl-specific helper chain.
             var required = new List<string> {"pelvis", "spine", "chest", "neck", "head"};
@@ -64,11 +68,11 @@ namespace BrawlCrate.Studio.Retargeting
             Mapping = source.Roles.Keys.Intersect(target.Roles.Keys).Select(role => new RetargetMap {
                 Role = role, SourceIndex = source.Roles[role], TargetIndex = target.Roles[role],
                 Source = source.Joints[source.Roles[role]].Name, Target = target.Joints[target.Roles[role]].Name
-            }).OrderBy(m => m.TargetIndex).ToArray();
+            }).GroupBy(m=>m.TargetIndex).Select(group=>group.OrderByDescending(m=>Depth(source,m.SourceIndex)).ThenByDescending(m=>m.Role=="chest").First()).OrderBy(m => m.TargetIndex).ToArray();
             foreach (RetargetMap map in Mapping)
             {
-                string a = NearestRole(source, source.Joints[map.SourceIndex].Parent);
-                string b = NearestRole(target, target.Joints[map.TargetIndex].Parent);
+                string a = MappingParentRole(source, source.Joints[map.SourceIndex].Parent,map.Role);
+                string b = MappingParentRole(target, target.Joints[map.TargetIndex].Parent,map.Role);
                 if (a != b) throw new InvalidDataException("Incompatible humanoid hierarchy at " + map.Role + ". Review is required.");
             }
             // Matching helper chains can carry trajectory even with anonymous
@@ -114,6 +118,18 @@ namespace BrawlCrate.Studio.Retargeting
                 string role = rig.Roles.Keys.FirstOrDefault(r => rig.Roles[r] == joint && Source.Roles.ContainsKey(r) && Target.Roles.ContainsKey(r));
                 if (role != null) return role;
                 joint = rig.Joints[joint].Parent;
+            }
+            return null;
+        }
+        static int Depth(Rig rig,int joint){int depth=0;while((joint=rig.Joints[joint].Parent)>=0)depth++;return depth;}
+        string CanonicalRole(string role)=>sharedTorso&&(role=="spine"||role=="chest")?"torso":role;
+        string MappingParentRole(Rig rig,int joint,string current)
+        {
+            while(joint>=0)
+            {
+                var role=rig.Roles.Keys.FirstOrDefault(r=>rig.Roles[r]==joint&&Source.Roles.ContainsKey(r)&&Target.Roles.ContainsKey(r));
+                if(role!=null&&!(sharedTorso&&CanonicalRole(current)=="torso"&&CanonicalRole(role)=="torso"))return CanonicalRole(role);
+                joint=rig.Joints[joint].Parent;
             }
             return null;
         }
@@ -185,6 +201,25 @@ namespace BrawlCrate.Studio.Retargeting
                 }
                 target.Local[t].Scale = Target.Joints[t].Bind.Scale * (source.Local[s].Scale / Source.Joints[s].Bind.Scale);
                 Vector3 translationDelta = source.Local[s].Translation - Source.Joints[s].Bind.Translation;
+                if(sharedTorso&&new[]{"spine","chest"}.Contains(map.Role))
+                {
+                    bool applied=false;for(int ancestor=Target.Joints[t].Parent;ancestor>=0;ancestor=Target.Joints[ancestor].Parent)if(_byTarget.TryGetValue(ancestor,out var prior)&&prior.SourceIndex==s){applied=true;break;}
+                    if(applied){target.Local[t].Scale=Target.Joints[t].Bind.Scale;translationDelta=Vector3.Zero;}
+                    else if(SkeletonCharacterizer.HasSharedTorso(Target.Joints,Target.Roles)&&!SkeletonCharacterizer.HasSharedTorso(Source.Joints,Source.Roles))
+                    {
+                        var scale=Vector3.One;var worldDelta=Vector3.Zero;int first=Source.Roles["spine"];
+                        for(int bone=s;bone>=0;bone=Source.Joints[bone].Parent)
+                        {
+                            var ratio=source.Local[bone].Scale/Source.Joints[bone].Bind.Scale;
+                            if(ratio.X<=0||Math.Abs(ratio.X-ratio.Y)>1e-6f||Math.Abs(ratio.X-ratio.Z)>1e-6f)throw new NotSupportedException("Coalescing nonuniform or reflected animated torso scale requires a separately qualified affine policy; no bind or source channel was changed.");
+                            scale*=ratio;int parent=Source.Joints[bone].Parent;var delta=source.Local[bone].Translation-Source.Joints[bone].Bind.Translation;
+                            worldDelta+=parent<0?delta:Vector3.Transform(delta,Source.Rest.Orientation[parent]);
+                            if(bone==first)break;
+                        }
+                        target.Local[t].Scale=Target.Joints[t].Bind.Scale*scale;int sourceParent=Source.Joints[s].Parent;
+                        translationDelta=sourceParent<0?worldDelta:Vector3.Transform(worldDelta,Quaternion.Inverse(Source.Rest.Orientation[sourceParent]));
+                    }
+                }
                 target.Local[t].Translation = Target.Joints[t].Bind.Translation + TransferTranslationDelta(map,translationDelta);
                 target.UpdateJoint(t);
             }

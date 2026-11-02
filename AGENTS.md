@@ -1,5 +1,13 @@
 # Fighterport
 
+2 November — preview.69-melee-shared-bridge qualifies the bounded cross-game
+Wait1, native IK and fitting increment from `cbf814e3b7c164022f54ff119e29c7048af0a379`.
+Read [bounded evidence](docs/MELEE_SHARED_BRIDGE_2026-11-02.md). The complete
+native viewer/original Next, all skin weights, native binds and source-local
+roots remain. Full Melee model writing, new destination slots, archive repacking,
+general contacts and game acceptance remain open. ONE G1/M2 stays incomplete;
+.66 finite static ledges is still queued.
+
 2 November — preview.68-native-target-srt qualifies the bounded Melee animation
 editing slice from `36bbb2ce6a626b2936f6a8f3a43c614917387e97`, while full model/tool
 parity remains IN PROGRESS. Shared target/export/opaque-snapshot contracts support

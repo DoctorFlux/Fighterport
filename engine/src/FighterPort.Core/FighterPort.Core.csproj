@@ -2,4 +2,5 @@
   <ItemGroup>
     <InternalsVisibleTo Include="FighterPort.Tests" />
   </ItemGroup>
+  <ItemGroup><Compile Include="../../../shared/NativeEvaluation.cs" Link="NativeEvaluation.cs" /></ItemGroup>
 </Project>

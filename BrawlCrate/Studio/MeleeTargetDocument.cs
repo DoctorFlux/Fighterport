@@ -18,7 +18,7 @@ namespace BrawlCrate.Studio
                 var record=catalogue.Models.Single(m=>m.Id==reference.ModelId);var modelMount=catalogue.Mounts.Single(m=>m.Id==record.MountId);var motionMount=catalogue.Mounts.Single(m=>m.Id==reference.MotionMountId);
                 var nativeMotion=source.MeleeMotionMembers.SelectMany(MeleeNative.Motions).Single(m=>m.Key==reference.MotionKey&&m.Member.Sha256==reference.MotionResourceSha256);
                 var modelSource=project.CreateNativeMaster("original-model.dat","native-source",path=>File.WriteAllBytes(path,MeleeGameSource.Read(modelMount,cancellation)));project.NativeSources.Add(modelSource);
-                var motionSource=project.CreateNativeMaster("original-motion.dat","native-source",path=>File.WriteAllBytes(path,nativeMotion.Member.CopyOriginalBytes()));project.NativeSources.Add(motionSource);
+                var motionSource=project.CreateNativeMaster("original-motion.dat","native-source",path=>File.WriteAllBytes(path,MeleeGameSource.Read(motionMount,cancellation)));project.NativeSources.Add(motionSource);
                 string contextPath=motionMount.VirtualPath.EndsWith("AJ.dat",StringComparison.OrdinalIgnoreCase)?motionMount.VirtualPath.Substring(0,motionMount.VirtualPath.Length-6)+".dat":null;
                 var context=catalogue.Mounts.SingleOrDefault(m=>m.GameSourceId==motionMount.GameSourceId&&string.Equals(m.VirtualPath,contextPath,StringComparison.OrdinalIgnoreCase));
                 if(context==null)throw new InvalidDataException("Normal-detail fighter context is unavailable.");
@@ -33,12 +33,46 @@ namespace BrawlCrate.Studio
                 if(dol!=null){executable=project.CreateNativeMaster("original-main.dol","native-source",path=>File.WriteAllBytes(path,dol));project.NativeSources.Add(executable);}
                 cancellation.ThrowIfCancellationRequested();
                 project.Model=project.CreateNativeMaster("editable-model.mdl0","model",path=>source.Model.ExportChecked(path));
-                var animation=project.CreateNativeMaster("editable-animation.chr0","animation",path=>{using(var master=MeleeAnimationMaster.Prepare(source.MeleeModel,nativeMotion,source.PreviewAnimation.Name))master.ExportChecked(path);});project.Animations.Add(animation);
-                var baseline=project.CreateNativeMaster("original-authoring.chr0","native-source",path=>File.Copy(animation.WorkingPath,path));project.NativeSources.Add(baseline);
+                var members=new System.Collections.Generic.List<NativeAnimationMember>();var unavailable=new System.Collections.Generic.List<string>();
+                var animation=project.CreateNativeMaster("editable-animations.brres","animation",path=>
+                {
+                    using(var bundle=new BRRESNode{Name="Native animations"})
+                    {
+                        var group=bundle.GetOrCreateFolder<CHR0Node>();
+                        foreach(var motion in source.MeleeMotionMembers.SelectMany(MeleeNative.Motions).Where(m=>MeleeInventory.MotionActor(m.Symbol)==MeleeInventory.MotionActor(nativeMotion.Symbol)))
+                        {
+                            cancellation.ThrowIfCancellationRequested();CHR0Node master=null;
+                            try
+                            {
+                                string name=motion.Symbol.Substring(motion.Symbol.IndexOf("_ACTION_",StringComparison.Ordinal)+8);if(name.EndsWith("_figatree",StringComparison.Ordinal))name=name.Substring(0,name.Length-9);
+                                master=MeleeAnimationMaster.Prepare(source.MeleeModel,motion,name);group.AddChild(master);
+                                members.Add(new NativeAnimationMember{EntryKey=NativeTargetBinding.EntryKey(master),Name=name,MotionKey=motion.Key,ResourceSha256=motion.Member.Sha256});master=null;
+                            }
+                            catch(Exception error)when(error is InvalidDataException||error is NotSupportedException){unavailable.Add(motion.Key+": "+error.Message);}
+                            finally{master?.Dispose();}
+                        }
+                        if(!members.Any(m=>m.MotionKey==nativeMotion.Key))throw new NotSupportedException("The selected native animation could not be prepared. "+string.Join("; ",unavailable));
+                        bundle.ExportChecked(path);
+                    }
+                });project.Animations.Add(animation);
+                using(var decoded=NodeFactory.FromFile(null,animation.WorkingPath))
+                {
+                    var originals=source.MeleeMotionMembers.SelectMany(MeleeNative.Motions).ToDictionary(m=>m.Key,StringComparer.Ordinal);
+                    var saved=BrawlLibrarySource.Resources(decoded).Select(r=>r.Item1).OfType<CHR0Node>().ToDictionary(NativeTargetBinding.EntryKey,StringComparer.Ordinal);
+                    foreach(var member in members)
+                    {
+                        cancellation.ThrowIfCancellationRequested();
+                        saved.TryGetValue(member.EntryKey,out var clip);
+                        if(clip==null)throw new InvalidDataException("A native action member was lost while saving the complete character animation set: "+member.EntryKey);
+                        MeleeAnimationMaster.VerifySerialized(source.MeleeModel,originals[member.MotionKey],clip);
+                    }
+                }
+                var baseline=project.CreateNativeMaster("original-authoring.brres","native-source",path=>File.Copy(animation.WorkingPath,path));project.NativeSources.Add(baseline);
                 project.TargetGame="Melee";project.Frame=1;
                 project.NativeTarget=new NativeTargetBinding{Provider=MeleeGameSource.NativeProvider,AnimationBaselineSource=baseline.Id,AnimationMasterId=animation.Id,ModelSource=modelSource.Id,MotionSource=motionSource.Id,ContextSource=contextSource.Id,CommonSource=commonSource?.Id,ExecutableSource=executable?.Id,ModelKey=reference.ModelKey,MotionKey=reference.MotionKey,MotionSnapshotKey="0/"+nativeMotion.Symbol,OriginMotionContainerSha256=reference.MotionContainerSha256,SourceRig=reference.SourceRig,NativeModelSha256=reference.ModelResourceSha256,NativeMotionSha256=reference.MotionResourceSha256,OriginContainerSha256=reference.ModelContainerSha256,OriginModelPath=modelMount.OriginPath??modelMount.LocalPath,OriginMotionPath=motionMount.OriginPath??motionMount.LocalPath,AuthoringModelSha256=project.Model.ContentSha256,AuthoringAnimationSha256=animation.ContentSha256,PartChoices=Enumerable.Range(0,source.MeleeRenderer.Parts.GroupCount).Select(source.MeleeRenderer.Parts.Choice).ToArray()};
-                using(var model=NodeFactory.FromFile(null,project.Model.WorkingPath) as MDL0Node)using(var clip=NodeFactory.FromFile(null,animation.WorkingPath) as CHR0Node)
-                {if(model==null||clip==null)throw new InvalidDataException("Editable native masters did not reopen.");MeleeAnimationMaster.VerifySerialized(source.MeleeModel,nativeMotion,clip);project.ModelNodePath=model.TreePath;project.SelectedAnimation=animation.Id+"|@root";}
+                project.NativeTarget.Members=members.ToArray();project.NativeTarget.UnavailableAnimations=unavailable.ToArray();project.NativeTarget.MotionSnapshotKey=nativeMotion.Key;
+                using(var model=NodeFactory.FromFile(null,project.Model.WorkingPath) as MDL0Node)using(var root=NodeFactory.FromFile(null,animation.WorkingPath))
+                {var selected=members.Single(m=>m.MotionKey==nativeMotion.Key);var clip=BrawlLibrarySource.Resolve(root,selected.EntryKey) as CHR0Node;if(model==null||clip==null)throw new InvalidDataException("Editable native masters did not reopen.");MeleeAnimationMaster.VerifySerialized(source.MeleeModel,nativeMotion,clip);project.ModelNodePath=model.TreePath;project.SelectedAnimation=animation.Id+"|@root"+selected.EntryKey.Substring(1);}
                 Validate(project);return project;
             }
             catch{project.Dispose();throw;}
@@ -53,6 +87,13 @@ namespace BrawlCrate.Studio
         {
             var binding=project.NativeTarget;var source=project.NativeSources.Single(s=>s.Id==binding.MotionSource);
             return MeleeNative.ReadMembers(File.ReadAllBytes(source.WorkingPath)).SelectMany(MeleeNative.Motions).Single(m=>m.Key==binding.MotionSnapshotKey&&m.Member.Sha256==binding.NativeMotionSha256);
+        }
+        internal static MeleeNativeMotion OriginalMotion(FighterProject project,CHR0Node clip)
+        {
+            if(project.NativeTarget.Members.Length==0)return OriginalMotion(project);
+            var member=project.NativeTarget.Member(clip)??throw new NotSupportedException("This animation has no exact native action association. Export an editable master or review a destination action first.");
+            var source=project.NativeSources.Single(s=>s.Id==project.NativeTarget.MotionSource);
+            return MeleeNative.ReadMembers(File.ReadAllBytes(source.WorkingPath)).SelectMany(MeleeNative.Motions).Single(m=>m.Key==member.MotionKey&&m.Member.Sha256==member.ResourceSha256);
         }
         internal static MeleePartVisibility Parts(FighterProject project,MeleeNativeModel model)
         {

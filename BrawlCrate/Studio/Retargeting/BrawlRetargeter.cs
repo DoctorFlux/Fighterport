@@ -204,6 +204,13 @@ namespace BrawlCrate.Studio.Retargeting
 
         public static SkeletonCharacterization Characterize(MDL0Node model)
         {
+            if(model.NativeEditingBackend!=null)
+            {
+                var native=new SkeletonCharacterization();foreach(var role in model.NativeEditingBackend.CaptureEvaluation().Roles){native.Roles.Add(role.Key,role.Value);native.Evidence.Add(role.Key,"Native part-to-joint metadata; original hierarchy retained");}
+                Walk(model).ToList();var nativeJoints=NativeJoints(model.AllBones.ToArray());
+                SkeletonCharacterizer.InferGeometry(new Rig("Native characterization","Native",nativeJoints,native.Roles,1,nativeEvaluation:model.NativeEditingBackend.CaptureEvaluation()),native);
+                return native;
+            }
             Walk(model).ToList();
             MDL0BoneNode[] bones=model.AllBones.ToArray();
             return SkeletonCharacterizer.Analyze(NativeJoints(bones));
@@ -224,19 +231,20 @@ namespace BrawlCrate.Studio.Retargeting
             MDL0BoneNode[] bones=model.AllBones.ToArray();
             var names=bones.Select((b,i)=>new{b.Name,Index=i}).ToDictionary(p=>p.Name,p=>p.Index,StringComparer.Ordinal);
             RigJoint[] joints=NativeJoints(bones);
-            var characterization=SkeletonCharacterizer.Analyze(joints);
+            var data=model.NativeEditingBackend?.CaptureEvaluation();
+            var characterization=data==null?SkeletonCharacterizer.Analyze(joints):Characterize(model);
             var roles=reviewedMap==null?characterization.Roles:reviewedMap.ToDictionary(p=>p.Key,p=>names.TryGetValue(p.Value,out int index)?index:throw new InvalidDataException("Mapped bone is missing: "+p.Value));
-            SkeletonCharacterizer.Validate(joints,roles);
+            SkeletonCharacterizer.Validate(joints,roles,data);
             float headRadius = model.BoxMax._y - bones[roles["head"]].BindMatrix.GetPoint()._y;
             if (headRadius < 0.1f) headRadius = (bones[roles["head"]].BindMatrix.GetPoint() - bones[roles["neck"]].BindMatrix.GetPoint()).TrueDistance(new NativeVector()) * 2;
             // Native Brawl coordinates use +Y up for every model. Declare that
             // adapter evidence independently of head size, rest posture and the
             // later mutable ground/support plane; preserve all imported binds.
             var rig = new Rig(model.Name, model.Name, joints, roles, headRadius,
-                coordinateUp ?? (coordinateFrame.HasValue ? (Vector3?)null : Vector3.UnitY), coordinateFrame);
-            CaptureSurfaces(model, rig, bones, names);
+                coordinateUp ?? (coordinateFrame.HasValue ? (Vector3?)null : Vector3.UnitY), coordinateFrame,data);
+            if(data==null)CaptureSurfaces(model, rig, bones, names);else CaptureNativeSurfaces(rig,data);
             for (int i = 0; i < bones.Length; i++)
-                if (Vector3.Distance(rig.Rest.Point(i), Vector(bones[i].BindMatrix.GetPoint())) > 0.01f)
+                if (data==null&&Vector3.Distance(rig.Rest.Point(i), Vector(bones[i].BindMatrix.GetPoint())) > 0.01f)
                     throw new InvalidDataException("The native bind matrices disagree with this rig's local hierarchy at " + bones[i].Name + ".");
             string fingerprint=SkeletonFingerprint(model);
             return new BrawlRig {Rig = rig, Bones = bones, Fingerprint = fingerprint};
@@ -244,6 +252,7 @@ namespace BrawlCrate.Studio.Retargeting
 
         public static string SkeletonFingerprint(MDL0Node model)
         {
+            if(model.NativeEditingBackend!=null)return model.NativeEditingBackend.CaptureEvaluation().Identity;
             Walk(model).ToList();var bones=model.AllBones.ToArray();
             string identity = string.Join("\n", bones.Select(b => b.Name + ":" + (b.Parent as MDL0BoneNode)?.Name + ":" +
                 string.Join(",", Enumerable.Range(0, 9).Select(i => b.BindState[i].ToString("R", CultureInfo.InvariantCulture)))));
@@ -352,8 +361,29 @@ namespace BrawlCrate.Studio.Retargeting
                     for (int channel = 0; channel < 9; channel++)
                         if (track.Keyframes[channel].KeyCount > 0) state[channel] = track.GetFrameValue(channel, keyFrame);
                 locals[i] = Transform(state);
+                if(source.Rig.NativeEvaluation!=null&&tracks.TryGetValue(source.Bones[i].Name,out var nativeTrack))locals[i].CompensatedScale=nativeTrack.ClassicScaleOff;
             }
             return new RigPose(source.Rig, locals);
+        }
+
+        static void CaptureNativeSurfaces(Rig rig,FighterPort.NativeEvaluation.NativeRigData data)
+        {
+            var points=data.Vertices.Select(v=>
+            {
+                var fixedWeights=FighterPort.NativeEvaluation.EvaluationMath.StaticWeights(data.Joints,v.Skin,v.Position,v.Joints,v.Weights);
+                return new SkinPoint{Native=v,StaticNativeWeights=fixedWeights!=null,Weights=fixedWeights!=null?fixedWeights.Select(w=>new SkinWeight{Joint=w.Joint,Local=w.Local,Weight=w.Weight}).ToArray():(v.Joints.Length>0?v.Joints:new[]{v.Skin.Owner}).Select((bone,i)=>new SkinWeight{Joint=bone,Weight=v.Joints.Length>0?v.Weights[i]:1,Local=v.Position}).ToArray()};
+            }).ToArray();
+            rig.StaticNativeSkin=points.All(p=>p.StaticNativeWeights);
+            foreach(string side in new[]{"left","right"})foreach(string end in new[]{"foot","hand"})
+            {
+                string role=side+"."+end;if(!rig.Roles.TryGetValue(role,out int joint))continue;
+                var patch=points.Where(p=>p.Weights.Where(w=>IsDescendant(rig,w.Joint,joint)).Sum(w=>w.Weight)>=.8f).ToArray();
+                if(patch.Length<4)throw new InvalidDataException("Native reviewed "+role+" surface is unavailable.");
+                Vector3 forward=end=="foot"&&rig.Roles.ContainsKey(side+".toe")?rig.Rest.Point(side+".toe")-rig.Rest.Point(role):Vector3.Transform(Vector3.UnitZ,RigMath.BodyFrame(rig));
+                if(forward.LengthSquared()<1e-10f)forward=Vector3.Transform(Vector3.UnitZ,RigMath.BodyFrame(rig));
+                var inverse=Quaternion.Inverse(rig.Rest.Orientation[joint]);rig.Surfaces.Add(role,new ContactSurface{Role=role,Points=patch,NormalLocal=Vector3.Transform(Vector3.UnitY,inverse),ForwardLocal=Vector3.Transform(RigMath.Unit(forward),inverse)});
+            }
+            rig.GroundHeight=new[]{"left.foot","right.foot"}.Min(r=>rig.Surfaces[r].Sample(rig.Rest).Clearance);
         }
 
         public static RetargetResult Bake(MDL0Node sourceModel, MDL0Node targetModel, CHR0Node clip, bool correction = true,GroundContactMode groundMode=GroundContactMode.Auto,
@@ -384,6 +414,7 @@ namespace BrawlCrate.Studio.Retargeting
             var result = new RetargetResult {Animation = output, Plan = plan, SourceRig = source.Fingerprint, TargetRig = target.Fingerprint,
                 IgnoredSourceTracks = clip.Children.Count(c => !plan.Mapping.Any(m => m.Source == c.Name)),
                 IgnoredSourceBones = clip.Children.Where(c => !plan.Mapping.Any(m => m.Source == c.Name)).Select(c=>c.Name).ToArray()};
+            if(plan.TopologyAdaptations.Length>0)result.OptimizationReport=string.Join(Environment.NewLine,plan.TopologyAdaptations);
             try
             {
                 // Quarter-frame evaluation unwraps rotations continuously before integer-frame baking.

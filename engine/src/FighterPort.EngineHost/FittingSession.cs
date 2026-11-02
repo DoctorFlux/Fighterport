@@ -29,7 +29,7 @@ sealed partial class ControlSession
         if(r.Operation=="fitting-load")
         {
             fittingSource=null;fittingTarget=null;fittingBake=null;fittingValidation=null;fittingOptions=null;fittingDiagnostics=[];fittingLosses=[];fittingContextPath=null;fittingContextFingerprint=null;
-            var native=await adapter.ImportAsync(r.SourceModel!,r.Motion!);var target=await adapter.ImportModelAsync(r.Model!);fittingClip=native.Clips.Single();
+            var native=await ImportNative(r.SourceModel!,r.Motion!,r.SourceNativeRig);var target=await ImportNative(r.Model!,null,r.NativeRig);fittingClip=native.Clips.Single();
             fittingContext="Authentic native source; no companion contact context supplied";
             if(!string.IsNullOrEmpty(r.Path))
             {
