@@ -1,5 +1,15 @@
 # Current milestone M2 — simpler native workspace
 
+2 November: BT3 PS2 USA disc inspection now reads the supplied ISO directly,
+showing exact character slots, costume/model packs and two opaque motion banks
+without extracting game files. Original pack bytes can be exported to a new
+file, and the disc path can be saved separately. This is a bounded inventory
+step in the same incomplete G1/M2; native BT3 model/texture preview, named
+animation decoding, retargeting, editing and writing remain OPEN. See
+[disc inventory evidence](../BT3_DISC_INVENTORY_2026-11-02.md). The full
+BrawlCrate Model Previewer, original Next, Brawl/Melee routes, root policy and
+all weights remain intact.
+
 2 November: preview.76 makes the main Melee action list adapter-backed for
 presentation. It shows **Melee** and exact native action associations instead
 of the implementation's BRRES/CHR labels; the source mini-preview also plays

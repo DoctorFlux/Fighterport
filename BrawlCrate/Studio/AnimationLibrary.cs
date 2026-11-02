@@ -26,7 +26,7 @@ namespace BrawlCrate.Studio
         public static int DiagnosticOpens;
         // Legacy search API uses an int; capacity is governed by resource headroom.
         public const int MaximumClips=int.MaxValue;
-        public static readonly string[] PlannedGames={"Brawl","Project M","Project+","Melee","Ultimate","Rivals II","FighterZ","Sparking! ZERO","Xenoverse 1","Xenoverse 2"};
+        public static readonly string[] PlannedGames={"Brawl","Project M","Project+","Melee",Bt3DiscInventory.Game,"Ultimate","Rivals II","FighterZ","Sparking! ZERO","Xenoverse 1","Xenoverse 2"};
         public string DirectoryPath { get; }
         // Publish a new immutable generation with a same-directory rename. This
         // also works on encrypted Windows profiles where ReplaceFile is denied.

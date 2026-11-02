@@ -1,5 +1,15 @@
 # Native Next integration
 
+BT3 PS2 USA is currently an independent, read-only disc inventory boundary:
+ISO9660/AFS numeric slot and member identities feed an inspector and exact
+original-byte export. It is intentionally not registered as an editable native
+source/target adapter because model, texture and motion decoding are not yet
+verified. A saved BT3 ISO path remains path-only in the shared library. Future
+BT3 decoding and writing must qualify the existing `NativeGameOperation`
+capabilities separately and preserve native rig/skin, timing and project
+ownership; see [bounded evidence](BT3_DISC_INVENTORY_2026-11-02.md).
+
+
 Preview.75 adds `INativeTargetModelSourceExportAdapter` for an exact owned
 native model/source bundle. The Melee implementation copies and freshly
 decodes the original HSD costume DAT, including its embedded texture graph,

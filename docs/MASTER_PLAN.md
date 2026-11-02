@@ -1,5 +1,14 @@
 # Fighterport master plan
 
+BT3 PS2 USA is the next requested game adapter. A first bounded inventory
+step verifies the supplied ISO's fighter/costume pack and motion-bank member
+identities directly and exports original bytes; it does not yet add BT3
+rendering, named animations, retargeting or native writing. Those capabilities
+must pass their own format, rig, motion and save/reopen gates in the same
+incomplete G1/M2, without changing Brawl/Melee support or original Next.
+See [inventory acceptance](BT3_DISC_INVENTORY_2026-11-02.md).
+
+
 Preview.74 qualifies reviewed Melee native action destinations for
 independently authored target clips that pass the existing native timebase,
 loop, rig and full-motion gates. It preserves the full Model Previewer,

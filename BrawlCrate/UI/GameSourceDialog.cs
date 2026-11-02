@@ -21,6 +21,7 @@ namespace BrawlCrate.UI
         private readonly TextBox build=new TextBox{Name="discBuild",Dock=DockStyle.Fill,MaxLength=240,Text="Build unknown"};
         private readonly Label status=new Label{Name="discValidation",Dock=DockStyle.Fill,AutoSize=true};
         private readonly Button save=new WorkspaceButton{Name="discContinue",AutoSize=true,Padding=new Padding(12,6,12,6)};
+        private readonly Button bt3Inspect=new WorkspaceButton{Name="bt3InspectDisc",Text="Inspect BT3 characters and costumes...",AutoSize=true};
         internal LibraryGameRequest Request {get;private set;}
         internal bool PathOnly {get;private set;}
         internal string ExistingSourceId {get;private set;}
@@ -72,6 +73,8 @@ namespace BrawlCrate.UI
             folder.Click+=(s,e)=>{using(var choose=new FolderBrowserDialog{Description="Choose the game's installation or extracted game folder",SelectedPath=Directory.Exists(path.Text)?path.Text:""})if(choose.ShowDialog(this)==DialogResult.OK){kind.SelectedIndex=1;path.Text=choose.SelectedPath;}};
             pickers.Controls.AddRange(new Control[]{file,folder});layout.Controls.Add(pickers,0,7);
             status.MinimumSize=new Size(0,Font.Height*3+12);status.AccessibleName="Game source support and saved location status";layout.Controls.Add(status,0,8);
+            bt3Inspect.AccessibleDescription="Read the original BT3 ISO's exact character slots, model/costume packs and raw motion banks. Animation decoding and retargeting are not supported yet.";
+            bt3Inspect.Click+=(s,e)=>InspectBt3();layout.Controls.Add(bt3Inspect,0,11);
             var cancel=new WorkspaceButton{Name="discCancel",Text="Cancel",AutoSize=true,DialogResult=DialogResult.Cancel,Padding=new Padding(12,6,12,6)};
             var actions=new FlowLayoutPanel{Dock=DockStyle.Fill,AutoSize=true,WrapContents=true,FlowDirection=FlowDirection.RightToLeft};actions.Controls.AddRange(new Control[]{cancel,save});layout.Controls.Add(actions,0,13);
             baseSource.Items.Add("None — complete source");baseSource.Items.AddRange((sources??new LibraryGameLocation[0]).Where(l=>l.Game=="Melee"&&l.Indexed&&l.BaseSourceId==null).Select(l=>new SavedChoice{Location=l}).ToArray());baseSource.SelectedIndex=0;
@@ -84,7 +87,7 @@ namespace BrawlCrate.UI
             ResetStatus();DarkTheme.Apply(this);Shown+=(s,e)=>path.Focus();
             foreach(var button in new Button[]{file,folder,manage,cancel})
             {button.Font=Font;button.MinimumSize=new Size(TextRenderer.MeasureText(button.Text,Font).Width+24,Font.Height+16);}
-            int tab=0;foreach(var control in new Control[]{saved,game,build,kind,path,file,folder,baseSource,save,cancel})control.TabIndex=tab++;
+            int tab=0;foreach(var control in new Control[]{saved,game,build,kind,path,file,folder,baseSource,bt3Inspect,save,cancel})control.TabIndex=tab++;
         }
         private string GameName=>AnimationLibrary.PlannedGames.FirstOrDefault(g=>string.Equals(g,game.Text.Trim(),StringComparison.OrdinalIgnoreCase))??game.Text.Trim();
         private bool GameReaderAvailable=>NativeGameAdapters.ForGame(GameName)!=null;
@@ -95,11 +98,25 @@ namespace BrawlCrate.UI
         private void ResetStatus()
         {
             baseSource.Visible=baseLabel.Visible=GameName=="Melee"&&kind.SelectedIndex==1;
+            bt3Inspect.Visible=GameName==Bt3DiscInventory.Game;
+            bt3Inspect.Enabled=bt3Inspect.Visible&&kind.SelectedIndex==0&&File.Exists(path.Text.Trim().Trim('"'));
             Request=null;PathOnly=false;ExistingSourceId=null;status.ForeColor=ForeColor;
             save.Text=ExistingSource!=null?"Open saved library":CanIndex?"Add to library":"Save source";
             save.Font=Font;save.MinimumSize=new Size(TextRenderer.MeasureText(save.Text,Font).Width+28,Font.Height+20);
-            status.Text=ExistingSource!=null?"This source is already indexed. Open its character and animation library without extracting the game again.":CanIndex&&GameName=="Melee"?"Melee reader: ISO/GCM, extracted game or mod folders. Partial folders use the explicitly selected base. Native source preview; authoring/export qualify separately.":CanIndex?"Brawl reader available: ISO/WBFS or an extracted fighter folder. Adds all characters, animations and compatible costumes; original files stay read-only.":GameReaderAvailable?"This source format cannot be read yet. Save its location for later; the Brawl reader currently accepts ISO/WBFS and extracted fighter folders.":"This game's reader is not available yet. Save its disc/file or install-folder location now; animations will become available when its adapter is added.";
+            status.Text=ExistingSource!=null?"This source is already indexed. Open its character and animation library without extracting the game again.":GameName==Bt3DiscInventory.Game?"BT3 USA ISO: inspect exact character slots, costume/model packs and opaque motion banks directly from the disc. Native model/animation preview, retargeting and writing are not qualified yet. Save the source location separately.":CanIndex&&GameName=="Melee"?"Melee reader: ISO/GCM, extracted game or mod folders. Partial folders use the explicitly selected base. Native source preview; authoring/export qualify separately.":CanIndex?"Brawl reader available: ISO/WBFS or an extracted fighter folder. Adds all characters, animations and compatible costumes; original files stay read-only.":GameReaderAvailable?"This source format cannot be read yet. Save its location for later; the Brawl reader currently accepts ISO/WBFS and extracted fighter folders.":"This game's reader is not available yet. Save its disc/file or install-folder location now; animations will become available when its adapter is added.";
             if(saved.SelectedItem is SavedChoice choice&&(!File.Exists(choice.Location.Path)&&!Directory.Exists(choice.Location.Path)))status.Text="Saved location is unavailable. Locate its disc/file or folder to use it again. "+status.Text;
+        }
+        private void InspectBt3()
+        {
+            try
+            {
+                string source=AnimationLibrary.OrdinaryPath(path.Text.Trim().Trim('"'));
+                var inventory=LibraryWork.Run(this,"Inspecting BT3 disc",(cancel,progress)=>
+                {progress.Report("Reading ISO9660 and AFS tables directly; no game files are extracted...");return Bt3DiscInventory.Inspect(source,cancel);});
+                if(inventory!=null)using(var window=new Bt3DiscInventoryDialog(inventory))window.ShowDialog(this);
+            }
+            catch(Exception error)when(error is InvalidDataException||error is IOException||error is UnauthorizedAccessException||error is ArgumentException)
+            {status.ForeColor=Color.FromArgb(246,174,116);status.Text=error.Message;}
         }
         private void Continue()
         {
@@ -117,7 +134,16 @@ namespace BrawlCrate.UI
                     if(checkedSource==null){status.Text="Source check cancelled. No source was added.";return;}
                     Request=checkedSource;
                 }
-                else{Request=request;PathOnly=true;}
+                else
+                {
+                    if(request.Game==Bt3DiscInventory.Game)
+                    {
+                        var inventory=LibraryWork.Run(this,"Checking BT3 disc",(cancel,progress)=>
+                        {progress.Report("Checking the exact PS2 disc layout before saving its location...");return Bt3DiscInventory.Inspect(request.Path,cancel);});
+                        if(inventory==null)return;
+                    }
+                    Request=request;PathOnly=true;
+                }
                 DialogResult=DialogResult.OK;
             }
             catch(Exception error)when(error is InvalidDataException||error is IOException||error is InvalidOperationException||error is ArgumentException||error is NotSupportedException||error is UnauthorizedAccessException||error is System.Security.SecurityException||error is FormatException||error is OverflowException)
