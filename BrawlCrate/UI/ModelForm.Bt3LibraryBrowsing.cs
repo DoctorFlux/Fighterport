@@ -106,7 +106,7 @@ namespace BrawlCrate.UI
             var costume=(_bt3Costume?.SelectedItem as Bt3CostumeOption)?.Resource??form.Costumes.FirstOrDefault();
             if(costume==null||!form.Costumes.Contains(costume))return null;
             int action=Math.Max(0,choice.Action);
-            var motion=form.MotionMembers[0].FirstOrDefault(m=>m.PackIndex==action+1&&m.Bytes>=10);
+            var motion=form.MotionMembers[0].FirstOrDefault(m=>m.PackIndex==action&&m.Bytes>=10);
             if(motion==null)return null;
             return new Bt3BrowseChoice{Inventory=choice.Inventory,Forms=choice.Forms,Form=form,Costume=costume,
                 Motion=motion,Action=action};
@@ -160,7 +160,7 @@ namespace BrawlCrate.UI
                         scene=Bt3NativeMesh.Read(choice.Inventory.ReadOwned(costume,4*1024*1024));
                     cancel.Token.ThrowIfCancellationRequested();
                     var motion=Bt3NativeAssetReader.ReadMotion(choice.Inventory.ReadOwned(action,4*1024*1024),
-                        action.PackIndex-1);
+                        action.PackIndex);
                     var rig=scene?.Skeleton??priorScene?.Skeleton;
                     if(rig==null||!motion.Tracks.All(t=>rig.Bones.Any(b=>b.Id==t.Bone)))
                         throw new InvalidDataException("The selected BT3 action does not match its exact costume skeleton.");
@@ -245,8 +245,8 @@ namespace BrawlCrate.UI
             if(choice.Loaded)return true;
             choice.Loaded=true;
             var actions=choice.Forms.SelectMany(form=>form.MotionMembers[0])
-                .Where(m=>m.PackIndex>0&&m.PackIndex<=0x19E&&m.Bytes>=10)
-                .Select(m=>m.PackIndex-1).Distinct().OrderBy(a=>a).ToArray();
+                .Where(m=>m.PackIndex>=0&&m.PackIndex<0x19E&&m.Bytes>=10)
+                .Select(m=>m.PackIndex).Distinct().OrderBy(a=>a).ToArray();
             foreach(int action in actions)
             {
                 _libraryTreeWork.Enqueue(()=>{

@@ -1,5 +1,10 @@
 # BT3 in the shared Model Previewer — preview.83
 
+**Superseded idle evidence:** preview.85 found that this preview associated
+action `i` with pack member `i+1`. The actual game lookup uses member `i`.
+The viewer layout and panel checks remain relevant; its idle captures and
+action-member identity claims do not. See [correction](BT3_ACTION_INDEX_2026-11-02.md).
+
 Starting commit: `b7f8eee0b0a0268a1ee218cd3d068707740a09e2`.
 Inspected BT3 decomp: `z3xox/Tenkaichi3Decomp` at
 `1c4d9060d859f5bc53a0843ad5937c04f43aa6e5`.

@@ -119,6 +119,8 @@ namespace BrawlCrate.Studio
         }
         private static Bt3Resource[] ReadPack(Stream stream,Bt3Resource parent,int maximum)
         {
+            // BObjFile_GetEntry(pack, n) reads buf[n], where buf[0] is this
+            // count header. Thus game action i (lookup n=i+1) is member i.
             var header=Read(stream,parent.Offset,4);int count=BitConverter.ToInt32(header,0);
             if(count<1||count>maximum||4L+(count+1L)*4>parent.Bytes)throw new InvalidDataException("Invalid BT3 pack table at "+parent.Identity);
             var table=Read(stream,parent.Offset+4,checked((count+1)*4));var result=new Bt3Resource[count];long previous=4L+(count+1L)*4;

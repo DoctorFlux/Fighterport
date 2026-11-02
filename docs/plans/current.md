@@ -1,5 +1,15 @@
 # Current milestone M2 — simpler native workspace
 
+2 November: preview.85 fixes the BT3 action/member off-by-one that made the
+previous displayed action 000 actually use action 001's bytes, and action 001
+use action 002's bytes. Exact disc access, library, small source preview,
+target viewer and inspector now use pack member i for action i. The previous
+preview.83/.84 idle appearance evidence is superseded. Background tests pass
+for all 161 forms/698 costumes on action 0 and 40 direct-library/view checks.
+Game-render pose equivalence and broader native format parity remain OPEN in
+the ONE incomplete G1/M2. See
+[bounded evidence](../BT3_ACTION_INDEX_2026-11-02.md).
+
 2 November: preview.84 prevents BT3 target playback frame zero from reaching
 the sampler as native time -1 and clamps oversized seeks to the exact native
 terminal frame. The 39-case private-desktop BT3 suite passes. The action list

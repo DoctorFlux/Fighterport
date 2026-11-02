@@ -1,5 +1,10 @@
 # BT3 playback bounds and idle-label correction — preview.84
 
+**Superseded idle evidence:** preview.85 corrected the action-to-pack-member
+off-by-one. The frame-bounds fix remains valid, but the preview.84 idle
+captures and action-member identity claims used the next member. See
+[correction](BT3_ACTION_INDEX_2026-11-02.md).
+
 Starting commit: `c29d65bea70143c38ee25af9046f0658e9f61e89`.
 
 The reused Brawl playback slider permits display frame 0. BT3's target

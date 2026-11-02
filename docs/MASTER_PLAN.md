@@ -1,5 +1,13 @@
 # Fighterport master plan
 
+Preview.85 corrects the BT3 motion-bank index: BObjFile_GetEntry(bank, i+1)
+addresses pack member i because table word zero is the count header. Library,
+source preview, target viewer and inventory inspector now agree. The prior
+preview.83/.84 claim that displayed motion 000/001 used the game's exact
+member was wrong and is superseded. The actual game-render comparison remains
+open; this fix establishes exact native member identity. See
+[bounded evidence](BT3_ACTION_INDEX_2026-11-02.md).
+
 Preview.84 fixes native BT3 frame bounds at the shared playback boundary and
 pose editor, with explicit frame-zero and terminal-seek regressions. Its
 labels identify game-selected motions 000/001 by health state without claiming

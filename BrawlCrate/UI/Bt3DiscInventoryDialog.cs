@@ -91,12 +91,12 @@ namespace BrawlCrate.UI
                 foreach(var resource in fighter.Costumes)
                     costumes.Items.Add(new Choice{Resource=resource,Label="Costume "+(resource.AfsIndex-(Bt3DiscInventory.FighterAfsBase+fighter.Slot*10))+" · "+resource.Identity+" · "+resource.Bytes+" bytes"});
                 for(int bank=0;bank<2;bank++)foreach(var resource in fighter.MotionMembers[bank])
-                    motions.Items.Add(new Choice{Resource=resource,Action=bank==0&&resource.PackIndex>0&&resource.PackIndex<=0x19E?resource.PackIndex-1:-1,
-                        Label=bank==0&&resource.PackIndex>0&&resource.PackIndex<=0x19E?
-                            (resource.PackIndex==1?"Idle · action 000":"Action "+(resource.PackIndex-1).ToString("D3"))+" · "+resource.Identity+" · "+resource.Bytes+" bytes":
+                    motions.Items.Add(new Choice{Resource=resource,Action=bank==0&&resource.PackIndex>=0&&resource.PackIndex<0x19E?resource.PackIndex:-1,
+                        Label=bank==0&&resource.PackIndex>=0&&resource.PackIndex<0x19E?
+                            Bt3ActionLabels.Describe(resource.PackIndex)+" · "+resource.Identity+" · "+resource.Bytes+" bytes":
                             "Bank "+bank+" · member "+resource.PackIndex.ToString("D3")+" · "+resource.Identity+" · "+resource.Bytes+" bytes"});
                 if(costumes.Items.Count>0)costumes.SelectedIndex=0;
-                if(fighter.MotionMembers[0].Length>1)motions.SelectedIndex=1;
+                if(fighter.MotionMembers[0].Length>0)motions.SelectedIndex=0;
             }
             UpdateActions();
         }

@@ -32,7 +32,7 @@ internal static partial class Program
             {
                 try
                 {
-                    var member=mid.MotionMembers[0].First(m=>m.PackIndex==action+1);
+                    var member=mid.MotionMembers[0].First(m=>m.PackIndex==action);
                     var motion=Bt3NativeAssetReader.ReadMotion(inventory.ReadOwned(member,4*1024*1024),action);
                     Console.WriteLine("TRACE BT3 primary action="+action+" frames="+motion.Length+
                         " tracks="+motion.Tracks.Length+" first-key-times="+
@@ -46,7 +46,7 @@ internal static partial class Program
         if(args.Contains("--bt3-bank-probe"))
             foreach(var member in mid.MotionMembers[1].Where(m=>m.Bytes>=10).Take(12))
             {
-                try{var motion=Bt3NativeAssetReader.ReadMotion(inventory.ReadOwned(member,4*1024*1024),member.PackIndex-1);
+                try{var motion=Bt3NativeAssetReader.ReadMotion(inventory.ReadOwned(member,4*1024*1024),member.PackIndex);
                     Console.WriteLine("TRACE BT3 auxiliary "+member.Identity+" frames="+motion.Length+" tracks="+motion.Tracks.Length);}
                 catch(Exception error)when(error is InvalidDataException||error is OverflowException)
                 {Console.WriteLine("TRACE BT3 auxiliary "+member.Identity+" unsupported="+error.Message);}
@@ -80,16 +80,21 @@ internal static partial class Program
             Console.WriteLine("TRACE BT3 mesh sweep passed="+passed+" failed="+issues.Count);
             Check(issues.Count==0&&passed>=698,"Every indexed BT3 costume decodes a native textured mesh without a substitute model");
         }
-        var idleBytes=inventory.ReadOwned(mid.MotionMembers[0][1],4*1024*1024);
+        var idleBytes=inventory.ReadOwned(mid.MotionMembers[0][0],4*1024*1024);
         var idle=Bt3NativeAssetReader.ReadMotion(idleBytes,0);
+        var lowHealthBytes=inventory.ReadOwned(mid.MotionMembers[0][1],4*1024*1024);
+        var lowHealth=Bt3NativeAssetReader.ReadMotion(lowHealthBytes,1);
+        Check(mid.MotionMembers[0][0].PackIndex==0&&mid.MotionMembers[0][1].PackIndex==1&&
+            idle.Length==72&&lowHealth.Length==108&&idle.SourceSha256!=lowHealth.SourceSha256,
+            "Goku Mid action 000 reads first primary-bank member (72 frames), action 001 the second (108 frames)");
         if(args.Contains("--bt3-idle-probe"))
-            foreach(var member in mid.MotionMembers[0].Where(m=>m.PackIndex>0&&m.PackIndex<=20&&m.Bytes>=10))
+            foreach(var member in mid.MotionMembers[0].Where(m=>m.PackIndex>=0&&m.PackIndex<20&&m.Bytes>=10))
             {
-                try{var clip=Bt3NativeAssetReader.ReadMotion(inventory.ReadOwned(member,4*1024*1024),member.PackIndex-1);
-                    Console.WriteLine("TRACE BT3 action="+(member.PackIndex-1).ToString("D3")+" frames="+clip.Length+
+                try{var clip=Bt3NativeAssetReader.ReadMotion(inventory.ReadOwned(member,4*1024*1024),member.PackIndex);
+                    Console.WriteLine("TRACE BT3 action="+member.PackIndex.ToString("D3")+" frames="+clip.Length+
                         " tracks="+clip.Tracks.Length+" keys="+clip.Tracks.Sum(t=>t.Keys.Length)+" member="+member.Identity);}
                 catch(Exception error)when(error is InvalidDataException||error is OverflowException)
-                {Console.WriteLine("TRACE BT3 action="+(member.PackIndex-1).ToString("D3")+" unsupported="+error.Message);}
+                {Console.WriteLine("TRACE BT3 action="+member.PackIndex.ToString("D3")+" unsupported="+error.Message);}
             }
         if(args.Contains("--bt3-native-edit"))
         {
@@ -140,7 +145,7 @@ internal static partial class Program
             {
                 try
                 {
-                    var clip=Bt3NativeAssetReader.ReadMotion(inventory.ReadOwned(fighter.MotionMembers[0][1],4*1024*1024),0);
+                    var clip=Bt3NativeAssetReader.ReadMotion(inventory.ReadOwned(fighter.MotionMembers[0][0],4*1024*1024),0);
                     foreach(var costume in fighter.Costumes)
                     {
                         var model=inventory.ModelMember(fighter,costume);
@@ -151,19 +156,19 @@ internal static partial class Program
                     }
                     foreach(int action in new[]{1,10,50,100,200,300,400})
                     {
-                        int child=action+1;
+                        int child=action;
                         if(child>=fighter.MotionMembers[0].Length||fighter.MotionMembers[0][child].Bytes<10)continue;
                         try
                         {
                             var sample=Bt3NativeAssetReader.ReadMotion(inventory.ReadOwned(fighter.MotionMembers[0][child],4*1024*1024),action);
                             if(sample.Tracks.Length>0)actionsChecked++;
                         }
-                        catch(InvalidDataException error)
+                        catch(Exception error)when(error is InvalidDataException||error is OverflowException)
                         { Console.WriteLine("OPEN BT3 action "+fighter.Slot.ToString("D3")+"/"+action+": "+error.Message); }
                     }
                     inspected++;
                 }
-                catch(Exception error)when(error is InvalidDataException||error is IOException)
+                catch(Exception error)when(error is InvalidDataException||error is IOException||error is OverflowException)
                 {failures.Add(fighter.Display+": "+error.Message);}
             }
             foreach(var failure in failures.Take(20))Console.WriteLine("OPEN BT3 native reader: "+failure);
@@ -196,11 +201,11 @@ internal static partial class Program
             var costumeList=dialog.Controls.Find("bt3Costumes",true).OfType<ListBox>().Single();
             var actionList=dialog.Controls.Find("bt3MotionBanks",true).OfType<ListBox>().Single();
             var inspect=dialog.Controls.Find("bt3InspectMotion",true).OfType<Button>().Single();
-            Check(costumeList.Items.Count==8&&actionList.SelectedIndex==1&&inspect.Enabled,
+            Check(costumeList.Items.Count==8&&actionList.SelectedIndex==0&&inspect.Enabled,
                 "A form's costume and exact native action remain independently selected");
             inspect.PerformClick();
             var summary=dialog.Controls.Find("bt3NativeStatus",true).OfType<Label>().Single();
-            Check(summary.Text.Contains("69 bones")&&summary.Text.Contains("last native frame 108"),
+            Check(summary.Text.Contains("69 bones")&&summary.Text.Contains("last native frame 72"),
                 "Goku Mid default costume and idle inspect verified native pose data");
             formList.SelectedIndex=1;costumeList.SelectedIndex=Math.Min(1,costumeList.Items.Count-1);
             inspect.PerformClick();
@@ -437,6 +442,8 @@ internal static partial class Program
                     Check(targetRenderer.PickBone(targetPanel.CurrentViewport,new System.Drawing.Point(
                         (int)rootScreen._x,(int)rootScreen._y))>=0,
                         "Native BT3 bone markers support viewport hit testing through the Brawl camera");
+                    Check(((Bt3NativeAssetReader.Motion)Field(form,"_bt3TargetMotion")).Length==72,
+                        "The target's action 000 uses Goku Mid primary-bank member zero");
                     var targetPlayback=form.FighterEditor.PlaybackPanel;
                     await CaptureSimpleWorkspace(form,Path.Combine(output,"bt3-large-target.png"));
                     form.ClientSize=new System.Drawing.Size(1050,700);
@@ -520,7 +527,8 @@ internal static partial class Program
                         (i.Tag as BrawlCrate.UI.Model_Previewer.NativeViewerItem)?.Id==1).Selected=true;
                     await Wait(()=>SimpleControl<Label>(form,"bt3TargetCaption").Text.Contains("action 001"));
                     var lowHealthMotion=(Bt3NativeAssetReader.Motion)Field(form,"_bt3TargetMotion");
-                    Check(lowHealthMotion.Action==1&&lowHealthMotion.SourceSha256!=nativeEditor.Motion.SourceSha256&&
+                    Check(lowHealthMotion.Action==1&&lowHealthMotion.Length==108&&
+                        lowHealthMotion.SourceSha256!=nativeEditor.Motion.SourceSha256&&
                         targetCostume.Text.Contains("Normal")&&targetAction.SelectedItems[0].Text.Contains("low-health"),
                         "Low-health ground idle is a distinct native motion on the normal costume");
                     targetPanel.Capture();targetPanel.Invalidate();targetPanel.Update();

@@ -1,5 +1,13 @@
 # Fighterport
 
+2 November — preview.85-bt3-action-index fixes an off-by-one primary motion
+bank association in library, source preview, native target and disc inspector.
+The game pack lookup counts the header as word zero: action 0 is pack member
+0, not member 1. The older preview.83/.84 visual idle evidence used the wrong
+member and is superseded. The local USA disc sweep verified action 0 against
+161 forms and 698 costumes. See
+[bounded evidence](docs/BT3_ACTION_INDEX_2026-11-02.md).
+
 2 November — preview.84-bt3-frame-bounds clamps the shared playback
 transport's display frame zero and oversized seeks before native BT3 pose
 sampling, preventing the reported negative-frame exception. BT3 action labels

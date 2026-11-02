@@ -352,8 +352,8 @@ namespace BrawlCrate.UI
             {
                 _bt3TargetAction.Items.Clear();
                 if(form!=null)foreach(int action in form.MotionMembers[0]
-                    .Where(m=>m.PackIndex>0&&m.PackIndex<=0x19E&&m.Bytes>=10)
-                    .Select(m=>m.PackIndex-1).Distinct().OrderBy(a=>a))
+                    .Where(m=>m.PackIndex>=0&&m.PackIndex<0x19E&&m.Bytes>=10)
+                    .Select(m=>m.PackIndex).Distinct().OrderBy(a=>a))
                     _bt3TargetAction.Items.Add(new Bt3ActionOption{Action=action});
                 _bt3TargetAction.SelectedItem=_bt3TargetAction.Items.Cast<Bt3ActionOption>()
                     .FirstOrDefault(a=>a.Action==wanted)??_bt3TargetAction.Items.Cast<Bt3ActionOption>().FirstOrDefault();
@@ -623,7 +623,7 @@ namespace BrawlCrate.UI
             if(form==null||costume==null||!(_bt3TargetAction.SelectedItem is Bt3ActionOption selected))return;
             int action=selected.Action;
             var current=_bt3TargetChoice;
-            var motion=form.MotionMembers[0].FirstOrDefault(m=>m.PackIndex==action+1&&m.Bytes>=10);
+            var motion=form.MotionMembers[0].FirstOrDefault(m=>m.PackIndex==action&&m.Bytes>=10);
             if(motion==null){_bt3TargetCaption.Text="This action is unavailable in the selected form.";return;}
             string editKey=costume.Identity+"|"+motion.Identity;
             _bt3TargetEdits.TryGetValue(editKey,out var retained);
