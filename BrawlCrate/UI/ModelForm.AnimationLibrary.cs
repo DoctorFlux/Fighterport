@@ -173,8 +173,8 @@ namespace BrawlCrate.UI
                 if(_libraryLease==null)return;
                 if(modelEditControl1.Playing){_libraryTimer.Stop();_libraryPlay.Text="Play";return;}
                 _libraryTime+=_libraryClock.Elapsed.TotalSeconds*60;_libraryClock.Restart();
-                int frames=_libraryLease.PreviewAnimation.FrameCount;
-                if(_libraryTime>frames-1){if(_libraryLease.PreviewAnimation.Loop)_libraryTime%=frames;else{_libraryTime=frames-1;_libraryTimer.Stop();_libraryPlay.Text="Play";}}
+                int frames=_libraryLease.DisplayFrameCount;
+                if(_libraryTime>frames-1){if(_libraryLease.DisplayLoop)_libraryTime%=frames;else{_libraryTime=frames-1;_libraryTimer.Stop();_libraryPlay.Text="Play";}}
                 RenderLibraryFrame();
             };
             BuildLibraryFilters(layout,searchRow,actions);
@@ -321,7 +321,7 @@ namespace BrawlCrate.UI
             if(_libraryLease.NativePreview!=null)_libraryLease.NativePreview.ApplyDisplayFrame((float)_libraryTime+1);
             else LibraryNativePreview.Apply(_libraryLease.Model,_libraryLease.PreviewBundle,(float)_libraryTime+1);
             _libraryScrubbing=true;try{_libraryFrame.Value=Math.Max(1,Math.Min(_libraryFrame.Maximum,(int)_libraryTime+1));}finally{_libraryScrubbing=false;}
-            _libraryOriginalLabel.Text="Original: "+_libraryLease.Model.Name+" · "+_libraryLease.PreviewAnimation.Name+" · "+(_libraryLease.MeleePlayback!=null?"Melee native curves":_libraryLease.PreviewAnimation.GetType().Name.Replace("Node",""))+" · frame "+(_libraryTime+1).ToString("0.0")+" (read-only)";
+            _libraryOriginalLabel.Text="Original: "+_libraryLease.Model.Name+" · "+_libraryLease.DisplayAnimationName+" · "+(_libraryLease.NativePreview!=null?"Melee native curves":_libraryLease.PreviewAnimation.GetType().Name.Replace("Node",""))+" · frame "+(_libraryTime+1).ToString("0.0")+" (read-only)";
             _libraryViewport.Invalidate();
         }
         private void ReleaseLibraryPreview()

@@ -13,6 +13,9 @@ namespace BrawlCrate.UI.Model_Previewer.ModelEditControl
         internal Func<bool> FighterSaveRequested;
         internal Action<ResourceNode> FighterResourcesRequested;
         internal Func<ResourceNode, string> FighterResourceLabel;
+        internal Func<ResourceNode, string> FighterAnimationToolTip;
+        internal string FighterAnimationGroupLabel;
+        internal string FighterAdditionalAnimationGroupLabel;
         internal Func<ResourceNode, bool, bool> FighterFileSaveRequested;
         internal Predicate<ResourceNode> FighterOwnsFile;
         internal Action<ResourceNode, string> FighterNativeExportRequested;

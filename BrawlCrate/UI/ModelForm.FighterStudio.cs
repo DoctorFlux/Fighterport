@@ -146,10 +146,21 @@ namespace BrawlCrate.UI
                     _fighterRoots.TryGetValue(a.Id, out ResourceNode root) && ReferenceEquals(root, clip.RootNode));
                 return asset == null ? clip.Name : clip.Name + " → " + asset.Retarget.ToProfile;
             };
+            modelEditControl1.FighterAnimationToolTip = node =>
+            {
+                var binding = _fighterProject.NativeTarget;
+                var presentation = binding == null ? null : NativeGameAdapters.ForNative(binding.Provider) as INativeTargetAnimationPresentationAdapter;
+                if (presentation == null || !(node is CHR0Node clip)) return null;
+                return presentation.DescribeAction(binding.Member(clip));
+            };
             modelEditControl1.FighterResourceLabel = root =>
             {
                 FighterAsset asset = _fighterAssets.Values.FirstOrDefault(a =>
                     _fighterRoots.TryGetValue(a.Id, out ResourceNode loaded) && ReferenceEquals(loaded, root));
+                var binding = _fighterProject.NativeTarget;
+                if (asset != null && binding != null && asset.Id == binding.AnimationMasterId &&
+                    NativeGameAdapters.ForNative(binding.Provider) is INativeTargetAnimationPresentationAdapter presentation)
+                    return presentation.EditableContainerLabel;
                 return asset == null ? root.Name : Path.GetFileName(asset.SourcePath);
             };
             modelEditControl1.leftPanel.listAnims.SelectedIndexChanged += (s, e) =>
@@ -426,6 +437,11 @@ namespace BrawlCrate.UI
                 }
 
                 modelEditControl1.Updating = false;
+                var nativePresentation = _fighterProject.NativeTarget == null ? null :
+                    NativeGameAdapters.ForNative(_fighterProject.NativeTarget.Provider) as INativeTargetAnimationPresentationAdapter;
+                modelEditControl1.FighterAnimationGroupLabel = nativePresentation?.AnimationGroupLabel;
+                modelEditControl1.FighterAdditionalAnimationGroupLabel = nativePresentation?.AdditionalAnimationGroupLabel;
+                modelEditControl1.leftPanel.SetNativeAnimationDisplay(nativePresentation?.AnimationFormatLabel);
                 NW4RAnimationNode selectedAnimation = null;
                 foreach (FighterAsset asset in assets)
                 {

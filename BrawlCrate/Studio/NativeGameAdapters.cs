@@ -33,6 +33,16 @@ namespace BrawlCrate.Studio
         BrawlLib.Modeling.INativeModelEditingBackend AttachTarget(FighterProject project,BrawlLib.SSBB.ResourceNodes.MDL0Node model);
         void ValidateTarget(FighterProject project);
     }
+    // Describes the native action set in the shared Model Previewer without
+    // changing its internal animation-selection and editing contracts.
+    public interface INativeTargetAnimationPresentationAdapter
+    {
+        string AnimationFormatLabel {get;}
+        string AnimationGroupLabel {get;}
+        string EditableContainerLabel {get;}
+        string AdditionalAnimationGroupLabel {get;}
+        string DescribeAction(NativeAnimationMember member);
+    }
     public sealed class NativeTargetExportReceipt
     {
         public string Provider,ResourceKey,Sha256;
@@ -63,6 +73,9 @@ namespace BrawlCrate.Studio
     public interface INativeSourcePreview : IDisposable
     {
         BrawlLib.OpenGL.IRenderedObject RenderTarget { get; }
+        string AnimationName { get; }
+        int FrameCount { get; }
+        bool Loop { get; }
         void ApplyDisplayFrame(float frame);
     }
     public static class NativeGameAdapters
@@ -102,8 +115,15 @@ namespace BrawlCrate.Studio
                 finally{foreach(var disc in discs.Values)disc.Dispose();}
             }
         }
-        private sealed class MeleeSources:INativeGameSourceAdapter,INativeSourceExportAdapter,INativeEditableTargetAdapter,INativeActionDestinationExportAdapter,INativeTargetModelSourceExportAdapter
+        private sealed class MeleeSources:INativeGameSourceAdapter,INativeSourceExportAdapter,INativeEditableTargetAdapter,INativeActionDestinationExportAdapter,INativeTargetModelSourceExportAdapter,INativeTargetAnimationPresentationAdapter
         {
+            public string AnimationFormatLabel=>"Melee";
+            public string AnimationGroupLabel=>"Melee actions";
+            public string EditableContainerLabel=>"Melee project animations";
+            public string AdditionalAnimationGroupLabel=>"Additional project animations";
+            public string DescribeAction(NativeAnimationMember member)=>member==null
+                ?"Project animation without a native action association. Choose an exact destination action for DAT export."
+                :"Native Melee action: "+member.MotionKey+". Project edits are saved in the editable master; DAT export is verified separately.";
             public string[] Games=>new[]{"Melee"};
             public string[] ImageExtensions=>new[]{".iso",".gcm"};
             public string[] SourceProviders=>new[]{FighterPort.Adapters.Melee.MeleeSource.DiscProvider,FighterPort.Adapters.Melee.MeleeSource.FolderProvider};

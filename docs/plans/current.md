@@ -1,5 +1,19 @@
 # Current milestone M2 — simpler native workspace
 
+2 November: preview.76 makes the main Melee action list adapter-backed for
+presentation. It shows **Melee** and exact native action associations instead
+of the implementation's BRRES/CHR labels; the source mini-preview also plays
+owned HSD motion without creating a CHR0 resource. The existing main editor,
+native DAT action export, Undo, project Save/reopen and Brawl paths remain in
+place. Private-desktop Melee editing/reopen and Brawl target regressions passed.
+See [bounded acceptance](../NATIVE_ACTION_PRESENTATION_2026-11-02.md).
+
+This corrects the reported labels, but **does not complete native Melee target
+storage**. The main target still keeps editable curves in a CHR0/BRRES bridge;
+DAT-native curve ownership, direct DAT import, fractional action writing,
+edited model output and future-format parity remain OPEN within the same one
+incomplete G1/M2. Do not present the list labels as a native storage migration.
+
 2 November: preview.75 adds a bounded native Melee model-source export from
 the main target viewer. The new Animation menu command publishes the exact
 project-owned costume DAT, whose HSD graph contains the rendered textures,

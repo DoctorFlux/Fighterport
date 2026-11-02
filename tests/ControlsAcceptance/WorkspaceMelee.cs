@@ -2,6 +2,7 @@ using BrawlCrate.Studio;
 using BrawlCrate.UI;
 using FighterPort.Adapters.Melee;
 using BrawlLib.SSBB.ResourceNodes;
+using BrawlLib.Internal.Windows.Controls.ModelViewer.MainWindowBase;
 using System;
 using System.IO;
 using System.Linq;
@@ -73,6 +74,9 @@ internal static partial class Program
             Check(costumes.Length==expectedCostumes&&expectedCostumes>0&&costumes.Count(c=>c.IsCanonical)==1,"Costume choices include every exact compatible native rig inside this source instance");
             using(var lease=library.OpenPreview(wait.Clip.Id))
             {
+                Check(lease.Animation==null&&lease.PreviewAnimation==null&&lease.MotionRoot==null&&lease.NativePreviewOnly&&
+                    lease.DisplayAnimationName==idleArg&&lease.DisplayFrameCount==wait.Clip.FrameCount,
+                    "Read-only Melee preview owns native HSD motion without baking a CHR0 authoring copy");
                 Check(lease.MeleePlayback.JointCount==lease.Model.AllBones.Count,"Native Melee model and display projection preserve every authentic joint identity for "+actorArg);
                 Console.WriteLine("TRACE MESH "+lease.Model.Objects.Length+" vertices "+lease.Model.PolygonList.OfType<MDL0ObjectNode>().Sum(o=>o.Vertices?.Count??0)+" bounds "+lease.Model.GetBox());
                 Check(lease.Model.PolygonList.OfType<MDL0ObjectNode>().Sum(o=>o.Vertices?.Count??0)>0,"Original Melee source model includes decoded native geometry in the retained viewport");
@@ -89,6 +93,9 @@ internal static partial class Program
                 if(next==null)throw new InvalidDataException("Exact held-out "+nextIdleArg+" fixture is missing for "+actorArg+"; no replacement was chosen.");
                 var model=lease.Model;
                 Check(library.TrySelectPreview(lease,next.Clip.Id,wait.Model.Id)&&ReferenceEquals(model,lease.Model),"Same-model source selection prepares the next native motion without scene/model reconstruction");
+                Check(lease.Animation==null&&lease.PreviewAnimation==null&&lease.MotionRoot==null&&
+                    lease.DisplayAnimationName==nextIdleArg&&lease.DisplayFrameCount==next.Clip.FrameCount,
+                    "Same-model native preview changes its HSD motion without baking or retaining CHR0 curves");
             }
             using(var startup=MainForm.StartViewerApplication())
             {
@@ -122,7 +129,7 @@ internal static partial class Program
                     var search=(TextBox)Field(form,"_librarySearch");search.Text=fixture.Item2;((System.Windows.Forms.Timer)Field(form,"_librarySearchTimer")).Stop();Call(form,"RefreshLibrary",item.Clip.Id);
                     var tree=(TreeView)Field(form,"_libraryList");await GameLibraryWait(()=>AllNodes(tree.Nodes).Any(n=>(n.Tag as LibrarySearchItem)?.Clip.Id==item.Clip.Id),"Native exact motion tree item did not settle.");tree.SelectedNode=AllNodes(tree.Nodes).Single(n=>(n.Tag as LibrarySearchItem)?.Clip.Id==item.Clip.Id);
                     await GameLibraryWait(()=>Field(form,"_libraryLease") is LibrarySourceLease ready&&ready.Reference.ClipId==item.Clip.Id,"Melee corpus source preview did not settle: "+actor+"; issue "+Field(form,"_simpleWorkspaceSourceIssue"));
-                    var ready=(LibrarySourceLease)Field(form,"_libraryLease");MeleeLibraryPreview.Apply(ready,Math.Min(12.25f,ready.PreviewAnimation.FrameCount));
+                    var ready=(LibrarySourceLease)Field(form,"_libraryLease");MeleeLibraryPreview.Apply(ready,Math.Min(12.25f,ready.DisplayFrameCount));
                     Check(ready.MeleeRenderer.Parts!=null,"Exact same-source fighter data provides unambiguous native visibility tables for "+actor+": "+ready.PreviewNotice);
                     if(actor=="Peach")
                     {
@@ -195,6 +202,14 @@ internal static partial class Program
                     Check(ReferenceEquals(form,Field(MainForm.Instance,"_fighterForm")),"Melee Open as target retains the existing full native viewer window");
                     Check(form.FighterProject.TargetGame=="Melee"&&form.FighterProject.NativeTarget!=null&&form.FighterEditor.TargetModel is MDL0Node&&form.FighterEditor.SelectedCHR0!=null,"Melee model and selected motion are owned editable target masters");
                     var target=(MDL0Node)form.FighterEditor.TargetModel;var clip=form.FighterEditor.SelectedCHR0;var nativeBackend=target.NativeEditingBackend as MeleeModelEditingBackend;
+                    var actionList=form.FighterEditor.leftPanel.listAnims;
+                    var selectedAction=form.FighterProject.NativeTarget.Member(clip);
+                    Check((string)form.FighterEditor.leftPanel.fileType.SelectedItem=="Melee"&&
+                        form.FighterEditor.leftPanel.TargetAnimType==NW4RAnimType.CHR&&selectedAction!=null&&
+                        actionList.Items.Cast<ListViewItem>().Any(item=>ReferenceEquals(item.Tag,clip)&&
+                            item.Group.Header.Contains("Melee")&&item.ToolTipText.Contains(selectedAction.MotionKey))&&
+                        actionList.Groups.Cast<ListViewGroup>().All(group=>!group.Header.Contains("BRRES")&&!group.Header.Contains(".brres")),
+                        "Native Melee action identities appear in the target list while the existing editor selection remains intact");
                     Check(nativeBackend!=null,"Main target uses authentic native Melee skinning instead of the projection skinning path");
                     if(args.Contains("--melee-native-model-bundle"))
                     {

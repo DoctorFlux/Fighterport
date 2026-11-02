@@ -26,6 +26,7 @@ namespace BrawlCrate.Studio
         internal FighterPort.Adapters.Melee.MeleePlayback MeleePlayback;
         internal FighterPort.Adapters.Melee.MeleeNativeModel MeleeModel;
         internal FighterPort.Adapters.Melee.MeleeMember[] MeleeMotionMembers;
+        internal bool NativePreviewOnly;
         internal ResourceNode ModelRoot, MotionRoot;
         internal FileStream ModelLock, MotionLock;
         internal readonly List<FileStream> OriginLocks=new List<FileStream>();
@@ -33,6 +34,9 @@ namespace BrawlCrate.Studio
         public MDL0Node Model { get; internal set; }
         public CHR0Node Animation { get; internal set; }
         public NW4RAnimationNode PreviewAnimation {get;internal set;}
+        public string DisplayAnimationName=>NativePreview?.AnimationName??PreviewAnimation?.Name;
+        public int DisplayFrameCount=>NativePreview?.FrameCount??PreviewAnimation?.FrameCount??0;
+        public bool DisplayLoop=>NativePreview?.Loop??PreviewAnimation?.Loop??false;
         internal NW4RAnimationNode[] PreviewBundle;
         internal string PreviewNotice,LibraryDirectory,PreviewMotionMount;
         internal long CatalogueGeneration;

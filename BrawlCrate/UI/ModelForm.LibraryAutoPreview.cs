@@ -90,7 +90,7 @@ namespace BrawlCrate.UI
             LayoutSimpleWorkspaceLibraryPreview();_libraryPane.PerformLayout();_sourcePreviewHost?.PerformLayout();
             _libraryViewport.CreateControl();_libraryViewport.Capture();_libraryLease.MeleeRenderer?.Prepare();
             _libraryTime=0;_libraryScrubbing=true;
-            try{_libraryFrame.Maximum=_libraryLease.PreviewAnimation.FrameCount;_libraryFrame.Value=1;}finally{_libraryScrubbing=false;}
+            try{_libraryFrame.Maximum=_libraryLease.DisplayFrameCount;_libraryFrame.Value=1;}finally{_libraryScrubbing=false;}
             _libraryLease.Model.ResetToBindState();_libraryLease.Model.ApplySHP(null,0);
             _libraryViewport.ClearAll();_libraryViewport.AddReference(_libraryLease.Model.RootNode);_libraryViewport.AddTarget(_libraryLease.NativePreview?.RenderTarget??_libraryLease.Model);
             if(_libraryLease.NativePreview!=null)_libraryLease.NativePreview.ApplyDisplayFrame(1);

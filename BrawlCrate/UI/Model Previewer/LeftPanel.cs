@@ -870,6 +870,33 @@ namespace BrawlCrate.UI.Model_Previewer
             //listAnims.Groups.Add(_AnimGroupExternal);
         }
 
+        private object _standardAnimationTypes;
+        private string _nativeAnimationFormat;
+        private bool _changingAnimationFormat;
+        private ToolTip _animationFormatTip;
+
+        // The native action list still selects the same owned editor resource.
+        // Keep its type index at CHR so the complete existing animation editor
+        // remains available while the native adapter controls presentation.
+        internal void SetNativeAnimationDisplay(string format)
+        {
+            if (_nativeAnimationFormat == format) return;
+            if (_standardAnimationTypes == null) _standardAnimationTypes = fileType.DataSource;
+            _changingAnimationFormat = true;
+            try
+            {
+                _nativeAnimationFormat = format;
+                fileType.DataSource = format == null ? _standardAnimationTypes : new[] {format};
+                fileType.SelectedIndex = 0;
+                fileType.Width = format == null ? 59 : Math.Max(72, Math.Min(110, format.Length * 9 + 18));
+                if (_animationFormatTip == null) _animationFormatTip = new ToolTip(components);
+                _animationFormatTip.SetToolTip(fileType, format == null ? "Animation resource type" :
+                    "Native action source. Project edits use an editable bridge; native export is verified separately.");
+                listAnims.ShowItemToolTips = true;
+            }
+            finally { _changingAnimationFormat = false; }
+        }
+
         internal void ConfigureFighterLayout()
         {
             // The standard native viewer keeps its designer's stacked-list layout.
@@ -981,7 +1008,8 @@ namespace BrawlCrate.UI.Model_Previewer
                     Console.WriteLine();
                 }
 
-                ListViewItem item = new ListViewItem(_mainWindow.FighterAnimationLabel?.Invoke(node) ?? node.Name, (int) node.ResourceFileType, u) {Tag = node};
+                ListViewItem item = new ListViewItem(_mainWindow.FighterAnimationLabel?.Invoke(node) ?? node.Name, (int) node.ResourceFileType, u)
+                {Tag = node, ToolTipText = _mainWindow.FighterAnimationToolTip?.Invoke(node) ?? ""};
                 if (node is NW4RAnimationNode animation)
                 {
                     item.SubItems.Add(animation.FrameCount.ToString());
@@ -1017,8 +1045,8 @@ namespace BrawlCrate.UI.Model_Previewer
 
             if (TargetModel is MDL0Node)
             {
-                _AnimGroupBRRES.Header = $"In BRRES ({TargetModel})";
-                _AnimGroupNotBRRES.Header = $"Not in BRRES ({TargetModel})";
+                _AnimGroupBRRES.Header = _mainWindow.FighterAnimationGroupLabel ?? $"In BRRES ({TargetModel})";
+                _AnimGroupNotBRRES.Header = _mainWindow.FighterAdditionalAnimationGroupLabel ?? $"Not in BRRES ({TargetModel})";
 
                 listAnims.Groups.Add(_AnimGroupBRRES);
                 listAnims.Groups.Add(_AnimGroupNotBRRES);
@@ -1778,6 +1806,7 @@ namespace BrawlCrate.UI.Model_Previewer
 
         private void fileType_SelectedIndexChanged(object sender, EventArgs e)
         {
+            if (_changingAnimationFormat) return;
             _mainWindow.TargetAnimType = TargetAnimType;
             UpdateAnimations(TargetAnimType);
         }
@@ -1792,8 +1821,9 @@ namespace BrawlCrate.UI.Model_Previewer
             }
             else
             {
-                toolStripMenuItem2.Text =
-                    $"Source: {Path.GetFileName(_mainWindow.TargetAnimation.RootNode._origPath)}";
+                var root = _mainWindow.TargetAnimation.RootNode;
+                toolStripMenuItem2.Text = "Source: " +
+                    (_mainWindow.FighterResourceLabel?.Invoke(root) ?? Path.GetFileName(root._origPath));
                 if (matrixModeToolStripMenuItem.Visible = _mainWindow.TargetAnimation is SRT0Node)
                 {
                     SRT0Node node = (SRT0Node) _mainWindow.TargetAnimation;

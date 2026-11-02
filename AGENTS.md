@@ -1,5 +1,12 @@
 # Fighterport
 
+2 November — preview.76-native-action-presentation shows adapter-provided
+Melee action identities in the main list and plays HSD motion in the small
+source preview without baking CHR0. The main editable target still stores a
+BRRES/CHR0 bridge; native DAT-owned editing and direct DAT import remain OPEN.
+See [bounded evidence](docs/NATIVE_ACTION_PRESENTATION_2026-11-02.md). Keep
+the ONE incomplete G1/M2 milestone and existing native/quality gates.
+
 2 November — preview.75-native-model-source-export adds exact, project-owned
 Melee costume DAT plus embedded textures/context export from the main viewer,
 and routes the workspace animation export command through the native Melee
