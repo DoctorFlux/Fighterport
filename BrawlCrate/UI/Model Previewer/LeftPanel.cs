@@ -16,8 +16,116 @@ using System.Windows.Forms;
 
 namespace BrawlCrate.UI.Model_Previewer
 {
+    // Native formats feed the existing Model Previewer lists without creating
+    // MDL0/CHR0 stand-ins. IDs are exact member indices, not display names.
+    public sealed class NativeViewerItem
+    {
+        public int Id { get; }
+        public string Label { get; }
+        public NativeViewerItem(int id,string label){Id=id;Label=label;}
+        public override string ToString()=>Label;
+    }
+
     public class LeftPanel : UserControl
     {
+        private NativeViewerItem[] _nativeActions;
+        private Action<int> _nativeActionSelected;
+        private Action<int,bool> _nativeObjectVisibility,_nativeTextureVisibility;
+        private bool _nativePopulating;
+        private int _nativePriorAnimsHeight;
+        private int _nativePriorFileControlsHeight;
+        private bool _nativePriorFileControlsVisible,_nativePriorSyncVisible;
+        private Control _nativeSelectors;
+        public bool NativeViewerActive=>_nativeActions!=null;
+
+        public void ShowNativeViewer(Control selectors,NativeViewerItem[] actions,NativeViewerItem[] objects,
+            NativeViewerItem[] textures,Action<int> selectAction,Action<int,bool> objectVisibility,
+            Action<int,bool> textureVisibility)
+        {
+            if(!NativeViewerActive)
+            {
+                _nativePriorAnimsHeight=pnlAnims.Height;
+                _nativePriorFileControlsVisible=panel1.Visible;
+                _nativePriorFileControlsHeight=panel1.Height;
+                _nativePriorSyncVisible=chkSyncVis.Visible;
+            }
+            _nativeActions=actions??new NativeViewerItem[0];
+            _nativeActionSelected=selectAction;
+            _nativeObjectVisibility=objectVisibility;
+            _nativeTextureVisibility=textureVisibility;
+            _nativePopulating=true;_updating=true;
+            try
+            {
+                if(_nativeSelectors!=null&&_nativeSelectors!=selectors)panel1.Controls.Remove(_nativeSelectors);
+                _nativeSelectors=selectors;
+                foreach(Control control in panel1.Controls)if(control!=selectors)control.Visible=false;
+                if(selectors!=null)
+                {
+                    panel1.Controls.Add(selectors);selectors.Dock=DockStyle.Fill;selectors.Visible=true;
+                }
+                panel1.Height=84;panel1.Visible=true;chkSyncVis.Visible=false;
+                pnlAnims.Height=Math.Max(240,_nativePriorAnimsHeight);
+                listAnims.ContextMenuStrip=null;
+                lstTextures.ContextMenuStrip=null;
+                lstObjects.Items.Clear();lstTextures.Items.Clear();
+                foreach(var item in objects??new NativeViewerItem[0])lstObjects.Items.Add(item,true);
+                foreach(var item in textures??new NativeViewerItem[0])lstTextures.Items.Add(item,true);
+                RebuildNativeAnimationList();
+            }
+            finally{_updating=false;_nativePopulating=false;}
+        }
+
+        public void SelectNativeAnimation(int id)
+        {
+            if(!NativeViewerActive)return;
+            var item=listAnims.Items.Cast<ListViewItem>().FirstOrDefault(i=>(i.Tag as NativeViewerItem)?.Id==id);
+            if(item==null)return;
+            _nativePopulating=true;
+            try{listAnims.SelectedItems.Clear();item.Selected=true;item.EnsureVisible();}
+            finally{_nativePopulating=false;}
+        }
+
+        public void HideNativeViewer()
+        {
+            if(!NativeViewerActive)return;
+            _nativePopulating=true;_updating=true;
+            try
+            {
+                _nativeActions=null;_nativeActionSelected=null;
+                _nativeObjectVisibility=null;_nativeTextureVisibility=null;
+                if(_nativeSelectors!=null)panel1.Controls.Remove(_nativeSelectors);
+                _nativeSelectors=null;
+                foreach(Control control in panel1.Controls)control.Visible=true;
+                panel1.Visible=_nativePriorFileControlsVisible;
+                panel1.Height=_nativePriorFileControlsHeight;
+                chkSyncVis.Visible=_nativePriorSyncVisible;
+                pnlAnims.Height=_nativePriorAnimsHeight;
+                listAnims.ContextMenuStrip=ctxAnimList;lstTextures.ContextMenuStrip=ctxTextures;
+            }
+            finally{_updating=false;_nativePopulating=false;}
+            Reset();UpdateAnimations();
+        }
+
+        private void RebuildNativeAnimationList()
+        {
+            if(!NativeViewerActive)return;
+            int selected=(listAnims.SelectedItems.Count>0?(listAnims.SelectedItems[0].Tag as NativeViewerItem)?.Id:null)??-1;
+            string search=txtSearchAnim.ForeColor==Color.Gray?"":txtSearchAnim.Text;
+            bool previous=_nativePopulating;_nativePopulating=true;
+            try
+            {
+                listAnims.BeginUpdate();listAnims.Items.Clear();listAnims.Groups.Clear();
+                foreach(var item in _nativeActions)
+                    if(string.IsNullOrWhiteSpace(search)||
+                        (chkContains.Checked?item.Label.IndexOf(search,StringComparison.OrdinalIgnoreCase)>=0:
+                            item.Label.StartsWith(search,StringComparison.OrdinalIgnoreCase)))
+                        listAnims.Items.Add(new ListViewItem(item.Label){Tag=item,ToolTipText=item.Label});
+                listAnims.EndUpdate();
+                var retained=listAnims.Items.Cast<ListViewItem>().FirstOrDefault(i=>(i.Tag as NativeViewerItem)?.Id==selected);
+                if(retained!=null)retained.Selected=true;
+            }
+            finally{_nativePopulating=previous;}
+        }
         #region Designer
 
         public CheckedListBox lstObjects;
@@ -1029,6 +1137,7 @@ namespace BrawlCrate.UI.Model_Previewer
 
         public void UpdateAnimations(NW4RAnimType type)
         {
+            if(NativeViewerActive){RebuildNativeAnimationList();return;}
             _mainWindow.Updating = true;
 
             object selectedNode = listAnims.SelectedItems.Count > 0 ? listAnims.SelectedItems[0].Tag : null;
@@ -1322,6 +1431,7 @@ namespace BrawlCrate.UI.Model_Previewer
 
         private void lstPolygons_SelectedValueChanged(object sender, EventArgs e)
         {
+            if(NativeViewerActive)return;
             if ((_selectedObject = lstObjects.SelectedItem as IObject) != null)
             {
                 if (lstDrawCalls.Visible = spltDrawCalls.Visible =
@@ -1359,6 +1469,12 @@ namespace BrawlCrate.UI.Model_Previewer
 
         private void lstPolygons_ItemCheck(object sender, ItemCheckEventArgs e)
         {
+            if(NativeViewerActive)
+            {
+                if(!_nativePopulating)_nativeObjectVisibility?.Invoke(((NativeViewerItem)lstObjects.Items[e.Index]).Id,
+                    e.NewValue==CheckState.Checked);
+                return;
+            }
             if (_updating)
             {
                 return;
@@ -1465,6 +1581,7 @@ namespace BrawlCrate.UI.Model_Previewer
 
         private void lstTextures_SelectedValueChanged(object sender, EventArgs e)
         {
+            if(NativeViewerActive)return;
             if (_selectedTexture != null)
             {
                 _selectedTexture.Selected = false;
@@ -1569,6 +1686,12 @@ namespace BrawlCrate.UI.Model_Previewer
 
         private void lstTextures_ItemCheck(object sender, ItemCheckEventArgs e)
         {
+            if(NativeViewerActive)
+            {
+                if(!_nativePopulating)_nativeTextureVisibility?.Invoke(((NativeViewerItem)lstTextures.Items[e.Index]).Id,
+                    e.NewValue==CheckState.Checked);
+                return;
+            }
             MDL0TextureNode tref = lstTextures.Items[e.Index] as MDL0TextureNode;
 
             tref.Enabled = e.NewValue == CheckState.Checked;
@@ -1775,6 +1898,12 @@ namespace BrawlCrate.UI.Model_Previewer
 
         private void listAnims_SelectedIndexChanged(object sender, EventArgs e)
         {
+            if(NativeViewerActive)
+            {
+                if(!_nativePopulating&&listAnims.SelectedItems.Count>0&&
+                    listAnims.SelectedItems[0].Tag is NativeViewerItem item)_nativeActionSelected?.Invoke(item.Id);
+                return;
+            }
             if (_closing)
             {
                 return;
@@ -1806,6 +1935,7 @@ namespace BrawlCrate.UI.Model_Previewer
 
         private void fileType_SelectedIndexChanged(object sender, EventArgs e)
         {
+            if(NativeViewerActive)return;
             if (_changingAnimationFormat) return;
             _mainWindow.TargetAnimType = TargetAnimType;
             UpdateAnimations(TargetAnimType);
@@ -1940,6 +2070,7 @@ namespace BrawlCrate.UI.Model_Previewer
 
         private void listAnims_MouseDown(object sender, MouseEventArgs e)
         {
+            if(NativeViewerActive){listAnims.ContextMenuStrip=null;return;}
             if (e.Button == MouseButtons.Right)
             {
                 if (_mainWindow.TargetAnimation != null)
@@ -2290,11 +2421,13 @@ namespace BrawlCrate.UI.Model_Previewer
 
         private void txtSearchAnim_TextChanged(object sender, EventArgs e)
         {
+            if(NativeViewerActive){RebuildNativeAnimationList();return;}
             UpdateAnimations();
         }
 
         private void chkContains_CheckedChanged(object sender, EventArgs e)
         {
+            if(NativeViewerActive){RebuildNativeAnimationList();return;}
             UpdateAnimations();
         }
 

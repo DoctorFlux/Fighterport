@@ -1,6 +1,7 @@
 using BrawlLib.Internal;
 using BrawlLib.Internal.Windows.Controls.Model_Panel;
 using BrawlLib.OpenGL;
+using BrawlLib.SSBB.ResourceNodes;
 using OpenTK.Graphics.OpenGL;
 using System;
 using System.Collections.Generic;
@@ -286,21 +287,60 @@ namespace BrawlCrate.Studio
             internal readonly List<Bt3NativeMesh.Batch> Batches=new List<Bt3NativeMesh.Batch>();
             internal SkinInput[] Inputs;
             internal Vector3[] Positions,Normals;
-            public override void Render(ModelPanelViewport view){if(Owner.IsRendering)Owner.Render(this);}
-            public override int CompareTo(DrawCallBase other)=>0;
+            public override void Render(ModelPanelViewport view){if(Owner.IsRendering)Owner.Render(this,view);}
+            public override int CompareTo(DrawCallBase other)=>other is BoneOverlay?-1:0;
+        }
+        private sealed class BoneOverlay:DrawCallBase
+        {
+            internal Bt3NativeRender Owner;
+            public override void Render(ModelPanelViewport view)
+            {if(Owner.IsRendering&&Owner.ShowBones)Owner.RenderBoneHierarchy(view);}
+            public override int CompareTo(DrawCallBase other)=>other is BoneOverlay?0:1;
         }
         internal readonly Bt3NativeMesh.Scene Scene;
         private readonly Dictionary<int,Bt3NativeAssetReader.Bone> boneById;
         private readonly Dictionary<int,Bt3NativeMesh.Pivot> pivotById;
         private readonly List<Draw> draws=new List<Draw>();
         private readonly List<DrawCallBase> calls=new List<DrawCallBase>();
+        private readonly HashSet<Bt3NativeMesh.Batch> hiddenBatches=new HashSet<Bt3NativeMesh.Batch>();
+        private readonly HashSet<int> hiddenTextures=new HashSet<int>();
+        private readonly HashSet<int> hiddenBones=new HashSet<int>();
         private readonly Dictionary<int,Vector3> bonePoints=new Dictionary<int,Vector3>();
+        private readonly Dictionary<int,Matrix4x4> boneWorld=new Dictionary<int,Matrix4x4>();
         internal bool ShowBones;
         internal bool ShowPolygons=true;
         internal bool ShowVertices;
         internal int SelectedBoneId=-1;
         private int[] glTextures;
         internal int RenderCount;
+        internal void SetBatchVisible(int index,bool visible)
+        {
+            if(index<0||index>=Scene.Batches.Length)throw new ArgumentOutOfRangeException(nameof(index));
+            if(visible)hiddenBatches.Remove(Scene.Batches[index]);else hiddenBatches.Add(Scene.Batches[index]);
+        }
+        internal void SetTextureVisible(int index,bool visible)
+        {
+            if(index<0||index>=Scene.Textures.Length)throw new ArgumentOutOfRangeException(nameof(index));
+            if(visible)hiddenTextures.Remove(index);else hiddenTextures.Add(index);
+        }
+        internal void SetBoneVisible(int id,bool visible)
+        {
+            if(!boneById.ContainsKey(id))throw new ArgumentOutOfRangeException(nameof(id));
+            if(visible)hiddenBones.Remove(id);else hiddenBones.Add(id);
+        }
+        internal int PickBone(ModelPanelViewport view,System.Drawing.Point screen,float radius=12f)
+        {
+            if(!ShowBones||view==null)return -1;
+            int nearest=-1;float limit=radius*radius;
+            foreach(var bone in Scene.Skeleton.Bones)
+            {
+                if(hiddenBones.Contains(bone.Id)||!bonePoints.TryGetValue(bone.Id,out var world))continue;
+                var point=view.Camera.Project(new BrawlLib.Internal.Vector3(world.X,world.Y,world.Z));
+                float dx=point._x-screen.X,dy=point._y-screen.Y,d2=dx*dx+dy*dy;
+                if(d2<limit){limit=d2;nearest=bone.Id;}
+            }
+            return nearest;
+        }
         public bool IsRendering{get;set;}=true;
         public bool Attached{get;private set;}
         public event EventHandler DrawCallsChanged{add{} remove{}}
@@ -321,6 +361,7 @@ namespace BrawlCrate.Studio
                 d.Inputs=d.Batches.SelectMany(b=>b.Triangles.Select(v=>new SkinInput{Batch=b,Vertex=v})).ToArray();
                 d.Positions=new Vector3[d.Inputs.Length];d.Normals=new Vector3[d.Inputs.Length];
             }
+            calls.Add(new BoneOverlay{Owner=this});
             Apply(null,0);
         }
         public void Attach(){Attached=true;}
@@ -341,10 +382,12 @@ namespace BrawlCrate.Studio
                 world[bone.Id]=bone.Parent<0?local:local*world[bone.Parent];
             }
             bonePoints.Clear();
+            boneWorld.Clear();
             foreach(var bone in rig.Bones)
             {
                 var p=world[bone.Id].Translation;
                 bonePoints[bone.Id]=new Vector3(-p.X,-p.Y,-p.Z);
+                boneWorld[bone.Id]=world[bone.Id];
             }
             foreach(var d in draws)
             {
@@ -383,7 +426,7 @@ namespace BrawlCrate.Studio
                 GL.TexParameter(TextureTarget.Texture2D,TextureParameterName.TextureWrapT,(int)TextureWrapMode.Repeat);
             }
         }
-        private void Render(Draw d)
+        private void Render(Draw d,ModelPanelViewport view)
         {
             GL.GetInteger(GetPName.CurrentProgram,out int priorProgram);
             GL.PushAttrib(AttribMask.AllAttribBits);
@@ -393,16 +436,20 @@ namespace BrawlCrate.Studio
                 GL.Enable(EnableCap.Texture2D);GL.BindTexture(TextureTarget.Texture2D,glTextures[d.Texture]);
                 GL.Enable(EnableCap.DepthTest);GL.Disable(EnableCap.CullFace);
                 GL.Enable(EnableCap.Blend);GL.BlendFunc(BlendingFactorSrc.SrcAlpha,BlendingFactorDest.OneMinusSrcAlpha);
-                if(ShowPolygons)
+                if(ShowPolygons&&!hiddenTextures.Contains(d.Texture))
                 {
                     GL.Begin(BeginMode.Triangles);
-                    for(int i=0;i<d.Inputs.Length;i++)
+                    for(int i=0;i+2<d.Inputs.Length;i+=3)
                     {
-                        var n=d.Normals[i];float key=Math.Max(0,Vector3.Dot(n,Vector3.Normalize(new Vector3(-.35f,.7f,.6f))));
-                        float fill=Math.Max(0,Vector3.Dot(n,Vector3.Normalize(new Vector3(.5f,.3f,-.4f))));
-                        float light=Math.Min(1.15f,.64f+.38f*key+.18f*fill);
-                        GL.Color4(light,light,light,1f);var uv=d.Inputs[i].Vertex;GL.TexCoord2(uv.U,uv.V);
-                        var p=d.Positions[i];GL.Vertex3(p.X,p.Y,p.Z);
+                        if(hiddenBatches.Contains(d.Inputs[i].Batch))continue;
+                        for(int j=i;j<i+3;j++)
+                        {
+                            var n=d.Normals[j];float key=Math.Max(0,Vector3.Dot(n,Vector3.Normalize(new Vector3(-.35f,.7f,.6f))));
+                            float fill=Math.Max(0,Vector3.Dot(n,Vector3.Normalize(new Vector3(.5f,.3f,-.4f))));
+                            float light=Math.Min(1.15f,.64f+.38f*key+.18f*fill);
+                            GL.Color4(light,light,light,1f);var uv=d.Inputs[j].Vertex;GL.TexCoord2(uv.U,uv.V);
+                            var p=d.Positions[j];GL.Vertex3(p.X,p.Y,p.Z);
+                        }
                     }
                     GL.End();RenderCount++;
                 }
@@ -411,32 +458,61 @@ namespace BrawlCrate.Studio
                     GL.Disable(EnableCap.Texture2D);GL.Disable(EnableCap.Lighting);
                     GL.Disable(EnableCap.DepthTest);GL.PointSize(2f);GL.Color4(.95f,.72f,.22f,1f);
                     GL.Begin(BeginMode.Points);
-                    foreach(var p in d.Positions)GL.Vertex3(p.X,p.Y,p.Z);
+                    for(int i=0;i<d.Positions.Length;i++)if(!hiddenBatches.Contains(d.Inputs[i].Batch))
+                    {var p=d.Positions[i];GL.Vertex3(p.X,p.Y,p.Z);}
                     GL.End();
                 }
-                if(ShowBones&&ReferenceEquals(d,draws[0]))RenderBoneHierarchy();
             }
             finally{GL.UseProgram(priorProgram);GL.PopAttrib();}
         }
-        private void RenderBoneHierarchy()
+        private void RenderBoneHierarchy(ModelPanelViewport view)
         {
+            GL.PushAttrib(AttribMask.AllAttribBits);
+            try
+            {
             GL.Disable(EnableCap.Texture2D);GL.Disable(EnableCap.Lighting);
             GL.Disable(EnableCap.DepthTest);GL.Disable(EnableCap.Blend);
             GL.LineWidth(1.5f);GL.Color4(.20f,.90f,.95f,1f);
-            GL.Begin(BeginMode.Lines);
             foreach(var bone in Scene.Skeleton.Bones)
-                if(bone.Parent>=0&&bonePoints.TryGetValue(bone.Parent,out var parent)&&
-                    bonePoints.TryGetValue(bone.Id,out var child))
-                {GL.Vertex3(parent.X,parent.Y,parent.Z);GL.Vertex3(child.X,child.Y,child.Z);}
-            GL.End();
-            if(!bonePoints.TryGetValue(SelectedBoneId,out var point))return;
-            const float radius=.18f;
-            GL.LineWidth(3f);GL.Color4(1f,.88f,.16f,1f);
-            GL.Begin(BeginMode.Lines);
-            GL.Vertex3(point.X-radius,point.Y,point.Z);GL.Vertex3(point.X+radius,point.Y,point.Z);
-            GL.Vertex3(point.X,point.Y-radius,point.Z);GL.Vertex3(point.X,point.Y+radius,point.Z);
-            GL.Vertex3(point.X,point.Y,point.Z-radius);GL.Vertex3(point.X,point.Y,point.Z+radius);
-            GL.End();
+            {
+                if(hiddenBones.Contains(bone.Id)||!bonePoints.TryGetValue(bone.Id,out var point))continue;
+                bool selected=bone.Id==SelectedBoneId;
+                var line=selected?System.Drawing.Color.FromArgb(0,128,255):MDL0BoneNode.DefaultLineColor;
+                GL.Color4(line.R/255f,line.G/255f,line.B/255f,1f);
+                if(bone.Parent>=0&&bonePoints.TryGetValue(bone.Parent,out var parent))
+                {
+                    GL.Begin(BeginMode.Lines);
+                    GL.Vertex3(parent.X,parent.Y,parent.Z);GL.Vertex3(point.X,point.Y,point.Z);
+                    GL.End();
+                }
+                var orb=selected?System.Drawing.Color.FromArgb(255,128,0):MDL0BoneNode.DefaultNodeColor;
+                GL.Color4(orb.R/255f,orb.G/255f,orb.B/255f,1f);
+                GL.PushMatrix();GL.Translate(point.X,point.Y,point.Z);
+                float scale=view?._renderAttrib._scaleBones==true?
+                    BrawlLib.Internal.Windows.Controls.ModelViewer.MainWindowBase.ModelEditorBase.OrbRadius(
+                        new BrawlLib.Internal.Vector3(point.X,point.Y,point.Z),view.Camera):1f;
+                GL.Scale(scale,scale,scale);
+                TKContext.FindOrCreate("BoneNodeOrb",MDL0BoneNode.CreateNodeOrb).Call();
+                GL.PopMatrix();
+                if(!boneWorld.TryGetValue(bone.Id,out var transform))continue;
+                const float axis=MDL0BoneNode._nodeRadius*2f;
+                var x=-Vector3.TransformNormal(Vector3.UnitX,transform)*axis*scale;
+                var y=-Vector3.TransformNormal(Vector3.UnitY,transform)*axis*scale;
+                var z=-Vector3.TransformNormal(Vector3.UnitZ,transform)*axis*scale;
+                GL.Begin(BeginMode.Lines);
+                GL.Color4(1f,0f,0f,1f);GL.Vertex3(point.X,point.Y,point.Z);GL.Vertex3(point.X+x.X,point.Y+x.Y,point.Z+x.Z);
+                GL.Color4(0f,1f,0f,1f);GL.Vertex3(point.X,point.Y,point.Z);GL.Vertex3(point.X+y.X,point.Y+y.Y,point.Z+y.Z);
+                GL.Color4(0f,0f,1f,1f);GL.Vertex3(point.X,point.Y,point.Z);GL.Vertex3(point.X+z.X,point.Y+z.Y,point.Z+z.Z);
+                GL.End();
+                if(selected&&view!=null)
+                {
+                    var projected=view.Camera.Project(new BrawlLib.Internal.Vector3(point.X,point.Y,point.Z));
+                    view.SettingsScreenText["Bone "+bone.Id.ToString("D2")]=new BrawlLib.Internal.Vector3(
+                        projected._x,projected._y-9f,projected._z);
+                }
+            }
+            }
+            finally{GL.PopAttrib();}
         }
         public void Dispose()
         {

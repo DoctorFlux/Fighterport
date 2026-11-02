@@ -1,5 +1,6 @@
 using BrawlCrate.Studio;
 using BrawlLib.Internal.Windows.Controls.Model_Panel;
+using BrawlLib.Internal.Windows.Controls.ModelViewer.Panels;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -22,6 +23,7 @@ namespace BrawlCrate.UI
         private ModelPanel _bt3TargetViewport;
         private Control _bt3OriginalViewportParent;
         private BrawlLib.OpenGL.IRenderedObject[] _bt3OriginalRenderTargets;
+        private Comparison<BrawlLib.OpenGL.DrawCallBase> _bt3OriginalDrawCallSort;
         private bool _bt3OriginalLeftVisible,_bt3OriginalRightVisible;
         private Control _bt3OriginalAnimationEditors;
         private bool _bt3OriginalAnimationEditorsVisible,_bt3OriginalSelection,_bt3OriginalFloor;
@@ -37,10 +39,26 @@ namespace BrawlCrate.UI
         private ComboBox _bt3TargetForm, _bt3TargetCostume;
         private ListBox _bt3TargetAction;
         private Control _bt3NativeLeftPane,_bt3NativeRightPane;
+        private Control _bt3NativeTransformPanel;
+        private ComboBox _bt3RightTab;
+        private int _bt3OriginalAnimEditorsHeight,_bt3OriginalAnimControlWidth;
+        private Dictionary<Control,bool> _bt3OriginalAnimControlsVisible;
+        private bool _bt3OriginalKeyframePanelEnabled;
+        private int _bt3OriginalRightTab;
+        private int _bt3SelectedBoneId=-1;
+        private Label _bt3SelectedBoneLabel;
         private int _bt3OriginalLeftWidth,_bt3OriginalRightWidth;
-        private TrackBar _bt3TargetFrame;
+        private BrawlLib.Modeling.IBoneNode _bt3OriginalSelectedBone;
+        private BrawlLib.SSBB.ResourceNodes.NW4RAnimationNode _bt3OriginalAnimation;
+        private int _bt3OriginalFrame;
+        private ModelPlaybackPanel _bt3TargetPlayback;
+        private Control _bt3OriginalPlaybackParent;
+        private DockStyle _bt3OriginalPlaybackDock;
+        private bool _bt3OriginalPlaybackEnabled,_bt3OriginalPreviewLoop;
+        private bool[] _bt3OriginalPlaybackButtonsEnabled;
+        private decimal _bt3OriginalPlaybackFrame,_bt3OriginalPlaybackTotal,_bt3OriginalPlaybackFps;
         private Label _bt3TargetCaption;
-        private Button _bt3TargetPlay;
+        private bool _bt3PreviewLoop;
         private System.Windows.Forms.Timer _bt3TargetTimer;
         private readonly Stopwatch _bt3TargetClock=new Stopwatch();
         private Bt3BrowseChoice _bt3TargetChoice;
@@ -48,7 +66,6 @@ namespace BrawlCrate.UI
         private Bt3NativeAssetReader.Motion _bt3TargetMotion;
         private Bt3NativeMotionEditor _bt3TargetEditor;
         private readonly Dictionary<string,Bt3NativeMotionEditor> _bt3TargetEdits=new Dictionary<string,Bt3NativeMotionEditor>(StringComparer.Ordinal);
-        private TreeView _bt3EditBone;
         private NumericUpDown[] _bt3EditTranslation,_bt3EditRotation;
         private Button _bt3EditApply,_bt3EditUndo,_bt3EditRedo,_bt3EditExport;
         private Button _bt3EditImport;
@@ -63,6 +80,15 @@ namespace BrawlCrate.UI
             public override string ToString()=>Bt3ActionLabels.Describe(Action);
         }
 
+        private sealed class Bt3TargetTransport : INativeModelTransport
+        {
+            private readonly ModelForm _owner;
+            internal Bt3TargetTransport(ModelForm owner){_owner=owner;}
+            public void TogglePlay(){_owner.ToggleBt3TargetPlayback();}
+            public void SeekDisplayFrame(int frame){_owner.SeekBt3TargetDisplayFrame(frame);}
+            public void SetPreviewLoop(bool loop){_owner._bt3PreviewLoop=loop;}
+        }
+
         private static ComboBox Bt3TargetCombo(string name,int width)
             =>new ComboBox{Name=name,Width=width,DropDownStyle=ComboBoxStyle.DropDownList,Margin=new Padding(3)};
 
@@ -70,59 +96,53 @@ namespace BrawlCrate.UI
         {
             if(_bt3TargetHost!=null)return;
             _bt3TargetHost=new TableLayoutPanel{Name="bt3NativeTargetView",Dock=DockStyle.Fill,
-                ColumnCount=1,RowCount=3,Visible=false,BackColor=Color.FromArgb(29,32,38)};
+                ColumnCount=1,RowCount=2,Visible=false,BackColor=Color.FromArgb(29,32,38)};
             _bt3TargetHost.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
             _bt3TargetHost.RowStyles.Add(new RowStyle(SizeType.Absolute,42));
             _bt3TargetHost.RowStyles.Add(new RowStyle(SizeType.Percent,100));
-            _bt3TargetHost.RowStyles.Add(new RowStyle(SizeType.Absolute,43));
-            var top=new FlowLayoutPanel{Dock=DockStyle.Fill,WrapContents=false,Padding=new Padding(6,3,3,0)};
+            var top=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=2,Padding=new Padding(6,3,3,0)};
+            top.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
+            top.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,130));
             _bt3TargetCaption=new Label{Name="bt3TargetCaption",Text="Native BT3 target animation",
-                AutoSize=false,Width=650,Height=26,ForeColor=Color.White};
-            top.Controls.Add(_bt3TargetCaption);
-            var back=new Button{Name="bt3TargetBack",Text="Return to project",AutoSize=true};
-            back.Click+=(s,e)=>CloseBt3TargetView();top.Controls.Add(back);
+                AutoSize=false,Dock=DockStyle.Fill,AutoEllipsis=true,ForeColor=Color.White,
+                TextAlign=ContentAlignment.MiddleLeft};
+            top.Controls.Add(_bt3TargetCaption,0,0);
+            var back=new Button{Name="bt3TargetBack",Text="Return to project",Dock=DockStyle.Fill};
+            back.Click+=(s,e)=>CloseBt3TargetView();top.Controls.Add(back,1,0);
             _bt3TargetHost.Controls.Add(top,0,0);
             _bt3TargetViewport=modelEditControl1.ModelPanel;
+            _bt3TargetViewport.MouseDown+=(s,e)=>{
+                if(e.Button!=MouseButtons.Left||_bt3TargetHost?.Visible!=true||_bt3TargetRenderer==null)return;
+                int id=_bt3TargetRenderer.PickBone(_bt3TargetViewport.CurrentViewport,e.Location);
+                if(id>=0)
+                {
+                    modelEditControl1.rightPanel.pnlBones.SelectNativeBone(id);
+                    if(_bt3RightTab!=null)_bt3RightTab.SelectedIndex=0;
+                }
+            };
             _bt3TargetBody=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=1,RowCount=1,Margin=Padding.Empty};
             _bt3TargetBody.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
             _bt3TargetHost.Controls.Add(_bt3TargetBody,0,1);
             _bt3NativeLeftPane=BuildBt3NativeActionPanel();
-            _bt3NativeLeftPane.Dock=DockStyle.None;
-            modelEditControl1.leftPanel.Controls.Add(_bt3NativeLeftPane);
+            _bt3NativeTransformPanel=BuildBt3NativeTransformPanel();
             _bt3NativeRightPane=BuildBt3NativeEditPanel();
-            _bt3NativeRightPane.Dock=DockStyle.None;
-            modelEditControl1.rightPanel.Controls.Add(_bt3NativeRightPane);
-            modelEditControl1.leftPanel.SizeChanged+=(s,e)=>LayoutBt3NativeSidePanes();
-            modelEditControl1.rightPanel.SizeChanged+=(s,e)=>LayoutBt3NativeSidePanes();
             var viewTools=modelEditControl1.Controls.Find("toolStrip1",true).OfType<ToolStrip>().FirstOrDefault();
             _bt3BonesToggle=viewTools?.Items.Find("chkBones",true).OfType<ToolStripButton>().FirstOrDefault();
             _bt3PolygonsToggle=viewTools?.Items.Find("chkPolygons",true).OfType<ToolStripButton>().FirstOrDefault();
             _bt3VerticesToggle=viewTools?.Items.Find("chkVertices",true).OfType<ToolStripButton>().FirstOrDefault();
             foreach(var toggle in new[]{_bt3BonesToggle,_bt3PolygonsToggle,_bt3VerticesToggle})
                 if(toggle!=null)toggle.Click+=(s,e)=>SyncBt3NativeRenderToggles();
-            var transport=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=2};
-            transport.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,80));
-            transport.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
-            _bt3TargetPlay=new Button{Name="bt3TargetPlay",Text="Play",Dock=DockStyle.Fill};
-            _bt3TargetPlay.Click+=(s,e)=>{
-                if(_bt3TargetMotion==null)return;
-                if(_bt3TargetTimer.Enabled)StopBt3TargetPlayback();
-                else{modelEditControl1.StopAnim();_bt3TargetClock.Restart();_bt3TargetTimer.Start();_bt3TargetPlay.Text="Pause";}
-            };
-            _bt3TargetFrame=new TrackBar{Name="bt3TargetFrame",Dock=DockStyle.Fill,
-                AutoSize=false,Minimum=1,Maximum=1,TickStyle=TickStyle.None};
-            _bt3TargetFrame.ValueChanged+=(s,e)=>{
-                if(_bt3TargetUpdating||_bt3TargetMotion==null)return;
-                _bt3TargetTime=_bt3TargetFrame.Value-1;_bt3TargetClock.Restart();RenderBt3TargetFrame();
-            };
-            transport.Controls.Add(_bt3TargetPlay,0,0);transport.Controls.Add(_bt3TargetFrame,1,0);
-            _bt3TargetHost.Controls.Add(transport,0,2);
+            _bt3TargetPlayback=modelEditControl1.PlaybackPanel;
             _bt3TargetTimer=new System.Windows.Forms.Timer{Interval=16};
             _bt3TargetTimer.Tick+=(s,e)=>{
                 if(_bt3TargetMotion==null||_bt3TargetHost?.Visible!=true){StopBt3TargetPlayback();return;}
                 _bt3TargetTime+=_bt3TargetClock.Elapsed.TotalSeconds*60;_bt3TargetClock.Restart();
                 if(_bt3TargetTime>=_bt3TargetMotion.Length)
-                {_bt3TargetTime=_bt3TargetMotion.Length;StopBt3TargetPlayback();}
+                {
+                    if(_bt3PreviewLoop&&_bt3TargetMotion.Length>0)
+                        _bt3TargetTime %= _bt3TargetMotion.Length;
+                    else{_bt3TargetTime=_bt3TargetMotion.Length;StopBt3TargetPlayback();}
+                }
                 RenderBt3TargetFrame();
             };
             _bt3TargetForm.SelectedIndexChanged+=(s,e)=>{
@@ -139,18 +159,6 @@ namespace BrawlCrate.UI
             modelEditControl1.ModelPanel.Parent.Controls.Add(_bt3TargetHost);
         }
 
-        private sealed class Bt3BoneOption
-        {
-            internal int Id;
-            public override string ToString()=>"Bone "+Id.ToString("D2");
-        }
-        private void LayoutBt3NativeSidePanes()
-        {
-            if(_bt3NativeLeftPane?.Visible==true)
-                _bt3NativeLeftPane.Bounds=modelEditControl1.leftPanel.ClientRectangle;
-            if(_bt3NativeRightPane?.Visible==true)
-                _bt3NativeRightPane.Bounds=modelEditControl1.rightPanel.ClientRectangle;
-        }
         private void SyncBt3NativeRenderToggles()
         {
             if(_bt3TargetRenderer==null)return;
@@ -161,11 +169,10 @@ namespace BrawlCrate.UI
         }
         private Control BuildBt3NativeActionPanel()
         {
-            var panel=new TableLayoutPanel{Name="bt3NativeActionPanel",Dock=DockStyle.Fill,Visible=false,
-                BackColor=Color.FromArgb(35,39,46),ColumnCount=1,RowCount=6,Padding=new Padding(5)};
+            var panel=new TableLayoutPanel{Name="bt3NativeSelectors",Dock=DockStyle.Fill,
+                BackColor=Color.FromArgb(35,39,46),ColumnCount=1,RowCount=4,Padding=new Padding(2)};
             panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
-            foreach(int height in new[]{23,27,23,27,23})panel.RowStyles.Add(new RowStyle(SizeType.Absolute,height));
-            panel.RowStyles.Add(new RowStyle(SizeType.Percent,100));
+            foreach(int height in new[]{16,24,16,24})panel.RowStyles.Add(new RowStyle(SizeType.Absolute,height));
             Label Title(string value)=>new Label{Text=value,Dock=DockStyle.Fill,ForeColor=Color.White};
             panel.Controls.Add(Title("Transform"),0,0);
             _bt3TargetForm=Bt3TargetCombo("bt3TargetTransform",180);_bt3TargetForm.Dock=DockStyle.Fill;
@@ -173,59 +180,59 @@ namespace BrawlCrate.UI
             panel.Controls.Add(Title("Costume"),0,2);
             _bt3TargetCostume=Bt3TargetCombo("bt3TargetCostume",180);_bt3TargetCostume.Dock=DockStyle.Fill;
             panel.Controls.Add(_bt3TargetCostume,0,3);
-            panel.Controls.Add(Title("Animations"),0,4);
-            _bt3TargetAction=new ListBox{Name="bt3TargetAction",Dock=DockStyle.Fill,
-                IntegralHeight=false,BackColor=Color.FromArgb(28,32,40),ForeColor=Color.White};
-            panel.Controls.Add(_bt3TargetAction,0,5);return panel;
+            _bt3TargetAction=new ListBox{Name="bt3TargetActionState"};
+            return panel;
+        }
+        private Control BuildBt3NativeTransformPanel()
+        {
+            var panel=new TableLayoutPanel{Name="bt3NativeTransformPanel",Dock=DockStyle.Fill,ColumnCount=4,RowCount=4,
+                BackColor=Color.FromArgb(35,39,46),Padding=new Padding(2)};
+            panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,76));
+            for(int i=0;i<3;i++)panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100f/3f));
+            foreach(int height in new[]{18,26,26,32})panel.RowStyles.Add(new RowStyle(SizeType.Absolute,height));
+            for(int i=0;i<3;i++)panel.Controls.Add(new Label{Text=new[]{"X","Y","Z"}[i],Dock=DockStyle.Fill,
+                ForeColor=Color.White,TextAlign=ContentAlignment.MiddleCenter},i+1,0);
+            panel.Controls.Add(new Label{Text="Position",Dock=DockStyle.Fill,ForeColor=Color.White},0,1);
+            _bt3EditTranslation=Enumerable.Range(0,3).Select(i=>Bt3EditNumber("bt3EditTranslation"+i,100000,4)).ToArray();
+            for(int i=0;i<3;i++){_bt3EditTranslation[i].Dock=DockStyle.Fill;panel.Controls.Add(_bt3EditTranslation[i],i+1,1);}
+            panel.Controls.Add(new Label{Text="Rotate +°",Dock=DockStyle.Fill,ForeColor=Color.White},0,2);
+            _bt3EditRotation=Enumerable.Range(0,3).Select(i=>Bt3EditNumber("bt3EditRotation"+i,3600,3)).ToArray();
+            for(int i=0;i<3;i++){_bt3EditRotation[i].Dock=DockStyle.Fill;panel.Controls.Add(_bt3EditRotation[i],i+1,2);}
+            _bt3SelectedBoneLabel=new Label{Name="bt3SelectedBoneLabel",Text="Bone —",Dock=DockStyle.Fill,
+                ForeColor=Color.White,TextAlign=ContentAlignment.MiddleLeft};
+            panel.Controls.Add(_bt3SelectedBoneLabel,0,3);
+            _bt3EditApply=new Button{Name="bt3ApplyNativeKey",Text="Apply key",Dock=DockStyle.Fill};
+            _bt3EditApply.Click+=(s,e)=>ApplyBt3NativeKey();panel.Controls.Add(_bt3EditApply,1,3);
+            _bt3EditUndo=new Button{Name="bt3NativeUndo",Text="Undo",Dock=DockStyle.Fill};
+            _bt3EditRedo=new Button{Name="bt3NativeRedo",Text="Redo",Dock=DockStyle.Fill};
+            _bt3EditUndo.Click+=(s,e)=>{_bt3TargetEditor?.Undo();SyncBt3NativeEditor();};
+            _bt3EditRedo.Click+=(s,e)=>{_bt3TargetEditor?.Redo();SyncBt3NativeEditor();};
+            panel.Controls.Add(_bt3EditUndo,2,3);panel.Controls.Add(_bt3EditRedo,3,3);
+            return panel;
         }
         private Control BuildBt3NativeEditPanel()
         {
-            var panel=new FlowLayoutPanel{Name="bt3NativeEditPanel",Dock=DockStyle.Fill,Visible=false,FlowDirection=FlowDirection.TopDown,
-                WrapContents=false,AutoScroll=true,Padding=new Padding(6),BackColor=Color.FromArgb(35,39,46)};
-            void Label(string text){panel.Controls.Add(new Label{Text=text,Width=204,Height=24,ForeColor=Color.White});}
-            Label("Native bones · parent hierarchy");
-            _bt3EditBone=new TreeView{Name="bt3EditBone",Width=204,Height=190,
-                HideSelection=false,BackColor=Color.FromArgb(28,32,40),ForeColor=Color.White};
-            panel.Controls.Add(_bt3EditBone);
-            Label("Selected bone · current frame");
-            Label("Translation · native X / Y / Z");
-            _bt3EditTranslation=Enumerable.Range(0,3).Select(i=>Bt3EditNumber("bt3EditTranslation"+i,100000,4)).ToArray();
-            foreach(var number in _bt3EditTranslation)panel.Controls.Add(number);
-            Label("Add rotation · degrees X / Y / Z");
-            _bt3EditRotation=Enumerable.Range(0,3).Select(i=>Bt3EditNumber("bt3EditRotation"+i,3600,3)).ToArray();
-            foreach(var number in _bt3EditRotation)panel.Controls.Add(number);
-            _bt3EditApply=new Button{Name="bt3ApplyNativeKey",Text="Apply key",Width=204,Height=30};
-            _bt3EditApply.Click+=(s,e)=>ApplyBt3NativeKey();panel.Controls.Add(_bt3EditApply);
-            var history=new FlowLayoutPanel{Width=210,Height=38};
-            _bt3EditUndo=new Button{Name="bt3NativeUndo",Text="Undo",Width=99};
-            _bt3EditRedo=new Button{Name="bt3NativeRedo",Text="Redo",Width=99};
-            _bt3EditUndo.Click+=(s,e)=>{_bt3TargetEditor?.Undo();SyncBt3NativeEditor();};
-            _bt3EditRedo.Click+=(s,e)=>{_bt3TargetEditor?.Redo();SyncBt3NativeEditor();};
-            history.Controls.Add(_bt3EditUndo);history.Controls.Add(_bt3EditRedo);panel.Controls.Add(history);
+            var panel=new FlowLayoutPanel{Name="bt3NativeEditPanel",Dock=DockStyle.Fill,Visible=false,
+                FlowDirection=FlowDirection.TopDown,WrapContents=false,AutoScroll=true,Padding=new Padding(6),
+                BackColor=Color.FromArgb(35,39,46)};
+            panel.Controls.Add(new Label{Text="Native BT3 action member",Width=204,Height=30,ForeColor=Color.White});
             _bt3EditExport=new Button{Name="bt3ExportNativeMotion",Text="Save native motion...",Width=204,Height=32};
             _bt3EditExport.Click+=(s,e)=>SaveBt3NativeMotion();panel.Controls.Add(_bt3EditExport);
             _bt3EditImport=new Button{Name="bt3ImportNativeMotion",Text="Load native motion...",Width=204,Height=32};
             _bt3EditImport.Click+=(s,e)=>ImportBt3NativeMotion();panel.Controls.Add(_bt3EditImport);
-            Label("Original disc remains unchanged.");
-            _bt3EditBone.AfterSelect+=(s,e)=>{
-                if(_bt3TargetRenderer!=null)
-                {
-                    _bt3TargetRenderer.SelectedBoneId=(e.Node.Tag as Bt3BoneOption)?.Id??-1;
-                    _bt3TargetViewport.Invalidate();
-                }
-                RefreshBt3NativePoseControls();
-            };
+            panel.Controls.Add(new Label{Text="Original disc remains unchanged.",Width=204,Height=30,ForeColor=Color.White});
             return panel;
         }
         private static NumericUpDown Bt3EditNumber(string name,int range,int decimals)
-            =>new NumericUpDown{Name=name,Width=204,Minimum=-range,Maximum=range,DecimalPlaces=decimals,
+            =>new NumericUpDown{Name=name,Width=72,Minimum=-range,Maximum=range,DecimalPlaces=decimals,
                 Increment=decimals==4?0.01m:1m};
         private void RefreshBt3NativePoseControls()
         {
-            if(_bt3TargetEditor==null||!(_bt3EditBone?.SelectedNode?.Tag is Bt3BoneOption bone))return;
+            if(_bt3TargetEditor==null||_bt3SelectedBoneId<0)return;
             var rig=_bt3TargetRenderer.Scene.Skeleton;
             var pose=Bt3NativeAssetReader.Sample(rig,_bt3TargetEditor.Motion,(float)_bt3TargetTime);
-            int index=Array.FindIndex(rig.Bones,b=>b.Id==bone.Id);
+            int index=Array.FindIndex(rig.Bones,b=>b.Id==_bt3SelectedBoneId);
+            if(index<0)return;
             var value=pose.Translation[index];float[] parts={value.X,value.Y,value.Z};
             for(int i=0;i<3;i++)_bt3EditTranslation[i].Value=Math.Max(_bt3EditTranslation[i].Minimum,
                 Math.Min(_bt3EditTranslation[i].Maximum,(decimal)parts[i]));
@@ -239,19 +246,20 @@ namespace BrawlCrate.UI
         }
         private void ApplyBt3NativeKey()
         {
-            if(_bt3TargetEditor==null||!(_bt3EditBone.SelectedNode?.Tag is Bt3BoneOption bone))return;
+            if(_bt3TargetEditor==null||_bt3SelectedBoneId<0)return;
             StopBt3TargetPlayback();
             try
             {
                 var rig=_bt3TargetRenderer.Scene.Skeleton;
                 var pose=Bt3NativeAssetReader.Sample(rig,_bt3TargetEditor.Motion,(float)_bt3TargetTime);
-                int index=Array.FindIndex(rig.Bones,b=>b.Id==bone.Id);
+                int index=Array.FindIndex(rig.Bones,b=>b.Id==_bt3SelectedBoneId);
+                if(index<0)throw new InvalidDataException("The selected native bone is unavailable.");
                 var delta=Quaternion.CreateFromYawPitchRoll((float)_bt3EditRotation[1].Value*(float)Math.PI/180f,
                     (float)_bt3EditRotation[0].Value*(float)Math.PI/180f,
                     (float)_bt3EditRotation[2].Value*(float)Math.PI/180f);
                 var translation=new Vector3((float)_bt3EditTranslation[0].Value,
                     (float)_bt3EditTranslation[1].Value,(float)_bt3EditTranslation[2].Value);
-                _bt3TargetEditor.SetKey(bone.Id,_bt3TargetFrame.Value-1,translation,
+                _bt3TargetEditor.SetKey(_bt3SelectedBoneId,(int)_bt3TargetPlayback.numFrameIndex.Value-1,translation,
                     Quaternion.Normalize(pose.Rotation[index]*delta));
                 SyncBt3NativeEditor();
             }
@@ -348,6 +356,30 @@ namespace BrawlCrate.UI
                     .FirstOrDefault(a=>a.Action==wanted)??_bt3TargetAction.Items.Cast<Bt3ActionOption>().FirstOrDefault();
             }
             finally{_bt3TargetUpdating=false;}
+            if(_bt3OriginalViewportParent!=null)RefreshBt3NativeLists(null);
+        }
+
+        private void RefreshBt3NativeLists(Bt3NativeMesh.Scene scene)
+        {
+            var actions=_bt3TargetAction.Items.Cast<Bt3ActionOption>()
+                .Select(a=>new BrawlCrate.UI.Model_Previewer.NativeViewerItem(a.Action,a.ToString())).ToArray();
+            var objects=scene?.Batches.Select((batch,index)=>
+                new BrawlCrate.UI.Model_Previewer.NativeViewerItem(index,
+                    "Mesh "+index.ToString("D3")+" · bone "+batch.Bone.ToString("D2"))).ToArray()
+                ??new BrawlCrate.UI.Model_Previewer.NativeViewerItem[0];
+            var textures=scene?.Textures.Select((texture,index)=>
+                new BrawlCrate.UI.Model_Previewer.NativeViewerItem(index,
+                    "Texture "+index.ToString("D2")+" · "+texture.Width+"×"+texture.Height)).ToArray()
+                ??new BrawlCrate.UI.Model_Previewer.NativeViewerItem[0];
+            modelEditControl1.leftPanel.ShowNativeViewer(_bt3NativeLeftPane,actions,objects,textures,
+                id=>{
+                    var option=_bt3TargetAction.Items.Cast<Bt3ActionOption>().FirstOrDefault(a=>a.Action==id);
+                    if(option!=null)_bt3TargetAction.SelectedItem=option;
+                },
+                (id,visible)=>{_bt3TargetRenderer?.SetBatchVisible(id,visible);_bt3TargetViewport.Invalidate();},
+                (id,visible)=>{_bt3TargetRenderer?.SetTextureVisible(id,visible);_bt3TargetViewport.Invalidate();});
+            if(_bt3TargetAction.SelectedItem is Bt3ActionOption current)
+                modelEditControl1.leftPanel.SelectNativeAnimation(current.Action);
         }
 
         private void OpenBt3TargetView()
@@ -356,9 +388,15 @@ namespace BrawlCrate.UI
             var selected=ResolveBt3Choice(_libraryList?.SelectedNode?.Tag as Bt3BrowseChoice)
                 ??throw new InvalidOperationException("Choose an available BT3 transformation, costume and action.");
             BuildBt3TargetHost();CloseBt3TargetView(false);
+            modelEditControl1.StopAnim();
+            _bt3OriginalSelectedBone=modelEditControl1.SelectedBone;
+            _bt3OriginalAnimation=modelEditControl1.TargetAnimation;
+            _bt3OriginalFrame=modelEditControl1.CurrentFrame;
             _bt3OriginalViewportParent=_bt3TargetViewport.Parent;
             _bt3OriginalRenderTargets=_bt3TargetViewport._renderList.ToArray();
+            _bt3OriginalDrawCallSort=_bt3TargetViewport.DrawCallSort;
             foreach(var target in _bt3OriginalRenderTargets)_bt3TargetViewport.RemoveTarget(target,false);
+            _bt3TargetViewport.DrawCallSort=BrawlLib.OpenGL.DrawCallBase.Sort;
             _bt3TargetBody.Controls.Add(_bt3TargetViewport,0,0);
             _bt3OriginalSelection=_bt3TargetViewport.CurrentViewport.AllowSelection;
             _bt3OriginalFloor=_bt3TargetViewport.CurrentViewport.RenderFloor;
@@ -379,12 +417,52 @@ namespace BrawlCrate.UI
             modelEditControl1.rightPanel.Width=Math.Max(230,_bt3OriginalRightWidth);
             modelEditControl1.leftPanel.Visible=true;
             modelEditControl1.rightPanel.Visible=true;
-            _bt3NativeLeftPane.Visible=true;_bt3NativeLeftPane.BringToFront();
-            _bt3NativeRightPane.Visible=true;_bt3NativeRightPane.BringToFront();
-            LayoutBt3NativeSidePanes();
+            _bt3RightTab=modelEditControl1.rightPanel.Controls.Find("editor",true).OfType<ComboBox>().FirstOrDefault();
+            _bt3OriginalRightTab=_bt3RightTab?.SelectedIndex??0;
+            if(_bt3RightTab!=null){_bt3RightTab.Items[1]="Native keys";_bt3RightTab.SelectedIndex=0;}
+            _bt3OriginalKeyframePanelEnabled=modelEditControl1.rightPanel.pnlKeyframes.Enabled;
+            modelEditControl1.rightPanel.pnlKeyframes.Enabled=true;
+            modelEditControl1.rightPanel.pnlKeyframes.Controls.Add(_bt3NativeRightPane);
+            _bt3NativeRightPane.Dock=DockStyle.Fill;_bt3NativeRightPane.Visible=true;
+            _bt3NativeRightPane.BringToFront();
+            modelEditControl1.rightPanel.pnlBones.NativeBoneSelected=id=>{
+                _bt3SelectedBoneId=id;
+                if(_bt3SelectedBoneLabel!=null)_bt3SelectedBoneLabel.Text="Bone "+id.ToString("D2");
+                if(_bt3TargetRenderer!=null){_bt3TargetRenderer.SelectedBoneId=id;_bt3TargetViewport.Invalidate();}
+                RefreshBt3NativePoseControls();
+            };
+            modelEditControl1.rightPanel.pnlBones.NativeBoneVisibility=(id,visible)=>{
+                _bt3TargetRenderer?.SetBoneVisible(id,visible);_bt3TargetViewport.Invalidate();
+            };
             _bt3OriginalAnimationEditors=modelEditControl1.pnlPlayback.Parent;
             _bt3OriginalAnimationEditorsVisible=_bt3OriginalAnimationEditors?.Visible==true;
-            if(_bt3OriginalAnimationEditors!=null)_bt3OriginalAnimationEditors.Visible=false;
+            _bt3OriginalAnimEditorsHeight=modelEditControl1.animEditors.Height;
+            _bt3OriginalAnimControlWidth=modelEditControl1.animCtrlPnl.Width;
+            _bt3OriginalAnimControlsVisible=modelEditControl1.animCtrlPnl.Controls.Cast<Control>()
+                .ToDictionary(control=>control,control=>control.Visible);
+            foreach(var control in _bt3OriginalAnimControlsVisible.Keys)control.Visible=false;
+            modelEditControl1.animCtrlPnl.Controls.Add(_bt3NativeTransformPanel);
+            _bt3NativeTransformPanel.Dock=DockStyle.Fill;_bt3NativeTransformPanel.Visible=true;
+            _bt3NativeTransformPanel.BringToFront();
+            modelEditControl1.NativeEditorSize=new Size(320,106);
+            modelEditControl1.CheckDimensions();
+            modelEditControl1.animEditors.Visible=true;
+            _bt3OriginalPlaybackParent=_bt3TargetPlayback.Parent;
+            _bt3OriginalPlaybackDock=_bt3TargetPlayback.Dock;
+            _bt3OriginalPlaybackEnabled=_bt3TargetPlayback.Enabled;
+            _bt3OriginalPlaybackFrame=_bt3TargetPlayback.numFrameIndex.Value;
+            _bt3OriginalPlaybackTotal=_bt3TargetPlayback.numTotalFrames.Value;
+            _bt3OriginalPlaybackFps=_bt3TargetPlayback.numFPS.Value;
+            _bt3OriginalPreviewLoop=_bt3TargetPlayback.chkLoop.Checked;
+            var playbackButtons=new Control[]{_bt3TargetPlayback.btnPlay,_bt3TargetPlayback.numFrameIndex,
+                _bt3TargetPlayback.btnFirst,_bt3TargetPlayback.btnLast,
+                _bt3TargetPlayback.btnPrevFrame,_bt3TargetPlayback.btnNextFrame};
+            _bt3OriginalPlaybackButtonsEnabled=playbackButtons.Select(button=>button.Enabled).ToArray();
+            _bt3TargetPlayback.NativeTransport=new Bt3TargetTransport(this);
+            _bt3TargetPlayback.Enabled=true;
+            foreach(var button in playbackButtons)button.Enabled=true;
+            _bt3PreviewLoop=false;
+            _bt3TargetPlayback.chkLoop.Checked=false;
             _bt3OriginalModelPickerVisible=modelEditControl1.models.Visible;
             modelEditControl1.models.Visible=false;
             var nativeMenu=modelEditControl1.Controls.Find("menuStrip1",true).OfType<MenuStrip>().FirstOrDefault();
@@ -410,7 +488,7 @@ namespace BrawlCrate.UI
                 .FirstOrDefault(c=>ReferenceEquals(c.Resource,selected.Costume));}
             finally{_bt3TargetUpdating=false;}
             PopulateBt3TargetActions(selected.Action);
-            modelEditControl1.StopAnim();
+            RefreshBt3NativeLists(null);
             if(_libraryPane?.Visible==true)SetSimpleWorkspaceLibraryVisible(false);
             _simpleWorkspaceToolbar.Enabled=false;
             _bt3HiddenProjectToolbar=Controls.Find("fighterToolbar",true).OfType<ToolStrip>().FirstOrDefault();
@@ -422,7 +500,19 @@ namespace BrawlCrate.UI
 
         private void StopBt3TargetPlayback()
         {
-            _bt3TargetTimer?.Stop();if(_bt3TargetPlay!=null)_bt3TargetPlay.Text="Play";
+            _bt3TargetTimer?.Stop();if(_bt3TargetPlayback!=null)_bt3TargetPlayback.btnPlay.Text="Play";
+        }
+        private void ToggleBt3TargetPlayback()
+        {
+            if(_bt3TargetMotion==null)return;
+            if(_bt3TargetTimer.Enabled){StopBt3TargetPlayback();return;}
+            modelEditControl1.StopAnim();_bt3TargetClock.Restart();_bt3TargetTimer.Start();
+            _bt3TargetPlayback.btnPlay.Text="Pause";
+        }
+        private void SeekBt3TargetDisplayFrame(int frame)
+        {
+            if(_bt3TargetUpdating||_bt3TargetMotion==null)return;
+            _bt3TargetTime=frame-1;_bt3TargetClock.Restart();RenderBt3TargetFrame();
         }
         private void CancelBt3TargetLoad()
         {
@@ -440,6 +530,7 @@ namespace BrawlCrate.UI
             {
                 _bt3OriginalViewportParent.Controls.Add(_bt3TargetViewport);
                 _bt3TargetViewport.Dock=DockStyle.Fill;
+                _bt3TargetViewport.DrawCallSort=_bt3OriginalDrawCallSort;
                 foreach(var target in _bt3OriginalRenderTargets??new BrawlLib.OpenGL.IRenderedObject[0])
                     _bt3TargetViewport.AddTarget(target,false);
                 _bt3TargetViewport.CurrentViewport.AllowSelection=_bt3OriginalSelection;
@@ -452,11 +543,53 @@ namespace BrawlCrate.UI
                     _bt3SavedCamera._rotation=_bt3SavedCameraRotation;
                     _bt3SavedCamera._scale=_bt3SavedCameraScale;
                 }
-                _bt3NativeLeftPane.Visible=false;_bt3NativeRightPane.Visible=false;
+                modelEditControl1.leftPanel.HideNativeViewer();
+                modelEditControl1.rightPanel.pnlBones.HideNativeBones();
+                if(_bt3OriginalAnimation!=null)
+                {
+                    var animation=modelEditControl1.leftPanel.listAnims.Items.Cast<ListViewItem>()
+                        .FirstOrDefault(item=>ReferenceEquals(item.Tag,_bt3OriginalAnimation));
+                    if(animation!=null)animation.Selected=true;
+                }
+                modelEditControl1.SelectedBone=_bt3OriginalSelectedBone;
+                modelEditControl1.SetFrame(_bt3OriginalFrame);
+                modelEditControl1.rightPanel.pnlKeyframes.Controls.Remove(_bt3NativeRightPane);
+                modelEditControl1.rightPanel.pnlKeyframes.Enabled=_bt3OriginalKeyframePanelEnabled;
+                if(_bt3RightTab!=null)
+                {
+                    _bt3RightTab.Items[1]="Keyframes";
+                    _bt3RightTab.SelectedIndex=_bt3OriginalRightTab;
+                }
                 modelEditControl1.leftPanel.Width=_bt3OriginalLeftWidth;
                 modelEditControl1.rightPanel.Width=_bt3OriginalRightWidth;
                 modelEditControl1.leftPanel.Visible=_bt3OriginalLeftVisible;
                 modelEditControl1.rightPanel.Visible=_bt3OriginalRightVisible;
+                if(_bt3OriginalPlaybackParent!=null)
+                {
+                    _bt3OriginalPlaybackParent.Controls.Add(_bt3TargetPlayback);
+                    _bt3TargetPlayback.Dock=_bt3OriginalPlaybackDock;
+                    _bt3TargetPlayback.numTotalFrames.Value=Math.Max(_bt3OriginalPlaybackTotal,_bt3TargetPlayback.numTotalFrames.Minimum);
+                    _bt3TargetPlayback.numFrameIndex.Maximum=Math.Max(_bt3TargetPlayback.numFrameIndex.Minimum,
+                        _bt3TargetPlayback.numTotalFrames.Value);
+                    _bt3TargetPlayback.numFrameIndex.Value=Math.Min(_bt3OriginalPlaybackFrame,
+                        _bt3TargetPlayback.numFrameIndex.Maximum);
+                    _bt3TargetPlayback.numFPS.Value=_bt3OriginalPlaybackFps;
+                    _bt3TargetPlayback.chkLoop.Checked=_bt3OriginalPreviewLoop;
+                    _bt3TargetPlayback.Enabled=_bt3OriginalPlaybackEnabled;
+                    var playbackButtons=new Control[]{_bt3TargetPlayback.btnPlay,_bt3TargetPlayback.numFrameIndex,
+                        _bt3TargetPlayback.btnFirst,_bt3TargetPlayback.btnLast,
+                        _bt3TargetPlayback.btnPrevFrame,_bt3TargetPlayback.btnNextFrame};
+                    for(int i=0;i<playbackButtons.Length;i++)playbackButtons[i].Enabled=_bt3OriginalPlaybackButtonsEnabled[i];
+                    _bt3TargetPlayback.NativeTransport=null;
+                    _bt3OriginalPlaybackParent=null;
+                }
+                modelEditControl1.animCtrlPnl.Controls.Remove(_bt3NativeTransformPanel);
+                foreach(var old in _bt3OriginalAnimControlsVisible)old.Key.Visible=old.Value;
+                _bt3OriginalAnimControlsVisible=null;
+                modelEditControl1.NativeEditorSize=null;
+                modelEditControl1.CheckDimensions();
+                modelEditControl1.animCtrlPnl.Width=_bt3OriginalAnimControlWidth;
+                modelEditControl1.animEditors.Height=_bt3OriginalAnimEditorsHeight;
                 if(_bt3OriginalAnimationEditors!=null)_bt3OriginalAnimationEditors.Visible=_bt3OriginalAnimationEditorsVisible;
                 modelEditControl1.models.Visible=_bt3OriginalModelPickerVisible;
                 if(_bt3ModelMenuItem!=null)_bt3ModelMenuItem.Visible=_bt3OriginalModelMenuVisible;
@@ -518,31 +651,24 @@ namespace BrawlCrate.UI
                     var box=_bt3TargetRenderer.GetBox();var center=(box.Min+box.Max)*0.5f;
                     var half=(box.Max-box.Min)*0.75f;
                     _bt3TargetViewport.SetCamWithBox(center-half,center+half);
+                    var nativeBones=result.Item1.Skeleton.Bones.Where(b=>b.Id>=0&&b.Id<71)
+                        .Select(b=>new NativeViewerBone(b.Id,b.Parent,"Bone "+b.Id.ToString("D2"))).ToArray();
+                    modelEditControl1.rightPanel.pnlBones.ShowNativeBones(nativeBones);
+                    _bt3SelectedBoneId=nativeBones.Length>0?nativeBones[0].Id:-1;
+                    modelEditControl1.rightPanel.pnlBones.SelectNativeBone(_bt3SelectedBoneId);
+                    _bt3TargetRenderer.SelectedBoneId=_bt3SelectedBoneId;
                 }
                 _bt3TargetChoice=new Bt3BrowseChoice{Inventory=current.Inventory,Forms=current.Forms,Form=form,
                     Costume=costume,Motion=motion,Action=action};
                 _bt3TargetEditor=result.Item2;_bt3TargetEdits[editKey]=result.Item2;
                 _bt3TargetMotion=result.Item2.Motion;_bt3TargetTime=0;
+                RefreshBt3NativeLists(result.Item1);
                 _bt3TargetUpdating=true;
                 try
                 {
-                    _bt3TargetFrame.Maximum=Math.Max(1,result.Item2.Motion.Length+1);_bt3TargetFrame.Value=1;
-                    _bt3EditBone.BeginUpdate();
-                    try
-                    {
-                        _bt3EditBone.Nodes.Clear();
-                        var nodes=result.Item1.Skeleton.Bones.Where(b=>b.Id>=0&&b.Id<71)
-                            .ToDictionary(b=>b.Id,b=>new TreeNode(new Bt3BoneOption{Id=b.Id}.ToString())
-                                {Tag=new Bt3BoneOption{Id=b.Id}});
-                        foreach(var bone in result.Item1.Skeleton.Bones.Where(b=>nodes.ContainsKey(b.Id)))
-                        {
-                            if(nodes.TryGetValue(bone.Parent,out var parent))parent.Nodes.Add(nodes[bone.Id]);
-                            else _bt3EditBone.Nodes.Add(nodes[bone.Id]);
-                        }
-                        foreach(TreeNode root in _bt3EditBone.Nodes)root.Expand();
-                        if(_bt3EditBone.Nodes.Count>0)_bt3EditBone.SelectedNode=_bt3EditBone.Nodes[0];
-                    }
-                    finally{_bt3EditBone.EndUpdate();}
+                    _bt3TargetPlayback.numTotalFrames.Value=Math.Max(1,result.Item2.Motion.Length+1);
+                    _bt3TargetPlayback.numFrameIndex.Maximum=_bt3TargetPlayback.numTotalFrames.Value;
+                    _bt3TargetPlayback.numFrameIndex.Value=1;
                 }
                 finally{_bt3TargetUpdating=false;}
                 SyncBt3NativeEditor();
@@ -561,7 +687,8 @@ namespace BrawlCrate.UI
             if(_bt3TargetRenderer==null||_bt3TargetMotion==null)return;
             _bt3TargetRenderer.Apply(_bt3TargetMotion,(float)_bt3TargetTime);
             _bt3TargetUpdating=true;
-            try{_bt3TargetFrame.Value=Math.Max(1,Math.Min(_bt3TargetFrame.Maximum,(int)_bt3TargetTime+1));}
+            try{_bt3TargetPlayback.UpdateInterface(Math.Max(1,Math.Min((int)_bt3TargetPlayback.numTotalFrames.Value,
+                (int)_bt3TargetTime+1)),(int)_bt3TargetPlayback.numTotalFrames.Value);}
             finally{_bt3TargetUpdating=false;}
             _bt3TargetCaption.Text="Native BT3 target view · "+_bt3TargetChoice.Form.Display+" · "+
                 (_bt3TargetCostume.SelectedItem?.ToString()??"Costume")+" · action "+

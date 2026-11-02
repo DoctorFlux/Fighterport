@@ -1,5 +1,15 @@
 # Fighterport master plan
 
+Preview.83 routes the BT3 target through the original Model Previewer's
+animation, object, texture, bone and playback panels. Native BT3 resources
+remain native; the existing Brawl editor and original Next remain intact.
+The game decomp selects ground action 0 at normal health and action 1 when
+the low-health idle flag is set; the normal/damaged costume choice is separate.
+This verifies identities, not game-exact rendered poses. Complete transform
+gizmos, format-neutral native document ownership, BT3 retarget/fitting,
+project Save and game acceptance remain in the ONE incomplete G1/M2. See
+[bounded evidence](BT3_SHARED_MODEL_VIEWER_2026-11-02.md).
+
 Preview.82 uses the original Model Previewer viewport and side regions for a
 native BT3 target and introduces independent BPE motion key editing with
 Undo/Redo and verified standalone save/reopen. This is a qualified subset of

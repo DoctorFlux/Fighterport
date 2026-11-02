@@ -5,6 +5,7 @@ using BrawlLib.SSBB.ResourceNodes;
 using System;
 using System.ComponentModel;
 using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
 #if !MONO
 using BrawlLib.Internal.Windows.Forms.Ookii.Dialogs;
@@ -13,8 +14,70 @@ using BrawlLib.Internal.Windows.Forms.Ookii.Dialogs;
 
 namespace BrawlLib.Internal.Windows.Controls.ModelViewer.Panels
 {
+    public sealed class NativeViewerBone
+    {
+        public int Id { get; }
+        public int ParentId { get; }
+        public string Label { get; }
+        public NativeViewerBone(int id,int parentId,string label){Id=id;ParentId=parentId;Label=label;}
+        public override string ToString()=>Label;
+    }
+
     public class BonesPanel : UserControl
     {
+        private NativeViewerBone[] _nativeBones;
+        public Action<int> NativeBoneSelected { get; set; }
+        public Action<int,bool> NativeBoneVisibility { get; set; }
+
+        public void ShowNativeBones(NativeViewerBone[] bones)
+        {
+            _nativeBones=bones??new NativeViewerBone[0];
+            _updating=true;
+            try
+            {
+                boneTree.BeginUpdate();lstBones.BeginUpdate();
+                boneTree.Nodes.Clear();lstBones.Items.Clear();
+                var nodes=_nativeBones.ToDictionary(b=>b.Id,b=>new TreeNode(b.Label){Tag=b,Checked=true,
+                    ToolTipText="Native bone ID "+b.Id});
+                foreach(var bone in _nativeBones)
+                {
+                    if(nodes.TryGetValue(bone.ParentId,out var parent))parent.Nodes.Add(nodes[bone.Id]);
+                    else boneTree.Nodes.Add(nodes[bone.Id]);
+                    lstBones.Items.Add(bone,true);
+                }
+                foreach(TreeNode root in boneTree.Nodes)root.Expand();
+            }
+            finally{lstBones.EndUpdate();boneTree.EndUpdate();_updating=false;}
+        }
+
+        public void HideNativeBones()
+        {
+            if(_nativeBones==null)return;
+            _nativeBones=null;NativeBoneSelected=null;NativeBoneVisibility=null;Reset();
+        }
+
+        public void SelectNativeBone(int id)
+        {
+            if(_nativeBones==null)return;
+            _updating=true;
+            try
+            {
+                var bone=_nativeBones.FirstOrDefault(b=>b.Id==id);
+                lstBones.SelectedItem=bone;
+                TreeNode Find(TreeNodeCollection nodes)
+                {
+                    foreach(TreeNode node in nodes)
+                    {
+                        if((node.Tag as NativeViewerBone)?.Id==id)return node;
+                        var child=Find(node.Nodes);if(child!=null)return child;
+                    }
+                    return null;
+                }
+                boneTree.SelectedNode=Find(boneTree.Nodes);
+            }
+            finally{_updating=false;}
+            if(_nativeBones.Any(b=>b.Id==id))NativeBoneSelected?.Invoke(id);
+        }
         public delegate void ReferenceEventHandler(ResourceNode node);
 
         #region Designer
@@ -331,6 +394,7 @@ namespace BrawlLib.Internal.Windows.Controls.ModelViewer.Panels
 
         public void Reset()
         {
+            if(_nativeBones!=null){ShowNativeBones(_nativeBones);return;}
             _updating = true;
             //if (!chkFlat.Checked)
             {
@@ -361,6 +425,22 @@ namespace BrawlLib.Internal.Windows.Controls.ModelViewer.Panels
 
         private void ResetList()
         {
+            if(_nativeBones!=null)
+            {
+                string query=txtSearchBone.ForeColor==Color.Gray?"":txtSearchBone.Text;
+                _updating=true;lstBones.BeginUpdate();
+                try
+                {
+                    lstBones.Items.Clear();
+                    foreach(var bone in _nativeBones)
+                        if(string.IsNullOrEmpty(query)||
+                            (chkContains.Checked?bone.Label.IndexOf(query,StringComparison.OrdinalIgnoreCase)>=0:
+                                bone.Label.StartsWith(query,StringComparison.OrdinalIgnoreCase)))
+                            lstBones.Items.Add(bone,true);
+                }
+                finally{lstBones.EndUpdate();_updating=false;}
+                return;
+            }
             string text = txtSearchBone.Text;
             bool addAll = string.IsNullOrEmpty(text) || txtSearchBone.ForeColor == Color.Gray;
 
@@ -431,6 +511,11 @@ namespace BrawlLib.Internal.Windows.Controls.ModelViewer.Panels
 
         private void lstBones_SelectedValueChanged(object sender, EventArgs e)
         {
+            if(_nativeBones!=null)
+            {
+                if(!_updating&&lstBones.SelectedItem is NativeViewerBone bone)NativeBoneSelected?.Invoke(bone.Id);
+                return;
+            }
             SetBone(lstBones.SelectedItem as IBoneNode);
         }
 
@@ -506,6 +591,11 @@ namespace BrawlLib.Internal.Windows.Controls.ModelViewer.Panels
 
         private void boneTree_AfterSelect(object sender, TreeViewEventArgs e)
         {
+            if(_nativeBones!=null)
+            {
+                if(!_updating&&e.Node?.Tag is NativeViewerBone bone)NativeBoneSelected?.Invoke(bone.Id);
+                return;
+            }
             if (!chkFlat.Checked && boneTree.SelectedNode != null)
             {
                 SetBone(boneTree.SelectedNode.Tag as IBoneNode);
@@ -687,6 +777,12 @@ namespace BrawlLib.Internal.Windows.Controls.ModelViewer.Panels
 
         private void lstBones_ItemCheck(object sender, ItemCheckEventArgs e)
         {
+            if(_nativeBones!=null)
+            {
+                if(!_updating&&lstBones.Items[e.Index] is NativeViewerBone bone)
+                    NativeBoneVisibility?.Invoke(bone.Id,e.NewValue==CheckState.Checked);
+                return;
+            }
             if (_updating)
             {
                 return;
@@ -704,6 +800,12 @@ namespace BrawlLib.Internal.Windows.Controls.ModelViewer.Panels
 
         private void boneTree_AfterCheck(object sender, TreeViewEventArgs e)
         {
+            if(_nativeBones!=null)
+            {
+                if(!_updating&&e.Node?.Tag is NativeViewerBone bone)
+                    NativeBoneVisibility?.Invoke(bone.Id,e.Node.Checked);
+                return;
+            }
             if (_updating)
             {
                 return;

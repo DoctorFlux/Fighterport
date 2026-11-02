@@ -4,8 +4,18 @@ using System.Windows.Forms;
 
 namespace BrawlLib.Internal.Windows.Controls.ModelViewer.Panels
 {
+    // A native target can reuse the Model Previewer's actual transport without
+    // pretending that its motion is a CHR0 or replacing the project's editor.
+    public interface INativeModelTransport
+    {
+        void TogglePlay();
+        void SeekDisplayFrame(int frame);
+        void SetPreviewLoop(bool loop);
+    }
+
     public class ModelPlaybackPanel : UserControl
     {
+        public INativeModelTransport NativeTransport { get; set; }
         private bool _updatingPlaybackPosition;
         private long _lastPlaybackPositionTicks,_lastPlaybackTextTicks;
         public int DiagnosticPlaybackTextUpdates { get; private set; }
@@ -277,11 +287,13 @@ namespace BrawlLib.Internal.Windows.Controls.ModelViewer.Panels
 
         public void chkLoop_CheckedChanged(object sender, EventArgs e)
         {
+            if(NativeTransport != null){NativeTransport.SetPreviewLoop(chkLoop.Checked);return;}
             _mainWindow.PlaybackPanel_LoopChanged();
         }
 
         public void btnPlay_Click(object sender, EventArgs e)
         {
+            if(NativeTransport != null){NativeTransport.TogglePlay();return;}
             _mainWindow.TogglePlay();
         }
 
@@ -321,20 +333,23 @@ namespace BrawlLib.Internal.Windows.Controls.ModelViewer.Panels
 
         public void numFPS_ValueChanged(object sender, EventArgs e)
         {
+            if(NativeTransport != null)return;
             _mainWindow.numFPS_ValueChanged(sender, e);
         }
 
         public void numFrameIndex_ValueChanged(object sender, EventArgs e)
         {
             if(_updatingPlaybackPosition)return;
-            lblLoopFrame.Visible = numFrameIndex.Value > _mainWindow.MaxFrame;
+            lblLoopFrame.Visible = NativeTransport == null && numFrameIndex.Value > _mainWindow.MaxFrame;
             trbFrame.Value = (int)numFrameIndex.Value;
+            if(NativeTransport != null){NativeTransport.SeekDisplayFrame((int)numFrameIndex.Value);return;}
             _mainWindow.numFrameIndex_ValueChanged(sender, e);
         }
 
         public void numTotalFrames_ValueChanged(object sender, EventArgs e)
         {
             trbFrame.Maximum = (int)numTotalFrames.Value;
+            if(NativeTransport != null)return;
             _mainWindow.numTotalFrames_ValueChanged(sender, e);
         }
 
@@ -357,13 +372,14 @@ namespace BrawlLib.Internal.Windows.Controls.ModelViewer.Panels
                 if(now-_lastPlaybackTextTicks>=frequency/10)
                 {
                     _lastPlaybackTextTicks=now;DiagnosticPlaybackTextUpdates++;
-                    UpdateInterface(animFrame,loopMax);lblLoopFrame.Visible=animFrame>_mainWindow.MaxFrame;
+                    UpdateInterface(animFrame,loopMax);
+                    lblLoopFrame.Visible=NativeTransport == null && animFrame>_mainWindow.MaxFrame;
                 }
             }
             finally{_updatingPlaybackPosition=false;}
         }
 
-        internal void UpdateInterface(int animFrame, int loopMax)
+        public void UpdateInterface(int animFrame, int loopMax)
         {
             bool previous = _updatingPlaybackPosition;
             _updatingPlaybackPosition = true;
@@ -383,7 +399,7 @@ namespace BrawlLib.Internal.Windows.Controls.ModelViewer.Panels
             // the throttled slider still shows a previous frame. Synchronize
             // both explicitly instead of relying on ValueChanged to fire.
             if (animFrame >= trbFrame.Minimum && animFrame <= trbFrame.Maximum) trbFrame.Value = animFrame;
-            if (_mainWindow != null) lblLoopFrame.Visible = animFrame > _mainWindow.MaxFrame;
+            if (_mainWindow != null) lblLoopFrame.Visible = NativeTransport == null && animFrame > _mainWindow.MaxFrame;
             }
             finally { _updatingPlaybackPosition = previous; }
         }

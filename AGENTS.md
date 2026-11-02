@@ -1,5 +1,14 @@
 # Fighterport
 
+2 November — preview.83-shared-bt3-viewer routes native BT3 actions, meshes,
+textures, bones and transport through the original BrawlCrate Model Previewer
+panels. The primary motion-bank and health-idle IDs were checked against the
+pinned BT3 decomp: action 0 is normal-health ground idle; action 1 is the
+low-health idle. Costume damage is independent. Native key edits still use
+the qualified independent BPE path. Full Brawl editor parity, BT3 project
+ownership, retargeting/fitting and game-render equivalence remain OPEN. See
+[bounded evidence](docs/BT3_SHARED_MODEL_VIEWER_2026-11-02.md).
+
 2 November — preview.82-bt3-native-target-edit reuses the original target
 ModelPanel and side regions for a native BT3 action list, bone hierarchy and
 basic key editing, with independent BPE Undo/Redo/save/reopen. Full parity

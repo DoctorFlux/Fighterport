@@ -602,7 +602,7 @@ namespace BrawlCrate.UI
             if(_bt3TargetHost?.Visible==true)_bt3TargetHost.BringToFront();
             if(_bt3NativeLeftPane?.Visible==true)_bt3NativeLeftPane.BringToFront();
             if(_bt3NativeRightPane?.Visible==true)_bt3NativeRightPane.BringToFront();
-            if(_bt3TargetHost?.Visible==true)LayoutBt3NativeSidePanes();
+            if(_bt3NativeTransformPanel?.Visible==true)_bt3NativeTransformPanel.BringToFront();
             foreach (Control pane in new Control[] { _batchReviewPane, _loopInspectionPane, _libraryPane, _simpleWorkspaceTask })
                 if (pane?.Visible == true && pane.Dock == DockStyle.None &&
                     _simpleWorkspaceBody.Controls.GetChildIndex(pane) != 0) pane.BringToFront();

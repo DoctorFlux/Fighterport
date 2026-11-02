@@ -267,7 +267,7 @@ internal static partial class Program
                     "Character row exposes the native action list without costume nesting");
                 Check(midNode.Nodes.Cast<TreeNode>().Any(n=>n.Text==Bt3ActionLabels.Describe(0))&&
                     midNode.Nodes.Cast<TreeNode>().Any(n=>n.Text==Bt3ActionLabels.Describe(1)),
-                    "Native ground idle and alternate gauge-state idle are both visible without mislabeling costume damage");
+                    "Normal-health and low-health ground idles are separately visible from costume damage");
                 var idleRow=midNode.Nodes.Cast<TreeNode>().Single(n=>n.Text==Bt3ActionLabels.Describe(0));
                 tree.SelectedNode=idleRow;Application.DoEvents();
                 var transform=SimpleControl<ComboBox>(form,"bt3Transform");
@@ -394,18 +394,17 @@ internal static partial class Program
                     var targetRenderer=(Bt3NativeRender)Field(form,"_bt3TargetRenderer");
                     var targetForm=SimpleControl<ComboBox>(form,"bt3TargetTransform");
                     var targetCostume=SimpleControl<ComboBox>(form,"bt3TargetCostume");
-                    var targetAction=SimpleControl<ListBox>(form,"bt3TargetAction");
-                    var nativeLeft=SimpleControl<Control>(form,"bt3NativeActionPanel");
-                    var nativeRight=SimpleControl<Control>(form,"bt3NativeEditPanel");
+                    var targetAction=form.FighterEditor.leftPanel.listAnims;
+                    var nativeLeft=form.FighterEditor.leftPanel;
+                    var nativeRight=form.FighterEditor.rightPanel.pnlBones;
                     Console.WriteLine("TRACE target panes left="+nativeLeft.Visible+" "+nativeLeft.Bounds+
                         " parent="+nativeLeft.Parent.Bounds+" z="+nativeLeft.Parent.Controls.GetChildIndex(nativeLeft)+
                         " right="+nativeRight.Visible+" "+nativeRight.Bounds+
                         " parent="+nativeRight.Parent.Bounds+" z="+nativeRight.Parent.Controls.GetChildIndex(nativeRight));
                     Check(nativeLeft.Visible&&nativeRight.Visible&&nativeLeft.Width>180&&nativeRight.Width>180&&
-                        nativeLeft.Height>300&&nativeRight.Height>300&&
-                        nativeLeft.Parent.Controls.GetChildIndex(nativeLeft)==0&&
-                        nativeRight.Parent.Controls.GetChildIndex(nativeRight)==0,
-                        "Native animations and bone hierarchy occupy the existing Model Previewer side regions");
+                        nativeLeft.Height>300&&nativeRight.Height>300&&nativeLeft.NativeViewerActive&&
+                        targetAction.Items.Count>400,
+                        "Native actions, meshes and textures occupy the original Model Previewer lists");
                     var viewerTools=SimpleControl<ToolStrip>(form,"toolStrip1");
                     var bonesToggle=(ToolStripButton)viewerTools.Items.Find("chkBones",true).Single();
                     var polygonsToggle=(ToolStripButton)viewerTools.Items.Find("chkPolygons",true).Single();
@@ -427,11 +426,35 @@ internal static partial class Program
                         targetForm.Items.Count==2&&targetAction.Items.Count>400&&
                         targetCostume.Text.Contains("Normal")&&targetRenderer.Scene.TriangleCount>1000,
                         "Open as target uses the original Model Previewer viewport for the native character and animations");
+                    Check(targetRenderer.DrawCalls.Last().GetType().Name.Contains("BoneOverlay")&&
+                        targetRenderer.Scene.Skeleton.Bones.Length>50,
+                        "Brawl-style native bone orbs and axes render after every textured mesh call");
+                    var firstPose=Bt3NativeAssetReader.Sample(targetRenderer.Scene.Skeleton,
+                        (Bt3NativeAssetReader.Motion)Field(form,"_bt3TargetMotion"),0);
+                    var rootLocation=firstPose.Translation[0];
+                    var rootScreen=targetPanel.CurrentViewport.Camera.Project(new BrawlLib.Internal.Vector3(
+                        -rootLocation.X,-rootLocation.Y,-rootLocation.Z));
+                    Check(targetRenderer.PickBone(targetPanel.CurrentViewport,new System.Drawing.Point(
+                        (int)rootScreen._x,(int)rootScreen._y))>=0,
+                        "Native BT3 bone markers support viewport hit testing through the Brawl camera");
+                    var targetPlayback=form.FighterEditor.PlaybackPanel;
                     await CaptureSimpleWorkspace(form,Path.Combine(output,"bt3-large-target.png"));
+                    form.ClientSize=new System.Drawing.Size(1050,700);
+                    Call(form,"SetWorkspaceTextSize",175);Call(form,"UpdateSimpleWorkspace");
+                    await Task.Delay(75);Application.DoEvents();
+                    await CaptureSimpleWorkspace(form,Path.Combine(output,"bt3-native-target-compact-175.png"));
+                    var returnButton=SimpleControl<Button>(form,"bt3TargetBack");
+                    Check(nativeLeft.Visible&&nativeRight.Visible&&
+                        SimpleControl<Control>(form,"bt3NativeTransformPanel").Visible&&
+                        targetPlayback.Visible&&returnButton.Visible&&
+                        returnButton.Right<=returnButton.Parent.ClientSize.Width,
+                        "Native target panels and Brawl transport remain available at compact layout and 175% workspace text");
+                    Call(form,"SetWorkspaceTextSize",100);form.ClientSize=new System.Drawing.Size(1500,850);
+                    Application.DoEvents();
                     targetPanel.Capture();targetPanel.Invalidate();targetPanel.Update();
                     using(var image=targetPanel.GetScreenshot(targetPanel.ClientRectangle,false))
                         image.Save(Path.Combine(output,"bt3-target-idle-first.png"));
-                    var targetFrame=SimpleControl<TrackBar>(form,"bt3TargetFrame");
+                    var targetFrame=targetPlayback.numFrameIndex;
                     targetFrame.Value=Math.Min(30,targetFrame.Maximum);
                     targetPanel.Capture();targetPanel.Invalidate();targetPanel.Update();
                     using(var image=targetPanel.GetScreenshot(targetPanel.ClientRectangle,false))
@@ -441,26 +464,24 @@ internal static partial class Program
                         FighterProject.HashFile(Path.Combine(output,"bt3-target-idle-frame30.png")),
                         "Large native target viewport follows animation scrubbing without changing an editable project");
                     targetFrame.Value=1;
-                    SimpleControl<Button>(form,"bt3TargetPlay").PerformClick();
+                    targetPlayback.btnPlay.PerformClick();
                     await Wait(()=>targetFrame.Value>1);
-                    SimpleControl<Button>(form,"bt3TargetPlay").PerformClick();
-                    Check(targetFrame.Value>1&&SimpleControl<Button>(form,"bt3TargetPlay").Text=="Play",
-                        "Native target animation plays and pauses from already-decoded motion");
+                    targetPlayback.btnPlay.PerformClick();
+                    Check(targetFrame.Value>1&&targetPlayback.btnPlay.Text=="Play"&&
+                        targetPlayback.Parent==form.FighterEditor.animEditors&&
+                        SimpleControl<Control>(form,"bt3NativeTransformPanel").Visible,
+                        "Native BT3 target uses the original Model Previewer transport and bottom transform region");
                     var nativeEditor=(Bt3NativeMotionEditor)Field(form,"_bt3TargetEditor");
                     var editTrack=nativeEditor.Motion.Tracks.First(t=>!t.RotationOnly&&t.Keys.Any(k=>k.Frame<=nativeEditor.Motion.Length));
                     var editKey=editTrack.Keys.First(k=>k.Frame<=nativeEditor.Motion.Length);
                     targetFrame.Value=editKey.Frame+1;
-                    var editBone=SimpleControl<TreeView>(form,"bt3EditBone");
-                    TreeNode FindBone(TreeNodeCollection roots)
-                    {
-                        foreach(TreeNode node in roots)
-                        {
-                            if(node.Text=="Bone "+editTrack.Bone.ToString("D2"))return node;
-                            var nested=FindBone(node.Nodes);if(nested!=null)return nested;
-                        }
-                        return null;
-                    }
-                    editBone.SelectedNode=FindBone(editBone.Nodes)??throw new InvalidDataException("Native bone missing from hierarchy.");
+                    nativeRight.SelectNativeBone(editTrack.Bone);
+                    Check(((Bt3NativeRender)Field(form,"_bt3TargetRenderer")).SelectedBoneId==editTrack.Bone,
+                        "Original Model Previewer bone panel selects the native BT3 bone ID");
+                    var nativeTab=SimpleControl<ComboBox>(form,"editor");
+                    nativeTab.SelectedIndex=1;
+                    Check(nativeTab.Text=="Native keys"&&SimpleControl<Button>(form,"bt3ApplyNativeKey").Visible,
+                        "Native key editing occupies the original Model Previewer editor tab");
                     var editX=SimpleControl<NumericUpDown>(form,"bt3EditTranslation0");
                     var beforeX=editX.Value;editX.Value=beforeX+.025m;
                     SimpleControl<Button>(form,"bt3ApplyNativeKey").PerformClick();
@@ -487,25 +508,43 @@ internal static partial class Program
                             .Single(t=>t.Bone==editTrack.Bone).Keys.Single(k=>k.Frame==editKey.Frame).Translation.X>
                             editKey.Translation.X,
                         "BT3 target reopens its saved native motion in the current exact action");
-                    targetAction.SelectedIndex=1;
+                    targetAction.Items.Cast<ListViewItem>().Single(i=>
+                        (i.Tag as BrawlCrate.UI.Model_Previewer.NativeViewerItem)?.Id==1).Selected=true;
                     await Wait(()=>SimpleControl<Label>(form,"bt3TargetCaption").Text.Contains("action 001"));
+                    var lowHealthMotion=(Bt3NativeAssetReader.Motion)Field(form,"_bt3TargetMotion");
+                    Check(lowHealthMotion.Action==1&&lowHealthMotion.SourceSha256!=nativeEditor.Motion.SourceSha256&&
+                        targetCostume.Text.Contains("Normal")&&targetAction.SelectedItems[0].Text.Contains("low health"),
+                        "Low-health ground idle is a distinct native motion on the normal costume");
                     targetPanel.Capture();targetPanel.Invalidate();targetPanel.Update();
                     using(var image=targetPanel.GetScreenshot(targetPanel.ClientRectangle,false))
-                        image.Save(Path.Combine(output,"bt3-target-alternate-idle.png"));
+                        image.Save(Path.Combine(output,"bt3-target-low-health-idle-normal-costume.png"));
                     Check(ReferenceEquals(((Bt3NativeRender)Field(form,"_bt3TargetRenderer")).Scene,targetRenderer.Scene),
                         "Changing a native target action reuses the selected costume geometry");
-                    targetAction.SelectedIndex=0;
+                    targetAction.Items.Cast<ListViewItem>().Single(i=>
+                        (i.Tag as BrawlCrate.UI.Model_Previewer.NativeViewerItem)?.Id==0).Selected=true;
                     await Wait(()=>SimpleControl<Label>(form,"bt3TargetCaption").Text.Contains("action 000"));
                     targetCostume.SelectedIndex=4;
                     await Wait(()=>SimpleControl<Label>(form,"bt3TargetCaption").Text.Contains("Battle damaged"));
                     targetPanel.Capture();targetPanel.Invalidate();targetPanel.Update();
                     using(var image=targetPanel.GetScreenshot(targetPanel.ClientRectangle,false))
                         image.Save(Path.Combine(output,"bt3-target-normal-idle-damaged-costume.png"));
-                    Check(targetCostume.Text.Contains("Battle damaged")&&targetAction.Text==Bt3ActionLabels.Describe(0),
+                    Check(targetCostume.Text.Contains("Battle damaged")&&
+                        targetAction.SelectedItems[0].Text==Bt3ActionLabels.Describe(0),
                         "Damaged costume can show the same verified normal ground-idle motion independently");
+                    targetAction.Items.Cast<ListViewItem>().Single(i=>
+                        (i.Tag as BrawlCrate.UI.Model_Previewer.NativeViewerItem)?.Id==1).Selected=true;
+                    await Wait(()=>SimpleControl<Label>(form,"bt3TargetCaption").Text.Contains("action 001"));
+                    Check(targetCostume.Text.Contains("Battle damaged")&&
+                        targetAction.SelectedItems[0].Text.Contains("low health")&&
+                        ((Bt3NativeAssetReader.Motion)Field(form,"_bt3TargetMotion")).SourceSha256==lowHealthMotion.SourceSha256,
+                        "Damaged costume can show the exact same low-health motion independently");
+                    targetPanel.Capture();targetPanel.Invalidate();targetPanel.Update();
+                    using(var image=targetPanel.GetScreenshot(targetPanel.ClientRectangle,false))
+                        image.Save(Path.Combine(output,"bt3-target-low-health-idle-damaged-costume.png"));
                     targetForm.SelectedIndex=1;
                     await Wait(()=>SimpleControl<Label>(form,"bt3TargetCaption").Text.Contains("Super Saiyan"));
-                    targetAction.SelectedIndex=0;
+                    targetAction.Items.Cast<ListViewItem>().Single(i=>
+                        (i.Tag as BrawlCrate.UI.Model_Previewer.NativeViewerItem)?.Id==0).Selected=true;
                     await Wait(()=>SimpleControl<Label>(form,"bt3TargetCaption").Text.Contains("action 000"));
                     targetCostume.SelectedIndex=4;
                     await Wait(()=>SimpleControl<Label>(form,"bt3TargetCaption").Text.Contains("Battle damaged"));

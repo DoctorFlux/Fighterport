@@ -1,5 +1,15 @@
 # Current milestone M2 — simpler native workspace
 
+2 November: preview.83 uses the original Model Previewer lists, Bones panel,
+viewport and transport for BT3 targets, including bone orbs/axes and viewport
+bone picking. The existing independent native key editor, Undo/Redo and BPE
+save/reopen remain. Exact disc-bank and game-state inspection identifies
+Action 000 as normal-health ground idle and Action 001 as low-health idle;
+normal versus damaged costume is a separate choice. Visual equivalence to
+the running game remains OPEN. Full native tool parity, BT3 project Save,
+retargeting, fitting and archive insertion remain in this ONE incomplete
+G1/M2. See [bounded evidence](../BT3_SHARED_MODEL_VIEWER_2026-11-02.md).
+
 2 November: preview.82 moves BT3 target presentation into the original
 Model Previewer viewport, with native action and bone side regions, shared
 render toggles and independent native BPE key editing/Undo/Redo/save/reopen.

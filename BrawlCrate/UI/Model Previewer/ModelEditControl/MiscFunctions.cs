@@ -155,6 +155,11 @@ namespace BrawlCrate.UI.Model_Previewer.ModelEditControl
                 s = vertexEditor.MinimumSize;
             }
 
+            // A native-format target supplies its own editing surface in this
+            // same bottom region. The ordinary CHR0 editor sizing resumes when
+            // that target closes; no native motion is projected into CHR0.
+            if(NativeEditorSize.HasValue)s=NativeEditorSize.Value;
+
             //See if the scroll bar needs to be visible
             int addedHeight = 0;
             if (s.Width + pnlPlayback.MinimumSize.Width > totalWidth)
@@ -193,6 +198,8 @@ namespace BrawlCrate.UI.Model_Previewer.ModelEditControl
                 pnlPlayback.Dock = DockStyle.Left;
             }
         }
+
+        public Size? NativeEditorSize { get; set; }
 
         public bool Close()
         {
