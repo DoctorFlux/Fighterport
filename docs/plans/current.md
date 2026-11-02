@@ -1,5 +1,15 @@
 # Current milestone M2 — simpler native workspace
 
+2 November: preview.80 renders a selected BT3 SLUS-21678 form, costume and
+decodable skeletal action in the small read-only native source viewport. It
+reads pmdl weighted strips, seam triangles and referenced GS textures directly
+from the saved ISO, applies Brawl-facing presentation at 1:1 units and uses
+neutral inspection lighting. The 698 indexed costumes decoded geometry; 161
+native idle actions associated with them. Twenty sampled other action members
+remain unsupported. BT3 target editing, retargeting, native writing and
+game-exact toon/material behavior remain OPEN in this same incomplete G1/M2.
+See [bounded evidence](../BT3_NATIVE_SOURCE_PREVIEW_2026-11-02.md).
+
 2 November: preview.79 lets the saved BT3 USA ISO appear in the shared library
 as exact form, costume and native-action choices instead of “Saved location —
 not indexed.” Browse and Inspect BT3 read the original disc without extracting

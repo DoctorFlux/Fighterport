@@ -162,19 +162,19 @@ namespace BrawlCrate.UI
             layout.Controls.Add(_libraryViewport,0,7);
             var transport=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=2};transport.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,65));transport.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
             _libraryPlay=LibraryButton("libraryOriginalPlay","Play",()=>{
-                if(_libraryLease==null)return;
+                if(_libraryLease==null&&_bt3Renderer==null)return;
                 if(_libraryTimer.Enabled){_libraryTimer.Stop();_libraryPlay.Text="Play";}else{modelEditControl1.StopAnim();_libraryClock.Restart();_libraryTimer.Start();_libraryPlay.Text="Pause";}
             });
             _libraryFrame=new TrackBar{Name="libraryOriginalFrame",AccessibleName="Original source frame",Dock=DockStyle.Fill,Minimum=1,Maximum=1,TickStyle=TickStyle.None};
-            _libraryFrame.ValueChanged+=(s,e)=>{if(!_libraryScrubbing&&_libraryLease!=null){_libraryTime=_libraryFrame.Value-1;_libraryClock.Restart();RenderLibraryFrame();}};
+            _libraryFrame.ValueChanged+=(s,e)=>{if(!_libraryScrubbing&&(_libraryLease!=null||_bt3Renderer!=null)){_libraryTime=_libraryFrame.Value-1;_libraryClock.Restart();RenderLibraryFrame();}};
             transport.Controls.Add(_libraryPlay,0,0);transport.Controls.Add(_libraryFrame,1,0);layout.Controls.Add(transport,0,8);
             _libraryTimer=new System.Windows.Forms.Timer{Interval=16};
             _libraryTimer.Tick+=(s,e)=>{
-                if(_libraryLease==null)return;
+                if(_libraryLease==null&&_bt3Renderer==null)return;
                 if(modelEditControl1.Playing){_libraryTimer.Stop();_libraryPlay.Text="Play";return;}
                 _libraryTime+=_libraryClock.Elapsed.TotalSeconds*60;_libraryClock.Restart();
-                int frames=_libraryLease.DisplayFrameCount;
-                if(_libraryTime>frames-1){if(_libraryLease.DisplayLoop)_libraryTime%=frames;else{_libraryTime=frames-1;_libraryTimer.Stop();_libraryPlay.Text="Play";}}
+                int frames=_bt3Renderer!=null?_bt3Motion.Length+1:_libraryLease.DisplayFrameCount;
+                if(_libraryTime>frames-1){if(_bt3Renderer==null&&_libraryLease.DisplayLoop)_libraryTime%=frames;else{_libraryTime=frames-1;_libraryTimer.Stop();_libraryPlay.Text="Play";}}
                 RenderLibraryFrame();
             };
             BuildLibraryFilters(layout,searchRow,actions);
@@ -295,7 +295,7 @@ namespace BrawlCrate.UI
         }
         private void PreviewLibraryOriginal()
         {
-            if(OpenSelectedBt3Inspector())return;
+            if(PreviewSelectedBt3())return;
             var item=LibrarySelection;if(item==null)return;
             CancelLibraryAutoPreview();PauseSourceOperation();
             string model=SelectedLibraryCostume?.ModelId??item.Model?.Id;
@@ -305,7 +305,7 @@ namespace BrawlCrate.UI
         }
         private void FrameLibraryOriginal()
         {
-            var box=_libraryLease.NativePreview?.RenderTarget.GetBox()??_libraryLease.Model.GetBox();var center=(box.Min+box.Max)*0.5f;var half=(box.Max-box.Min)*0.65f;
+            var box=_bt3Renderer?.GetBox()??_libraryLease.NativePreview?.RenderTarget.GetBox()??_libraryLease.Model.GetBox();var center=(box.Min+box.Max)*0.5f;var half=(box.Max-box.Min)*0.65f;
             // Frame this viewport in its own projection and final laid-out size.
             // A remembered orthographic view/zoom or an earlier zero-height
             // layout must not leave a successfully loaded source out of view.
@@ -320,6 +320,14 @@ namespace BrawlCrate.UI
         }
         private void RenderLibraryFrame()
         {
+            if(_bt3Renderer!=null)
+            {
+                _bt3Renderer.Apply(_bt3Motion,(float)_libraryTime);
+                _libraryScrubbing=true;try{_libraryFrame.Value=Math.Max(1,Math.Min(_libraryFrame.Maximum,(int)_libraryTime+1));}finally{_libraryScrubbing=false;}
+                _libraryOriginalLabel.Text="Original BT3 · "+_bt3PreviewChoice.Form.Display+" · action "+_bt3PreviewChoice.Action.ToString("D3")+
+                    " · frame "+((int)_libraryTime+1)+" (read-only)";
+                _libraryViewport.Invalidate();return;
+            }
             if(_libraryLease==null)return;
             if(_libraryLease.NativePreview!=null)_libraryLease.NativePreview.ApplyDisplayFrame((float)_libraryTime+1);
             else LibraryNativePreview.Apply(_libraryLease.Model,_libraryLease.PreviewBundle,(float)_libraryTime+1);
@@ -329,7 +337,7 @@ namespace BrawlCrate.UI
         }
         private void ReleaseLibraryPreview()
         {
-            _libraryTimer?.Stop();if(_libraryPlay!=null)_libraryPlay.Text="Play";
+            ReleaseBt3Preview();_libraryTimer?.Stop();if(_libraryPlay!=null)_libraryPlay.Text="Play";
             if(_libraryLease==null)return;
             _libraryViewport.ClearAll();_libraryLease.Dispose();_libraryLease=null;
             _libraryOriginalLabel.Text="Original source preview (read-only)";
@@ -349,7 +357,7 @@ namespace BrawlCrate.UI
             CloseLinkedComparison();
             CancelLibraryAutoPreview();_libraryAutoTimer?.Dispose();
             _librarySearchGeneration++;CancelLibraryTreeWork();
-            ReleaseLibraryPreview();_libraryTimer?.Dispose();_librarySearchTimer?.Dispose();_libraryPopulateTimer?.Dispose();_libraryPendingGroups.Clear();
+            ReleaseLibraryPreview();_bt3PreviewTimer?.Dispose();_libraryTimer?.Dispose();_librarySearchTimer?.Dispose();_libraryPopulateTimer?.Dispose();_libraryPendingGroups.Clear();
         }
         private void UseLibraryOnTarget()
         {

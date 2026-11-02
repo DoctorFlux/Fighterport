@@ -1,5 +1,14 @@
 # Fighterport master plan
 
+Preview.80 adds read-only BT3 source model, costume texture and skeletal-action
+rendering to the existing small ModelPanel. The supplied USA ISO's 698 costume
+packs decode native textured geometry; the chosen source action plays without
+disc I/O on playback ticks. The presentation faces the same way as Brawl and
+keeps 1:1 units. Neutral preview lighting is qualified, while exact runtime
+toon/material effects, 20 sampled unsupported action members, BT3 target
+editing, retargeting and writing remain open in the ONE incomplete G1/M2.
+See [acceptance](BT3_NATIVE_SOURCE_PREVIEW_2026-11-02.md).
+
 Preview.79 exposes a saved BT3 USA disc as a read-only direct library tree of
 exact forms, costumes and native actions. It removes the misleading empty
 “not indexed” branch for this verified build without claiming a rendered or

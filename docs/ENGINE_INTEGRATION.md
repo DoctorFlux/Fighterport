@@ -1,13 +1,14 @@
 # Native Next integration
 
-BT3 PS2 USA is currently an independent, read-only disc inventory boundary:
+BT3 PS2 USA is currently an independent, read-only disc and source-preview boundary:
 ISO9660/AFS numeric slot and member identities feed an inspector, exact
-original-byte export and a direct library tree. A saved BT3 ISO path remains
+original-byte export, a direct library tree and native textured source rendering.
+A saved BT3 ISO path remains
 path-only in the shared catalogue; the tree reads the verified disc on demand
 and creates no fake clip/model records or extracted files. It is intentionally
-not registered as an editable native source/target adapter because native mesh,
-texture, full skin and write support are not yet verified. Future BT3 decoding
-and writing must qualify the existing `NativeGameOperation`
+not registered as an editable native source/target adapter because target
+ownership, cross-game transfer and native writing are not yet verified. Future
+BT3 editing and writing must qualify the existing `NativeGameOperation`
 capabilities separately and preserve native rig/skin, timing and project
 ownership; see [bounded evidence](BT3_DISC_INVENTORY_2026-11-02.md).
 
@@ -656,3 +657,13 @@ native model renderer and native control printing. No OS input is injected and
 no screen pixels are copied. Create `pause`/`cancel` files in the output folder
 to control capture; remove pause to resume. UI/model images must be inspected.
 Physical user input, per-monitor DPI and actual game testing remain separate.
+
+# BT3 read-only source viewport (preview.80)
+
+The direct BT3 disc source now has a bounded native pmdl/VIF/GS texture reader
+and a read-only ModelPanel draw target. It retains both native vertex influences
+and optional seam triangles; selected actions sample owned packed motion during
+playback without disc I/O or CHR0 conversion. Only presentation axes change,
+not native source bytes or rest data. Neutral inspection lighting does not claim
+BT3 runtime toon/material parity. See
+[BT3 source preview acceptance](BT3_NATIVE_SOURCE_PREVIEW_2026-11-02.md).

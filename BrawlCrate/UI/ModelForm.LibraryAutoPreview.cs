@@ -22,14 +22,19 @@ namespace BrawlCrate.UI
         private void LibraryBrowseSelectionChanged()
         {
             _libraryCharacterSelection=null;
-            if(_libraryList.SelectedNode?.Tag is Bt3DiscInventory||_libraryList.SelectedNode?.Tag is Bt3BrowseChoice)
-                ReleaseLibraryPreview();
+            bool bt3=_libraryList.SelectedNode?.Tag is Bt3DiscInventory||_libraryList.SelectedNode?.Tag is Bt3BrowseChoice;
+            if(bt3)
+            {
+                if(_libraryLease!=null)ReleaseLibraryPreview();
+                if(_libraryList.SelectedNode?.Tag is Bt3DiscInventory)ReleaseBt3Preview();
+            }
+            else ReleaseBt3Preview();
             if(_libraryList.SelectedNode?.Tag is LibraryGroup group)
                 _libraryCharacterSelection=group.Items.Where(i=>i.Model!=null&&(i.Clip.Channel=="CHR0 skeletal"||i.Clip.Channel==MeleeGameSource.Channel)&&i.State==LibrarySourceState.Available)
                     .GroupBy(i=>i.Model.Id).OrderByDescending(g=>g.Count()).ThenBy(g=>g.Key,StringComparer.Ordinal).FirstOrDefault()?
                     .OrderByDescending(i=>i.Clip.Name=="Wait1"||i.Clip.Name=="Idle").ThenBy(i=>i.Clip.Name,StringComparer.Ordinal).FirstOrDefault()
                     ??group.Items.FirstOrDefault(i=>LibraryNativePreview.Supported(i.Clip));
-            UpdateLibrarySelection();QueueLibraryAutoPreview();
+            UpdateLibrarySelection();QueueLibraryAutoPreview();if(bt3)QueueBt3Preview();
         }
         private void CancelLibraryAutoPreview()
         {

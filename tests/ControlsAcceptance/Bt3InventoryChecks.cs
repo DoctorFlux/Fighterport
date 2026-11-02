@@ -1,5 +1,6 @@
 using BrawlCrate.Studio;
 using BrawlCrate.UI;
+using BrawlLib.SSBB.ResourceNodes;
 using System;
 using System.IO;
 using System.Linq;
@@ -27,6 +28,33 @@ internal static partial class Program
         var mid=inventory.Fighters[1];
         var pmdl=inventory.ModelMember(mid,mid.Costumes[0]);
         var skeleton=Bt3NativeAssetReader.ReadSkeleton(inventory.ReadOwned(pmdl,4*1024*1024));
+        if(args.Contains("--bt3-mesh"))
+        {
+            var scene=Bt3NativeMesh.Read(inventory.ReadOwned(mid.Costumes[0],4*1024*1024));
+            Check(scene.Skeleton.Bones.Length==skeleton.Bones.Length&&scene.Batches.Length>0&&
+                scene.TriangleCount>1000&&scene.SourceVertexCount>1000&&scene.Textures.Length>5,
+                "Native BT3 costume has bounded two-influence strips and decoded embedded textures");
+            Console.WriteLine("TRACE BT3 mesh batches="+scene.Batches.Length+" triangles="+scene.TriangleCount+
+                " vertices="+scene.SourceVertexCount+" textures="+scene.Textures.Length);
+        }
+        if(args.Contains("--bt3-mesh-sweep"))
+        {
+            int passed=0;var issues=new System.Collections.Generic.List<string>();
+            foreach(var form in inventory.Fighters)foreach(var costume in form.Costumes)
+            {
+                try
+                {
+                    var scene=Bt3NativeMesh.Read(inventory.ReadOwned(costume,4*1024*1024));
+                    if(scene.TriangleCount<1||scene.Textures.Length<1)throw new InvalidDataException("No complete textured geometry");
+                    passed++;
+                }
+                catch(Exception error)when(error is InvalidDataException||error is OverflowException)
+                {issues.Add(form.Slot.ToString("D3")+"/"+costume.Identity+": "+error.Message);}
+            }
+            foreach(var issue in issues.Take(30))Console.WriteLine("OPEN BT3 mesh "+issue);
+            Console.WriteLine("TRACE BT3 mesh sweep passed="+passed+" failed="+issues.Count);
+            Check(issues.Count==0&&passed>=698,"Every indexed BT3 costume decodes a native textured mesh without a substitute model");
+        }
         var idleBytes=inventory.ReadOwned(mid.MotionMembers[0][1],4*1024*1024);
         var idle=Bt3NativeAssetReader.ReadMotion(idleBytes,0);
         Check(mid.DiscLabel=="Goku_1"&&skeleton.Bones.Length>30&&idle.Length>0&&idle.Tracks.Length>0&&
@@ -184,11 +212,102 @@ internal static partial class Program
                 var alternate=midNode.Nodes[1];alternate.Expand();await LibraryQuerySettled(form);
                 var idleRow=alternate.Nodes.Cast<TreeNode>().Single(n=>n.Text.StartsWith("Idle · Action 000"));
                 tree.SelectedNode=idleRow;Application.DoEvents();
-                Check(SimpleControl<Button>(form,"libraryPreviewOriginal").Text=="Inspect BT3"&&
+                Check(SimpleControl<Button>(form,"libraryPreviewOriginal").Text=="Preview Original"&&
                     !SimpleControl<Button>(form,"libraryUseOnTarget").Enabled&&
                     !SimpleControl<Button>(form,"libraryOpenTarget").Enabled&&
                     SimpleControl<TextBox>(form,"libraryDetails").Text.Contains("Costume 1"),
-                    "BT3 library action has exact form/costume context and no unqualified preview or retarget commands");
+                    "BT3 library action has exact form/costume context and keeps unqualified retarget commands disabled");
+                if(args.Contains("--bt3-render"))
+                {
+                    await Wait(()=>Field(form,"_bt3Renderer") is Bt3NativeRender);
+                    var renderer=(Bt3NativeRender)Field(form,"_bt3Renderer");
+                    var panel=SimpleControl<BrawlLib.Internal.Windows.Controls.Model_Panel.ModelPanel>(form,"libraryOriginalViewport");
+                    panel.Capture();panel.Invalidate();panel.Update();
+                    using(var image=panel.GetScreenshot(panel.ClientRectangle,false))
+                        image.Save(Path.Combine(output,"bt3-goku-mid-costume1-idle-first.png"));
+                    Check(renderer.RenderCount>0&&renderer.Scene.TriangleCount>1000&&renderer.Scene.Textures.Length>5&&
+                        renderer.DrawCalls.Count<200,
+                        "Selected BT3 costume renders its own weighted mesh and embedded textures in the original viewport");
+                    var bt3Box=renderer.GetBox();Console.WriteLine("TRACE BT3 display box "+bt3Box.Min+" to "+bt3Box.Max);
+                    foreach(var character in new[]{"mario","snake"})
+                    {
+                        string fixture=Path.Combine(".local","optimization-next-bake-draft",character,"next-target-before.mdl0");
+                        if(!File.Exists(fixture))continue;
+                        using(var brawl=NodeFactory.FromFile(null,fixture) as MDL0Node)
+                        {brawl.Children.ToArray();brawl.BoneGroup?.Children.ToArray();brawl.PolygonList.OfType<MDL0ObjectNode>().ToArray();
+                            brawl.ResetToBindState();brawl.WeightMeshes();
+                            var box=brawl.GetBox();Console.WriteLine("TRACE Brawl "+character+" box "+box.Min+" to "+box.Max);}
+                    }
+                    var nativeTexture=renderer.Scene.Textures[0];
+                    using(var bitmap=new System.Drawing.Bitmap(nativeTexture.Width,nativeTexture.Height))
+                    {
+                        for(int y=0;y<nativeTexture.Height;y++)for(int x=0;x<nativeTexture.Width;x++)
+                        {int p=(y*nativeTexture.Width+x)*4;var rgba=nativeTexture.Rgba;
+                            bitmap.SetPixel(x,y,System.Drawing.Color.FromArgb(rgba[p+3],rgba[p],rgba[p+1],rgba[p+2]));}
+                        bitmap.Save(Path.Combine(output,"bt3-costume-texture0.png"));
+                    }
+                    using(var sheet=new System.Drawing.Bitmap(4*260,5*280))
+                    using(var graphics=System.Drawing.Graphics.FromImage(sheet))
+                    {
+                        graphics.Clear(System.Drawing.Color.FromArgb(45,45,45));
+                        for(int ti=0;ti<renderer.Scene.Textures.Length;ti++)
+                        {
+                            var t=renderer.Scene.Textures[ti];
+                            using(var tile=new System.Drawing.Bitmap(t.Width,t.Height))
+                            {
+                                for(int y=0;y<t.Height;y++)for(int x=0;x<t.Width;x++)
+                                {int p=(y*t.Width+x)*4;var rgba=t.Rgba;
+                                    tile.SetPixel(x,y,System.Drawing.Color.FromArgb(rgba[p+3],rgba[p],rgba[p+1],rgba[p+2]));}
+                                int tx=(ti%4)*260,ty=(ti/4)*280;
+                                graphics.DrawImage(tile,new System.Drawing.Rectangle(tx,ty,256,256));
+                                graphics.DrawString(ti+" "+t.Width+"x"+t.Height,System.Drawing.SystemFonts.DefaultFont,
+                                    System.Drawing.Brushes.White,tx,ty+257);
+                            }
+                        }
+                        sheet.Save(Path.Combine(output,"bt3-costume-textures.png"));
+                    }
+                    var frame=SimpleControl<TrackBar>(form,"libraryOriginalFrame");frame.Value=Math.Min(30,frame.Maximum);
+                    panel.Capture();panel.Invalidate();panel.Update();
+                    using(var image=panel.GetScreenshot(panel.ClientRectangle,false))
+                        image.Save(Path.Combine(output,"bt3-goku-mid-costume1-idle-frame30.png"));
+                    Check(frame.Maximum>30&&renderer.RenderCount>1&&
+                        FighterProject.HashFile(Path.Combine(output,"bt3-goku-mid-costume1-idle-first.png"))!=
+                        FighterProject.HashFile(Path.Combine(output,"bt3-goku-mid-costume1-idle-frame30.png")),
+                        "Native action scrubbing changes rendered pixels without changing the target");
+                    var transformed=discNode.Nodes.Cast<TreeNode>().Single(n=>n.Text.StartsWith("Form 002 "));
+                    transformed.Expand();await LibraryQuerySettled(form);
+                    var transformedCostume=transformed.Nodes[0];transformedCostume.Expand();await LibraryQuerySettled(form);
+                    tree.SelectedNode=transformedCostume.Nodes.Cast<TreeNode>().Single(n=>n.Text.StartsWith("Idle · Action 000"));
+                    await Wait(()=>Field(form,"_bt3Renderer") is Bt3NativeRender newRenderer&&
+                        !ReferenceEquals(newRenderer,renderer));
+                    panel.Capture();panel.Invalidate();panel.Update();
+                    using(var image=panel.GetScreenshot(panel.ClientRectangle,false))
+                        image.Save(Path.Combine(output,"bt3-goku-mid-super-saiyan-idle.png"));
+                    Check(((Bt3NativeRender)Field(form,"_bt3Renderer")).RenderCount>0&&
+                        FighterProject.HashFile(Path.Combine(output,"bt3-goku-mid-super-saiyan-idle.png"))!=
+                        FighterProject.HashFile(Path.Combine(output,"bt3-goku-mid-costume1-idle-first.png")),
+                        "Separate BT3 transformation uses its own textured costume and motion bank");
+                    var unsupported=discNode.Nodes.Cast<TreeNode>().Single(n=>n.Text.StartsWith("Form 022 "));
+                    unsupported.Expand();await LibraryQuerySettled(form);
+                    var unsupportedCostume=unsupported.Nodes[0];unsupportedCostume.Expand();await LibraryQuerySettled(form);
+                    tree.SelectedNode=unsupportedCostume.Nodes.Cast<TreeNode>().Single(n=>n.Text.StartsWith("Action 400 "));
+                    await Wait(()=>SimpleControl<Label>(form,"libraryOriginalLabel").Text.StartsWith("BT3 preview unavailable:"));
+                    Check(Field(form,"_bt3Renderer")==null&&
+                        SimpleControl<Label>(form,"libraryOriginalLabel").Text.Contains("bounded motion buffer"),
+                        "Unsupported native action clears the previous preview and reports the reason");
+                    var seamForm=discNode.Nodes.Cast<TreeNode>().Single(n=>n.Text.StartsWith("Form 007 "));
+                    seamForm.Expand();await LibraryQuerySettled(form);
+                    var seamCostume=seamForm.Nodes[0];seamCostume.Expand();await LibraryQuerySettled(form);
+                    tree.SelectedNode=seamCostume.Nodes.Cast<TreeNode>().Single(n=>n.Text.StartsWith("Idle · Action 000"));
+                    await Wait(()=>Field(form,"_bt3Renderer") is Bt3NativeRender seamRenderer&&
+                        seamRenderer.Scene.SeamTriangleCount>0);
+                    var withSeam=(Bt3NativeRender)Field(form,"_bt3Renderer");
+                    panel.Capture();panel.Invalidate();panel.Update();
+                    using(var image=panel.GetScreenshot(panel.ClientRectangle,false))
+                        image.Save(Path.Combine(output,"bt3-native-seam-costume-idle.png"));
+                    Check(withSeam.RenderCount>0&&withSeam.Scene.SeamTriangleCount>0,
+                        "Costume with native seam triangles renders its complete weighted source mesh");
+                }
                 await CaptureWindow(form,Path.Combine(output,"bt3-direct-library.png"));
             }
             Check(!library.Read().GameLocations.Single().Indexed&&library.Read().Clips.Count==0,

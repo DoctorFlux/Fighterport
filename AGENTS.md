@@ -1,5 +1,15 @@
 # Fighterport
 
+2 November — preview.80-bt3-native-source-preview renders the selected BT3
+SLUS-21678 form, costume textures and decoded skeletal action in the existing
+small read-only source viewport. The pmdl VIF strips, two-influence weights,
+seam triangles and referenced GS textures are read directly from the ISO;
+native source bytes remain unchanged. The complete BrawlCrate viewer and
+original Next are retained. BT3 target editing, retargeting, writing, full
+runtime lighting and unsupported actions remain OPEN. See
+[bounded evidence](docs/BT3_NATIVE_SOURCE_PREVIEW_2026-11-02.md). Keep one
+incomplete G1/M2 and background-only verification.
+
 2 November — preview.79-bt3-direct-library opens a saved BT3 USA ISO as a
 read-only form → costume → native action tree in the shared library. The
 saved path remains path-only; no fake editable catalogue clips or game-file
