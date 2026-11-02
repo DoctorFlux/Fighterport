@@ -1,5 +1,13 @@
 # Current milestone M2 — simpler native workspace
 
+2 November follow-up: the reported post-retarget whole-window freeze remains
+OPEN. A private-desktop replay from `5314efe0a0fffc9d2abe4a39bd6bf93768c5024f`
+imported Melee Fox then Falco Wait1 into one Brawl Fox target, then exercised a
+failed Peach Wait1 bake. All 54 checks passed, including camera, bone selection,
+playback and viewport rendering after failure. The real third donor and exact
+active window were not identified; no universal fix or new preview is claimed.
+See [diagnostic record](../SEQUENTIAL_USE_FOLLOWUP_2026-11-02.md).
+
 2 November: preview.72-sequential-use-recovery qualifies bounded
 native presentation, source-preview cancellation and recorded-breakpoint
 refinement from

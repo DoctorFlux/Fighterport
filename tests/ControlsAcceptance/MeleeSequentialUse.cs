@@ -63,8 +63,14 @@ internal static partial class Program
                 using(var axes=Modal("Rig Coordinates",window=>window.Controls.OfType<Button>().Single(b=>b.Text=="Use Coordinates").PerformClick()))
                     Check((bool)Call(form,"ReviewEngineCoordinates",target,roles),"Sequential Use confirms exact target coordinates");
                 CHR0Node first=null;
-                foreach(string actor in new[]{"Fox","Falco"})
+                bool failedBakeRegression=Environment.GetEnvironmentVariable("FIGHTERPORT_TEST_FAILED_BAKE_RECOVERY")=="1";
+                bool thirdUse=failedBakeRegression||Environment.GetEnvironmentVariable("FIGHTERPORT_TEST_THIRD_USE")=="1";
+                string singleActor=Environment.GetEnvironmentVariable("FIGHTERPORT_TEST_SINGLE_ACTOR");
+                string[] actors=singleActor!=null?new[]{singleActor}:thirdUse?new[]{"Fox","Falco","Peach"}:new[]{"Fox","Falco"};
+                int useIndex=0;
+                foreach(string actor in actors)
                 {
+                    useIndex++;
                     var sourceItem=melee.Browse("Wait1").First(i=>i.Model?.Character==actor&&i.Clip.Name=="Wait1");
                     if(actor=="Falco"&&Environment.GetEnvironmentVariable("FIGHTERPORT_TEST_QUICK_SECOND")=="1")
                     {
@@ -89,6 +95,7 @@ internal static partial class Program
                     int autoEpochBefore=(int)Field(form,"_libraryAutoEpoch");
                     int before=form.FighterProject.Animations.Count;
                     Exception failure=null;bool reviewed=false;var timer=Stopwatch.StartNew();
+                    bool expectBakeFailure=failedBakeRegression&&useIndex==actors.Length;
                     form.RetargetKeyframeReviewReady=window=>
                     {
                         try{Console.WriteLine("SEQUENTIAL "+actor+" review shown after "+timer.Elapsed.TotalSeconds.ToString("0.0")+" s");reviewed=true;SimpleControl<CheckBox>(window,"sourceKeysReviewed").Checked=true;SimpleControl<Button>(window,"sourceKeysUse").PerformClick();}
@@ -105,11 +112,38 @@ internal static partial class Program
                         };
                         errors.Start();
                         phase=actor+" Use";
-                        SimpleControl<Button>(form,"libraryUseOnTarget").PerformClick();
+                        if(expectBakeFailure||useIndex==3||singleActor!=null)
+                        {
+                            try{Call(form,"UseLibraryOnTarget");}
+                            catch(System.Reflection.TargetInvocationException error){failure=error.InnerException??error;}
+                        }
+                        else SimpleControl<Button>(form,"libraryUseOnTarget").PerformClick();
                         errors.Stop();
                     }
                     form.RetargetKeyframeReviewReady=null;
                     Console.WriteLine("SEQUENTIAL "+actor+" Use returned after "+timer.Elapsed.TotalSeconds.ToString("0.0")+" s");
+                    if(expectBakeFailure)
+                    {
+                        Console.WriteLine("SEQUENTIAL captured bake failure: "+failure);
+                        Check(failure is InvalidOperationException&&failure.Message.Contains("The retarget did not finish")&&
+                            !(bool)Field(form,"_retargetBusy")&&form.FighterProject.Animations.Count==before&&
+                            ReferenceEquals(editor.TargetModel,target),"A failed native master bake clears retarget busy and preserves the live target document");
+                        await VerifyViewerMotion(form,target,editor.SelectedCHR0,actor+" after failed bake");
+                        var camera=editor.ModelPanel.CurrentViewport.Camera;
+                        var cameraBefore=Enumerable.Range(0,16).Select(i=>camera._matrix[i]).ToArray();
+                        camera.Rotate(0,15,0);
+                        Check(!cameraBefore.SequenceEqual(Enumerable.Range(0,16).Select(i=>camera._matrix[i])),
+                            "The native camera remains adjustable after a failed retarget");
+                        camera.Rotate(0,-15,0);
+                        var previousBone=editor.SelectedBone;
+                        var selectedBone=target.AllBones.First(b=>b.Name==roles["pelvis"]);
+                        editor.SelectedBone=selectedBone;
+                        Check(ReferenceEquals(editor.SelectedBone,selectedBone),"Native bone selection remains available after a failed retarget");
+                        editor.SelectedBone=previousBone;
+                        await CaptureSimpleWorkspace(form,Path.Combine(output,"after-failed-bake.png"));
+                        Check(targetHash==(string)Call(form,"NativeControlHash",target,".mdl0"),"A failed bake preserves native binds and all skin weights");
+                        return;
+                    }
                     if(failure!=null)throw failure;
                     if(actor=="Falco"&&Environment.GetEnvironmentVariable("FIGHTERPORT_TEST_QUICK_SECOND")=="1")
                         Check((int)Field(form,"_libraryAutoEpoch")>autoEpochBefore,"Use cancels the in-flight source preview before publishing the target result");
@@ -139,7 +173,7 @@ internal static partial class Program
                         firstRow.Selected=true;firstRow.Focused=true;
                         editor.SetFrame(Math.Min(7,first.FrameCount));
                         Check(ReferenceEquals(editor.SelectedCHR0,first)&&editor.CurrentFrame==Math.Min(7,first.FrameCount),"Viewer returns to the first result after the second Use");
-                        await CaptureSimpleWorkspace(form,Path.Combine(output,"first-result-reselected.png"));
+                        await CaptureSimpleWorkspace(form,Path.Combine(output,useIndex==2?"first-result-reselected.png":"first-result-reselected-after-third.png"));
                     }
                 }
                 Check(targetHash==(string)Call(form,"NativeControlHash",target,".mdl0"),"Sequential Use preserves target binds and all weights");

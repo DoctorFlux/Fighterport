@@ -119,7 +119,7 @@ namespace BrawlCrate.Studio.Retargeting
                             double error=ContactMotion.EndOrientationDegrees(actual.Orientation[bone],expected.WorldRotations[bone]);
                             if(error>.025||expected.Translations!=null&&Vector3.Distance(actual.Local[bone].Translation,expected.Translations[bone])>.0002||
                                 expected.Scales!=null&&Maximum(actual.Local[bone].Scale-expected.Scales[bone])>.00001)
-                                throw new InvalidDataException("Decoded native master exceeds its unchanged full-quality bound at frame "+time+", bone "+bone+"; orientation "+error+" degrees. No result was imported.");
+                                throw new InvalidDataException("Decoded native master exceeds its unchanged full-quality bound at frame "+time+", bone "+bone+" ("+target.Bones[bone].Name+", native entry "+(candidate.FindChild(target.Bones[bone].Name,false)!=null?"present":"absent")+"); orientation "+error+" degrees; local "+ContactMotion.EndOrientationDegrees(actual.Local[bone].Rotation,expected.LocalRotations[bone])+". No result was imported.");
                         }
                     }
                 }
