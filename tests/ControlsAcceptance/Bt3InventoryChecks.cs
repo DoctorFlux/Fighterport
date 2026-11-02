@@ -455,6 +455,14 @@ internal static partial class Program
                     using(var image=targetPanel.GetScreenshot(targetPanel.ClientRectangle,false))
                         image.Save(Path.Combine(output,"bt3-target-idle-first.png"));
                     var targetFrame=targetPlayback.numFrameIndex;
+                    targetFrame.Value=0;
+                    Check((double)Field(form,"_bt3TargetTime")==0&&targetFrame.Value>=0,
+                        "Shared playback frame zero cannot send negative time to BT3 sampling");
+                    Call(form,"SeekBt3TargetDisplayFrame",int.MaxValue);
+                    Check((double)Field(form,"_bt3TargetTime")==
+                        ((Bt3NativeAssetReader.Motion)Field(form,"_bt3TargetMotion")).Length,
+                        "Out-of-range BT3 seek stops at the exact native terminal frame");
+                    targetFrame.Value=1;
                     targetFrame.Value=Math.Min(30,targetFrame.Maximum);
                     targetPanel.Capture();targetPanel.Invalidate();targetPanel.Update();
                     using(var image=targetPanel.GetScreenshot(targetPanel.ClientRectangle,false))
@@ -513,7 +521,7 @@ internal static partial class Program
                     await Wait(()=>SimpleControl<Label>(form,"bt3TargetCaption").Text.Contains("action 001"));
                     var lowHealthMotion=(Bt3NativeAssetReader.Motion)Field(form,"_bt3TargetMotion");
                     Check(lowHealthMotion.Action==1&&lowHealthMotion.SourceSha256!=nativeEditor.Motion.SourceSha256&&
-                        targetCostume.Text.Contains("Normal")&&targetAction.SelectedItems[0].Text.Contains("low health"),
+                        targetCostume.Text.Contains("Normal")&&targetAction.SelectedItems[0].Text.Contains("low-health"),
                         "Low-health ground idle is a distinct native motion on the normal costume");
                     targetPanel.Capture();targetPanel.Invalidate();targetPanel.Update();
                     using(var image=targetPanel.GetScreenshot(targetPanel.ClientRectangle,false))
@@ -535,7 +543,7 @@ internal static partial class Program
                         (i.Tag as BrawlCrate.UI.Model_Previewer.NativeViewerItem)?.Id==1).Selected=true;
                     await Wait(()=>SimpleControl<Label>(form,"bt3TargetCaption").Text.Contains("action 001"));
                     Check(targetCostume.Text.Contains("Battle damaged")&&
-                        targetAction.SelectedItems[0].Text.Contains("low health")&&
+                        targetAction.SelectedItems[0].Text.Contains("low-health")&&
                         ((Bt3NativeAssetReader.Motion)Field(form,"_bt3TargetMotion")).SourceSha256==lowHealthMotion.SourceSha256,
                         "Damaged costume can show the exact same low-health motion independently");
                     targetPanel.Capture();targetPanel.Invalidate();targetPanel.Update();

@@ -1,5 +1,13 @@
 # Fighterport
 
+2 November — preview.84-bt3-frame-bounds clamps the shared playback
+transport's display frame zero and oversized seeks before native BT3 pose
+sampling, preventing the reported negative-frame exception. BT3 action labels
+now describe the game's health-state selection without asserting that the
+current rendered pose is visually verified as a healthy idle. The user-disputed
+pose remains OPEN for independent game comparison. See
+[bounded evidence](docs/BT3_FRAME_BOUNDS_2026-11-02.md).
+
 2 November — preview.83-shared-bt3-viewer routes native BT3 actions, meshes,
 textures, bones and transport through the original BrawlCrate Model Previewer
 panels. The primary motion-bank and health-idle IDs were checked against the

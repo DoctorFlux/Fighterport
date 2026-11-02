@@ -1,5 +1,11 @@
 # Fighterport master plan
 
+Preview.84 fixes native BT3 frame bounds at the shared playback boundary and
+pose editor, with explicit frame-zero and terminal-seek regressions. Its
+labels identify game-selected motions 000/001 by health state without claiming
+that the currently rendered poses match a running game. The user's visual
+idle concern remains OPEN. See [bounded evidence](BT3_FRAME_BOUNDS_2026-11-02.md).
+
 Preview.83 routes the BT3 target through the original Model Previewer's
 animation, object, texture, bone and playback panels. Native BT3 resources
 remain native; the existing Brawl editor and original Next remain intact.

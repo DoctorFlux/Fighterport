@@ -11,10 +11,10 @@ namespace BrawlCrate.Studio
         {
             switch(action)
             {
-                case 0:return "Ground idle · normal health · Action 000";
-                case 1:return "Ground idle · low health · Action 001";
-                case 0x26:return "Flight idle · normal health · Action 038";
-                case 0x27:return "Flight idle · low health · Action 039";
+                case 0:return "Action 000 · ground motion · normal-health selection";
+                case 1:return "Action 001 · ground motion · low-health selection";
+                case 0x26:return "Action 038 · flight motion · normal-health selection";
+                case 0x27:return "Action 039 · flight motion · low-health selection";
                 default:return "Action "+action.ToString("D3");
             }
         }

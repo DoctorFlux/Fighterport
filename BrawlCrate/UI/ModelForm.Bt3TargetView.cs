@@ -230,7 +230,8 @@ namespace BrawlCrate.UI
         {
             if(_bt3TargetEditor==null||_bt3SelectedBoneId<0)return;
             var rig=_bt3TargetRenderer.Scene.Skeleton;
-            var pose=Bt3NativeAssetReader.Sample(rig,_bt3TargetEditor.Motion,(float)_bt3TargetTime);
+            var pose=Bt3NativeAssetReader.Sample(rig,_bt3TargetEditor.Motion,
+                (float)Math.Max(0,Math.Min(_bt3TargetTime,_bt3TargetEditor.Motion.Length)));
             int index=Array.FindIndex(rig.Bones,b=>b.Id==_bt3SelectedBoneId);
             if(index<0)return;
             var value=pose.Translation[index];float[] parts={value.X,value.Y,value.Z};
@@ -251,7 +252,9 @@ namespace BrawlCrate.UI
             try
             {
                 var rig=_bt3TargetRenderer.Scene.Skeleton;
-                var pose=Bt3NativeAssetReader.Sample(rig,_bt3TargetEditor.Motion,(float)_bt3TargetTime);
+                int nativeFrame=Math.Max(0,Math.Min((int)_bt3TargetPlayback.numFrameIndex.Value-1,
+                    _bt3TargetEditor.Motion.Length));
+                var pose=Bt3NativeAssetReader.Sample(rig,_bt3TargetEditor.Motion,nativeFrame);
                 int index=Array.FindIndex(rig.Bones,b=>b.Id==_bt3SelectedBoneId);
                 if(index<0)throw new InvalidDataException("The selected native bone is unavailable.");
                 var delta=Quaternion.CreateFromYawPitchRoll((float)_bt3EditRotation[1].Value*(float)Math.PI/180f,
@@ -259,7 +262,7 @@ namespace BrawlCrate.UI
                     (float)_bt3EditRotation[2].Value*(float)Math.PI/180f);
                 var translation=new Vector3((float)_bt3EditTranslation[0].Value,
                     (float)_bt3EditTranslation[1].Value,(float)_bt3EditTranslation[2].Value);
-                _bt3TargetEditor.SetKey(_bt3SelectedBoneId,(int)_bt3TargetPlayback.numFrameIndex.Value-1,translation,
+                _bt3TargetEditor.SetKey(_bt3SelectedBoneId,nativeFrame,translation,
                     Quaternion.Normalize(pose.Rotation[index]*delta));
                 SyncBt3NativeEditor();
             }
@@ -512,7 +515,11 @@ namespace BrawlCrate.UI
         private void SeekBt3TargetDisplayFrame(int frame)
         {
             if(_bt3TargetUpdating||_bt3TargetMotion==null)return;
-            _bt3TargetTime=frame-1;_bt3TargetClock.Restart();RenderBt3TargetFrame();
+            // The shared Brawl transport permits display frame zero. BT3's
+            // display frame one is native time zero, so clamp at this boundary
+            // before either the renderer or selected-bone sampler sees it.
+            _bt3TargetTime=Math.Max(0,Math.Min((double)frame-1,_bt3TargetMotion.Length));
+            _bt3TargetClock.Restart();RenderBt3TargetFrame();
         }
         private void CancelBt3TargetLoad()
         {
@@ -685,6 +692,7 @@ namespace BrawlCrate.UI
         private void RenderBt3TargetFrame()
         {
             if(_bt3TargetRenderer==null||_bt3TargetMotion==null)return;
+            _bt3TargetTime=Math.Max(0,Math.Min(_bt3TargetTime,_bt3TargetMotion.Length));
             _bt3TargetRenderer.Apply(_bt3TargetMotion,(float)_bt3TargetTime);
             _bt3TargetUpdating=true;
             try{_bt3TargetPlayback.UpdateInterface(Math.Max(1,Math.Min((int)_bt3TargetPlayback.numTotalFrames.Value,

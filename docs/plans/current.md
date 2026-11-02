@@ -1,5 +1,14 @@
 # Current milestone M2 — simpler native workspace
 
+2 November: preview.84 prevents BT3 target playback frame zero from reaching
+the sampler as native time -1 and clamps oversized seeks to the exact native
+terminal frame. The 39-case private-desktop BT3 suite passes. The action list
+uses neutral game-selection labels because the user's visual claim that neither
+pose is the expected healthy idle has not been independently checked against
+the game. Native game pose comparison remains the next BT3 validation gate
+within this ONE incomplete G1/M2. See
+[bounded evidence](../BT3_FRAME_BOUNDS_2026-11-02.md).
+
 2 November: preview.83 uses the original Model Previewer lists, Bones panel,
 viewport and transport for BT3 targets, including bone orbs/axes and viewport
 bone picking. The existing independent native key editor, Undo/Redo and BPE
