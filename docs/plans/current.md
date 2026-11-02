@@ -1,5 +1,18 @@
 # Current milestone M2 — simpler native workspace
 
+2 November: preview.87 prepares exact read-only BT3 source leases for selected
+form, costume and action, retaining separate costume-pack, pmdl and packed
+motion hashes. The source rig keeps every native joint and two-pivot skin
+weight; sampled native/bridge skin positions stayed within `0.00001` native
+units across all 698 indexed costumes at the checked action-0 times. The
+existing Next pose solver accepted Goku Mid source samples against local
+Brawl Mario/Snake target rigs in a nonpublishing probe. Private-desktop
+source/viewer checks passed. Direct BT3 `Use on This Model` remains disabled
+until the native sampler enters the full Next bake with reviewed bindings,
+root/contact gates and project provenance. Brawl/Melee outputs and future
+Ultimate/Rivals II adapters remain separate qualification steps in this ONE
+incomplete G1/M2. See [bounded evidence](../BT3_SOURCE_RIG_2026-11-02.md).
+
 2 November: preview.86 keeps the same native BT3 scene, camera, mesh/texture
 visibility and selected joint when choosing another action of the same
 costume. Short decomp-backed action labels and exact joint IDs now share the

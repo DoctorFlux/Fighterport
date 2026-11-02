@@ -138,6 +138,89 @@ internal static partial class Program
         var idle=Bt3NativeAssetReader.ReadMotion(idleBytes,0);
         var lowHealthBytes=inventory.ReadOwned(mid.MotionMembers[0][1],4*1024*1024);
         var lowHealth=Bt3NativeAssetReader.ReadMotion(lowHealthBytes,1);
+        if(args.Contains("--bt3-source-rig"))
+        {
+            foreach(var pair in new[]{Tuple.Create(mid,mid.Costumes[0],0),
+                Tuple.Create(mid,mid.Costumes[0],1),
+                Tuple.Create(inventory.Fighters[2],inventory.Fighters[2].Costumes[0],0)})
+            {
+                var member=pair.Item1.MotionMembers[0].Single(m=>m.PackIndex==pair.Item3);
+                var lease=Bt3SourceLease.Open(inventory,pair.Item1,pair.Item2,member);
+                lease.VerifyUnchanged();
+                var source=lease.Source;
+                var scene=source.Scene;var motion=source.Motion;
+                var times=new[]{0f,.25f,1f,motion.Length*.5f,motion.Length-.25f,(float)motion.Length};
+                float max=times.Max(source.MaximumPositionDifference);
+                Console.WriteLine("TRACE BT3 source rig form="+pair.Item1.Slot+" action="+pair.Item3+
+                    " vertices="+source.Vertices.Length+" bind split="+source.MaximumBindSplit+
+                    " maximum native/bridge skin difference="+max);
+                Check(source.Vertices.Length==scene.TriangleCount*3&&source.MaximumBindSplit<.0001f&&max<.00001f,
+                    "BT3 native source rig keeps every two-pivot skin weight and motion pose within a measured float bound");
+                if(args.Contains("--bt3-plan-probe")&&pair.Item3==0&&pair.Item1.Slot==1)
+                {
+                    int available=0,qualified=0;
+                    foreach(var character in new[]{"mario","snake"})
+                    {
+                        string fixture=Path.Combine(".local","optimization-next-bake-draft",character,"next-target-before.mdl0");
+                        if(!File.Exists(fixture))continue;available++;
+                        try
+                        {
+                            using(var target=NodeFactory.FromFile(null,fixture) as MDL0Node)
+                            {
+                                var rig=BrawlCrate.Studio.Retargeting.BrawlRetargeter.Capture(target);
+                                var plan=new BrawlCrate.Studio.Retargeting.HumanoidRetargeter(source.Rig,rig.Rig);
+                                int samples=0;
+                                for(int quarter=0;quarter<=motion.Length*4;quarter++)
+                                {
+                                    var pose=plan.Evaluate(source.Sample(quarter*.25f),false);
+                                    if(pose.Pose.Local.Length!=rig.Bones.Length)
+                                        throw new InvalidDataException("Native BT3 source sample changed the target rig's joint count.");
+                                    samples++;
+                                }
+                                Console.WriteLine("TRACE BT3 to "+character+" plan mappings="+plan.Mapping.Length+
+                                    " quarter-frame samples="+samples+" target joints="+rig.Bones.Length+" unavailable="+
+                                    string.Join(",",plan.UnavailableEndEffectors));
+                                qualified++;
+                            }
+                        }
+                        catch(Exception error)when(error is InvalidDataException||error is NotSupportedException)
+                        {Console.WriteLine("TRACE BT3 to "+character+" plan unavailable="+error.Message);}
+                    }
+                    if(available>0)Check(qualified==available,
+                        "Native BT3 source samples enter the existing format-neutral Next pose solver at every quarter frame for available Brawl target rigs");
+                }
+            }
+            bool rejectedCrossForm=false;
+            try{Bt3SourceLease.Open(inventory,mid,mid.Costumes[0],inventory.Fighters[2].MotionMembers[0][0]);}
+            catch(InvalidDataException){rejectedCrossForm=true;}
+            Check(rejectedCrossForm,"BT3 source lease rejects a different form's action even when its action index matches");
+        }
+        if(args.Contains("--bt3-source-rig-sweep")||args.Contains("--bt3-source-costume-sweep"))
+        {
+            bool everyCostume=args.Contains("--bt3-source-costume-sweep");
+            int checkedForms=0,checkedCostumes=0;float worst=0,worstBind=0;
+            foreach(var form in inventory.Fighters)
+            {
+                var action=form.MotionMembers[0].FirstOrDefault(m=>m.PackIndex==0&&m.Bytes>=10);
+                if(form.Costumes.Length==0||action==null)throw new InvalidDataException("A BT3 form lacks a model or action-zero source.");
+                var motion=Bt3NativeAssetReader.ReadMotion(inventory.ReadOwned(action,4*1024*1024),0);
+                foreach(var costume in everyCostume?form.Costumes:form.Costumes.Take(1))
+                {
+                    var scene=Bt3NativeMesh.Read(inventory.ReadOwned(costume,4*1024*1024));
+                    var source=new Bt3SourceRig(scene,motion);
+                    float error=Math.Max(source.MaximumPositionDifference(0),source.MaximumPositionDifference(motion.Length*.5f));
+                    if(error>=.00001f)throw new InvalidDataException("BT3 source skin bridge exceeds its position bound for form "+form.Slot+" costume "+costume.Identity+": "+error);
+                    checkedCostumes++;worst=Math.Max(worst,error);worstBind=Math.Max(worstBind,source.MaximumBindSplit);
+                }
+                checkedForms++;
+            }
+            Console.WriteLine("TRACE BT3 source rig sweep forms="+checkedForms+" costumes="+checkedCostumes+
+                " maximum pose difference="+worst+
+                " maximum bind split="+worstBind);
+            Check(checkedForms==inventory.Fighters.Length&&
+                (!everyCostume||checkedCostumes==inventory.Fighters.Sum(f=>f.Costumes.Length)),
+                "Every inspected BT3 form and costume retains all source skin influences in its native rig bridge");
+        }
         Check(mid.MotionMembers[0][0].PackIndex==0&&mid.MotionMembers[0][1].PackIndex==1&&
             idle.Length==72&&lowHealth.Length==108&&idle.SourceSha256!=lowHealth.SourceSha256,
             "Goku Mid action 000 reads first primary-bank member (72 frames), action 001 the second (108 frames)");
@@ -416,6 +499,16 @@ internal static partial class Program
                         FighterProject.HashFile(Path.Combine(output,"bt3-goku-mid-costume1-idle-first.png"))!=
                         FighterProject.HashFile(Path.Combine(output,"bt3-goku-mid-costume1-idle-frame30.png")),
                         "Native action scrubbing changes rendered pixels without changing the target");
+                    var firstLease=(Bt3SourceLease)Field(form,"_bt3SourceLease");
+                    tree.SelectedNode=midNode.Nodes.Cast<TreeNode>().Single(n=>n.Text==Bt3ActionLabels.Describe(1));
+                    await Wait(()=>Field(form,"_bt3SourceLease") is Bt3SourceLease selected&&selected.Action==1);
+                    var secondLease=(Bt3SourceLease)Field(form,"_bt3SourceLease");
+                    Check(ReferenceEquals(renderer,Field(form,"_bt3Renderer"))&&
+                        secondLease.CostumeSha256==firstLease.CostumeSha256&&
+                        secondLease.MotionSha256!=firstLease.MotionSha256&&secondLease.ActionMember.PackIndex==1,
+                        "Changing a BT3 source action retains its exact costume scene and freezes the new native member hash");
+                    tree.SelectedNode=idleRow;
+                    await Wait(()=>Field(form,"_bt3SourceLease") is Bt3SourceLease selected&&selected.Action==0);
                     transform.SelectedIndex=1;
                     await Wait(()=>Field(form,"_bt3Renderer") is Bt3NativeRender newRenderer&&
                         !ReferenceEquals(newRenderer,renderer));

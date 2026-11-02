@@ -1,5 +1,15 @@
 # Fighterport
 
+2 November — preview.87-bt3-source-rig introduces a read-only exact BT3
+form/costume/action lease with separate native hashes and a full two-pivot
+skin/pose bridge. All 698 indexed costumes met the sampled skin-position
+bound; the original Next pose solver accepted native Goku Mid samples against
+local Mario/Snake target rigs without publishing an animation. Direct BT3
+`Use on This Model` and cross-game export remain OPEN pending full bake,
+reviewed root/contact bindings, project provenance and native output gates.
+See [bounded evidence](docs/BT3_SOURCE_RIG_2026-11-02.md). Keep the single
+incomplete G1/M2 milestone and background-only testing.
+
 2 November — preview.86-bt3-scene-labels keeps the exact same BT3 costume
 scene when switching native actions, retaining camera, object/texture
 visibility and joint selection. Action labels follow the pinned decomp for

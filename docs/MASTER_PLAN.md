@@ -1,5 +1,16 @@
 # Fighterport master plan
 
+Preview.87 adds a read-only BT3 source lease and native two-pivot skin/pose
+bridge for exact form, costume and action members. It verifies selected
+source hashes and feeds the existing format-neutral Next pose evaluator in
+a nonpublishing Brawl target probe. It does not yet enable BT3 retargeting or
+export. The next gate is adapting the original Next bake to native source
+sampling, then reviewing root/contact behavior, provenance and target-native
+output independently for Brawl and Melee. Ultimate and Rivals II need their
+own verified adapters; model/texture writing is a separate native gate.
+See [bounded evidence](BT3_SOURCE_RIG_2026-11-02.md). Keep the one incomplete
+G1/M2 and background-only verification.
+
 Preview.86 preserves the BT3 native model scene when changing only its
 action, and gives action/object/joint lists shorter, more useful labels. Body
 part names are marked as proposals from generic rest geometry; exact numeric

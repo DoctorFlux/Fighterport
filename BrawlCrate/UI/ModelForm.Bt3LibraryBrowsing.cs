@@ -36,6 +36,7 @@ namespace BrawlCrate.UI
         private readonly Dictionary<string,Lazy<Bt3DiscInventory>> _bt3BrowseCache=new Dictionary<string,Lazy<Bt3DiscInventory>>(StringComparer.OrdinalIgnoreCase);
         private Bt3NativeRender _bt3Renderer;
         private Bt3NativeAssetReader.Motion _bt3Motion;
+        private Bt3SourceLease _bt3SourceLease;
         private Bt3BrowseChoice _bt3PreviewChoice;
         private CancellationTokenSource _bt3PreviewCancel;
         private System.Windows.Forms.Timer _bt3PreviewTimer;
@@ -119,6 +120,7 @@ namespace BrawlCrate.UI
         private void ReleaseBt3Preview()
         {
             CancelBt3PreviewLoad();
+            _bt3SourceLease=null;
             if(_bt3Renderer==null)return;
             _libraryTimer?.Stop();if(_libraryPlay!=null)_libraryPlay.Text="Play";
             _libraryViewport?.ClearAll();_bt3Renderer.Dispose();_bt3Renderer=null;_bt3Motion=null;_bt3PreviewChoice=null;
@@ -148,35 +150,24 @@ namespace BrawlCrate.UI
             var exact=ResolveBt3Choice(choice);
             if(exact==null){ReleaseBt3Preview();_libraryOriginalLabel.Text="This action is unavailable for the selected transformation.";return;}
             var costume=exact.Costume;var action=exact.Motion;
-            var priorScene=ReferenceEquals(_bt3PreviewChoice?.Costume,costume)?_bt3Renderer?.Scene:null;
+            var priorLease=ReferenceEquals(_bt3PreviewChoice?.Costume,costume)?_bt3SourceLease:null;
             int epoch=_bt3PreviewEpoch;var cancel=new CancellationTokenSource();_bt3PreviewCancel=cancel;
             _libraryOriginalLabel.Text="Loading original BT3 model, textures and action...";
             try
             {
-                var prepared=await Task.Run(()=>{
-                    cancel.Token.ThrowIfCancellationRequested();
-                    Bt3NativeMesh.Scene scene=null;
-                    if(priorScene==null)
-                        scene=Bt3NativeMesh.Read(choice.Inventory.ReadOwned(costume,4*1024*1024));
-                    cancel.Token.ThrowIfCancellationRequested();
-                    var motion=Bt3NativeAssetReader.ReadMotion(choice.Inventory.ReadOwned(action,4*1024*1024),
-                        action.PackIndex);
-                    var rig=scene?.Skeleton??priorScene?.Skeleton;
-                    if(rig==null||!motion.Tracks.All(t=>rig.Bones.Any(b=>b.Id==t.Bone)))
-                        throw new InvalidDataException("The selected BT3 action does not match its exact costume skeleton.");
-                    return Tuple.Create(scene,motion);
-                },cancel.Token);
+                var prepared=await Task.Run(()=>Bt3SourceLease.Open(choice.Inventory,exact.Form,costume,action,
+                    priorLease,cancel.Token),cancel.Token);
                 if(cancel.IsCancellationRequested||epoch!=_bt3PreviewEpoch||IsDisposed||Disposing||
                     !ReferenceEquals(_libraryList?.SelectedNode?.Tag,choice)||_libraryPane?.Visible!=true||
                     !ReferenceEquals(_bt3Transform.SelectedItem,exact.Form)||
                     !ReferenceEquals((_bt3Costume.SelectedItem as Bt3CostumeOption)?.Resource,costume))return;
-                if(prepared.Item1!=null)
+                if(priorLease==null)
                 {
-                    ReleaseLibraryPreview();_bt3Renderer=new Bt3NativeRender(prepared.Item1);
+                    ReleaseLibraryPreview();_bt3Renderer=new Bt3NativeRender(prepared.Source.Scene);
                     _libraryViewport.CreateControl();_libraryViewport.Capture();
                     _libraryViewport.ClearAll();_libraryViewport.AddTarget(_bt3Renderer);
                 }
-                _bt3Motion=prepared.Item2;_bt3PreviewChoice=exact;
+                _bt3SourceLease=prepared;_bt3Motion=prepared.Source.Motion;_bt3PreviewChoice=exact;
                 _libraryTime=0;_libraryScrubbing=true;
                 try{_libraryFrame.Maximum=Math.Max(1,_bt3Motion.Length+1);_libraryFrame.Value=1;}
                 finally{_libraryScrubbing=false;}
