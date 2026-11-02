@@ -29,6 +29,7 @@ namespace BrawlCrate.UI.Model_Previewer.ModelEditControl
         internal Action<float[]> AnimationPinMove;
         internal Action AnimationPinUp,AnimationPinCancel,AnimationHandleSelectionChanged;
         internal Func<bool> AnimationControlsBusy;
+        internal Func<bool> AnimationPlaybackBusy;
         internal float[][] AnimationAuthoringPose;
         internal string[] AnimationAuthoringBones;
         private readonly SelectionParams _pinSelection=new SelectionParams();
@@ -69,7 +70,7 @@ namespace BrawlCrate.UI.Model_Previewer.ModelEditControl
         }
         public override void PlayAnim()
         {
-            if(AnimationControlsBusy?.Invoke()==true){CancelAnimationPin();return;}
+            if((AnimationPlaybackBusy??AnimationControlsBusy)?.Invoke()==true){CancelAnimationPin();return;}
             base.PlayAnim();
         }
         public override void UpdateModel(float frame)

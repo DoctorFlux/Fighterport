@@ -1,5 +1,14 @@
 # Fighterport
 
+2 November — preview.71-viewer-playback-recovery qualifies the bounded
+sequential native Use fix from `359b6473915e117fdb8e8407e8f87804af63b175`.
+The main viewer can play while automatic read-only control setup loads after
+an import; native control edits stay guarded. Melee Fox then Falco Wait1 on the
+same Brawl Fox target passed 35 private-desktop native checks after the old
+package reproduced a dropped Play command. Read the
+[evidence](docs/VIEWER_PLAYBACK_RECOVERY_2026-11-02.md). Full viewer, original
+Next, roots and all weights remain. ONE G1/M2 is incomplete; .66 stays queued.
+
 2 November — preview.70-foot-contact-coherence qualifies the bounded Fox
 Melee→Brawl Wait1 planted-foot correction from `40cf61800792a26409fdbdafd93d42d9086e0922`.
 The original Next retargeter now tracks coherent source skin motion and keeps

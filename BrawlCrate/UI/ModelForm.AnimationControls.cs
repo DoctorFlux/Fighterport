@@ -20,6 +20,7 @@ namespace BrawlCrate.UI
         private ToolStripMenuItem _controlFollow,_controlPinsOnly,_controlPickFK;
         private int _controlEpoch;
         private bool _controlBusy;
+        private bool _controlReadOnlySetup;
         private bool _controlSetupQueued,_controlReloadRequested;
         private string _loadedControlKey;
         private MDL0Node _loadedControlModel;
@@ -78,6 +79,10 @@ namespace BrawlCrate.UI
             modelEditControl1.AnimationPinUp=EndControlGesture;
             modelEditControl1.AnimationPinCancel=CancelControlGesture;
             modelEditControl1.AnimationControlsBusy=()=>_controlBusy||_retargetBusy||_workspaceBusy;
+            // A queued read-only setup uses immutable snapshots in its worker.
+            // Native playback may begin while it runs; edits and gestures stay
+            // guarded until the setup has finished or been discarded.
+            modelEditControl1.AnimationPlaybackBusy=()=>_retargetBusy||_workspaceBusy||_pinGesture!=null||(_controlBusy&&!_controlReadOnlySetup);
             modelEditControl1.AnimationHandleSelectionChanged=SyncControlSelection;
             modelEditControl1.AnimationCurveTargetChanged=ObserveControlCurve;
             modelEditControl1.AnimationCurveEdited=QueueControlCurveEdit;
@@ -121,14 +126,17 @@ namespace BrawlCrate.UI
             if(!IsHandleCreated||IsDisposed)return;
             if(_controlBusy||_retargetBusy||_workspaceBusy||modelEditControl1.Playing){_controlReloadRequested=true;return;}
             if(_controlSetupQueued)return;_controlSetupQueued=true;
-            BeginInvoke(new Action(()=>{_controlSetupQueued=false;if(IsDisposed||Disposing)return;if(_controlBusy||_retargetBusy||_workspaceBusy||modelEditControl1.Playing){_controlReloadRequested=true;return;}_controlReloadRequested=false;if(modelEditControl1.TargetModel!=null)ControlAction(async()=>{await LoadControls();});}));
+            BeginInvoke(new Action(()=>{_controlSetupQueued=false;if(IsDisposed||Disposing)return;if(_controlBusy||_retargetBusy||_workspaceBusy||modelEditControl1.Playing){_controlReloadRequested=true;return;}_controlReloadRequested=false;if(modelEditControl1.TargetModel!=null)ControlAction(async()=>{await LoadControls();},true);}));
         }
-        private async void ControlAction(Func<Task> action)
+        private sealed class StaleControlSetupException:InvalidOperationException
+        {internal StaleControlSetupException():base("The model, animation or frame changed; the stale setup was discarded."){}}
+        private async void ControlAction(Func<Task> action,bool readOnlySetup=false)
         {
-            if(_controlBusy||_retargetBusy||_workspaceBusy)return;_controlBusy=true;
+            if(_controlBusy||_retargetBusy||_workspaceBusy)return;_controlBusy=true;_controlReadOnlySetup=readOnlySetup;
             try{await action();}
+            catch(StaleControlSetupException) when (readOnlySetup&&modelEditControl1.Playing){}
             catch(Exception e){if(!IsDisposed)_fighterStatus.Text="Animation controls: "+e.Message;}
-            finally{_controlBusy=false;if(_controlReloadRequested)QueueControlSetup();if(!IsDisposed)UpdateSimpleWorkspace();}
+            finally{_controlReadOnlySetup=false;_controlBusy=false;if(_controlReloadRequested)QueueControlSetup();if(!IsDisposed)UpdateSimpleWorkspace();}
         }
         private async Task<ControlReply> LoadControls()
         {
@@ -147,7 +155,7 @@ namespace BrawlCrate.UI
             try
             {
                 var reply=await _controlEngine.Send(new{Operation="load",Model=modelPath,Motion=motionPath,NativeRig=NativeEngineRig(model,clip),State=ControlState(key),TargetBinding=EngineBinding(model),Frame=Math.Max(0,frame-1)});
-                if(IsDisposed||epoch!=_controlEpoch||modelEditControl1.TargetModel!=model||modelEditControl1.SelectedCHR0!=clip||ControlKey()!=key||modelEditControl1.CurrentFrame!=frame||NativeControlHash(model,".mdl0")!=modelHash||ControlClipIdentity(clip)!=clipHash){_controlReloadRequested=true;throw new InvalidOperationException("The model, animation or frame changed; the stale setup was discarded.");}
+                if(IsDisposed||epoch!=_controlEpoch||modelEditControl1.Playing||modelEditControl1.TargetModel!=model||modelEditControl1.SelectedCHR0!=clip||ControlKey()!=key||modelEditControl1.CurrentFrame!=frame||NativeControlHash(model,".mdl0")!=modelHash||ControlClipIdentity(clip)!=clipHash){_controlReloadRequested=true;throw new StaleControlSetupException();}
                 _loadedControlKey=key;_loadedControlModel=model;_loadedControlClip=clip;_controlBoneNames=reply.BoneNames;modelEditControl1.AnimationAuthoringBones=reply.BoneNames;StoreControls(key,reply.State);PublishPins(reply);
                 _loadedControlModelHash=modelHash;_loadedControlClipHash=clipHash;
                 if(clip==null){modelEditControl1.AnimationAuthoringPose=reply.Pose;PreviewControlPose(model,reply.Pose);}

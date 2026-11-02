@@ -25,6 +25,8 @@ internal static partial class Program
         }
         if(Environment.GetEnvironmentVariable("FIGHTERPORT_TEST_SHARED_WORKFLOW")=="1")
         {await MeleeSharedWorkflow(output,library,brawlLibrary);return;}
+        if(Environment.GetEnvironmentVariable("FIGHTERPORT_TEST_SEQUENTIAL_USE")=="1")
+        {await MeleeSequentialUse(output,library,brawlLibrary);return;}
         string previousProject=Environment.GetEnvironmentVariable("FIGHTERPORT_TEST_PREVIOUS_PROJECT");
         if(!string.IsNullOrEmpty(previousProject))using(var previous=FighterProject.Open(previousProject))
             Check(previous.Animations.Any(asset=>asset.Retarget?.Algorithm=="bind-world-fk-body-contact-ik-v10"),"The changed contact algorithm reopens an existing v10 Next result without rewriting its historical provenance");

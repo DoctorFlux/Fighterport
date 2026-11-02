@@ -1,5 +1,14 @@
 # Current milestone M2 — simpler native workspace
 
+2 November: preview.71-viewer-playback-recovery qualifies the bounded viewer
+guard correction from `359b6473915e117fdb8e8407e8f87804af63b175`.
+Automatic read-only control setup no longer silently consumes Play after a
+second Use on This Model; edits remain blocked until setup finishes. Melee Fox
+then Falco Wait1 on Brawl Fox passed 35 private-desktop native checks after a
+pre-fix failing replay. Falco preparation remains slow and broader clip/quality
+gates remain open. See [evidence](../VIEWER_PLAYBACK_RECOVERY_2026-11-02.md).
+ONE G1/M2 remains incomplete; preview.66 finite ledges stays queued.
+
 2 November: preview.70-foot-contact-coherence qualifies a bounded original-Next
 idle contact correction from `40cf61800792a26409fdbdafd93d42d9086e0922`.
 Coherent source skin-patch velocity, full lock at true clip boundaries and a

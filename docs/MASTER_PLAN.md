@@ -1,5 +1,12 @@
 # Fighterport master plan
 
+Preview.71 fixes a silent native Play block during automatic read-only control
+setup after repeated library retargeting. Control edits remain guarded and the
+original Next/native viewer ownership is unchanged. The same-target Fox then
+Falco Wait1 private-desktop replay passes. Preparation time and other Falco
+clips remain separate checks. See [evidence](VIEWER_PLAYBACK_RECOVERY_2026-11-02.md).
+Keep one incomplete G1/M2.
+
 Preview.70 qualifies a bounded source-coherent contact fix for original Next:
 the reported Melee Fox → Brawl Fox Wait1 planted feet no longer jitter in
 quarter-frame decoded native checks. Moving-contact transfers still show
