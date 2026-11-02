@@ -1,5 +1,19 @@
 # Current milestone M2 — simpler native workspace
 
+2 November: preview.82 moves BT3 target presentation into the original
+Model Previewer viewport, with native action and bone side regions, shared
+render toggles and independent native BPE key editing/Undo/Redo/save/reopen.
+It does not complete full Brawl/Melee editor parity; native BT3 project
+ownership, complete gizmos/curves, retargeting, fitting, archive insertion and
+game acceptance remain OPEN in the same incomplete G1/M2. The user's report
+that the displayed idle looks battle-damaged also remains OPEN pending pose
+validation against the game. See [bounded evidence](../BT3_NATIVE_TARGET_EDIT_2026-11-02.md).
+The next implementation slice is a shared native target-document contract for
+Brawl, Melee and BT3 animation selection, bone selection, time/evaluation,
+edit commands and Undo/Redo. Route the existing left/right Model Previewer
+controls through that contract before enabling format-specific curve tools;
+each native writer still requires its own save/reopen and runtime gates.
+
 2 November: preview.81 groups BT3 native forms under character rows, exposes
 Transform and Costume dropdowns, includes the indexed battle-damaged variants
 and defaults to the first normal costume. Open as target now shows the selected

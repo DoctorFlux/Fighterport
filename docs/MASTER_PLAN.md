@@ -1,5 +1,14 @@
 # Fighterport master plan
 
+Preview.82 uses the original Model Previewer viewport and side regions for a
+native BT3 target and introduces independent BPE motion key editing with
+Undo/Redo and verified standalone save/reopen. This is a qualified subset of
+the requested same-editor experience across all formats. Format-neutral
+document ownership, full transform/timeline tools, project Save, native model
+writing, BT3 retarget/fitting and ISO insertion remain in the ONE incomplete
+G1/M2. The user-disputed idle pose remains a separate open validation gate.
+See [bounded evidence](BT3_NATIVE_TARGET_EDIT_2026-11-02.md).
+
 Preview.81 makes BT3 disc browsing character → primary-bank action, with exact
 form/transform and normal or battle-damaged costume dropdowns. The first normal
 costume is the default. Open as target uses a large read-only native BT3 viewer

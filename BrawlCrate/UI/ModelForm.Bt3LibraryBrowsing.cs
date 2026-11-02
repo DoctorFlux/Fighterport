@@ -251,7 +251,7 @@ namespace BrawlCrate.UI
             {
                 _libraryTreeWork.Enqueue(()=>{
                     if(node.TreeView!=_libraryList)return;
-                    var row=new TreeNode((action==0?"Idle · ":"")+"Action "+action.ToString("D3"))
+                    var row=new TreeNode(Bt3ActionLabels.Describe(action))
                     {Name="bt3-action:"+choice.Form.Slot.ToString("D3")+":"+action.ToString("D3"),
                         Tag=new Bt3BrowseChoice{Inventory=choice.Inventory,Form=choice.Form,Forms=choice.Forms,Action=action},
                         ToolTipText="Exact action "+action.ToString("D3")+" of the transformation selected below"};
@@ -278,14 +278,14 @@ namespace BrawlCrate.UI
             _libraryUse.Enabled=_libraryRepair.Enabled=false;
             var exact=ResolveBt3Choice(choice);
             _libraryOpenTarget.Enabled=exact!=null&&!SimpleWorkspaceBusy&&!_libraryReplacingTree;
-            _libraryOpenTarget.AccessibleDescription="Show this exact BT3 transformation, costume and action in the large native target viewport. Native editing and writing are not yet available.";
+            _libraryOpenTarget.AccessibleDescription="Open this exact BT3 form, costume and action in the shared Model Previewer. Native bone keys can be edited and saved as an independent BPE motion member.";
             if(_bt3Renderer==null)_libraryOriginalLabel.Text="BT3 source preview · choose a form, costume or action";
             _libraryDetails.Text=choice==null?"Browse the saved BT3 disc by character. Choose a transformation and costume below, then choose an action.":
                 (exact==null?"This action is unavailable for the selected transformation.":
                     exact.Form.Display+Environment.NewLine+
                     (_bt3Costume.SelectedItem?.ToString()??"Costume")+" · "+exact.Costume.Identity+Environment.NewLine+
                     "Action "+exact.Action.ToString("D3")+" · "+exact.Motion.Identity+" · "+exact.Motion.Bytes+" original bytes.")+
-                Environment.NewLine+"Native source and large target viewing; BT3 editing, retargeting and writing remain unavailable.";
+                Environment.NewLine+"Native source preview and target bone-key editing. Save native motion writes an independent BPE member; ISO insertion and project Save are not yet supported for BT3.";
             UpdateLibraryFavorite();UpdateSimpleWorkspace();return true;
         }
 

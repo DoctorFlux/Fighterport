@@ -1,5 +1,14 @@
 # Native Next integration
 
+Preview.82 adds an independent BT3 BPE motion owner for the shared ModelPanel.
+The BT3 session reuses the exact viewport/control regions and restores the
+underlying Brawl/Melee document on exit. It does not make the original native
+CHR0 controls or Next retargeter operate on BT3 data. Shared cross-format
+authoring still requires a format-neutral clip/bone/curve/Undo document
+contract, adapter-specific native serialization, and post-reopen validation.
+The BPE writer currently publishes only a standalone member; see
+[bounded acceptance](BT3_NATIVE_TARGET_EDIT_2026-11-02.md).
+
 Preview.81 adds a BT3 direct-library browse presentation and a separate native
 read-only target ModelPanel. Character grouping is UI metadata; exact form,
 costume pack and primary-bank action member identities are frozen for source

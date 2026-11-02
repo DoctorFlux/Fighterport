@@ -294,6 +294,11 @@ namespace BrawlCrate.Studio
         private readonly Dictionary<int,Bt3NativeMesh.Pivot> pivotById;
         private readonly List<Draw> draws=new List<Draw>();
         private readonly List<DrawCallBase> calls=new List<DrawCallBase>();
+        private readonly Dictionary<int,Vector3> bonePoints=new Dictionary<int,Vector3>();
+        internal bool ShowBones;
+        internal bool ShowPolygons=true;
+        internal bool ShowVertices;
+        internal int SelectedBoneId=-1;
         private int[] glTextures;
         internal int RenderCount;
         public bool IsRendering{get;set;}=true;
@@ -334,6 +339,12 @@ namespace BrawlCrate.Studio
                 var translation=pose?.Translation[index]??bone.Rest;
                 var local=Matrix4x4.CreateFromQuaternion(rotation)*Matrix4x4.CreateTranslation(translation);
                 world[bone.Id]=bone.Parent<0?local:local*world[bone.Parent];
+            }
+            bonePoints.Clear();
+            foreach(var bone in rig.Bones)
+            {
+                var p=world[bone.Id].Translation;
+                bonePoints[bone.Id]=new Vector3(-p.X,-p.Y,-p.Z);
             }
             foreach(var d in draws)
             {
@@ -382,18 +393,50 @@ namespace BrawlCrate.Studio
                 GL.Enable(EnableCap.Texture2D);GL.BindTexture(TextureTarget.Texture2D,glTextures[d.Texture]);
                 GL.Enable(EnableCap.DepthTest);GL.Disable(EnableCap.CullFace);
                 GL.Enable(EnableCap.Blend);GL.BlendFunc(BlendingFactorSrc.SrcAlpha,BlendingFactorDest.OneMinusSrcAlpha);
-                GL.Begin(BeginMode.Triangles);
-                for(int i=0;i<d.Inputs.Length;i++)
+                if(ShowPolygons)
                 {
-                    var n=d.Normals[i];float key=Math.Max(0,Vector3.Dot(n,Vector3.Normalize(new Vector3(-.35f,.7f,.6f))));
-                    float fill=Math.Max(0,Vector3.Dot(n,Vector3.Normalize(new Vector3(.5f,.3f,-.4f))));
-                    float light=Math.Min(1.15f,.64f+.38f*key+.18f*fill);
-                    GL.Color4(light,light,light,1f);var uv=d.Inputs[i].Vertex;GL.TexCoord2(uv.U,uv.V);
-                    var p=d.Positions[i];GL.Vertex3(p.X,p.Y,p.Z);
+                    GL.Begin(BeginMode.Triangles);
+                    for(int i=0;i<d.Inputs.Length;i++)
+                    {
+                        var n=d.Normals[i];float key=Math.Max(0,Vector3.Dot(n,Vector3.Normalize(new Vector3(-.35f,.7f,.6f))));
+                        float fill=Math.Max(0,Vector3.Dot(n,Vector3.Normalize(new Vector3(.5f,.3f,-.4f))));
+                        float light=Math.Min(1.15f,.64f+.38f*key+.18f*fill);
+                        GL.Color4(light,light,light,1f);var uv=d.Inputs[i].Vertex;GL.TexCoord2(uv.U,uv.V);
+                        var p=d.Positions[i];GL.Vertex3(p.X,p.Y,p.Z);
+                    }
+                    GL.End();RenderCount++;
                 }
-                GL.End();RenderCount++;
+                if(ShowVertices)
+                {
+                    GL.Disable(EnableCap.Texture2D);GL.Disable(EnableCap.Lighting);
+                    GL.Disable(EnableCap.DepthTest);GL.PointSize(2f);GL.Color4(.95f,.72f,.22f,1f);
+                    GL.Begin(BeginMode.Points);
+                    foreach(var p in d.Positions)GL.Vertex3(p.X,p.Y,p.Z);
+                    GL.End();
+                }
+                if(ShowBones&&ReferenceEquals(d,draws[0]))RenderBoneHierarchy();
             }
             finally{GL.UseProgram(priorProgram);GL.PopAttrib();}
+        }
+        private void RenderBoneHierarchy()
+        {
+            GL.Disable(EnableCap.Texture2D);GL.Disable(EnableCap.Lighting);
+            GL.Disable(EnableCap.DepthTest);GL.Disable(EnableCap.Blend);
+            GL.LineWidth(1.5f);GL.Color4(.20f,.90f,.95f,1f);
+            GL.Begin(BeginMode.Lines);
+            foreach(var bone in Scene.Skeleton.Bones)
+                if(bone.Parent>=0&&bonePoints.TryGetValue(bone.Parent,out var parent)&&
+                    bonePoints.TryGetValue(bone.Id,out var child))
+                {GL.Vertex3(parent.X,parent.Y,parent.Z);GL.Vertex3(child.X,child.Y,child.Z);}
+            GL.End();
+            if(!bonePoints.TryGetValue(SelectedBoneId,out var point))return;
+            const float radius=.18f;
+            GL.LineWidth(3f);GL.Color4(1f,.88f,.16f,1f);
+            GL.Begin(BeginMode.Lines);
+            GL.Vertex3(point.X-radius,point.Y,point.Z);GL.Vertex3(point.X+radius,point.Y,point.Z);
+            GL.Vertex3(point.X,point.Y-radius,point.Z);GL.Vertex3(point.X,point.Y+radius,point.Z);
+            GL.Vertex3(point.X,point.Y,point.Z-radius);GL.Vertex3(point.X,point.Y,point.Z+radius);
+            GL.End();
         }
         public void Dispose()
         {

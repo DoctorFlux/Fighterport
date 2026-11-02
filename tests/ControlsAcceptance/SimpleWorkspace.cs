@@ -420,7 +420,7 @@ internal static partial class Program
         {
             form.DrawToBitmap(bitmap, new Rectangle(Point.Empty, form.Size));
             var panels = new[] { form.FighterEditor.ModelPanel, Field(form, "_libraryViewport") as ModelPanel,
-                Field(form,"_comparisonViewport") as ModelPanel, Field(form,"_bt3TargetViewport") as ModelPanel };
+                Field(form,"_comparisonViewport") as ModelPanel };
             foreach (var panel in panels.Where(p => p != null && p.Visible && p.Width > 0 && p.Height > 0))
             {
                 panel.Capture(); panel.Invalidate(); panel.Update();
@@ -430,6 +430,22 @@ internal static partial class Program
                     var point = form.PointToClient(panel.PointToScreen(Point.Empty));
                     int border = (form.Width - form.ClientSize.Width) / 2;
                     graphics.DrawImageUnscaled(view, point.X + border, point.Y + form.Height - form.ClientSize.Height - border);
+                }
+            }
+            // WinForms DrawToBitmap does not reliably include nested controls
+            // added to the legacy previewer side UserControls after creation.
+            // Composite the visible native panes from their own control trees.
+            foreach(string paneName in new[]{"bt3NativeActionPanel","bt3NativeEditPanel"})
+            {
+                var pane=form.Controls.Find(paneName,true).SingleOrDefault();
+                if(pane==null||!pane.Visible||pane.Width<1||pane.Height<1)continue;
+                using(var layer=new Bitmap(pane.Width,pane.Height))
+                using(var graphics=Graphics.FromImage(bitmap))
+                {
+                    pane.DrawToBitmap(layer,new Rectangle(Point.Empty,pane.Size));
+                    var point=form.PointToClient(pane.PointToScreen(Point.Empty));
+                    int border=(form.Width-form.ClientSize.Width)/2;
+                    graphics.DrawImageUnscaled(layer,point.X+border,point.Y+form.Height-form.ClientSize.Height-border);
                 }
             }
             // Outer drawers occlude native child viewports. Composite their

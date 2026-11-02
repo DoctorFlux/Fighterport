@@ -919,6 +919,8 @@ namespace BrawlCrate.UI
                 }
                 AppendFighterRetargetStatus();
             }
+            if(_bt3TargetHost?.Visible==true)
+                _fighterStatus.Text="BT3 native animation editor · Save native motion writes an independent BPE member; project Save does not store this view.";
             UpdateSimpleWorkspace();
         }
 

@@ -1,5 +1,12 @@
 # Fighterport
 
+2 November — preview.82-bt3-native-target-edit reuses the original target
+ModelPanel and side regions for a native BT3 action list, bone hierarchy and
+basic key editing, with independent BPE Undo/Redo/save/reopen. Full parity
+with Brawl/Melee authoring, native project Save, retarget/fitting and game
+acceptance remain OPEN. The user-disputed idle pose remains an explicit gate.
+See [bounded evidence](docs/BT3_NATIVE_TARGET_EDIT_2026-11-02.md).
+
 2 November — preview.81-bt3-character-target-view groups exact BT3 forms by
 character for library browsing, uses Transform and Costume dropdowns, lists
 battle-damaged costume variants and defaults to the first normal costume.

@@ -600,6 +600,9 @@ namespace BrawlCrate.UI
             // settles. Restore visible overlays after that layout, without
             // forcing another editor resize on unchanged status notifications.
             if(_bt3TargetHost?.Visible==true)_bt3TargetHost.BringToFront();
+            if(_bt3NativeLeftPane?.Visible==true)_bt3NativeLeftPane.BringToFront();
+            if(_bt3NativeRightPane?.Visible==true)_bt3NativeRightPane.BringToFront();
+            if(_bt3TargetHost?.Visible==true)LayoutBt3NativeSidePanes();
             foreach (Control pane in new Control[] { _batchReviewPane, _loopInspectionPane, _libraryPane, _simpleWorkspaceTask })
                 if (pane?.Visible == true && pane.Dock == DockStyle.None &&
                     _simpleWorkspaceBody.Controls.GetChildIndex(pane) != 0) pane.BringToFront();
