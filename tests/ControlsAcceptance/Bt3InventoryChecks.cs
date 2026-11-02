@@ -18,9 +18,16 @@ internal static partial class Program
             "Original USA disc identifies its three bounded native AFS partitions");
         Check(inventory.Fighters.Length==161&&inventory.Fighters[0].Slot==0&&inventory.Fighters[1].Slot==1,
             "Every fighter slot retains its exact numeric disc identity");
-        Check(Bt3CharacterNames.Count==161&&Bt3CharacterNames.Get(1)=="Goku (Med)"&&
-            Bt3CharacterNames.Get(2)=="Goku (Med) Super Saiyan",
+        Check(Bt3CharacterNames.Count==161&&Bt3CharacterNames.Get(1)=="Goku (Mid)"&&
+            Bt3CharacterNames.Get(2)=="Goku (Mid) Super Saiyan",
             "Readable form labels preserve exact distinct native slots");
+        Check(Bt3ActionLabels.Describe(2).Contains("Move entry")&&
+            Bt3ActionLabels.Describe(3).Contains("Move loop")&&
+            Bt3ActionLabels.Describe(0x18B).Contains("Non-flyer")&&
+            Bt3ActionLabels.Describe(8)=="Action 008"&&
+            Bt3JointLabels.Describe(8,7).Contains("side 1")&&
+            Bt3JointLabels.Describe(12,7).Contains("side 0"),
+            "Verified shared action and native side-group labels retain exact IDs; unknown actions stay numeric");
         var first=inventory.Fighters[0];
         Check(first.Costumes.Length>0&&first.Costumes[0].AfsIndex==1423&&first.MotionMembers.Length==2&&
             first.MotionMembers[0].Length>0&&first.MotionMembers[1].Length>0,
@@ -53,6 +60,38 @@ internal static partial class Program
             }
         var pmdl=inventory.ModelMember(mid,mid.Costumes[0]);
         var skeleton=Bt3NativeAssetReader.ReadSkeleton(inventory.ReadOwned(pmdl,4*1024*1024));
+        var suggestions=Bt3JointLabels.SuggestedRoles(skeleton);
+        Check(suggestions.Values.Any(name=>name=="head")&&
+            suggestions.Values.Any(name=>name=="L foot")&&
+            suggestions.Values.Any(name=>name=="R foot")&&
+            suggestions.Keys.All(id=>skeleton.Bones.Any(b=>b.Id==id)),
+            "Display-only BT3 body-role suggestions retain exact native joint IDs");
+        if(args.Contains("--bt3-rig-probe")||args.Contains("--bt3-rig-sweep"))
+        {
+            int complete=0,incomplete=0,failed=0;
+            foreach(var form in inventory.Fighters.Where(f=>f.Costumes.Length>0)
+                .Take(args.Contains("--bt3-rig-sweep")?inventory.Fighters.Length:6))
+            {
+                try
+                {
+                    var nativeSkeleton=Bt3NativeAssetReader.ReadSkeleton(inventory.ReadOwned(inventory.ModelMember(form,form.Costumes[0]),4*1024*1024));
+                    var ids=nativeSkeleton.Bones.Select((bone,index)=>new{bone.Id,index}).ToDictionary(p=>p.Id,p=>p.index);
+                    var joints=nativeSkeleton.Bones.Select(b=>new BrawlCrate.Studio.Retargeting.RigJoint(
+                        "BT3_J"+b.Id.ToString("D2"),b.Parent<0?-1:ids[b.Parent],
+                        new BrawlCrate.Studio.Retargeting.JointTransform(-b.Rest,
+                            System.Numerics.Quaternion.Identity,System.Numerics.Vector3.One))).ToArray();
+                    var inferred=BrawlCrate.Studio.Retargeting.SkeletonCharacterizer.Analyze(joints);
+                    if(inferred.Missing.Length==0)complete++;else incomplete++;
+                    if(!args.Contains("--bt3-rig-sweep")||inferred.Missing.Length>0)
+                        Console.WriteLine("TRACE BT3 rig form="+form.Slot+" joints="+joints.Length+
+                            " roles="+string.Join(",",inferred.Roles.OrderBy(p=>p.Key).Select(p=>p.Key+"="+p.Value))+
+                            " missing="+string.Join(",",inferred.Missing));
+                }
+                catch(Exception error)when(error is InvalidDataException||error is NotSupportedException)
+                {failed++;Console.WriteLine("TRACE BT3 rig form="+form.Slot+" unavailable="+error.Message);}
+            }
+            Console.WriteLine("TRACE BT3 rig characterization complete="+complete+" incomplete="+incomplete+" failed="+failed);
+        }
         if(args.Contains("--bt3-mesh"))
         {
             var scene=Bt3NativeMesh.Read(inventory.ReadOwned(mid.Costumes[0],4*1024*1024));
@@ -61,6 +100,21 @@ internal static partial class Program
                 "Native BT3 costume has bounded two-influence strips and decoded embedded textures");
             Console.WriteLine("TRACE BT3 mesh batches="+scene.Batches.Length+" triangles="+scene.TriangleCount+
                 " vertices="+scene.SourceVertexCount+" textures="+scene.Textures.Length);
+            var bindWorld=new System.Collections.Generic.Dictionary<int,System.Numerics.Vector3>();
+            foreach(var bone in scene.Skeleton.Bones)
+                bindWorld[bone.Id]=bone.Rest+(bone.Parent<0?System.Numerics.Vector3.Zero:bindWorld[bone.Parent]);
+            double maximumBindSplit=0;int compared=0;
+            foreach(var batch in scene.Batches)foreach(var vertex in batch.Triangles)
+            {
+                int id=vertex.Bone<0?batch.Bone:vertex.Bone;
+                var owner=scene.Skeleton.Bones.Single(b=>b.Id==id);
+                var pivotA=vertex.Bone<0?batch.PivotA:scene.Pivots[id].A;
+                var pivotB=vertex.Bone<0?batch.PivotB:scene.Pivots[id].B;
+                var a=vertex.Position-pivotA+bindWorld[id];
+                var b=vertex.Position-pivotB+(owner.Parent<0?System.Numerics.Vector3.Zero:bindWorld[owner.Parent]);
+                maximumBindSplit=Math.Max(maximumBindSplit,System.Numerics.Vector3.Distance(a,b));compared++;
+            }
+            Console.WriteLine("TRACE BT3 source bind split max="+maximumBindSplit+" compared="+compared);
         }
         if(args.Contains("--bt3-mesh-sweep"))
         {
@@ -193,7 +247,7 @@ internal static partial class Program
                 dialog.Controls.Find("bt3MotionBanks",true).OfType<ListBox>().Single().Items.Count==446,
                 "Compact inventory displays all character slots, the selected costume packs and exact raw bank members");
             var searchBox=dialog.Controls.Find("bt3CharacterSearch",true).OfType<TextBox>().Single();
-            searchBox.Text="Goku (Med)";
+            searchBox.Text="Goku (Mid)";
             var formList=dialog.Controls.Find("bt3Characters",true).OfType<ListBox>().Single();
             Check(formList.Items.Count==2&&((Bt3DiscInventory.Bt3FighterSlot)formList.Items[0]).Slot==1&&
                 ((Bt3DiscInventory.Bt3FighterSlot)formList.Items[1]).Slot==2,
@@ -209,7 +263,7 @@ internal static partial class Program
                 "Goku Mid default costume and idle inspect verified native pose data");
             formList.SelectedIndex=1;costumeList.SelectedIndex=Math.Min(1,costumeList.Items.Count-1);
             inspect.PerformClick();
-            Check(summary.Text.Contains("Goku (Med) Super Saiyan")&&summary.Text.Contains("Pose data verified"),
+            Check(summary.Text.Contains("Goku (Mid) Super Saiyan")&&summary.Text.Contains("Pose data verified"),
                 "Transformation chooses its own motion bank while alternate costume chooses its own model");
             await CaptureWindow(dialog,Path.Combine(output,"bt3-form-costume-action.png"));
             searchBox.Text="Goku_0";
@@ -264,9 +318,9 @@ internal static partial class Program
                 var tree=SimpleControl<TreeView>(form,"libraryClips");
                 var discNode=tree.Nodes.Cast<TreeNode>().Single(n=>n.Text.StartsWith(Bt3DiscInventory.Game,StringComparison.Ordinal));
                 Check(discNode.Nodes.Count<161&&discNode.Nodes.Count>100&&
-                    discNode.Nodes.Cast<TreeNode>().Any(n=>n.Text=="Goku (Med)"),
+                    discNode.Nodes.Cast<TreeNode>().Any(n=>n.Text=="Goku (Mid)"),
                     "Saved BT3 disc groups exact native forms under character rows");
-                var midNode=discNode.Nodes.Cast<TreeNode>().Single(n=>n.Text=="Goku (Med)");
+                var midNode=discNode.Nodes.Cast<TreeNode>().Single(n=>n.Text=="Goku (Mid)");
                 midNode.Expand();await LibraryQuerySettled(form);
                 Check(midNode.Nodes.Count>400&&midNode.Nodes.Cast<TreeNode>().All(n=>n.Text.Contains("Action ")),
                     "Character row exposes the native action list without costume nesting");
@@ -410,6 +464,12 @@ internal static partial class Program
                         nativeLeft.Height>300&&nativeRight.Height>300&&nativeLeft.NativeViewerActive&&
                         targetAction.Items.Count>400,
                         "Native actions, meshes and textures occupy the original Model Previewer lists");
+                    var displayedBones=(BrawlLib.Internal.Windows.Controls.ModelViewer.Panels.NativeViewerBone[])
+                        Field(nativeRight,"_nativeBones");
+                    Check(targetAction.ShowItemToolTips&&targetAction.Items[0].ToolTipText==Bt3ActionLabels.Detail(0)&&
+                        displayedBones.Any(b=>b.Label.Contains("?")&&b.Detail.Contains("not a native name"))&&
+                        displayedBones.All(b=>b.Detail.Contains("Joint")||b.Detail.Contains("Native joint ID")),
+                        "Compact native lists show verified action explanations and clearly provisional body labels");
                     var viewerTools=SimpleControl<ToolStrip>(form,"toolStrip1");
                     var bonesToggle=(ToolStripButton)viewerTools.Items.Find("chkBones",true).Single();
                     var polygonsToggle=(ToolStripButton)viewerTools.Items.Find("chkPolygons",true).Single();
@@ -523,19 +583,24 @@ internal static partial class Program
                             .Single(t=>t.Bone==editTrack.Bone).Keys.Single(k=>k.Frame==editKey.Frame).Translation.X>
                             editKey.Translation.X,
                         "BT3 target reopens its saved native motion in the current exact action");
+                    nativeLeft.lstObjects.SetItemChecked(0,false);
                     targetAction.Items.Cast<ListViewItem>().Single(i=>
                         (i.Tag as BrawlCrate.UI.Model_Previewer.NativeViewerItem)?.Id==1).Selected=true;
                     await Wait(()=>SimpleControl<Label>(form,"bt3TargetCaption").Text.Contains("action 001"));
                     var lowHealthMotion=(Bt3NativeAssetReader.Motion)Field(form,"_bt3TargetMotion");
                     Check(lowHealthMotion.Action==1&&lowHealthMotion.Length==108&&
                         lowHealthMotion.SourceSha256!=nativeEditor.Motion.SourceSha256&&
-                        targetCostume.Text.Contains("Normal")&&targetAction.SelectedItems[0].Text.Contains("low-health"),
+                        targetCostume.Text.Contains("Normal")&&targetAction.SelectedItems[0].Text==Bt3ActionLabels.Describe(1),
                         "Low-health ground idle is a distinct native motion on the normal costume");
                     targetPanel.Capture();targetPanel.Invalidate();targetPanel.Update();
                     using(var image=targetPanel.GetScreenshot(targetPanel.ClientRectangle,false))
                         image.Save(Path.Combine(output,"bt3-target-low-health-idle-normal-costume.png"));
                     Check(ReferenceEquals(((Bt3NativeRender)Field(form,"_bt3TargetRenderer")).Scene,targetRenderer.Scene),
                         "Changing a native target action reuses the selected costume geometry");
+                    Check(!nativeLeft.lstObjects.GetItemChecked(0)&&
+                        ((Bt3NativeRender)Field(form,"_bt3TargetRenderer")).SelectedBoneId==editTrack.Bone,
+                        "Changing only the native action retains mesh visibility and selected bone");
+                    nativeLeft.lstObjects.SetItemChecked(0,true);
                     targetAction.Items.Cast<ListViewItem>().Single(i=>
                         (i.Tag as BrawlCrate.UI.Model_Previewer.NativeViewerItem)?.Id==0).Selected=true;
                     await Wait(()=>SimpleControl<Label>(form,"bt3TargetCaption").Text.Contains("action 000"));
@@ -551,7 +616,7 @@ internal static partial class Program
                         (i.Tag as BrawlCrate.UI.Model_Previewer.NativeViewerItem)?.Id==1).Selected=true;
                     await Wait(()=>SimpleControl<Label>(form,"bt3TargetCaption").Text.Contains("action 001"));
                     Check(targetCostume.Text.Contains("Battle damaged")&&
-                        targetAction.SelectedItems[0].Text.Contains("low-health")&&
+                        targetAction.SelectedItems[0].Text==Bt3ActionLabels.Describe(1)&&
                         ((Bt3NativeAssetReader.Motion)Field(form,"_bt3TargetMotion")).SourceSha256==lowHealthMotion.SourceSha256,
                         "Damaged costume can show the exact same low-health motion independently");
                     targetPanel.Capture();targetPanel.Invalidate();targetPanel.Update();

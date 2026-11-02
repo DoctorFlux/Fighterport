@@ -19,7 +19,9 @@ namespace BrawlLib.Internal.Windows.Controls.ModelViewer.Panels
         public int Id { get; }
         public int ParentId { get; }
         public string Label { get; }
-        public NativeViewerBone(int id,int parentId,string label){Id=id;ParentId=parentId;Label=label;}
+        public string Detail { get; }
+        public NativeViewerBone(int id,int parentId,string label,string detail=null)
+        {Id=id;ParentId=parentId;Label=label;Detail=detail??"Native joint ID "+id;}
         public override string ToString()=>Label;
     }
 
@@ -38,7 +40,7 @@ namespace BrawlLib.Internal.Windows.Controls.ModelViewer.Panels
                 boneTree.BeginUpdate();lstBones.BeginUpdate();
                 boneTree.Nodes.Clear();lstBones.Items.Clear();
                 var nodes=_nativeBones.ToDictionary(b=>b.Id,b=>new TreeNode(b.Label){Tag=b,Checked=true,
-                    ToolTipText="Native bone ID "+b.Id});
+                    ToolTipText=b.Detail});
                 foreach(var bone in _nativeBones)
                 {
                     if(nodes.TryGetValue(bone.ParentId,out var parent))parent.Nodes.Add(nodes[bone.Id]);

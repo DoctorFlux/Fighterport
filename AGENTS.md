@@ -1,5 +1,14 @@
 # Fighterport
 
+2 November — preview.86-bt3-scene-labels keeps the exact same BT3 costume
+scene when switching native actions, retaining camera, object/texture
+visibility and joint selection. Action labels follow the pinned decomp for
+verified common IDs; native joint IDs remain exact and anatomy names are
+visibly provisional geometry suggestions. The 42-case private-desktop viewer
+run passed. Direct BT3 `Use on This Model`, project ownership and game pose
+equivalence remain OPEN. See
+[bounded evidence](docs/BT3_SCENE_LABELS_2026-11-02.md).
+
 2 November — preview.85-bt3-action-index fixes an off-by-one primary motion
 bank association in library, source preview, native target and disc inspector.
 The game pack lookup counts the header as word zero: action 0 is pack member

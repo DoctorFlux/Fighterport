@@ -1,5 +1,15 @@
 # Current milestone M2 — simpler native workspace
 
+2 November: preview.86 keeps the same native BT3 scene, camera, mesh/texture
+visibility and selected joint when choosing another action of the same
+costume. Short decomp-backed action labels and exact joint IDs now share the
+original Model Previewer lists. Anatomical names are visibly provisional
+rest-geometry suggestions; no suggested role drives retargeting. The 42-check
+private-desktop viewer case and 23-check inventory/mesh case pass. Direct BT3
+`Use on This Model` is still gated on a verified native source rig/motion and
+project provenance bridge, within this same incomplete G1/M2. See
+[bounded evidence](../BT3_SCENE_LABELS_2026-11-02.md).
+
 2 November: preview.85 fixes the BT3 action/member off-by-one that made the
 previous displayed action 000 actually use action 001's bytes, and action 001
 use action 002's bytes. Exact disc access, library, small source preview,

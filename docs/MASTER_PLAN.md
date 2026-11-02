@@ -1,5 +1,13 @@
 # Fighterport master plan
 
+Preview.86 preserves the BT3 native model scene when changing only its
+action, and gives action/object/joint lists shorter, more useful labels. Body
+part names are marked as proposals from generic rest geometry; exact numeric
+joint identities remain visible. The direct BT3 retarget source bridge is the
+next gate, not qualified by these display improvements. See
+[bounded evidence](BT3_SCENE_LABELS_2026-11-02.md). Keep the one incomplete
+G1/M2 and background-only verification.
+
 Preview.85 corrects the BT3 motion-bank index: BObjFile_GetEntry(bank, i+1)
 addresses pack member i because table word zero is the count header. Library,
 source preview, target viewer and inventory inspector now agree. The prior

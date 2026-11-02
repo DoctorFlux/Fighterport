@@ -22,7 +22,8 @@ namespace BrawlCrate.UI.Model_Previewer
     {
         public int Id { get; }
         public string Label { get; }
-        public NativeViewerItem(int id,string label){Id=id;Label=label;}
+        public string Detail { get; }
+        public NativeViewerItem(int id,string label,string detail=null){Id=id;Label=label;Detail=detail??label;}
         public override string ToString()=>Label;
     }
 
@@ -35,6 +36,7 @@ namespace BrawlCrate.UI.Model_Previewer
         private int _nativePriorAnimsHeight;
         private int _nativePriorFileControlsHeight;
         private bool _nativePriorFileControlsVisible,_nativePriorSyncVisible;
+        private bool _nativePriorItemToolTips;
         private Control _nativeSelectors;
         public bool NativeViewerActive=>_nativeActions!=null;
 
@@ -48,6 +50,7 @@ namespace BrawlCrate.UI.Model_Previewer
                 _nativePriorFileControlsVisible=panel1.Visible;
                 _nativePriorFileControlsHeight=panel1.Height;
                 _nativePriorSyncVisible=chkSyncVis.Visible;
+                _nativePriorItemToolTips=listAnims.ShowItemToolTips;
             }
             _nativeActions=actions??new NativeViewerItem[0];
             _nativeActionSelected=selectAction;
@@ -66,6 +69,7 @@ namespace BrawlCrate.UI.Model_Previewer
                 panel1.Height=84;panel1.Visible=true;chkSyncVis.Visible=false;
                 pnlAnims.Height=Math.Max(240,_nativePriorAnimsHeight);
                 listAnims.ContextMenuStrip=null;
+                listAnims.ShowItemToolTips=true;
                 lstTextures.ContextMenuStrip=null;
                 lstObjects.Items.Clear();lstTextures.Items.Clear();
                 foreach(var item in objects??new NativeViewerItem[0])lstObjects.Items.Add(item,true);
@@ -101,6 +105,7 @@ namespace BrawlCrate.UI.Model_Previewer
                 chkSyncVis.Visible=_nativePriorSyncVisible;
                 pnlAnims.Height=_nativePriorAnimsHeight;
                 listAnims.ContextMenuStrip=ctxAnimList;lstTextures.ContextMenuStrip=ctxTextures;
+                listAnims.ShowItemToolTips=_nativePriorItemToolTips;
             }
             finally{_updating=false;_nativePopulating=false;}
             Reset();UpdateAnimations();
@@ -119,7 +124,7 @@ namespace BrawlCrate.UI.Model_Previewer
                     if(string.IsNullOrWhiteSpace(search)||
                         (chkContains.Checked?item.Label.IndexOf(search,StringComparison.OrdinalIgnoreCase)>=0:
                             item.Label.StartsWith(search,StringComparison.OrdinalIgnoreCase)))
-                        listAnims.Items.Add(new ListViewItem(item.Label){Tag=item,ToolTipText=item.Label});
+                        listAnims.Items.Add(new ListViewItem(item.Label){Tag=item,ToolTipText=item.Detail});
                 listAnims.EndUpdate();
                 var retained=listAnims.Items.Cast<ListViewItem>().FirstOrDefault(i=>(i.Tag as NativeViewerItem)?.Id==selected);
                 if(retained!=null)retained.Selected=true;

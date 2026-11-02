@@ -198,7 +198,7 @@ namespace BrawlCrate.UI
             panel.Controls.Add(new Label{Text="Rotate +°",Dock=DockStyle.Fill,ForeColor=Color.White},0,2);
             _bt3EditRotation=Enumerable.Range(0,3).Select(i=>Bt3EditNumber("bt3EditRotation"+i,3600,3)).ToArray();
             for(int i=0;i<3;i++){_bt3EditRotation[i].Dock=DockStyle.Fill;panel.Controls.Add(_bt3EditRotation[i],i+1,2);}
-            _bt3SelectedBoneLabel=new Label{Name="bt3SelectedBoneLabel",Text="Bone —",Dock=DockStyle.Fill,
+            _bt3SelectedBoneLabel=new Label{Name="bt3SelectedBoneLabel",Text="Joint —",Dock=DockStyle.Fill,
                 ForeColor=Color.White,TextAlign=ContentAlignment.MiddleLeft};
             panel.Controls.Add(_bt3SelectedBoneLabel,0,3);
             _bt3EditApply=new Button{Name="bt3ApplyNativeKey",Text="Apply key",Dock=DockStyle.Fill};
@@ -365,10 +365,12 @@ namespace BrawlCrate.UI
         private void RefreshBt3NativeLists(Bt3NativeMesh.Scene scene)
         {
             var actions=_bt3TargetAction.Items.Cast<Bt3ActionOption>()
-                .Select(a=>new BrawlCrate.UI.Model_Previewer.NativeViewerItem(a.Action,a.ToString())).ToArray();
+                .Select(a=>new BrawlCrate.UI.Model_Previewer.NativeViewerItem(a.Action,a.ToString(),
+                    Bt3ActionLabels.Detail(a.Action))).ToArray();
             var objects=scene?.Batches.Select((batch,index)=>
                 new BrawlCrate.UI.Model_Previewer.NativeViewerItem(index,
-                    "Mesh "+index.ToString("D3")+" · bone "+batch.Bone.ToString("D2"))).ToArray()
+                    "Mesh "+index.ToString("D3")+" · J"+batch.Bone.ToString("D2")+
+                    " · T"+batch.Texture.ToString("D2"))).ToArray()
                 ??new BrawlCrate.UI.Model_Previewer.NativeViewerItem[0];
             var textures=scene?.Textures.Select((texture,index)=>
                 new BrawlCrate.UI.Model_Previewer.NativeViewerItem(index,
@@ -430,7 +432,7 @@ namespace BrawlCrate.UI
             _bt3NativeRightPane.BringToFront();
             modelEditControl1.rightPanel.pnlBones.NativeBoneSelected=id=>{
                 _bt3SelectedBoneId=id;
-                if(_bt3SelectedBoneLabel!=null)_bt3SelectedBoneLabel.Text="Bone "+id.ToString("D2");
+                if(_bt3SelectedBoneLabel!=null)_bt3SelectedBoneLabel.Text="Joint "+id.ToString("D2");
                 if(_bt3TargetRenderer!=null){_bt3TargetRenderer.SelectedBoneId=id;_bt3TargetViewport.Invalidate();}
                 RefreshBt3NativePoseControls();
             };
@@ -646,7 +648,8 @@ namespace BrawlCrate.UI
                     !ReferenceEquals(_bt3TargetForm.SelectedItem,form)||
                     !ReferenceEquals((_bt3TargetCostume.SelectedItem as Bt3CostumeOption)?.Resource,costume)||
                     !ReferenceEquals(_bt3TargetAction.SelectedItem,selected))return;
-                if(!ReferenceEquals(priorScene,result.Item1))
+                bool modelChanged=!ReferenceEquals(priorScene,result.Item1);
+                if(modelChanged)
                 {
                     _bt3TargetViewport.CreateControl();_bt3TargetViewport.Capture();
                     if(_bt3TargetRenderer!=null)_bt3TargetViewport.RemoveTarget(_bt3TargetRenderer);
@@ -658,8 +661,15 @@ namespace BrawlCrate.UI
                     var box=_bt3TargetRenderer.GetBox();var center=(box.Min+box.Max)*0.5f;
                     var half=(box.Max-box.Min)*0.75f;
                     _bt3TargetViewport.SetCamWithBox(center-half,center+half);
+                    var suggestions=Bt3JointLabels.SuggestedRoles(result.Item1.Skeleton);
                     var nativeBones=result.Item1.Skeleton.Bones.Where(b=>b.Id>=0&&b.Id<71)
-                        .Select(b=>new NativeViewerBone(b.Id,b.Parent,"Bone "+b.Id.ToString("D2"))).ToArray();
+                        .Select(b=>{
+                            string native=Bt3JointLabels.Describe(b.Id,b.Parent);
+                            if(suggestions.TryGetValue(b.Id,out string role))
+                                return new NativeViewerBone(b.Id,b.Parent,"J"+b.Id.ToString("D2")+" · "+role+"?",
+                                    native+"; suggested "+role+" from rest hierarchy and geometry. This is not a native name or approved retarget binding.");
+                            return new NativeViewerBone(b.Id,b.Parent,native);
+                        }).ToArray();
                     modelEditControl1.rightPanel.pnlBones.ShowNativeBones(nativeBones);
                     _bt3SelectedBoneId=nativeBones.Length>0?nativeBones[0].Id:-1;
                     modelEditControl1.rightPanel.pnlBones.SelectNativeBone(_bt3SelectedBoneId);
@@ -669,7 +679,11 @@ namespace BrawlCrate.UI
                     Costume=costume,Motion=motion,Action=action};
                 _bt3TargetEditor=result.Item2;_bt3TargetEdits[editKey]=result.Item2;
                 _bt3TargetMotion=result.Item2.Motion;_bt3TargetTime=0;
-                RefreshBt3NativeLists(result.Item1);
+                // An action change on the same costume retains the native
+                // scene, object/texture visibility, bone list and camera.
+                // Only the motion and selected animation row need updating.
+                if(modelChanged)RefreshBt3NativeLists(result.Item1);
+                else modelEditControl1.leftPanel.SelectNativeAnimation(action);
                 _bt3TargetUpdating=true;
                 try
                 {

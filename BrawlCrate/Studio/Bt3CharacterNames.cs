@@ -2,7 +2,8 @@ using System;
 
 namespace BrawlCrate.Studio
 {
-    // Factual English character labels by exact BT3 slot from Tenkaichi3Decomp
+    // English character labels by exact BT3 slot from Tenkaichi3Decomp;
+    // the source's abbreviated "Med" is shown as "Mid" in the UI.
     // revision 1c4d9060d859f5bc53a0843ad5937c04f43aa6e5.
     // Labels are presentation only; the slot/AFS identity owns the asset.
     internal static class Bt3CharacterNames
@@ -10,8 +11,8 @@ namespace BrawlCrate.Studio
         private static readonly string[] Names =
         {
             "Goku (Early)",
-            "Goku (Med)",
-            "Goku (Med) Super Saiyan",
+            "Goku (Mid)",
+            "Goku (Mid) Super Saiyan",
             "Goku (End)",
             "Goku (End) Super Saiyan",
             "Goku (End) Super Saiyan 2",
