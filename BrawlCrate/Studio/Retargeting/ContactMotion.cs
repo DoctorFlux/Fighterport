@@ -80,9 +80,12 @@ namespace BrawlCrate.Studio.Retargeting
                 {
                     int before=Math.Max(0,i-1),after=Math.Min(poses.Length-1,i+1);
                     float dt=Math.Max(0.25f,(after-before)/4f);
-                    // A stationary wrist/ankle does not imply a stationary skin
-                    // contact when fingers, toes or the contact patch are rolling.
-                    Vector3 velocity=(surfaces[after].Point-surfaces[before].Point)/dt;
+                    // Compare the same skinned contact patch at both times.
+                    // Sample.Point can switch to a different lowest vertex as
+                    // the sole rolls, inventing a velocity spike and breaking
+                    // an otherwise stable planted lock.
+                    SkinPoint tracked=plan.Source.Surfaces[role].Marker(poses[i]);
+                    Vector3 velocity=(tracked.Evaluate(poses[after])-tracked.Evaluate(poses[before]))/dt;
                     float vertical=Math.Abs(Vector3.Dot(velocity,plan.Source.GroundNormal));
                     Vector3 planar=velocity-plan.Source.GroundNormal*Vector3.Dot(velocity,plan.Source.GroundNormal);
                     float h=surfaces[i].Clearance;
@@ -136,11 +139,35 @@ namespace BrawlCrate.Studio.Retargeting
                     SkinPoint marker=plan.Target.Surfaces[role].Marker(target);
                     Vector3 anchor=marker.Evaluate(target);
                     anchor+=plan.Target.GroundNormal*(plan.Target.GroundHeight-Vector3.Dot(anchor,plan.Target.GroundNormal));
+                    int exitSamples=4;
+                    if(end<values.Length-1 && IsEndContact(role))
+                    {
+                        // Release a large target-rig correction over enough
+                        // source-motion samples to avoid a target-only snap.
+                        // The source patch supplies the speed scale; this does
+                        // not alter source motion controls or a reviewed pin.
+                        SkinPoint sourceMarker=plan.Source.Surfaces[role].Marker(poses[start]);
+                        float sourceStep=0;
+                        for(int j=Math.Max(start+1,end-8);j<=end;j++)
+                            sourceStep=Math.Max(sourceStep,Vector3.Distance(sourceMarker.Evaluate(poses[j]),sourceMarker.Evaluate(poses[j-1])));
+                        float sourceLength=Length(plan.Source.Rest,side,hand),targetLength=Length(plan.Target.Rest,side,hand);
+                        var rawEnd=plan.Evaluate(poses[end]).Pose;
+                        Vector3 drift=marker.Evaluate(rawEnd)-anchor;
+                        drift-=plan.Target.GroundNormal*Vector3.Dot(drift,plan.Target.GroundNormal);
+                        float allowed=Math.Max(targetLength*0.005f,sourceStep*targetLength/sourceLength*1.25f);
+                        exitSamples=Math.Min(Math.Min(64,end-start+1),Math.Max(4,(int)Math.Ceiling(drift.Length()*1.5f/allowed)));
+                    }
                     for(int i=start;i<=end;i++)
                     {
                         values[i].Anchor=anchor;
                         values[i].Marker=marker;
-                        values[i].Lock*=Smooth(0,1,Math.Min(1,Math.Min((i-start+1)/4f,(end-i+1)/4f)));
+                        // A clip boundary is not a contact establishment or
+                        // release. Keep an already planted patch locked at the
+                        // first/last sample; taper only at an actual internal
+                        // transition to an unlocked interval.
+                        float entry=start==0?1:Math.Min(1,(i-start+1)/4f);
+                        float exit=end==values.Length-1?1:Math.Min(1,(end-i+1)/(float)exitSamples);
+                        values[i].Lock*=Smooth(0,1,Math.Min(entry,exit));
                         if(values[i].Lock>0.99f)LockedSamples++;
                     }
                     start=end+1;

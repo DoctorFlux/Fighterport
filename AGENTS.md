@@ -1,5 +1,15 @@
 # Fighterport
 
+2 November — preview.70-foot-contact-coherence qualifies the bounded Fox
+Melee→Brawl Wait1 planted-foot correction from `40cf61800792a26409fdbdafd93d42d9086e0922`.
+The original Next retargeter now tracks coherent source skin motion and keeps
+established locks at clip boundaries. Four Brawl↔Melee Mario/Fox and unrelated
+Brawl Mario↔Snake idle directions pass native background checks. Internal
+moving-contact step excess and Melee Mario automatic support remain open;
+do not claim universal contacts. Read [evidence](docs/FOOT_CONTACT_COHERENCE_2026-11-02.md).
+Full viewer, source-local roots and all weights remain. ONE G1/M2 incomplete;
+.66 finite ledges stays queued.
+
 2 November — preview.69-melee-shared-bridge qualifies the bounded cross-game
 Wait1, native IK and fitting increment from `cbf814e3b7c164022f54ff119e29c7048af0a379`.
 Read [bounded evidence](docs/MELEE_SHARED_BRIDGE_2026-11-02.md). The complete

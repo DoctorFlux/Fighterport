@@ -27,7 +27,7 @@ namespace BrawlCrate.Studio.Retargeting
 
     public sealed class HumanoidRetargeter
     {
-        public const string Algorithm = "bind-world-fk-body-contact-ik-v10";
+        public const string Algorithm = "bind-world-fk-body-contact-ik-v11";
         public const string MotionControlPolicy = "source-local-controls-v1";
         public int[] SourceMotionControls { get; }
         public int[] TargetMotionControls { get; }

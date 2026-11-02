@@ -1,5 +1,16 @@
 # Current milestone M2 — simpler native workspace
 
+2 November: preview.70-foot-contact-coherence qualifies a bounded original-Next
+idle contact correction from `40cf61800792a26409fdbdafd93d42d9086e0922`.
+Coherent source skin-patch velocity, full lock at true clip boundaries and a
+source-speed-scaled internal release remove the reported Melee Fox → Brawl Fox
+Wait1 foot jitter without changing root controls, binds or weights. Four
+Brawl↔Melee Mario/Fox directions and unrelated Brawl Mario↔Snake Wait1 pass
+background native reopen tests. Moving-contact target-only steps and missing
+automatic support on Melee Mario remain measured, OPEN quality gates; no
+universal contact claim. See [evidence](../FOOT_CONTACT_COHERENCE_2026-11-02.md).
+ONE G1/M2 remains incomplete; .66 finite ledges stays queued.
+
 2 November: preview.69-melee-shared-bridge qualifies the bounded shared native
 rig/skin, complete character animation-set, original Next and own-reference
 fitting slice from `cbf814e3b7c164022f54ff119e29c7048af0a379`. Both actual

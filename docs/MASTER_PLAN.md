@@ -1,5 +1,12 @@
 # Fighterport master plan
 
+Preview.70 qualifies a bounded source-coherent contact fix for original Next:
+the reported Melee Fox → Brawl Fox Wait1 planted feet no longer jitter in
+quarter-frame decoded native checks. Moving-contact transfers still show
+source-relative step excess and need a separately qualified trajectory/replant
+policy. Preserve all weights, source-local roots, full viewer and one incomplete
+G1/M2. See [measured evidence](FOOT_CONTACT_COHERENCE_2026-11-02.md).
+
 Preview.69 qualifies a bounded, reusable native rig/skin bridge for original
 Next, IK and fitting, plus complete per-character Melee target animation sets.
 Mario and Fox Wait1 pass actual Brawl↔Melee Use, native IK Undo/Redo and fitting
