@@ -37,8 +37,9 @@ namespace BrawlCrate.Studio
             internal string DiscLabel;
             internal Bt3Resource[] Costumes;
             internal Bt3Resource[][] MotionMembers;
-            internal string Display => "Character slot " + Slot.ToString("D3") +
-                (DiscLabel == null ? "" : " · " + DiscLabel + " (disc label)");
+            internal string Display => "Form " + Slot.ToString("D3") + " · " +
+                (Bt3CharacterNames.Get(Slot) ?? DiscLabel ?? "Unknown") +
+                (DiscLabel == null ? "" : " [" + DiscLabel + "]");
             public override string ToString()=>Display;
         }
         private sealed class IsoEntry { internal string Name; internal long Offset; internal int Bytes; internal bool Directory; }
@@ -172,6 +173,49 @@ namespace BrawlCrate.Studio
             if(offset<0||bytes<0||bytes>4*1024*1024||offset+bytes>stream.Length)throw new InvalidDataException("Native disc read exceeds its verified bounds.");
             var result=new byte[bytes];stream.Position=offset;int read=0;while(read<bytes){int n=stream.Read(result,read,bytes-read);if(n==0)throw new EndOfStreamException();read+=n;}return result;
         }
+        internal Bt3Resource ModelMember(Bt3FighterSlot fighter,Bt3Resource costume)
+        {
+            if(fighter==null||costume==null||Fighters==null||!Fighters.Any(f=>ReferenceEquals(f,fighter))||
+                !fighter.Costumes.Any(c=>ReferenceEquals(c,costume)))
+                throw new InvalidDataException("Choose a costume from this exact inspected BT3 fighter slot.");
+            VerifyDiscState();
+            using(var stream=new FileStream(Path,FileMode.Open,FileAccess.Read,FileShare.Read,65536,FileOptions.RandomAccess))
+            {
+                var children=ReadPack(stream,costume,4096);
+                if(children.Length<=2||children[2].Bytes<0x70||Encoding.ASCII.GetString(Read(stream,children[2].Offset,4))!="pmdl")
+                    throw new InvalidDataException("The selected costume has no verified native model member.");
+                return children[2];
+            }
+        }
+        internal byte[] ReadOwned(Bt3Resource resource,int maximumBytes)
+        {
+            if(resource==null||resource.Bytes<1||resource.Bytes>maximumBytes||maximumBytes>4*1024*1024||
+                resource.Offset<0||resource.Offset+(long)resource.Bytes>Length)
+                throw new InvalidDataException("This BT3 member exceeds the native reader's verified size bound.");
+            bool owned=Fighters!=null&&Fighters.Any(f=>f.Costumes.Any(c=>ReferenceEquals(c,resource))||
+                f.MotionMembers.Any(bank=>bank.Any(c=>ReferenceEquals(c,resource))));
+            var parent=owned?null:Fighters?.SelectMany(f=>f.Costumes).FirstOrDefault(c=>
+                c.AfsIndex==resource.AfsIndex&&resource.PackIndex==2&&
+                resource.Offset>=c.Offset&&resource.Offset+(long)resource.Bytes<=c.Offset+c.Bytes);
+            if(!owned&&parent==null)throw new InvalidDataException("This native member is not part of the inspected BT3 disc inventory.");
+            VerifyDiscState();
+            using(var stream=new FileStream(Path,FileMode.Open,FileAccess.Read,FileShare.Read,65536,FileOptions.RandomAccess))
+            {
+                if(parent!=null)
+                {
+                    var children=ReadPack(stream,parent,4096);
+                    if(children.Length<=2||children[2].Offset!=resource.Offset||children[2].Bytes!=resource.Bytes)
+                        throw new InvalidDataException("The selected model no longer matches the owned costume pack.");
+                }
+                return Read(stream,resource.Offset,resource.Bytes);
+            }
+        }
+        private void VerifyDiscState()
+        {
+            var info=new FileInfo(Path);
+            if(info.Length!=Length||info.LastWriteTimeUtc.Ticks!=WriteTicks)
+                throw new InvalidDataException("The disc changed since inspection. Inspect it again.");
+        }
         internal string ExportOriginal(Bt3Resource resource,string destination,CancellationToken cancellation=default)
         {
             if(resource==null||resource.Bytes<0||resource.Offset<0||resource.Offset+(long)resource.Bytes>Length)
@@ -181,7 +225,7 @@ namespace BrawlCrate.Studio
                 throw new InvalidDataException("Select a member from this exact inspected disc inventory.");
             if(!System.IO.Path.IsPathRooted(destination)||File.Exists(destination)||Directory.Exists(destination)||
                 string.Equals(System.IO.Path.GetFullPath(destination),Path,StringComparison.OrdinalIgnoreCase))throw new IOException("Choose a new output filename outside the disc image.");
-            var info=new FileInfo(Path);if(info.Length!=Length||info.LastWriteTimeUtc.Ticks!=WriteTicks)throw new InvalidDataException("The disc changed since inspection. Inspect it again.");
+            VerifyDiscState();var info=new FileInfo(Path);
             string temp=System.IO.Path.Combine(System.IO.Path.GetDirectoryName(destination),".fp-bt3-"+Guid.NewGuid().ToString("N")+".tmp");
             try
             {

@@ -1,5 +1,13 @@
 # Fighterport master plan
 
+Preview.78 adds a bounded read-only BT3 native pose reader and keeps exact
+form/character, costume and action selection separate. The supplied disc's
+161 slots and 698 costumes passed action-0 skeleton association; BT3 models
+still need authentic mesh, texture and full skin rendering before source or
+target preview. Further action semantics, native edit/write/reopen and other
+builds remain open in the ONE incomplete G1/M2. See
+[acceptance](BT3_NATIVE_POSE_2026-11-02.md).
+
 BT3 PS2 USA is the next requested game adapter. A first bounded inventory
 step verifies the supplied ISO's fighter/costume pack and motion-bank member
 identities directly and exports original bytes; it does not yet add BT3

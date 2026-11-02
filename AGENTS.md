@@ -1,5 +1,13 @@
 # Fighterport
 
+2 November — preview.78-bt3-native-pose-inspection reads native BT3 pmdl
+skeleton and packed local motion from the supplied USA ISO. It distinguishes
+form, costume and action choices in the compact inspector. Background checks
+cover action-0 associations for 161 slots/698 costumes and sampled actions.
+Mesh/texture preview, Open as target, retargeting and edited BT3 writing
+remain OPEN. See [bounded evidence](docs/BT3_NATIVE_POSE_2026-11-02.md).
+Keep one incomplete G1/M2 and the existing Brawl/Melee viewer/Next gates.
+
 2 November — preview.76-native-action-presentation shows adapter-provided
 Melee action identities in the main list and plays HSD motion in the small
 source preview without baking CHR0. The main editable target still stores a

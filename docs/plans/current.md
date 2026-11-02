@@ -1,5 +1,14 @@
 # Current milestone M2 — simpler native workspace
 
+2 November: preview.78 adds read-only BT3 native skeleton/pose inspection from
+the saved USA ISO. Form/character slot, costume and action are separate
+choices; Goku (Mid) base and Super Saiyan each use their own exact motion
+bank. A private-desktop sweep associated action-0 idle with all 698 available
+costume models across 161 slots, and sampled 1,107 other action members.
+Twenty sampled members remained unqualified. Native mesh/texture rendering,
+Open as target, retargeting, editing and writing remain OPEN in this same
+incomplete G1/M2. See [bounded evidence](../BT3_NATIVE_POSE_2026-11-02.md).
+
 2 November: BT3 PS2 USA disc inspection now reads the supplied ISO directly,
 showing exact character slots, costume/model packs and two opaque motion banks
 without extracting game files. Original pack bytes can be exported to a new
