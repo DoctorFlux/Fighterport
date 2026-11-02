@@ -55,6 +55,9 @@ namespace BrawlCrate.UI
             NextCommand(_nextAnimationMenu, "nextAnimationControls", "Animation controls...", ShowAnimationControls);
             _nextAnimationMenu.DropDownItems.Add(new ToolStripSeparator());
             NextCommand(_nextAnimationMenu, "nextExportAnimation", "Export verified animation...", ChooseSimpleWorkspaceExport);
+            var nativeModelExport=NextCommand(_nextAnimationMenu, "nextExportNativeModel", "Export original native model + textures...", ChooseOriginalNativeModelExport);
+            nativeModelExport.ToolTipText="Export the unchanged, project-owned native costume DAT with its embedded textures and fighter context. Edited model writing is separate.";
+            nativeModelExport.AccessibleDescription=nativeModelExport.ToolTipText;
             NextCommand(_nextAnimationMenu, "nextExportReviewedSet", "Export reviewed set...", ChooseWorkspaceSetExport);
             NextCommand(_nextViewMenu, "nextLibrary", "Animation library", ToggleAnimationLibrary);
             NextCommand(_nextViewMenu, "nextFocusEditor", "Focus target editor", FocusNextEditor);
@@ -106,6 +109,8 @@ namespace BrawlCrate.UI
                 { item.Enabled = !busy && target && modelEditControl1.TargetAnimation is BrawlLib.SSBB.ResourceNodes.CHR0Node selected && OwnsFighterRoot(selected) && SelectedFighterAsset()?.Retarget?.ReviewDraft != true; continue; }
                 if (item.Name == "nextRetargetOptions")
                 { item.Enabled = !busy && target; continue; }
+                if (item.Name == "nextExportNativeModel")
+                { item.Enabled = !busy && target && _fighterProject.NativeTarget!=null && NativeGameAdapters.ForNative(_fighterProject.NativeTarget.Provider) is INativeTargetModelSourceExportAdapter; continue; }
                 if (item.Name == "nextAddSourceToLibrary")
                 { item.Enabled = !busy && _sessionSourceLibrary != null && ReferenceEquals(_library, _sessionSourceLibrary); continue; }
                 if (item.Name == "nextPreviewLibraryOriginal" || item.Name == "nextOpenLibraryTarget")

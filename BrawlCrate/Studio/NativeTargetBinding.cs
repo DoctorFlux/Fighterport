@@ -26,6 +26,11 @@ namespace BrawlCrate.Studio
         public string OriginContainerSha256 {get;set;}
         public string OriginModelPath {get;set;}
         public string OriginMotionPath {get;set;}
+        // Optional on older projects. New native targets retain exact virtual
+        // member filenames for recognizable, non-installing source exports.
+        public string ModelVirtualPath {get;set;}
+        public string ContextVirtualPath {get;set;}
+        public string CommonVirtualPath {get;set;}
         public string AuthoringModelSha256 {get;set;}
         public string AuthoringAnimationSha256 {get;set;}
         public int CostumeIndex {get;set;}=-1;
@@ -48,7 +53,7 @@ namespace BrawlCrate.Studio
             if(string.IsNullOrEmpty(AnimationMasterId)||AnimationMasterId.Length!=32||AnimationMasterId.Any(c=>!Uri.IsHexDigit(c)))throw new InvalidDataException("Invalid native animation member association.");
             if(ModelSource==null||MotionSource==null||AnimationBaselineSource==null||project.Model==null||project.Animations.Count==0)throw new InvalidDataException("Native target requires model and animation masters and native originals.");
             if(Members==null||Members.Length>4096||Members.Any(m=>m==null||string.IsNullOrEmpty(m.EntryKey)||string.IsNullOrEmpty(m.MotionKey)||m.ResourceSha256==null||m.ResourceSha256.Length!=64)||Members.Select(m=>m.EntryKey).Distinct().Count()!=Members.Length)throw new InvalidDataException("Invalid native animation member associations.");
-            foreach(string path in new[]{OriginModelPath,OriginMotionPath})if(path!=null&&path.Length>32767)throw new InvalidDataException("Native target source provenance exceeds its bound.");
+            foreach(string path in new[]{OriginModelPath,OriginMotionPath,ModelVirtualPath,ContextVirtualPath,CommonVirtualPath})if(path!=null&&path.Length>32767)throw new InvalidDataException("Native target source provenance exceeds its bound.");
         }
     }
     public sealed class NativeAnimationMember

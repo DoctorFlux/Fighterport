@@ -1,5 +1,25 @@
 # Current milestone M2 — simpler native workspace
 
+2 November: preview.75 adds a bounded native Melee model-source export from
+the main target viewer. The new Animation menu command publishes the exact
+project-owned costume DAT, whose HSD graph contains the rendered textures,
+plus the exact fighter context/common DATs under their original virtual
+filenames. The workspace's ordinary animation export command now routes a
+Melee target to the already-qualified DAT action-member exporter; Brawl still
+uses its CHR0 route. Existing destinations and stale source/model dependencies
+are rejected before folder publication. Mario and Fox native bundles passed
+private-desktop reopen/hash/texture checks, and Brawl export plus Melee
+edit/Undo/Save/reopen regressions passed. See
+[bounded acceptance](../NATIVE_MODEL_SOURCE_EXPORT_2026-11-02.md).
+
+This does **not** finish the user's native-format requirement: the main Melee
+animation list and editable project still use an internal BRRES/CHR0 master and
+MDL0 selection facade, even though geometry, skinning and textures render from
+native HSD. Native DAT-owned editable curves, qualified edited model/texture
+writing, direct DAT animation import, fractional Melee output and action-archive
+installation remain OPEN inside the one incomplete G1/M2. Do not present the
+original-model bundle as edited model output or game installation.
+
 2 November: preview.74-native-animation-destinations adds reviewed Melee
 action-member selection for independently authored target clips and keeps
 Brawl's existing native export route. The Melee candidate replaces all

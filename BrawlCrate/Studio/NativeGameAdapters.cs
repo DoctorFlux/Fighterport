@@ -44,6 +44,12 @@ namespace BrawlCrate.Studio
         string AnimationExportFilter {get;}
         NativeTargetExportReceipt ExportAnimation(FighterProject project,BrawlLib.SSBB.ResourceNodes.MDL0Node target,BrawlLib.SSBB.ResourceNodes.CHR0Node clip,string destination,CancellationToken cancellation,Action validateCurrent);
     }
+    // Export an exact, project-owned native costume source. This is deliberately
+    // separate from edited model writing, which each adapter must qualify first.
+    public interface INativeTargetModelSourceExportAdapter
+    {
+        void ExportOriginalModel(FighterProject project,string destination,CancellationToken cancellation,Action validateCurrent);
+    }
     // An unassociated target clip needs an explicit, owned destination action.
     // Future game adapters can supply their own destination selection here.
     public interface INativeActionDestinationExportAdapter:INativeTargetExportAdapter
@@ -96,7 +102,7 @@ namespace BrawlCrate.Studio
                 finally{foreach(var disc in discs.Values)disc.Dispose();}
             }
         }
-        private sealed class MeleeSources:INativeGameSourceAdapter,INativeSourceExportAdapter,INativeEditableTargetAdapter,INativeActionDestinationExportAdapter
+        private sealed class MeleeSources:INativeGameSourceAdapter,INativeSourceExportAdapter,INativeEditableTargetAdapter,INativeActionDestinationExportAdapter,INativeTargetModelSourceExportAdapter
         {
             public string[] Games=>new[]{"Melee"};
             public string[] ImageExtensions=>new[]{".iso",".gcm"};
@@ -126,6 +132,8 @@ namespace BrawlCrate.Studio
                 FighterPort.Adapters.Melee.MeleeNativeWriter.Publish(candidate,destination,new[]{project.NativeTarget.OriginModelPath,project.NativeTarget.OriginMotionPath}.Concat(project.NativeSources.Select(a=>a.WorkingPath)).Where(p=>p!=null),cancellation,Current);return receipt;
             }
             public void ExportOriginal(LibraryCatalogue c,LibraryAnimation a,LibraryModel m,string d,CancellationToken t)=>MeleeGameSource.ExportOriginal(c,a,m,d,t);
+            public void ExportOriginalModel(FighterProject project,string destination,CancellationToken cancellation,Action validateCurrent)
+                =>MeleeTargetDocument.ExportOriginalModel(project,destination,cancellation,validateCurrent);
         }
     }
 }

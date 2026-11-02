@@ -23,5 +23,36 @@ namespace BrawlCrate.UI
                 if(exported!=null)_fighterStatus.Text="Original native source files exported to "+exported+". Target animation unchanged.";
             }
         }
+        private void ChooseOriginalNativeModelExport()
+        {
+            if(SimpleWorkspaceBusy)throw new InvalidOperationException("Finish or cancel the current operation first.");
+            if(_fighterProject.NativeTarget==null||!(NativeGameAdapters.ForNative(_fighterProject.NativeTarget.Provider) is INativeTargetModelSourceExportAdapter))
+                throw new NotSupportedException("This target format has no qualified original native model export.");
+            using(var folder=new FolderBrowserDialog{Description="Choose a separate parent folder. Fighterport will create a new folder with the original native costume DAT, embedded textures and fighter context."})
+            {
+                if(folder.ShowDialog(this)!=DialogResult.OK)return;
+                string destination=Path.Combine(folder.SelectedPath,"Fighterport-native-model-"+DateTime.Now.ToString("yyyyMMdd-HHmmss")+"-"+Guid.NewGuid().ToString("N").Substring(0,8));
+                ExportOriginalNativeModelBundle(destination);
+                _fighterStatus.Text="Exported original native model and embedded textures to "+destination+". Target animation unchanged.";
+            }
+        }
+        internal void ExportOriginalNativeModelBundle(string destination)
+        {
+            if(SimpleWorkspaceBusy||_pinGesture!=null||modelEditControl1.AwaitingRedoSave)throw new InvalidOperationException("Finish the current native operation before exporting.");
+            var project=_fighterProject;
+            var target=modelEditControl1.TargetModel as BrawlLib.SSBB.ResourceNodes.MDL0Node;
+            if(project?.NativeTarget==null||target==null||!OwnsFighterRoot(target))throw new InvalidOperationException("Open a project-owned native target model first.");
+            if(target.IsDirty)throw new NotSupportedException("Edited native model writing is not qualified. Save or undo model edits before exporting the original costume.");
+            var adapter=NativeGameAdapters.ForNative(project.NativeTarget.Provider) as INativeTargetModelSourceExportAdapter
+                ??throw new NotSupportedException("This target format has no qualified original native model export.");
+            string dependency=NativeTargetBinding.DependencyKey(project);
+            void Current()
+            {
+                if(!ReferenceEquals(project,_fighterProject)||!ReferenceEquals(target,modelEditControl1.TargetModel)||target.IsDirty||NativeTargetBinding.DependencyKey(project)!=dependency)
+                    throw new InvalidOperationException("Native target or source dependencies changed during model export.");
+            }
+            ProtectCharacterWorkspaceOutput(destination);_library?.ProtectOutputPath(destination);
+            adapter.ExportOriginalModel(project,destination,System.Threading.CancellationToken.None,Current);
+        }
     }
 }

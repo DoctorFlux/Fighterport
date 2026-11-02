@@ -1,5 +1,15 @@
 # Fighterport
 
+2 November — preview.75-native-model-source-export adds exact, project-owned
+Melee costume DAT plus embedded textures/context export from the main viewer,
+and routes the workspace animation export command through the native Melee
+action writer. Mario/Fox private-desktop bundle checks, Melee edit/reopen and
+Brawl export regressions passed. Melee editable storage still uses an internal
+MDL0/BRRES/CHR0 master; native DAT document ownership and edited model writing
+remain OPEN. See [bounded evidence](docs/NATIVE_MODEL_SOURCE_EXPORT_2026-11-02.md).
+The ONE G1/M2 milestone remains incomplete; full viewer, original Next,
+source-local roots, all skin weights and background-only testing remain.
+
 2 November — preview.74-native-animation-destinations adds explicit review
 of an owned Melee action destination for an independently authored target
 animation. A private-desktop native DAT write/reopen passed, as did the

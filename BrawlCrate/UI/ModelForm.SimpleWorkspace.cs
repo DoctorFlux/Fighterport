@@ -409,6 +409,14 @@ namespace BrawlCrate.UI
 
         private void ChooseSimpleWorkspaceExport()
         {
+            if(_fighterProject.NativeTarget!=null)
+            {
+                if(SimpleWorkspaceBusy)throw new InvalidOperationException("Finish the current edit before exporting.");
+                var selected=modelEditControl1.TargetAnimation as CHR0Node;
+                if(selected==null||!OwnsFighterRoot(selected))throw new InvalidOperationException("Select a project-owned target animation before exporting.");
+                ChooseFighterExport(selected);
+                return;
+            }
             RequireSavedAnimationExportTarget(modelEditControl1.TargetModel as MDL0Node);
             if (SimpleWorkspaceBusy) throw new InvalidOperationException("Finish the current edit before exporting.");
             modelEditControl1.StopAnim();

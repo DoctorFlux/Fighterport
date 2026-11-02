@@ -1,5 +1,21 @@
 # Native Next integration
 
+Preview.75 adds `INativeTargetModelSourceExportAdapter` for an exact owned
+native model/source bundle. The Melee implementation copies and freshly
+decodes the original HSD costume DAT, including its embedded texture graph,
+plus fighter context/common DATs. New projects retain original virtual
+filenames; older projects use explicit generic names. A pre-publication
+dependency callback prevents a stale source from committing a directory.
+This interface is **source export**, not edited model writing. The main Melee
+viewer still uses MDL0 selection and CHR0/BRRES editable storage; native HSD
+rendering does not make those authoring assets native Melee files. Replacing
+that ownership requires a format-neutral animation selection/evaluation/edit
+contract, native DAT curve persistence with Undo, and qualified model writing.
+The current workspace export command routes Melee animation output to the
+existing verified DAT action writer; the complete Brawl viewer and original
+Next retargeter remain unchanged. See
+[bounded evidence](NATIVE_MODEL_SOURCE_EXPORT_2026-11-02.md).
+
 Preview.74 adds an optional `INativeActionDestinationExportAdapter` at the
 existing native target export boundary. It lets an independently authored
 target animation choose an exact owned Melee action member for a verified

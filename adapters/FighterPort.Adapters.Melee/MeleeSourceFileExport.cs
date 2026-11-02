@@ -8,7 +8,7 @@ namespace FighterPort.Adapters.Melee
 {
     public static class MeleeSourceFileExport
     {
-        public static void Publish(IReadOnlyDictionary<string,byte[]> files,string destination,IEnumerable<string> protectedSources,CancellationToken cancellation=default)
+        public static void Publish(IReadOnlyDictionary<string,byte[]> files,string destination,IEnumerable<string> protectedSources,CancellationToken cancellation=default,Action validateCurrent=null)
         {
             if(files==null||files.Count==0||files.Count>64||files.Values.Sum(b=>(long)b.Length)>2L*MeleeSource.MaximumAssetBytes)throw new InvalidDataException("Invalid native source export set.");
             string target=Path.GetFullPath(destination);MeleeSource.NoLinks(target);string parent=Path.GetDirectoryName(target);
@@ -35,7 +35,7 @@ namespace FighterPort.Adapters.Melee
                     if(MeleeSource.Sha256(reopened)!=hashes[pair.Key])throw new InvalidDataException("The fresh native export differs from its immutable source snapshot.");
                 }
                 File.WriteAllLines(Path.Combine(scratch,"Fighterport-native-source-receipt.txt"),new[]{"Fighterport original native source export", "Unedited native files; no retargeting/fitting or game acceptance is claimed."}.Concat(hashes.Select(p=>p.Key+" SHA256 "+p.Value)),new UTF8Encoding(false));
-                cancellation.ThrowIfCancellationRequested();Directory.Move(scratch,target);
+                cancellation.ThrowIfCancellationRequested();validateCurrent?.Invoke();Directory.Move(scratch,target);
             }
             finally
             {

@@ -196,6 +196,31 @@ internal static partial class Program
                     Check(form.FighterProject.TargetGame=="Melee"&&form.FighterProject.NativeTarget!=null&&form.FighterEditor.TargetModel is MDL0Node&&form.FighterEditor.SelectedCHR0!=null,"Melee model and selected motion are owned editable target masters");
                     var target=(MDL0Node)form.FighterEditor.TargetModel;var clip=form.FighterEditor.SelectedCHR0;var nativeBackend=target.NativeEditingBackend as MeleeModelEditingBackend;
                     Check(nativeBackend!=null,"Main target uses authentic native Melee skinning instead of the projection skinning path");
+                    if(args.Contains("--melee-native-model-bundle"))
+                    {
+                        await SimpleControlsReady(form);
+                        var menu=(ToolStripDropDownButton)Field(form,"_nextAnimationMenu");
+                        Check(menu.DropDownItems.Cast<ToolStripItem>().Any(item=>item.Name=="nextExportNativeModel"&&item.Enabled),
+                            "Main target menu exposes original native model and texture export");
+                        var filter=(Func<ResourceNode,string>)Field(form.FighterEditor,"FighterNativeExportFilter");
+                        Check(filter(clip).StartsWith("Melee native action member (*.dat)|*.dat",StringComparison.Ordinal),
+                            "Main target animation export offers native Melee DAT before its optional authoring copy");
+                        var binding=form.FighterProject.NativeTarget;
+                        string bundle=Path.Combine(output,"native-costume-bundle"),modelClipContent=LifecycleContent(clip);
+                        int modelClipFrame=form.FighterEditor.CurrentFrame;
+                        Call(form,"ExportOriginalNativeModelBundle",bundle);
+                        string exported=Path.Combine(bundle,binding.ModelVirtualPath.Replace('/',Path.DirectorySeparatorChar));
+                        var original=MeleeTargetDocument.OriginalModel(form.FighterProject);
+                        var saved=MeleeNative.ReadMembers(File.ReadAllBytes(exported)).SelectMany(MeleeNative.Models)
+                            .Single(m=>m.Key==binding.ModelKey&&m.Member.Sha256==binding.NativeModelSha256);
+                        var report=MeleeProjection.Write(saved,null,false,MeleeTargetDocument.Parts(form.FighterProject,saved));
+                        Check(FighterProject.HashFile(exported)==FighterProject.HashFile(form.FighterProject.NativeSources.Single(s=>s.Id==binding.ModelSource).WorkingPath)
+                            &&MeleeNative.RigHash(saved)==MeleeNative.RigHash(original)&&report.Textures>0,
+                            "Exact native costume filename, rig and embedded textures survive target-model export");
+                        Check(LifecycleContent(clip)==modelClipContent&&form.FighterEditor.CurrentFrame==modelClipFrame,
+                            "Native model bundle export leaves the animation and frame unchanged");
+                        return;
+                    }
                     if(args.Contains("--melee-native-destinations"))
                     {
                         var binding=form.FighterProject.NativeTarget;
@@ -238,6 +263,35 @@ internal static partial class Program
                             Check(separateReceipt.ResourceKey==other.MotionKey&&MeleeNative.ReadMembers(File.ReadAllBytes(copyOutput)).SelectMany(MeleeNative.Motions).Single().Symbol==saved.Symbol,"Unassociated animation exports through reviewed exact action destination and native reopen");
                         }
                         Check(LifecycleContent(clip)==originalContent&&form.FighterEditor.CurrentFrame==originalFrame&&MeleeNative.RigHash(MeleeTargetDocument.OriginalModel(form.FighterProject))==modelHash,"Native output preserves exact current master, frame and authentic rig");
+                        await SimpleControlsReady(form);
+                        string modelBundle=Path.Combine(output,"original-native-model-bundle");
+                        Call(form,"ExportOriginalNativeModelBundle",modelBundle);
+                        string savedModel=Path.Combine(modelBundle,binding.ModelVirtualPath.Replace('/',Path.DirectorySeparatorChar));
+                        string sourceModel=form.FighterProject.NativeSources.Single(s=>s.Id==binding.ModelSource).WorkingPath;
+                        var reopenedModel=MeleeNative.ReadMembers(File.ReadAllBytes(savedModel)).SelectMany(MeleeNative.Models)
+                            .Single(m=>m.Key==binding.ModelKey&&m.Member.Sha256==binding.NativeModelSha256);
+                        var textureReport=MeleeProjection.Write(reopenedModel,null,false,MeleeTargetDocument.Parts(form.FighterProject,reopenedModel));
+                        Check(FighterProject.HashFile(savedModel)==FighterProject.HashFile(sourceModel)&&textureReport.Textures>0&&
+                            File.Exists(Path.Combine(modelBundle,binding.ContextVirtualPath.Replace('/',Path.DirectorySeparatorChar)))&&File.Exists(Path.Combine(modelBundle,"Fighterport-native-source-receipt.txt")),
+                            "Main preview exports the exact native costume DAT with embedded textures and context");
+                        Check(LifecycleContent(clip)==originalContent&&form.FighterEditor.CurrentFrame==originalFrame&&
+                            MeleeNative.RigHash(reopenedModel)==modelHash,"Native model export leaves the live clip, playhead and rig unchanged");
+                        bool existingRejected=false;
+                        try{((INativeTargetModelSourceExportAdapter)NativeGameAdapters.ForNative(binding.Provider))
+                            .ExportOriginalModel(form.FighterProject,modelBundle,CancellationToken.None,()=>{});}
+                        catch(Exception error)when(error is IOException||error is InvalidOperationException){existingRejected=true;}
+                        Check(existingRejected&&FighterProject.HashFile(savedModel)==FighterProject.HashFile(sourceModel),
+                            "Existing native model bundle is never replaced");
+                        int originalCostume=binding.CostumeIndex;bool changedRejected=false;
+                        try
+                        {
+                            ((INativeTargetModelSourceExportAdapter)NativeGameAdapters.ForNative(binding.Provider)).ExportOriginalModel(form.FighterProject,
+                                Path.Combine(output,"stale-native-model-bundle"),CancellationToken.None,()=>binding.CostumeIndex++);
+                        }
+                        catch(InvalidOperationException){changedRejected=true;}
+                        finally{binding.CostumeIndex=originalCostume;}
+                        Check(changedRejected&&!Directory.Exists(Path.Combine(output,"stale-native-model-bundle")),
+                            "A changed native model dependency publishes no bundle");
                         return;
                     }
                     Check(MeleeLibraryPreview.Report(((LibrarySourceLease)Field(form,"_libraryLease")).Model).Meshes.All(mesh=>((LibrarySourceLease)Field(form,"_libraryLease")).MeleeRenderer.Parts.IsNormalDetail(mesh.DisplayObject)),"Native authoring projection contains normal-detail geometry only");

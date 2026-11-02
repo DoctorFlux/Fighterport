@@ -69,7 +69,7 @@ namespace BrawlCrate.Studio
                 }
                 var baseline=project.CreateNativeMaster("original-authoring.brres","native-source",path=>File.Copy(animation.WorkingPath,path));project.NativeSources.Add(baseline);
                 project.TargetGame="Melee";project.Frame=1;
-                project.NativeTarget=new NativeTargetBinding{Provider=MeleeGameSource.NativeProvider,AnimationBaselineSource=baseline.Id,AnimationMasterId=animation.Id,ModelSource=modelSource.Id,MotionSource=motionSource.Id,ContextSource=contextSource.Id,CommonSource=commonSource?.Id,ExecutableSource=executable?.Id,ModelKey=reference.ModelKey,MotionKey=reference.MotionKey,MotionSnapshotKey="0/"+nativeMotion.Symbol,OriginMotionContainerSha256=reference.MotionContainerSha256,SourceRig=reference.SourceRig,NativeModelSha256=reference.ModelResourceSha256,NativeMotionSha256=reference.MotionResourceSha256,OriginContainerSha256=reference.ModelContainerSha256,OriginModelPath=modelMount.OriginPath??modelMount.LocalPath,OriginMotionPath=motionMount.OriginPath??motionMount.LocalPath,AuthoringModelSha256=project.Model.ContentSha256,AuthoringAnimationSha256=animation.ContentSha256,PartChoices=Enumerable.Range(0,source.MeleeRenderer.Parts.GroupCount).Select(source.MeleeRenderer.Parts.Choice).ToArray()};
+                project.NativeTarget=new NativeTargetBinding{Provider=MeleeGameSource.NativeProvider,AnimationBaselineSource=baseline.Id,AnimationMasterId=animation.Id,ModelSource=modelSource.Id,MotionSource=motionSource.Id,ContextSource=contextSource.Id,CommonSource=commonSource?.Id,ExecutableSource=executable?.Id,ModelKey=reference.ModelKey,MotionKey=reference.MotionKey,MotionSnapshotKey="0/"+nativeMotion.Symbol,OriginMotionContainerSha256=reference.MotionContainerSha256,SourceRig=reference.SourceRig,NativeModelSha256=reference.ModelResourceSha256,NativeMotionSha256=reference.MotionResourceSha256,OriginContainerSha256=reference.ModelContainerSha256,OriginModelPath=modelMount.OriginPath??modelMount.LocalPath,OriginMotionPath=motionMount.OriginPath??motionMount.LocalPath,ModelVirtualPath=modelMount.VirtualPath,ContextVirtualPath=context.VirtualPath,CommonVirtualPath=commonMount?.VirtualPath,AuthoringModelSha256=project.Model.ContentSha256,AuthoringAnimationSha256=animation.ContentSha256,PartChoices=Enumerable.Range(0,source.MeleeRenderer.Parts.GroupCount).Select(source.MeleeRenderer.Parts.Choice).ToArray()};
                 project.NativeTarget.Members=members.ToArray();project.NativeTarget.UnavailableAnimations=unavailable.ToArray();project.NativeTarget.MotionSnapshotKey=nativeMotion.Key;
                 using(var model=NodeFactory.FromFile(null,project.Model.WorkingPath) as MDL0Node)using(var root=NodeFactory.FromFile(null,animation.WorkingPath))
                 {var selected=members.Single(m=>m.MotionKey==nativeMotion.Key);var clip=BrawlLibrarySource.Resolve(root,selected.EntryKey) as CHR0Node;if(model==null||clip==null)throw new InvalidDataException("Editable native masters did not reopen.");MeleeAnimationMaster.VerifySerialized(source.MeleeModel,nativeMotion,clip);project.ModelNodePath=model.TreePath;project.SelectedAnimation=animation.Id+"|@root"+selected.EntryKey.Substring(1);}
@@ -82,6 +82,43 @@ namespace BrawlCrate.Studio
             var binding=project.NativeTarget;var source=project.NativeSources.Single(s=>s.Id==binding.ModelSource);
             var model=MeleeNative.ReadMembers(File.ReadAllBytes(source.WorkingPath)).SelectMany(MeleeNative.Models).Single(m=>m.Key==binding.ModelKey&&m.Member.Sha256==binding.NativeModelSha256);
             if(MeleeNative.RigHash(model)!=binding.SourceRig)throw new InvalidDataException("The owned native rig snapshot changed.");return model;
+        }
+        internal static void ExportOriginalModel(FighterProject project,string destination,CancellationToken cancellation,Action validateCurrent)
+        {
+            if(project?.NativeTarget?.Provider!=MeleeGameSource.NativeProvider)throw new InvalidOperationException("Open a native Melee target first.");
+            string frozen=NativeTargetBinding.DependencyKey(project);
+            void Current()
+            {
+                validateCurrent?.Invoke();
+                if(NativeTargetBinding.DependencyKey(project)!=frozen||project.Model.ContentSha256!=project.NativeTarget.AuthoringModelSha256)
+                    throw new InvalidOperationException("The native model or its source dependencies changed during export.");
+                Validate(project);
+            }
+            Current();
+            var model=OriginalModel(project);
+            // The original HSD model DAT owns the material and embedded texture
+            // graph rendered by MeleeNativeRender. Context/common DATs retain
+            // costume part and material context without rewriting any resource.
+            var files=new System.Collections.Generic.Dictionary<string,byte[]>(StringComparer.OrdinalIgnoreCase);
+            void Add(string id,string name)
+            {
+                if(id==null)return;
+                var asset=project.NativeSources.Single(s=>s.Id==id);
+                files.Add(name,File.ReadAllBytes(asset.WorkingPath));
+            }
+            string modelName=project.NativeTarget.ModelVirtualPath??"costume-model-and-textures.dat";
+            Add(project.NativeTarget.ModelSource,modelName);
+            Add(project.NativeTarget.ContextSource,project.NativeTarget.ContextVirtualPath??"fighter-context.dat");
+            Add(project.NativeTarget.CommonSource,project.NativeTarget.CommonVirtualPath??"fighter-common.dat");
+            cancellation.ThrowIfCancellationRequested();Current();
+            var exported=MeleeNative.ReadMembers(files[modelName],cancellation).SelectMany(MeleeNative.Models)
+                .Single(m=>m.Key==model.Key&&m.Member.Sha256==model.Member.Sha256);
+            if(MeleeNative.RigHash(exported)!=project.NativeTarget.SourceRig)
+                throw new InvalidDataException("The exact native costume rig could not be verified before export.");
+            project.ProtectOutputPath(destination);
+            MeleeSourceFileExport.Publish(files,destination,project.NativeSources.Select(s=>s.WorkingPath)
+                .Concat(new[]{project.NativeTarget.OriginModelPath,project.NativeTarget.OriginMotionPath})
+                .Where(p=>p!=null),cancellation,Current);
         }
         internal static MeleeNativeMotion OriginalMotion(FighterProject project)
         {

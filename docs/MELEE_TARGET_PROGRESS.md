@@ -1,5 +1,16 @@
 # Melee target editing foundation — implementation progress
 
+2 November preview.75 adds exact original native model/embedded-texture export
+from the main target Model Previewer, with fighter context/common DATs and
+original virtual filenames retained for newly opened targets. Older projects
+without those optional names use explicit generic filenames. An adapter
+interface keeps this source-export boundary available to later formats without
+claiming their native model writers. The main Melee viewer still persists an
+editable MDL0/BRRES/CHR0 authoring master; native HSD geometry and textures are
+rendered through MeleeNativeRender. Replacing that authoring ownership with
+native DAT motion/model resources, while preserving Undo and all tools, remains
+OPEN. See [acceptance](NATIVE_MODEL_SOURCE_EXPORT_2026-11-02.md).
+
 2 November preview.74 adds reviewed exact action-member selection for native
 DAT export of independently authored target animations that satisfy the
 current Melee writer's timing and loop gates. The standalone output is a
