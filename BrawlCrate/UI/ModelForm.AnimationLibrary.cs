@@ -40,7 +40,7 @@ namespace BrawlCrate.UI
         private bool _libraryRestoreExpansions;
         private sealed class LibraryGroup {internal List<LibrarySearchItem> Items;internal bool Character,DirectAnimations;internal HashSet<string> DuplicateNames;internal int Loaded,BatchEnd;internal LibraryBranch[] Models;}
         private sealed class LibraryBranch {internal string Name,Text,ToolTip;internal LibraryGroup Group;internal bool HasSelection;}
-        private sealed class LibraryGameBranch {internal string Name,Text,ToolTip;internal bool Indexed;internal LibraryBranch[] Characters;internal Bt3DiscInventory Bt3;internal Bt3DiscInventory.Bt3FighterSlot[] Bt3Forms;internal string Bt3Issue;}
+        private sealed class LibraryGameBranch {internal string Name,Text,ToolTip,SourceId;internal bool Indexed;internal LibraryBranch[] Characters;internal Bt3DiscInventory Bt3;internal Bt3DiscInventory.Bt3FighterSlot[] Bt3Forms;internal string Bt3Issue;}
         private readonly Queue<Action> _libraryTreeWork=new Queue<Action>();
         private bool _libraryClearingTree,_libraryReplacingTree,_libraryApplyingExpansion;
         private int _libraryTreeGeneration;
@@ -132,7 +132,11 @@ namespace BrawlCrate.UI
             _libraryList=new TreeView{Name="libraryClips",AccessibleName="Animation Library by game",Dock=DockStyle.Fill,HideSelection=false,ShowLines=true,ShowNodeToolTips=true};
             var sourceMenu=new ContextMenuStrip();var exportOriginal=new ToolStripMenuItem("Export original native files..."){Name="libraryExportOriginalNative",ToolTipText="Export the unchanged selected costume and motion files to a separate folder. This does not export the edited target."};
             exportOriginal.Click+=(sender,e)=>RunFighterAction(ExportOriginalLibraryFiles);sourceMenu.Items.Add(exportOriginal);
-            sourceMenu.Opening+=(sender,e)=>{var item=LibrarySelection;exportOriginal.Enabled=!SimpleWorkspaceBusy&&item?.Model!=null&&NativeGameAdapters.ForNative(item.Motion.Provider) is INativeSourceExportAdapter;};_libraryList.ContextMenuStrip=sourceMenu;
+            var labelBt3=new ToolStripMenuItem("Label BT3 action..."){Name="libraryLabelBt3Action",ToolTipText="Set a display label for this exact source, form and native action. Motion bytes and project clips stay unchanged."};
+            labelBt3.Click+=(sender,e)=>RunFighterAction(LabelSelectedBt3Action);sourceMenu.Items.Add(labelBt3);
+            sourceMenu.Opening+=(sender,e)=>{var item=LibrarySelection;exportOriginal.Enabled=!SimpleWorkspaceBusy&&item?.Model!=null&&NativeGameAdapters.ForNative(item.Motion.Provider) is INativeSourceExportAdapter;
+                labelBt3.Enabled=!SimpleWorkspaceBusy&&_libraryList.SelectedNode?.Tag is Bt3BrowseChoice bt3&&bt3.Action>=0&&bt3.SourceId!=null;};_libraryList.ContextMenuStrip=sourceMenu;
+            _libraryList.NodeMouseClick+=(s,e)=>{if(e.Button==MouseButtons.Right)_libraryList.SelectedNode=e.Node;};
             _libraryPopulateTimer=new System.Windows.Forms.Timer{Interval=8};
             _libraryPopulateTimer.Tick+=(s,e)=>RunFighterAction(ProcessLibraryTreeWork);
             _libraryList.BeforeExpand+=(s,e)=>{if(_libraryReplacingTree&&!_libraryApplyingExpansion){e.Cancel=true;return;}if(!PopulateBt3Branch(e.Node))PopulateLibraryGroup(e.Node);};

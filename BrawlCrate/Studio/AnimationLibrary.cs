@@ -75,7 +75,11 @@ namespace BrawlCrate.Studio
             }
         }
         private readonly Lazy<LibraryFavorites> favorites;
+        private readonly Lazy<Bt3ActionAliases> bt3ActionAliases;
         public bool IsFavorite(string clipId) => favorites.Value.Contains(clipId);
+        internal string Bt3ActionLabelError=>bt3ActionAliases.Value.LastError;
+        internal string GetBt3ActionAlias(string sourceId,int form,int action)=>bt3ActionAliases.Value.Get(sourceId,form,action);
+        internal void SetBt3ActionAlias(string sourceId,int form,int action,string label)=>bt3ActionAliases.Value.Set(sourceId,form,action,label);
         public string FavoritePreferenceError => favorites.Value.LastError;
         public string[] Channels => SearchSnapshot().Clips.Select(c=>c.Channel).Distinct().OrderBy(c=>c,StringComparer.Ordinal).ToArray();
         public void SetFavorite(string clipId,bool favorite)
@@ -91,6 +95,7 @@ namespace BrawlCrate.Studio
         {
             DirectoryPath=OrdinaryPath(directory??DefaultDirectory);NoLinks(DirectoryPath);
             favorites=new Lazy<LibraryFavorites>(()=>new LibraryFavorites(DirectoryPath));
+            bt3ActionAliases=new Lazy<Bt3ActionAliases>(()=>new Bt3ActionAliases(DirectoryPath));
         }
         internal static string OrdinaryPath(string path)
         {

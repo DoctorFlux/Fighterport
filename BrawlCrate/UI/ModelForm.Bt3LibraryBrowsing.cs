@@ -16,6 +16,7 @@ namespace BrawlCrate.UI
         private sealed class Bt3BrowseChoice
         {
             internal Bt3DiscInventory Inventory;
+            internal string SourceId;
             internal Bt3DiscInventory.Bt3FighterSlot Form;
             internal Bt3DiscInventory.Bt3FighterSlot[] Forms;
             internal Bt3DiscInventory.Bt3Resource Costume,Motion;
@@ -110,7 +111,7 @@ namespace BrawlCrate.UI
             var motion=form.MotionMembers[0].FirstOrDefault(m=>m.PackIndex==action&&m.Bytes>=10);
             if(motion==null)return null;
             return new Bt3BrowseChoice{Inventory=choice.Inventory,Forms=choice.Forms,Form=form,Costume=costume,
-                Motion=motion,Action=action};
+                Motion=motion,Action=action,SourceId=choice.SourceId};
         }
 
         private void CancelBt3PreviewLoad()
@@ -185,6 +186,73 @@ namespace BrawlCrate.UI
             =>string.IsNullOrWhiteSpace(words)||words.Split(new[]{' ','\t'},StringSplitOptions.RemoveEmptyEntries)
                 .All(word=>haystack.IndexOf(word,StringComparison.OrdinalIgnoreCase)>=0);
 
+        private static bool Bt3FormHasActionMatch(AnimationLibrary library,string sourceId,
+            Bt3DiscInventory.Bt3FighterSlot form,string query)
+        {
+            if(string.IsNullOrWhiteSpace(query))return true;
+            return form.MotionMembers[0].Any(m=>m.PackIndex>=0&&m.PackIndex<0x19E&&m.Bytes>=10&&
+                Bt3QueryMatch(form.Display+" "+Bt3ActionLabels.Describe(m.PackIndex,
+                    library.GetBt3ActionAlias(sourceId,form.Slot,m.PackIndex)),query));
+        }
+        private string Bt3ActionName(string sourceId,int form,int action)
+            =>Bt3ActionLabels.Describe(action,_library?.GetBt3ActionAlias(sourceId,form,action));
+        private string Bt3ActionDetail(string sourceId,int form,int action)
+            =>Bt3ActionLabels.Detail(action,_library?.GetBt3ActionAlias(sourceId,form,action));
+        private void RefreshBt3ActionRows()
+        {
+            var selected=_libraryList?.SelectedNode;
+            var branch=selected?.Tag is Bt3BrowseChoice row&&row.Action>=0?selected.Parent:selected;
+            if(!(branch?.Tag is Bt3BrowseChoice choice)||choice.Action>=0)return;
+            int form=(_bt3Transform?.SelectedItem as Bt3DiscInventory.Bt3FighterSlot)?.Slot??choice.Form.Slot;
+            foreach(TreeNode child in branch.Nodes)
+                if(child.Tag is Bt3BrowseChoice action&&action.Action>=0)
+                {
+                    child.Text=Bt3ActionName(choice.SourceId,form,action.Action);
+                    child.ToolTipText=Bt3ActionDetail(choice.SourceId,form,action.Action);
+                }
+        }
+        private void LabelSelectedBt3Action()
+        {
+            if(SimpleWorkspaceBusy||!(_libraryList?.SelectedNode?.Tag is Bt3BrowseChoice row)||row.Action<0||
+                row.SourceId==null)return;
+            var exact=ResolveBt3Choice(row);
+            if(exact==null)return;
+            string current=_library.GetBt3ActionAlias(exact.SourceId,exact.Form.Slot,exact.Action);
+            using(var dialog=new Form{Name="bt3ActionLabelDialog",Text="Label BT3 action",StartPosition=FormStartPosition.CenterParent,
+                FormBorderStyle=FormBorderStyle.FixedDialog,MinimizeBox=false,MaximizeBox=false,
+                ShowInTaskbar=false,ClientSize=new System.Drawing.Size(440,135),Font=WorkspaceAppearance.Font})
+            {
+                var description=new Label{Text=exact.Form.Display+" · native action "+exact.Action.ToString("D3"),
+                    Left=12,Top=10,Width=416,Height=38,AutoEllipsis=true};
+                var input=new TextBox{Name="bt3ActionLabelInput",Left=12,Top=50,Width=416,MaxLength=80,
+                    Text=current??"",AccessibleName="Display label for this exact BT3 form and action"};
+                var save=new WorkspaceButton{Name="bt3ActionLabelSave",Text="Save label",Left=220,Top=89,Width=98,
+                    DialogResult=DialogResult.OK};
+                var clear=new WorkspaceButton{Name="bt3ActionLabelClear",Text="Clear label",Left=118,Top=89,Width=96,
+                    DialogResult=DialogResult.No,Enabled=current!=null};
+                var cancel=new WorkspaceButton{Name="bt3ActionLabelCancel",Text="Cancel",Left=324,Top=89,Width=102,
+                    DialogResult=DialogResult.Cancel};
+                dialog.Controls.AddRange(new Control[]{description,input,save,clear,cancel});
+                dialog.AcceptButton=save;dialog.CancelButton=cancel;DarkTheme.Apply(dialog);
+                var result=dialog.ShowDialog(this);
+                if(result!=DialogResult.OK&&result!=DialogResult.No)return;
+                string label=result==DialogResult.No?null:input.Text.Trim();
+                if(result==DialogResult.OK&&label.Length==0)
+                    throw new InvalidOperationException("Enter a label or choose Clear label.");
+                _library.SetBt3ActionAlias(exact.SourceId,exact.Form.Slot,exact.Action,label);
+                RefreshBt3ActionRows();
+                if(_bt3TargetChoice?.SourceId==exact.SourceId&&_bt3TargetForm?.SelectedItem is Bt3DiscInventory.Bt3FighterSlot target&&
+                    target.Slot==exact.Form.Slot)
+                {
+                    _bt3TargetAction.Refresh();
+                    if(_bt3TargetRenderer!=null)RefreshBt3NativeLists(_bt3TargetRenderer.Scene);
+                }
+                UpdateBt3LibrarySelection();
+                if(_library.Bt3ActionLabelError!=null)
+                    MessageBox.Show(this,_library.Bt3ActionLabelError,"BT3 action labels",MessageBoxButtons.OK,MessageBoxIcon.Information);
+            }
+        }
+
         private Bt3DiscInventory GetBt3BrowseInventory(LibraryGameLocation source)
         {
             var file=new FileInfo(source.Path);
@@ -208,7 +276,8 @@ namespace BrawlCrate.UI
             }
         }
 
-        private void QueueBt3Forms(TreeNode parent,Bt3DiscInventory inventory,Bt3DiscInventory.Bt3FighterSlot[] forms)
+        private void QueueBt3Forms(TreeNode parent,Bt3DiscInventory inventory,Bt3DiscInventory.Bt3FighterSlot[] forms,
+            string sourceId)
         {
             foreach(var group in forms.GroupBy(f=>Bt3CharacterNames.CharacterSlot(f.Slot)).OrderBy(g=>g.Key))
             {
@@ -217,7 +286,7 @@ namespace BrawlCrate.UI
                     if(parent.TreeView!=_libraryList)return;
                     var row=new TreeNode(Bt3CharacterNames.Get(group.Key)??form.Display)
                     {Name="bt3-character:"+parent.Name+":"+group.Key.ToString("D3"),
-                        Tag=new Bt3BrowseChoice{Inventory=inventory,Form=form,Forms=family},
+                        Tag=new Bt3BrowseChoice{Inventory=inventory,Form=form,Forms=family,SourceId=sourceId},
                         ToolTipText=family.Length+" native form(s) · choose a transformation and costume below"};
                     row.Nodes.Add("Expand to browse native actions");parent.Nodes.Add(row);
                 });
@@ -235,17 +304,20 @@ namespace BrawlCrate.UI
             if(!(node?.Tag is Bt3BrowseChoice choice))return false;
             if(choice.Loaded)return true;
             choice.Loaded=true;
+            bool all=choice.Forms.Any(f=>Bt3QueryMatch(f.Display,_librarySearch.Text));
             var actions=choice.Forms.SelectMany(form=>form.MotionMembers[0])
                 .Where(m=>m.PackIndex>=0&&m.PackIndex<0x19E&&m.Bytes>=10)
-                .Select(m=>m.PackIndex).Distinct().OrderBy(a=>a).ToArray();
+                .Select(m=>m.PackIndex).Distinct().OrderBy(a=>a)
+                .Where(a=>all||choice.Forms.Any(f=>Bt3QueryMatch(f.Display+" "+
+                    Bt3ActionName(choice.SourceId,f.Slot,a),_librarySearch.Text))).ToArray();
             foreach(int action in actions)
             {
                 _libraryTreeWork.Enqueue(()=>{
                     if(node.TreeView!=_libraryList)return;
-                    var row=new TreeNode(Bt3ActionLabels.Describe(action))
+                    var row=new TreeNode(Bt3ActionName(choice.SourceId,choice.Form.Slot,action))
                     {Name="bt3-action:"+choice.Form.Slot.ToString("D3")+":"+action.ToString("D3"),
-                        Tag=new Bt3BrowseChoice{Inventory=choice.Inventory,Form=choice.Form,Forms=choice.Forms,Action=action},
-                        ToolTipText="Exact action "+action.ToString("D3")+" of the transformation selected below"};
+                        Tag=new Bt3BrowseChoice{Inventory=choice.Inventory,Form=choice.Form,Forms=choice.Forms,Action=action,SourceId=choice.SourceId},
+                        ToolTipText=Bt3ActionDetail(choice.SourceId,choice.Form.Slot,action)};
                     node.Nodes.Add(row);
                 });
             }
@@ -263,7 +335,7 @@ namespace BrawlCrate.UI
             var choice=selected as Bt3BrowseChoice;
             var inventory=selected as Bt3DiscInventory??choice?.Inventory;
             if(inventory==null)return false;
-            UpdateLibraryCostumes(null);UpdateBt3Selectors(choice);
+            UpdateLibraryCostumes(null);UpdateBt3Selectors(choice);RefreshBt3ActionRows();
             _libraryPreview.Text=choice?.Form==null?"Inspect BT3":"Preview Original";
             _libraryPreview.Enabled=!SimpleWorkspaceBusy&&!_libraryReplacingTree;
             _libraryRepair.Enabled=false;
@@ -279,8 +351,8 @@ namespace BrawlCrate.UI
                 (exact==null?"This action is unavailable for the selected transformation.":
                     exact.Form.Display+Environment.NewLine+
                     (_bt3Costume.SelectedItem?.ToString()??"Costume")+" · "+exact.Costume.Identity+Environment.NewLine+
-                    "Action "+exact.Action.ToString("D3")+" · "+exact.Motion.Identity+" · "+exact.Motion.Bytes+" original bytes.")+
-                Environment.NewLine+"Native source preview and target bone-key editing. Save native motion writes an independent BPE member; ISO insertion and project Save are not yet supported for BT3.";
+                    Bt3ActionName(exact.SourceId,exact.Form.Slot,exact.Action)+" · "+exact.Motion.Identity+" · "+exact.Motion.Bytes+" original bytes.")+
+                Environment.NewLine+"Right-click an action to set its form-specific library label. Native source preview and target bone-key editing. Save native motion writes an independent BPE member; ISO insertion and project Save are not yet supported for BT3.";
             UpdateLibraryFavorite();UpdateSimpleWorkspace();return true;
         }
 

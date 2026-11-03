@@ -13,7 +13,7 @@ namespace BrawlCrate.UI
     {
         // Prepare only metadata off-thread. Tree nodes and native handles belong
         // exclusively to the UI thread; no model/animation decoding happens here.
-        private LibraryGameBranch[] PlanLibraryOutline(List<LibrarySearchItem> items,string[] configured,string selected,LibraryGameLocation[] locations,LibraryQuery query,bool includeEmptySources)
+        private LibraryGameBranch[] PlanLibraryOutline(AnimationLibrary catalogue,List<LibrarySearchItem> items,string[] configured,string selected,LibraryGameLocation[] locations,LibraryQuery query,bool includeEmptySources)
         {
             string Scope(LibrarySearchItem item)=>item.Motion.GameSourceId==null?"game:"+item.Motion.Game:"source:"+item.Motion.GameSourceId;
             var groups=items.GroupBy(Scope).ToDictionary(g=>g.Key,g=>g.ToList());
@@ -28,7 +28,7 @@ namespace BrawlCrate.UI
                 string game=location?.Game??rows.FirstOrDefault()?.Motion.Game??scope.Substring(5);
                 string sourceLabel=location==null?game:game+" · "+location.Label;
                 if(location!=null&&locations.Count(l=>l.Game==game&&l.Label==location.Label)>1)sourceLabel+=" · "+location.GameVersion+" ["+location.Id.Substring(0,8)+"]";
-                var branch=new LibraryGameBranch{Name=scope,Text=sourceLabel,Indexed=location?.Indexed??rows.Count>0,ToolTip=location==null?game:location.GameVersion+" · "+location.Path,Characters=rows
+                var branch=new LibraryGameBranch{Name=scope,Text=sourceLabel,SourceId=location?.Id,Indexed=location?.Indexed??rows.Count>0,ToolTip=location==null?game:location.GameVersion+" · "+location.Path,Characters=rows
                     .GroupBy(i=>i.Model?.Character??i.Clip.SourceCharacter??"Unverified",StringComparer.Ordinal)
                     .OrderBy(g=>g.Key,StringComparer.OrdinalIgnoreCase).Select(character=>{
                         var clips=character.ToList();
@@ -61,7 +61,7 @@ namespace BrawlCrate.UI
                     {
                         branch.Bt3=GetBt3BrowseInventory(location);
                         branch.Bt3Forms=branch.Bt3.Fighters.GroupBy(f=>Bt3CharacterNames.CharacterSlot(f.Slot))
-                            .Where(group=>group.Any(f=>Bt3QueryMatch(f.Display,query.Text)&&
+                            .Where(group=>group.Any(f=>(Bt3QueryMatch(f.Display,query.Text)||Bt3FormHasActionMatch(catalogue,location.Id,f,query.Text))&&
                                 Bt3QueryMatch(f.Display,query.CharacterModelText)))
                             .SelectMany(group=>group).ToArray();
                     }
@@ -97,7 +97,7 @@ namespace BrawlCrate.UI
                 var result=await Task.Run(()=>{
                     if(generation!=_librarySearchGeneration)return null;
                     var rows=catalogue.Browse(query);
-                    var planned=PlanLibraryOutline(rows,query.HasFilters?new string[0]:catalogue.ConfiguredGames,selected,catalogue.Read().GameLocations.ToArray(),query,!query.HasFilters);
+                    var planned=PlanLibraryOutline(catalogue,rows,query.HasFilters?new string[0]:catalogue.ConfiguredGames,selected,catalogue.Read().GameLocations.ToArray(),query,!query.HasFilters);
                     return Tuple.Create(planned,rows.Count,catalogue.ClipCount,catalogue.CanUndo,catalogue.Channels);
                 });
                 if(result==null||IsDisposed||_libraryPane.IsDisposed||generation!=_librarySearchGeneration||!ReferenceEquals(catalogue,_library))return;
@@ -113,7 +113,7 @@ namespace BrawlCrate.UI
                         node.Nodes.Add(game.Bt3!=null?"Loading native forms...":game.Bt3Issue!=null?"BT3 disc unavailable · "+game.Bt3Issue:
                             game.Characters.Length==0?(game.Indexed?"No matching animations":"Saved location — not indexed"):"Loading characters...");
                         if(!_libraryCollapsedGames.Contains(game.Name))ExpandLibraryBranch(node);
-                        if(game.Bt3!=null)QueueBt3Forms(node,game.Bt3,game.Bt3Forms);
+                        if(game.Bt3!=null)QueueBt3Forms(node,game.Bt3,game.Bt3Forms,game.SourceId);
                         foreach(var character in game.Characters)
                             _libraryTreeWork.Enqueue(()=>AddLibraryBranch(node,character));
                         if(game.Characters.Length>0&&game.Bt3==null)_libraryTreeWork.Enqueue(()=>node.Nodes.RemoveAt(0));

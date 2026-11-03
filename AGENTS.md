@@ -1,5 +1,13 @@
 # Fighterport
 
+3 November — preview.91-bt3-action-labels adds decomp-backed common motion
+roles and library-local, form-specific labels for exact BT3 fighter action IDs.
+The 414 fighter-action slots remain separate from later partner/auxiliary
+members and the secondary raw bank. The original Model Previewer and Next
+retargeter are unchanged; unknown actions remain explicitly unlabeled until
+reviewed. See [bounded evidence](docs/BT3_ACTION_LABELS_2026-11-03.md).
+Keep one incomplete G1/M2 and background-only testing.
+
 3 November — preview.90-bt3-proportion-support adds native weighted BT3
 hand/body patches, fixes zero-weight contact marker NaNs, and admits the
 existing coupled Next palm-support solver only after geometric source

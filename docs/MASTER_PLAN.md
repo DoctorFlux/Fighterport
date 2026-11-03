@@ -1,5 +1,14 @@
 # Fighterport master plan
 
+Preview.91 improves exact BT3 animation identification within the existing
+G1/M2 workspace. Common runtime roles from pinned Tenkaichi3Decomp code
+appear on fighter action 000–413; remaining roles can receive reviewed,
+form-specific labels in separate library preferences without changing native
+members, target content or retarget bindings. Raw partner/auxiliary members
+remain visible in the inventory and are not offered as fighter actions. See
+[bounded acceptance](BT3_ACTION_LABELS_2026-11-03.md). Broad semantic naming,
+all-action quality, reverse native writing and game acceptance remain open.
+
 Preview.90 adds BT3 native weighted palm/body patches to the same Next
 contact solver used by Brawl rigs, with a zero-weight marker fix, a
 geometry-gated hand-support path and fresh decoded contact checks. A

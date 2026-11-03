@@ -24,10 +24,31 @@ internal static partial class Program
         Check(Bt3ActionLabels.Describe(2).Contains("Move entry")&&
             Bt3ActionLabels.Describe(3).Contains("Move loop")&&
             Bt3ActionLabels.Describe(0x18B).Contains("Non-flyer")&&
-            Bt3ActionLabels.Describe(8)=="Action 008"&&
+            Bt3ActionLabels.Describe(8).Contains("Close move")&&
+            Bt3ActionLabels.Describe(0x6B).Contains("Flying kick")&&
+            Bt3ActionLabels.Describe(0x19D).Contains("Unlabeled")&&
+            Enumerable.Range(0,0x19E).All(a=>Bt3ActionLabels.Describe(a).StartsWith("Action "+a.ToString("D3")+" · "))&&
             Bt3JointLabels.Describe(8,7).Contains("side 1")&&
             Bt3JointLabels.Describe(12,7).Contains("side 0"),
-            "Verified shared action and native side-group labels retain exact IDs; unknown actions stay numeric");
+            "Decomp-backed shared roles and every fallback label retain exact native action IDs");
+        string labelDirectory=Path.Combine(output,"bt3-label-preferences");
+        Directory.CreateDirectory(labelDirectory);
+        string sourceA=Guid.NewGuid().ToString("N"),sourceB=Guid.NewGuid().ToString("N");
+        var aliases=new Bt3ActionAliases(labelDirectory);
+        aliases.Set(sourceA,1,0x19D,"Reviewed Goku pose");
+        var reopenedAliases=new Bt3ActionAliases(labelDirectory);
+        Check(reopenedAliases.Get(sourceA,1,0x19D)=="Reviewed Goku pose"&&
+            reopenedAliases.Get(sourceA,2,0x19D)==null&&
+            reopenedAliases.Get(sourceB,1,0x19D)==null&&
+            Bt3ActionLabels.Describe(0x19D,reopenedAliases.Get(sourceA,1,0x19D)).Contains("Reviewed Goku pose"),
+            "Action label persists for only the exact saved source, form and native member");
+        reopenedAliases.Set(sourceA,1,0x19D,null);
+        Check(new Bt3ActionAliases(labelDirectory).Get(sourceA,1,0x19D)==null,
+            "Clearing a user label restores the numeric fallback without changing source identity");
+        File.WriteAllText(Path.Combine(labelDirectory,"bt3-action-labels.json"),"{damaged");
+        Check(new Bt3ActionAliases(labelDirectory).LastError!=null&&
+            Bt3ActionLabels.Describe(0x19D).Contains("Unlabeled"),
+            "Damaged label preferences fail safely and preserve exact native action browsing");
         var first=inventory.Fighters[0];
         Check(first.Costumes.Length>0&&first.Costumes[0].AfsIndex==1423&&first.MotionMembers.Length==2&&
             first.MotionMembers[0].Length>0&&first.MotionMembers[1].Length>0,
@@ -793,6 +814,9 @@ internal static partial class Program
             var inspect=dialog.Controls.Find("bt3InspectMotion",true).OfType<Button>().Single();
             Check(costumeList.Items.Count==8&&actionList.SelectedIndex==0&&inspect.Enabled,
                 "A form's costume and exact native action remain independently selected");
+            Check(actionList.Items.Cast<object>().Count(x=>x.ToString().StartsWith("Partner/auxiliary member "))==26&&
+                actionList.Items.Cast<object>().Count(x=>x.ToString().StartsWith("Bank 1 member "))==6,
+                "Non-fighter motion members remain visible by exact raw-bank ID without a false fighter-model association");
             inspect.PerformClick();
             var summary=dialog.Controls.Find("bt3NativeStatus",true).OfType<Label>().Single();
             Check(summary.Text.Contains("69 bones")&&summary.Text.Contains("last native frame 72"),
@@ -858,8 +882,9 @@ internal static partial class Program
                     "Saved BT3 disc groups exact native forms under character rows");
                 var midNode=discNode.Nodes.Cast<TreeNode>().Single(n=>n.Text=="Goku (Mid)");
                 midNode.Expand();await LibraryQuerySettled(form);
-                Check(midNode.Nodes.Count>400&&midNode.Nodes.Cast<TreeNode>().All(n=>n.Text.Contains("Action ")),
-                    "Character row exposes the native action list without costume nesting");
+                Check(midNode.Nodes.Count>400&&midNode.Nodes.Cast<TreeNode>().All(n=>n.Text.StartsWith("Action "))&&
+                    midNode.Nodes.Cast<TreeNode>().All(n=>!n.Text.StartsWith("Bank 0 member ")),
+                    "Character row exposes fighter actions while partner and auxiliary members stay in raw inventory");
                 Check(midNode.Nodes.Cast<TreeNode>().Any(n=>n.Text==Bt3ActionLabels.Describe(0))&&
                     midNode.Nodes.Cast<TreeNode>().Any(n=>n.Text==Bt3ActionLabels.Describe(1)),
                     "Normal-health and low-health ground idles are separately visible from costume damage");
@@ -1136,7 +1161,7 @@ internal static partial class Program
                     nativeLeft.lstObjects.SetItemChecked(0,false);
                     targetAction.Items.Cast<ListViewItem>().Single(i=>
                         (i.Tag as BrawlCrate.UI.Model_Previewer.NativeViewerItem)?.Id==1).Selected=true;
-                    await Wait(()=>SimpleControl<Label>(form,"bt3TargetCaption").Text.Contains("action 001"));
+                    await Wait(()=>SimpleControl<Label>(form,"bt3TargetCaption").Text.Contains("Action 001"));
                     var lowHealthMotion=(Bt3NativeAssetReader.Motion)Field(form,"_bt3TargetMotion");
                     Check(lowHealthMotion.Action==1&&lowHealthMotion.Length==108&&
                         lowHealthMotion.SourceSha256!=nativeEditor.Motion.SourceSha256&&
@@ -1153,7 +1178,7 @@ internal static partial class Program
                     nativeLeft.lstObjects.SetItemChecked(0,true);
                     targetAction.Items.Cast<ListViewItem>().Single(i=>
                         (i.Tag as BrawlCrate.UI.Model_Previewer.NativeViewerItem)?.Id==0).Selected=true;
-                    await Wait(()=>SimpleControl<Label>(form,"bt3TargetCaption").Text.Contains("action 000"));
+                    await Wait(()=>SimpleControl<Label>(form,"bt3TargetCaption").Text.Contains("Action 000"));
                     targetCostume.SelectedIndex=4;
                     await Wait(()=>SimpleControl<Label>(form,"bt3TargetCaption").Text.Contains("Battle damaged"));
                     targetPanel.Capture();targetPanel.Invalidate();targetPanel.Update();
@@ -1164,7 +1189,7 @@ internal static partial class Program
                         "Damaged costume can show the same verified normal ground-idle motion independently");
                     targetAction.Items.Cast<ListViewItem>().Single(i=>
                         (i.Tag as BrawlCrate.UI.Model_Previewer.NativeViewerItem)?.Id==1).Selected=true;
-                    await Wait(()=>SimpleControl<Label>(form,"bt3TargetCaption").Text.Contains("action 001"));
+                    await Wait(()=>SimpleControl<Label>(form,"bt3TargetCaption").Text.Contains("Action 001"));
                     Check(targetCostume.Text.Contains("Battle damaged")&&
                         targetAction.SelectedItems[0].Text==Bt3ActionLabels.Describe(1)&&
                         ((Bt3NativeAssetReader.Motion)Field(form,"_bt3TargetMotion")).SourceSha256==lowHealthMotion.SourceSha256,
@@ -1176,7 +1201,7 @@ internal static partial class Program
                     await Wait(()=>SimpleControl<Label>(form,"bt3TargetCaption").Text.Contains("Super Saiyan"));
                     targetAction.Items.Cast<ListViewItem>().Single(i=>
                         (i.Tag as BrawlCrate.UI.Model_Previewer.NativeViewerItem)?.Id==0).Selected=true;
-                    await Wait(()=>SimpleControl<Label>(form,"bt3TargetCaption").Text.Contains("action 000"));
+                    await Wait(()=>SimpleControl<Label>(form,"bt3TargetCaption").Text.Contains("Action 000"));
                     targetCostume.SelectedIndex=4;
                     await Wait(()=>SimpleControl<Label>(form,"bt3TargetCaption").Text.Contains("Battle damaged"));
                     Check(targetCostume.Text.Contains("Battle damaged")&&
@@ -1192,6 +1217,28 @@ internal static partial class Program
                         !SimpleControl<TableLayoutPanel>(form,"bt3NativeTargetView").Contains(targetPanel),
                         "Returning from BT3 target viewing restores the original editable project view");
                 }
+                var unlabeled=midNode.Nodes.Cast<TreeNode>().First(n=>n.Text.Contains("Unlabeled"));
+                tree.SelectedNode=unlabeled;Application.DoEvents();
+                var labelCommand=tree.ContextMenuStrip.Items.Find("libraryLabelBt3Action",false)
+                    .OfType<ToolStripMenuItem>().Single();
+                using(var modal=Modal("Label BT3 action",window=>
+                {
+                    SimpleControl<TextBox>(window,"bt3ActionLabelInput").Text="Reviewed motion sample";
+                    SimpleControl<Button>(window,"bt3ActionLabelSave").PerformClick();
+                }))labelCommand.PerformClick();
+                Check(unlabeled.Text.Contains("Reviewed motion sample")&&
+                    new Bt3ActionAliases(root).Get(saved.Id,1,(int)Field(unlabeled.Tag,"Action"))=="Reviewed motion sample",
+                    "Library context action labels the exact source/form/member and persists outside the project");
+                await CaptureWindow(form,Path.Combine(output,"bt3-labeled-action.png"));
+                var librarySearch=SimpleControl<TextBox>(form,"librarySearch");
+                librarySearch.Text="Reviewed motion sample";
+                await LibraryQuerySettled(form);
+                var foundDisc=tree.Nodes.Cast<TreeNode>().Single(n=>n.Text.StartsWith(Bt3DiscInventory.Game,StringComparison.Ordinal));
+                var foundForm=foundDisc.Nodes.Cast<TreeNode>().Single(n=>n.Text=="Goku (Mid)");
+                foundForm.Expand();await LibraryQuerySettled(form);
+                Check(foundForm.Nodes.Cast<TreeNode>().Any(n=>n.Text.Contains("Reviewed motion sample")),
+                    "BT3 action search finds a saved per-form label without changing motion identity");
+                librarySearch.Clear();await LibraryQuerySettled(form);
                 await CaptureWindow(form,Path.Combine(output,"bt3-direct-library.png"));
             }
             if(args.Contains("--bt3-port-ui"))

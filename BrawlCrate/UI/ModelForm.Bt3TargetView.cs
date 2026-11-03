@@ -62,6 +62,7 @@ namespace BrawlCrate.UI
         private System.Windows.Forms.Timer _bt3TargetTimer;
         private readonly Stopwatch _bt3TargetClock=new Stopwatch();
         private Bt3BrowseChoice _bt3TargetChoice;
+        private AnimationLibrary _bt3TargetLibrary;
         private Bt3NativeRender _bt3TargetRenderer;
         private Bt3NativeAssetReader.Motion _bt3TargetMotion;
         private Bt3NativeMotionEditor _bt3TargetEditor;
@@ -77,7 +78,11 @@ namespace BrawlCrate.UI
         private sealed class Bt3ActionOption
         {
             internal int Action;
-            public override string ToString()=>Bt3ActionLabels.Describe(Action);
+            internal int Form;
+            internal string SourceId;
+            internal AnimationLibrary Library;
+            public override string ToString()=>Bt3ActionLabels.Describe(Action,Library?.GetBt3ActionAlias(SourceId,Form,Action));
+            internal string Detail=>Bt3ActionLabels.Detail(Action,Library?.GetBt3ActionAlias(SourceId,Form,Action));
         }
 
         private sealed class Bt3TargetTransport : INativeModelTransport
@@ -355,7 +360,8 @@ namespace BrawlCrate.UI
                 if(form!=null)foreach(int action in form.MotionMembers[0]
                     .Where(m=>m.PackIndex>=0&&m.PackIndex<0x19E&&m.Bytes>=10)
                     .Select(m=>m.PackIndex).Distinct().OrderBy(a=>a))
-                    _bt3TargetAction.Items.Add(new Bt3ActionOption{Action=action});
+                    _bt3TargetAction.Items.Add(new Bt3ActionOption{Action=action,Form=form.Slot,
+                        SourceId=_bt3TargetChoice?.SourceId,Library=_bt3TargetLibrary});
                 _bt3TargetAction.SelectedItem=_bt3TargetAction.Items.Cast<Bt3ActionOption>()
                     .FirstOrDefault(a=>a.Action==wanted)??_bt3TargetAction.Items.Cast<Bt3ActionOption>().FirstOrDefault();
             }
@@ -367,7 +373,7 @@ namespace BrawlCrate.UI
         {
             var actions=_bt3TargetAction.Items.Cast<Bt3ActionOption>()
                 .Select(a=>new BrawlCrate.UI.Model_Previewer.NativeViewerItem(a.Action,a.ToString(),
-                    Bt3ActionLabels.Detail(a.Action))).ToArray();
+                    a.Detail)).ToArray();
             var objects=scene?.Batches.Select((batch,index)=>
                 new BrawlCrate.UI.Model_Previewer.NativeViewerItem(index,
                     "Mesh "+index.ToString("D3")+" · J"+batch.Bone.ToString("D2")+
@@ -394,6 +400,7 @@ namespace BrawlCrate.UI
             var selected=ResolveBt3Choice(_libraryList?.SelectedNode?.Tag as Bt3BrowseChoice)
                 ??throw new InvalidOperationException("Choose an available BT3 transformation, costume and action.");
             BuildBt3TargetHost();CloseBt3TargetView(false);
+            _bt3TargetLibrary=_library;
             modelEditControl1.StopAnim();
             _bt3OriginalSelectedBone=modelEditControl1.SelectedBone;
             _bt3OriginalAnimation=modelEditControl1.TargetAnimation;
@@ -679,7 +686,7 @@ namespace BrawlCrate.UI
                     _bt3TargetRenderer.SelectedBoneId=_bt3SelectedBoneId;
                 }
                 _bt3TargetChoice=new Bt3BrowseChoice{Inventory=current.Inventory,Forms=current.Forms,Form=form,
-                    Costume=costume,Motion=motion,Action=action};
+                    Costume=costume,Motion=motion,Action=action,SourceId=current.SourceId};
                 _bt3TargetEditor=result.Item2;_bt3TargetEdits[editKey]=result.Item2;
                 _bt3TargetMotion=result.Item2.Motion;_bt3TargetTime=0;
                 // An action change on the same costume retains the native
@@ -716,8 +723,9 @@ namespace BrawlCrate.UI
                 (int)_bt3TargetTime+1)),(int)_bt3TargetPlayback.numTotalFrames.Value);}
             finally{_bt3TargetUpdating=false;}
             _bt3TargetCaption.Text="Native BT3 target view · "+_bt3TargetChoice.Form.Display+" · "+
-                (_bt3TargetCostume.SelectedItem?.ToString()??"Costume")+" · action "+
-                _bt3TargetChoice.Action.ToString("D3")+" · frame "+((int)_bt3TargetTime+1)+" / "+
+                (_bt3TargetCostume.SelectedItem?.ToString()??"Costume")+" · "+
+                (_bt3TargetAction.SelectedItem?.ToString()??Bt3ActionLabels.Describe(_bt3TargetChoice.Action))+
+                " · frame "+((int)_bt3TargetTime+1)+" / "+
                 (_bt3TargetMotion.Length+1)+(_bt3TargetEditor?.Dirty==true?" · edited":"");
             if(_fighterStatus!=null)_fighterStatus.Text="BT3 native animation editor · Save native motion writes an independent BPE member; project Save does not store this view.";
             if(_bt3TargetTimer?.Enabled!=true)RefreshBt3NativePoseControls();

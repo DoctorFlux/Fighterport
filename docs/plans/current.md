@@ -1,5 +1,15 @@
 # Current milestone M2 — simpler native workspace
 
+3 November: preview.91 adds verified shared BT3 motion roles from the pinned
+decomp and lets users label each exact saved-source/form/action in separate
+library preferences. Labels are searchable, appear in the library and native
+target action list, and never alter action IDs, costume associations, project
+content or the original Next retargeter. The 414 fighter actions remain
+distinct from later partner/auxiliary bank members. Unknown roles show an
+explicit Unlabeled fallback. Private-desktop inventory and viewer checks pass;
+human input and complete per-form semantic naming remain open in the same
+incomplete G1/M2. See [acceptance](../BT3_ACTION_LABELS_2026-11-03.md).
+
 3 November: preview.90 extends the format-neutral proportion bridge with
 weighted BT3 hand/body patches and fixes zero-weight contact-marker NaNs.
 A palm-geometry preflight admits the existing coupled Next contact solver

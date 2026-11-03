@@ -50,7 +50,7 @@ namespace BrawlCrate.UI
             right.RowStyles.Add(new RowStyle(SizeType.AutoSize));right.RowStyles.Add(new RowStyle(SizeType.Percent,40));
             right.RowStyles.Add(new RowStyle(SizeType.AutoSize));right.RowStyles.Add(new RowStyle(SizeType.Percent,60));
             right.Controls.Add(new Label{Text="Costume (model and textures for the selected form)",AutoSize=true},0,0);
-            right.Controls.Add(costumes,0,1);right.Controls.Add(new Label{Text="Native action (0 = idle; other names not yet verified)",AutoSize=true},0,2);
+            right.Controls.Add(costumes,0,1);right.Controls.Add(new Label{Text="Fighter actions 000–413; later raw members are partner/auxiliary",AutoSize=true},0,2);
             right.Controls.Add(motions,0,3);layout.Controls.Add(right,1,2);layout.SetRowSpan(right,2);
             status.Text="Choose a form, costume and action, then inspect the native pose data.";
             layout.Controls.Add(status,0,4);layout.SetColumnSpan(status,2);
@@ -94,7 +94,8 @@ namespace BrawlCrate.UI
                     motions.Items.Add(new Choice{Resource=resource,Action=bank==0&&resource.PackIndex>=0&&resource.PackIndex<0x19E?resource.PackIndex:-1,
                         Label=bank==0&&resource.PackIndex>=0&&resource.PackIndex<0x19E?
                             Bt3ActionLabels.Describe(resource.PackIndex)+" · "+resource.Identity+" · "+resource.Bytes+" bytes":
-                            "Bank "+bank+" · member "+resource.PackIndex.ToString("D3")+" · "+resource.Identity+" · "+resource.Bytes+" bytes"});
+                            (bank==0?"Partner/auxiliary member ":"Bank "+bank+" member ")+
+                            resource.PackIndex.ToString("D3")+" · "+resource.Identity+" · "+resource.Bytes+" bytes"});
                 if(costumes.Items.Count>0)costumes.SelectedIndex=0;
                 if(fighter.MotionMembers[0].Length>0)motions.SelectedIndex=0;
             }
