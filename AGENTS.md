@@ -1,5 +1,15 @@
 # Fighterport
 
+3 November — preview.90-bt3-proportion-support adds native weighted BT3
+hand/body patches, fixes zero-weight contact marker NaNs, and admits the
+existing coupled Next palm-support solver only after geometric source
+evidence. GT Goku → Brawl Snake/Mario native drafts reopen with a bounded
+lowest-sole correction; synthetic hand plants pass in both size directions.
+The other foot, real dynamic/ledge contact, reverse BT3 writing and game
+acceptance remain OPEN. See
+[bounded evidence](docs/BT3_PROPORTION_SUPPORT_2026-11-03.md). Keep one
+incomplete G1/M2 and background-only testing.
+
 3 November — preview.89-bt3-rig-bridge keeps BT3 J00/J01/J02 local actor,
 pitch and facing motion separate, carries extra source thigh joints through
 target leg IK, maps unambiguous skinned fingers, and verifies a bounded

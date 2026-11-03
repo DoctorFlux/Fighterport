@@ -58,10 +58,15 @@ namespace BrawlCrate.Studio.Retargeting
             float minimum=Points.Min(p=>Vector3.Dot(p.Evaluate(pose),pose.Rig.GroundNormal));
             float band=Math.Max(0.01f,Vector3.Distance(pose.Rig.Rest.Point("left.upperLeg"),pose.Rig.Rest.Point("left.foot"))*0.008f);
             SkinPoint[] patch=Points.Where(p=>Vector3.Dot(p.Evaluate(pose),pose.Rig.GroundNormal)<=minimum+band).ToArray();
-            var weights=patch.SelectMany(p=>p.Weights).GroupBy(w=>w.Joint).Select(g=> {
+            // Native meshes may keep a second influence slot with zero weight.
+            // It must not participate in the averaged marker's denominator:
+            // 0/0 otherwise poisons stationary-contact detection with NaNs.
+            var weights=patch.SelectMany(p=>p.Weights).Where(w=>w.Weight>0)
+                .GroupBy(w=>w.Joint).Select(g=> {
                 float total=g.Sum(w=>w.Weight);
                 return new SkinWeight{Joint=g.Key,Weight=total/patch.Length,Local=g.Aggregate(Vector3.Zero,(v,w)=>v+w.Local*w.Weight)/total};
             }).ToArray();
+            if(weights.Length==0)throw new System.IO.InvalidDataException("A skinned contact marker has no positive native influence.");
             return new SkinPoint{Weights=weights,Samples=pose.Rig.NativeEvaluation==null?null:patch};
         }
         public SurfaceSample Sample(RigPose pose)

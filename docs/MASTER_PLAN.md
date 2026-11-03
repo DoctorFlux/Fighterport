@@ -1,5 +1,15 @@
 # Fighterport master plan
 
+Preview.90 adds BT3 native weighted palm/body patches to the same Next
+contact solver used by Brawl rigs, with a zero-weight marker fix, a
+geometry-gated hand-support path and fresh decoded contact checks. A
+separate nonstatic lowest-sole correction scales source floor-relative lift
+to the target leg without changing actor controls. GT Goku → Brawl
+Snake/Mario native drafts reopen; synthetic hand support passes in both
+unequal-proportion directions. The other-foot difference, real dynamic
+contact acceptance and reverse native BT3 writing remain open in the one
+incomplete G1/M2. See [bounded evidence](BT3_PROPORTION_SUPPORT_2026-11-03.md).
+
 Preview.89 refines the native BT3 → Brawl draft rig bridge: source-authored
 actor/pitch/facing controls stay separate, additional source thigh segments
 inform the target knee bend and foot goal, and structurally identified skinned

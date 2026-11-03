@@ -46,7 +46,25 @@ namespace BrawlCrate.Studio.Retargeting
             {
                 bool floorReady=Bt3StaticStance(source,target.Rig,last,cancellation);
                 var standing=floorReady?new Bt3StandingCorrection(plan,source.Sample(0)):null;
-                result.Contacts=new ContactMotion(plan,source.Sample,last,false,cancellation);
+                var support=GroundRelativeHeightTransfer.Available(source.Rig,plan.Target)?
+                    new GroundRelativeHeightTransfer(source.Rig,plan.Target,plan.LegScale):null;
+                // A cheap geometry-only preflight uses the same palm-plane
+                // admission band as the full contact detector. Most motions
+                // never bring a palm near the floor; avoid running the coupled
+                // source analysis for those clips. Both run only during Bake.
+                bool palmCandidate=Bt3HasPalmFloorCandidate(source,plan.Target,last,cancellation);
+                var detectedContacts=palmCandidate?
+                    new ContactMotion(plan,source.Sample,last,true,cancellation,
+                        requireFloorEvidence:true,detectSuspended:false):null;
+                // A shin or clothing patch crossing the inferred plane must
+                // not silently turn an ordinary stance into a body-contact
+                // solve. Admit this branch only with actual palm support;
+                // body-only and ledge contexts need separate review.
+                bool bodySupported=detectedContacts!=null&&detectedContacts.FloorEnabled&&
+                    detectedContacts.PlantedHandSamples>0;
+                result.Contacts=bodySupported?detectedContacts:
+                    new ContactMotion(plan,source.Sample,last,false,cancellation);
+                float maximumDecodedContactError=0;
                 var parents=target.Rig.Joints.Select(j=>j.Parent).ToArray();
                 var editable=Enumerable.Range(0,parents.Length).Select(mapped.Contains).ToArray();
                 var originalTimes=source.Motion.Tracks.SelectMany(t=>t.Keys).Select(k=>(float)k.Frame)
@@ -56,9 +74,15 @@ namespace BrawlCrate.Studio.Retargeting
                 AdaptiveRotationPose Master(float time)
                 {
                     cancellation.ThrowIfCancellationRequested();
-                    var posed=plan.Evaluate(source.Sample(time),true);
-                    standing?.Apply(posed);
+                    var sourcePose=source.Sample(time);
+                    var posed=bodySupported?result.Contacts.Evaluate(time):plan.Evaluate(sourcePose,true);
+                    Vector3 beforeSupport=posed.Pose.Point("pelvis");
+                    if(!bodySupported){support?.Apply(sourcePose,posed.Pose);standing?.Apply(posed);}
                     result.MaximumLimbResidual=Math.Max(result.MaximumLimbResidual,posed.MaximumLimbResidual);
+                    result.MaximumContactResidual=Math.Max(result.MaximumContactResidual,posed.MaximumContactResidual);
+                    result.MaximumPelvisCorrection=Math.Max(result.MaximumPelvisCorrection,
+                        Math.Max(posed.PelvisCorrection.Length(),
+                            Vector3.Distance(beforeSupport,posed.Pose.Point("pelvis"))));
                     if(countedTimes.Add(BitConverter.ToInt32(BitConverter.GetBytes(time),0)))
                         result.ClampedLimbSamples+=posed.ClampedLimbs;
                     return new AdaptiveRotationPose{
@@ -107,14 +131,34 @@ namespace BrawlCrate.Studio.Retargeting
                 PreciseCHR0EntryNode.Promote(output);
                 progress?.Invoke(92,"Reopening and comparing the target animation...");
                 WindowedNativeCurveBaker.VerifyDecoded(target,output,bake,Master,cancellation,
-                    (actual,time)=>standing?.VerifyDecoded(actual,time));
+                    (actual,time)=>{
+                        if(bodySupported)
+                            maximumDecodedContactError=Math.Max(maximumDecodedContactError,
+                                VerifyBt3DecodedContacts(result.Contacts,target.Rig,actual,time));
+                        else if(standing!=null)standing.VerifyDecoded(actual,time);
+                        else support?.VerifyDecoded(source.Sample(time),actual,time);
+                    });
+                if(bodySupported)
+                {
+                    BrawlCrate.Studio.NativeSupportEvidence.Freeze(result);
+                    if(result.FrozenSupportEvidence?.Json==null)
+                        throw new InvalidDataException("BT3 hand/body support cannot be published without complete bounded review context: "+
+                            result.FrozenSupportEvidence?.UnavailableReason);
+                }
                 lease.VerifyUnchanged(cancellation);
                 result.OptimizationReport="BT3 native source sampled directly; "+bake.ValidationTimes.Length+
                     " decoded target witnesses; maximum sampled world orientation "+bake.MaximumOrientationDegrees+
                     " degrees. Source-local actor controls: "+Bt3TrajectoryBinding.Policy+
-                    ". Static weighted-foot correction "+(standing!=null?
+                    ". Weighted hand/body support "+(bodySupported?
+                        "verified; planted hand/body samples "+result.Contacts.PlantedHandSamples+"/"+
+                        result.Contacts.PlantedBodySamples+"; maximum decoded surface/lock error "+maximumDecodedContactError:
+                        "unavailable")+
+                    ". Static weighted-foot correction "+(standing!=null&&!bodySupported?
                         "verified; maximum master/decoded patch error "+standing.MaximumError+"/"+
                         standing.MaximumDecodedError:"unavailable")+
+                    "; source-proportional foot height "+(support!=null&&!bodySupported&&standing==null?
+                        "verified; maximum decoded difference "+support.MaximumDecodedError:
+                        "unavailable")+
                     "; game acceptance remains unreviewed.";
                 progress?.Invoke(100,"Verified target animation ready for review");
                 return result;
@@ -122,9 +166,76 @@ namespace BrawlCrate.Studio.Retargeting
             catch{result.Dispose();throw;}
         }
 
-        // A static bilateral stance is the only BT3 floor case admitted here.
-        // Full action contact timelines and game floor state need separate
-        // review; a transient crossing of the bind plane is not support.
+        private static bool Bt3HasPalmFloorCandidate(Bt3SourceRig source,Rig target,int last,CancellationToken cancellation)
+        {
+            foreach(string side in new[]{"left","right"})
+            {
+                string role=side+".hand";
+                if(!source.Rig.Surfaces.ContainsKey(role)||!target.Surfaces.ContainsKey(role))continue;
+                float length=Vector3.Distance(source.Rig.Rest.Point(side+".upperArm"),
+                    source.Rig.Rest.Point(side+".lowerArm"))+
+                    Vector3.Distance(source.Rig.Rest.Point(side+".lowerArm"),source.Rig.Rest.Point(role));
+                if(!RigMath.Finite(length)||length<=0)continue;
+                for(int quarter=0;quarter<=last*4;quarter++)
+                {
+                    cancellation.ThrowIfCancellationRequested();
+                    var pose=source.Sample(quarter*.25f);
+                    float clearance=source.Rig.Surfaces[role].Sample(pose).Clearance;
+                    float jointHeight=Vector3.Dot(pose.Point(role),source.Rig.GroundNormal)-source.Rig.GroundHeight;
+                    if(RigMath.Finite(clearance)&&RigMath.Finite(jointHeight)&&
+                        clearance>=-.03f*length&&clearance<=.02f*length&&
+                        Math.Abs(jointHeight)<.3f*length)return true;
+                }
+            }
+            return false;
+        }
+
+        private static float VerifyBt3DecodedContacts(ContactMotion contacts,Rig target,RigPose pose,float time)
+        {
+            float maximum=0;
+            Dictionary<string,Quaternion> endOrientations=null;
+            foreach(var surface in target.Surfaces)
+            {
+                var goal=contacts.At(surface.Key,time);
+                if(goal.Support<=.99f)continue;
+                string side=surface.Key.StartsWith("left.",StringComparison.Ordinal)?"left":
+                    surface.Key.StartsWith("right.",StringComparison.Ordinal)?"right":null;
+                bool hand=surface.Key.EndsWith(".hand",StringComparison.Ordinal);
+                bool foot=surface.Key.EndsWith(".foot",StringComparison.Ordinal);
+                float length=(hand||foot)&&side!=null&&target.Roles.ContainsKey(side+(hand?".upperArm":".upperLeg"))?
+                    Vector3.Distance(target.Rest.Point(side+(hand?".upperArm":".upperLeg")),
+                        target.Rest.Point(side+(hand?".lowerArm":".lowerLeg")))+
+                    Vector3.Distance(target.Rest.Point(side+(hand?".lowerArm":".lowerLeg")),
+                        target.Rest.Point(surface.Key)):
+                    Vector3.Distance(target.Rest.Point("left.upperLeg"),target.Rest.Point("left.foot"));
+                float bound=.001f*length;
+                float error=Math.Abs(surface.Value.Sample(pose).Clearance);
+                if(goal.Lock>.99f&&goal.Marker!=null)
+                {
+                    Vector3 drift=goal.Marker.Evaluate(pose)-goal.Anchor;
+                    drift-=target.GroundNormal*Vector3.Dot(drift,target.GroundNormal);
+                    error=Math.Max(error,drift.Length());
+                }
+                maximum=Math.Max(maximum,error);
+                if(!RigMath.Finite(error)||error>bound)
+                    throw new InvalidDataException("Decoded BT3 target lost reviewed "+surface.Key+
+                        " support at frame "+time+"; error "+error+" exceeds "+bound+".");
+                if(hand||foot)
+                {
+                    if(endOrientations==null)endOrientations=contacts.EndOrientationReference(time);
+                    if(endOrientations.TryGetValue(surface.Key,out Quaternion orientation)&&
+                        ContactMotion.EndOrientationDegrees(pose.Orientation[target.Roles[surface.Key]],
+                            orientation)>.25)
+                        throw new InvalidDataException("Decoded BT3 target lost reviewed "+surface.Key+
+                            " orientation at frame "+time+".");
+                }
+            }
+            return maximum;
+        }
+
+        // Static bilateral stance has a stricter anchor gate than source
+        // palm support. Full action/contact and game-floor acceptance still
+        // need separate review; crossing the bind plane is not itself support.
         private static bool Bt3StaticStance(Bt3SourceRig source,Rig target,int last,CancellationToken cancel)
         {
             var roles=new[]{"left.foot","right.foot"};

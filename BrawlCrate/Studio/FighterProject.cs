@@ -277,6 +277,8 @@ namespace BrawlCrate.Studio
             if(Model==null||TargetGame!="Brawl"||NativeTarget!=null||source.ModelSha256!=result.SourceRig||
                 result.Animation.FrameCount!=source.Source.Motion.Length+1||result.Animation.Loop)
                 throw new InvalidDataException("The native BT3 draft does not match this Brawl target or its exact source action.");
+            if(result.Contacts?.FloorEnabled==true&&result.FrozenSupportEvidence?.Json==null)
+                throw new InvalidDataException("A BT3 contact draft needs its complete frozen source support evidence.");
             if(Animations.Count>=MaximumAnimations)throw new InvalidOperationException("The animation registration limit is 256.");
             int needed=new[]{source.CostumeSha256,source.MotionSha256}.Distinct(StringComparer.Ordinal)
                 .Count(hash=>!NativeSources.Any(a=>a.Generated&&a.Role=="native-source"&&a.ContentSha256==hash));
@@ -303,6 +305,13 @@ namespace BrawlCrate.Studio
                 FromProfile=result.Plan.Source.Profile,ToProfile=result.Plan.Target.Profile,
                 LegScale=result.Plan.LegScale,ArmScale=result.Plan.ArmScale,MaximumLimbResidual=result.MaximumLimbResidual,
                 ClampedLimbSamples=result.ClampedLimbSamples,GroundMode=GroundMode,
+                FloorContactsEnabled=result.Contacts?.FloorEnabled==true,
+                PlantedFootSamples=result.Contacts?.PlantedFootSamples??0,
+                PlantedHandSamples=result.Contacts?.PlantedHandSamples??0,
+                PlantedBodySamples=result.Contacts?.PlantedBodySamples??0,
+                LockedContactSamples=result.Contacts?.LockedSamples??0,
+                MaximumContactResidual=result.MaximumContactResidual,
+                MaximumPelvisCorrection=result.MaximumPelvisCorrection,
                 IgnoredSourceBones=result.IgnoredSourceBones,
                 Mapping=result.Plan.Mapping.Select(m=>new RetargetBoneBinding{Role=m.Role,Source=m.Source,Target=m.Target}).ToList(),
                 Bt3=new Bt3SourceReference{Volume=source.Inventory.Volume,FormSlot=source.Form.Slot,
@@ -315,6 +324,10 @@ namespace BrawlCrate.Studio
             using(var decoded=BrawlLib.SSBB.ResourceNodes.NodeFactory.FromFile(null,generated.WorkingPath) as BrawlLib.SSBB.ResourceNodes.CHR0Node)
                 if(decoded==null||decoded.FrameCount!=result.Animation.FrameCount||decoded.Loop!=result.Animation.Loop)
                     throw new InvalidDataException("The BT3 target draft did not reopen as its exact native animation.");
+            if(result.Contacts?.FloorEnabled==true)
+            {
+                generated.Retarget.OriginalSupport=NativeSupportEvidence.Capture(result,generated.ContentSha256);
+            }
             if(!NativeSources.Contains(costume))NativeSources.Add(costume);
             if(!NativeSources.Contains(motion))NativeSources.Add(motion);
             return generated;

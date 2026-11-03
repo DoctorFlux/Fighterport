@@ -83,27 +83,85 @@ namespace BrawlCrate.Studio
             // does not replace a native bind, normalize weights or infer a
             // floor from a joint origin.
             foreach(string side in new[]{"left","right"})
+            foreach(string end in new[]{"foot","hand"})
             {
-                string role=side+".foot";
-                if(!Rig.Roles.TryGetValue(role,out int foot))continue;
+                string role=side+"."+end;
+                if(!Rig.Roles.TryGetValue(role,out int joint))continue;
                 var points=new List<SkinPoint>();
                 foreach(var vertex in Vertices)
                 {
                     if(vertex.Parent<0)continue;
-                    float membership=(Rig.Ancestors[vertex.Owner][foot]?vertex.OwnerWeight:0)+
-                        (Rig.Ancestors[vertex.Parent][foot]?1-vertex.OwnerWeight:0);
+                    float membership=(Rig.Ancestors[vertex.Owner][joint]?vertex.OwnerWeight:0)+
+                        (Rig.Ancestors[vertex.Parent][joint]?1-vertex.OwnerWeight:0);
                     if(membership<.8f)continue;
                     points.Add(new SkinPoint{Weights=new[]{
                         new SkinWeight{Joint=vertex.Owner,Local=vertex.OwnerLocal,Weight=vertex.OwnerWeight},
                         new SkinWeight{Joint=vertex.Parent,Local=vertex.ParentLocal,Weight=1-vertex.OwnerWeight}}});
                 }
                 if(points.Count<4)continue;
+                Vector3 forward=end=="foot"&&Rig.Roles.ContainsKey(side+".toe")?
+                    Rig.Rest.Point(side+".toe")-Rig.Rest.Point(role):
+                    end=="hand"&&Rig.Roles.ContainsKey(side+".finger1.a")?
+                    Rig.Rest.Point(side+".finger1.a")-Rig.Rest.Point(role):
+                    Vector3.Transform(Vector3.UnitZ,RigMath.BodyFrame(Rig));
+                Vector3 normal=end=="hand"&&Rig.Roles.ContainsKey(side+".finger0.a")&&
+                    Rig.Roles.ContainsKey(side+".finger3.a")?
+                    Vector3.Cross(forward,Rig.Rest.Point(side+".finger0.a")-Rig.Rest.Point(side+".finger3.a")):
+                    Vector3.UnitY;
+                if(forward.LengthSquared()<1e-10f)forward=Vector3.UnitZ;
+                if(normal.LengthSquared()<1e-10f)normal=Vector3.UnitY;
+                Quaternion inverse=Quaternion.Inverse(Rig.Rest.Orientation[joint]);
                 Rig.Surfaces.Add(role,new ContactSurface{Role=role,Points=points.ToArray(),
-                    NormalLocal=Vector3.UnitY,ForwardLocal=Vector3.UnitZ});
+                    NormalLocal=Vector3.Transform(RigMath.Unit(normal),inverse),
+                    ForwardLocal=Vector3.Transform(RigMath.Unit(forward),inverse)});
             }
             if(new[]{"left.foot","right.foot"}.All(Rig.Surfaces.ContainsKey))
                 Rig.GroundHeight=new[]{"left.foot","right.foot"}
                     .Min(role=>Rig.Surfaces[role].Sample(Rig.Rest).Clearance);
+            CaptureBodySurfaces();
+        }
+
+        private void CaptureBodySurfaces()
+        {
+            var patches=new Dictionary<string,string[]> {
+                ["pelvis"]=new[]{"pelvis","spine","chest","neck"},
+                ["head"]=new[]{"head"}};
+            foreach(string side in new[]{"left","right"})
+            {
+                patches[side+".lowerArm"]=new[]{side+".shoulder",side+".upperArm",side+".lowerArm"};
+                patches[side+".lowerLeg"]=new[]{side+".upperLeg",side+".lowerLeg"};
+            }
+            var roles=patches.Values.SelectMany(v=>v).Distinct().Where(Rig.Roles.ContainsKey).ToArray();
+            var nearest=new string[Rig.Joints.Length];
+            for(int i=0;i<nearest.Length;i++)
+                for(int joint=i;joint>=0;joint=Rig.Joints[joint].Parent)
+                {
+                    string role=roles.FirstOrDefault(r=>Rig.Roles[r]==joint);
+                    if(role==null)continue;
+                    nearest[i]=role;break;
+                }
+            var grouped=roles.ToDictionary(r=>r,r=>new List<SkinPoint>());
+            bool[] accessory=Enumerable.Range(0,Rig.Joints.Length)
+                .Select(i=>BrawlRetargeter.IsAccessoryBranch(Rig,i)).ToArray();
+            foreach(var vertex in Vertices)
+            {
+                if(vertex.Parent<0)continue;
+                if((vertex.OwnerWeight>.01f&&accessory[vertex.Owner])||
+                    (1-vertex.OwnerWeight>.01f&&accessory[vertex.Parent]))continue;
+                string owner=nearest[vertex.Owner],parent=nearest[vertex.Parent];
+                string role=vertex.OwnerWeight>=.5f?owner:parent;
+                float weight=owner==parent?1:vertex.OwnerWeight>=.5f?vertex.OwnerWeight:1-vertex.OwnerWeight;
+                if(role==null||weight<.35f)continue;
+                grouped[role].Add(new SkinPoint{Weights=new[]{
+                    new SkinWeight{Joint=vertex.Owner,Local=vertex.OwnerLocal,Weight=vertex.OwnerWeight},
+                    new SkinWeight{Joint=vertex.Parent,Local=vertex.ParentLocal,Weight=1-vertex.OwnerWeight}}});
+            }
+            foreach(var patch in patches)
+            {
+                var points=patch.Value.Where(grouped.ContainsKey).SelectMany(r=>grouped[r]).ToArray();
+                if(points.Length>=4 && !Rig.Surfaces.ContainsKey(patch.Key))
+                    Rig.Surfaces.Add(patch.Key,new ContactSurface{Role=patch.Key,Points=points});
+            }
         }
 
         internal RigPose Sample(float frame)

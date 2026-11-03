@@ -138,6 +138,226 @@ internal static partial class Program
         var idle=Bt3NativeAssetReader.ReadMotion(idleBytes,0);
         var lowHealthBytes=inventory.ReadOwned(mid.MotionMembers[0][1],4*1024*1024);
         var lowHealth=Bt3NativeAssetReader.ReadMotion(lowHealthBytes,1);
+        if(args.Contains("--bt3-proportion-probe"))
+        {
+            var selected=inventory.Fighters.Single(f=>f.Slot==7);
+            var action=selected.MotionMembers[0].Single(m=>m.PackIndex==0);
+            var lease=Bt3SourceLease.Open(inventory,selected,selected.Costumes[0],action);
+            var source=lease.Source;
+            var packedMotion=inventory.ReadOwned(action,4*1024*1024);
+            Console.WriteLine("TRACE BT3 GT exact source form/costume/action="+selected.Slot+"/"+
+                selected.Costumes[0].Identity+"/"+action.PackIndex+
+                " pmdlSha256="+source.Scene.Skeleton.SourceSha256+
+                " packedMotionSha256="+source.Motion.SourceSha256);
+            Console.WriteLine("TRACE BT3 GT native motion packed/decoded="+packedMotion.Length+"/"+
+                Bt3NativeAssetReader.DecodeBpe(packedMotion).Length+" tracks="+source.Motion.Tracks.Length+
+                " keys="+source.Motion.Tracks.Sum(t=>t.Keys.Length));
+            string fixture=Path.Combine(".local","optimization-next-bake-draft","snake","next-target-before.mdl0");
+            using(var model=NodeFactory.FromFile(null,fixture) as MDL0Node)
+            {
+                var target=BrawlCrate.Studio.Retargeting.BrawlRetargeter.Capture(model);
+                var bindings=Bt3TrajectoryBinding.Prepare(source,target.Rig);
+                var details=Bt3DetailBinding.Prepare(source,target.Rig);
+                var plan=new BrawlCrate.Studio.Retargeting.HumanoidRetargeter(source.Rig,target.Rig,bindings,details);
+                Console.WriteLine("TRACE BT3 GT source/target head="+source.Rig.HeadRadius+"/"+target.Rig.HeadRadius+
+                    " leg scale="+plan.LegScale+" arm scale="+plan.ArmScale+" head scale="+plan.HeadScale+
+                    " source height="+(source.Rig.Rest.Point("head")-source.Rig.Rest.Point("left.foot")).Length()+
+                    " target height="+(target.Rig.Rest.Point("head")-target.Rig.Rest.Point("left.foot")).Length()+
+                    " maps="+plan.Mapping.Length+" digits="+details.Count);
+                foreach(string role in new[]{"left.foot","right.foot"})
+                {
+                    string side=role.Split('.')[0];
+                    float length=System.Numerics.Vector3.Distance(source.Rig.Rest.Point(side+".upperLeg"),source.Rig.Rest.Point(side+".lowerLeg"))+
+                        System.Numerics.Vector3.Distance(source.Rig.Rest.Point(side+".lowerLeg"),source.Rig.Rest.Point(role));
+                    var firstPatch=source.Rig.Surfaces[role].Sample(source.Sample(0)).Point;
+                    float maxClearance=0,maxDrift=0,minHip=float.MaxValue;
+                    for(int quarter=0;quarter<=source.Motion.Length*4;quarter++)
+                    {
+                        var pose=source.Sample(quarter*.25f);
+                        var patch=source.Rig.Surfaces[role].Sample(pose);
+                        var delta=patch.Point-firstPatch;
+                        delta-=source.Rig.GroundNormal*System.Numerics.Vector3.Dot(delta,source.Rig.GroundNormal);
+                        maxClearance=Math.Max(maxClearance,Math.Abs(patch.Clearance));
+                        maxDrift=Math.Max(maxDrift,delta.Length());
+                        minHip=Math.Min(minHip,System.Numerics.Vector3.Dot(pose.Point("pelvis"),source.Rig.GroundNormal)-source.Rig.GroundHeight);
+                    }
+                    Console.WriteLine("TRACE BT3 GT stance "+role+" leg="+length+" clearance="+maxClearance+
+                        " limit="+(.015f*length)+" drift="+maxDrift+" limit="+(.01f*length)+
+                        " min hip="+minHip+" limit="+(.6f*length));
+                }
+                foreach(float time in new[]{0f,source.Motion.Length*.25f,source.Motion.Length*.5f,(float)source.Motion.Length})
+                {
+                    var sourcePose=source.Sample(time);
+                    var targetPose=plan.Evaluate(sourcePose,true);
+                    Console.WriteLine("TRACE BT3 GT frame="+time+" source feet="+
+                        sourcePose.Point("left.foot")+"/"+sourcePose.Point("right.foot")+
+                        " target feet="+targetPose.Pose.Point("left.foot")+"/"+targetPose.Pose.Point("right.foot")+
+                        " target clearance="+target.Rig.Surfaces["left.foot"].Sample(targetPose.Pose).Clearance+"/"+
+                        target.Rig.Surfaces["right.foot"].Sample(targetPose.Pose).Clearance+
+                        " limb residual="+targetPose.MaximumLimbResidual+" clamped="+targetPose.ClampedLimbs);
+                }
+                var sourceHands=new[]{"left.hand","right.hand"}.Where(source.Rig.Surfaces.ContainsKey).ToArray();
+                Console.WriteLine("TRACE BT3 GT skinned support surfaces="+
+                    string.Join(",",source.Rig.Surfaces.Select(p=>p.Key+":"+p.Value.Points.Length)));
+                Check(sourceHands.Length==2&&source.Rig.Surfaces.ContainsKey("pelvis")&&
+                    source.Rig.Surfaces.ContainsKey("head"),
+                    "Native two-pivot hand and body geometry is available for proportion-aware support review");
+                if(sourceHands.Length==2&&sourceHands.All(target.Rig.Surfaces.ContainsKey))
+                {
+                    BrawlCrate.Studio.Retargeting.RigPose HandPlant(float time)
+                    {
+                        var posed=new BrawlCrate.Studio.Retargeting.RigPose(source.Rig,source.Sample(0).Local);
+                        foreach(string role in sourceHands)
+                        {
+                            float clearance=source.Rig.Surfaces[role].Sample(posed).Clearance;
+                            posed.SetWorldPoint(source.Rig.Roles[role],posed.Point(role)-source.Rig.GroundNormal*clearance);
+                        }
+                        return posed;
+                    }
+                    var contacts=new BrawlCrate.Studio.Retargeting.ContactMotion(plan,HandPlant,4,true,
+                        requireFloorEvidence:true,stabilizeStanding:false,detectSuspended:false);
+                    var handPose=HandPlant(0);
+                    foreach(string role in sourceHands)Console.WriteLine("TRACE BT3 synthetic source "+role+
+                        " clearance="+source.Rig.Surfaces[role].Sample(handPose).Clearance+
+                        " joint height="+(System.Numerics.Vector3.Dot(handPose.Point(role),source.Rig.GroundNormal)-source.Rig.GroundHeight)+
+                        " arm length="+(System.Numerics.Vector3.Distance(source.Rig.Rest.Point(role.Split('.')[0]+".upperArm"),source.Rig.Rest.Point(role.Split('.')[0]+".lowerArm"))+
+                        System.Numerics.Vector3.Distance(source.Rig.Rest.Point(role.Split('.')[0]+".lowerArm"),source.Rig.Rest.Point(role)))+
+                        " flatness="+source.Rig.Surfaces[role].Sample(handPose).Flatness);
+                    Console.WriteLine("TRACE BT3 synthetic hand support feet="+contacts.PlantedFootSamples+
+                        " hands="+contacts.PlantedHandSamples+" body="+contacts.PlantedBodySamples+
+                        " floor="+contacts.FloorEnabled);
+                    Check(contacts.FloorEnabled&&contacts.PlantedHandSamples>0,
+                        "Weighted source palm geometry identifies a hand-supported pose without character names");
+                    using(var reviewed=new BrawlCrate.Studio.Retargeting.RetargetResult{
+                        Animation=new CHR0Node{Name="Synthetic weighted palm support",FrameCount=5},
+                        Plan=plan,SourceRig=source.Scene.Skeleton.SourceSha256,
+                        TargetRig=target.Fingerprint,Contacts=contacts})
+                    {
+                        NativeSupportEvidence.Freeze(reviewed);
+                        var evidence=NativeSupportEvidence.Capture(reviewed,new string('a',64));
+                        Check(evidence.Json!=null&&evidence.Ranges.Any(r=>r.Role.EndsWith(".hand"))&&
+                            evidence.SourceRig==source.Scene.Skeleton.SourceSha256&&
+                            evidence.TargetRig==target.Fingerprint,
+                            "Supported palms retain complete exact-rig timelines and ancestor dependencies for project review");
+                    }
+                    var planted=contacts.Evaluate(2);
+                    var unchanged=plan.Evaluate(HandPlant(2));
+                    Check(plan.TargetMotionControls.All(i=>planted.Pose.Local[i].Equals(unchanged.Pose.Local[i])),
+                        "Large-target hand support changes body pose without inventing actor-control motion");
+                    foreach(string role in sourceHands)
+                    {
+                        float clearance=target.Rig.Surfaces[role].Sample(planted.Pose).Clearance;
+                        Console.WriteLine("TRACE BT3 synthetic target "+role+" clearance="+clearance);
+                        Check(Math.Abs(clearance)<.01f,
+                            "A proportionally different target palm reaches the reviewed support plane");
+                    }
+                }
+                using(var result=BrawlCrate.Studio.Retargeting.BrawlRetargeter.BakeBt3(lease,target))
+                {
+                        string path=Path.Combine(output,"bt3-gt-to-snake-action000.chr0");
+                        result.Animation.ExportChecked(path);
+                        using(var reopened=NodeFactory.FromFile(null,path) as CHR0Node)
+                        {
+                            float maximumFootDifference=0;
+                            foreach(float time in new[]{0f,source.Motion.Length*.25f,source.Motion.Length*.5f,(float)source.Motion.Length})
+                            {
+                                var nativeSource=source.Sample(time);
+                                var nativeTarget=BrawlCrate.Studio.Retargeting.BrawlRetargeter.Sample(target,reopened,time);
+                                foreach(string role in new[]{"left.foot","right.foot"})
+                                {
+                                    float sourceHeight=source.Rig.Surfaces[role].Sample(nativeSource).Clearance*plan.LegScale;
+                                    float targetHeight=target.Rig.Surfaces[role].Sample(nativeTarget).Clearance;
+                                    maximumFootDifference=Math.Max(maximumFootDifference,Math.Abs(sourceHeight-targetHeight));
+                                    Console.WriteLine("TRACE BT3 GT reopened frame="+time+" "+role+
+                                        " source-scaled clearance="+sourceHeight+" target clearance="+targetHeight);
+                                }
+                            }
+                            Console.WriteLine("TRACE BT3 GT maximum individual foot height difference="+maximumFootDifference);
+                        }
+                        Console.WriteLine("TRACE BT3 GT native target bytes="+new FileInfo(path).Length+
+                            " sha256="+FighterProject.HashFile(path)+" "+result.OptimizationReport);
+                }
+                string snakeMotion=Path.Combine(".local","optimization-next-bake-draft","snake","next-target-only.chr0");
+                using(var snakeClip=NodeFactory.FromFile(null,snakeMotion) as CHR0Node)
+                {
+                    Console.WriteLine("TRACE Brawl Snake reverse fixture frames="+snakeClip.FrameCount+
+                        " tracks="+snakeClip.Children.OfType<CHR0EntryNode>().Count()+" keys="+
+                        snakeClip.Children.OfType<CHR0EntryNode>().Sum(e=>Enumerable.Range(0,9).Sum(c=>e.KeyArrays[c].KeyCount)));
+                    int Native(int id)=>Array.FindIndex(source.Scene.Skeleton.Bones,b=>b.Id==id);
+                    var reverseControls=new System.Collections.Generic.Dictionary<int,int>{
+                        [target.Rig.Roles["motion"]]=Native(0),
+                        [target.Rig.Roles["pivot"]]=Native(1),
+                        [target.Rig.Roles["turn"]]=Native(2)};
+                    var reverseDetails=details.ToDictionary(pair=>pair.Value,pair=>pair.Key);
+                    var reverse=new BrawlCrate.Studio.Retargeting.HumanoidRetargeter(target.Rig,source.Rig,
+                        reverseControls,reverseDetails);
+                    var reverseHeight=new BrawlCrate.Studio.Retargeting.GroundRelativeHeightTransfer(
+                        target.Rig,source.Rig,reverse.LegScale);
+                    BrawlCrate.Studio.Retargeting.RigPose SnakeHandPlant(float time)
+                    {
+                        var posed=new BrawlCrate.Studio.Retargeting.RigPose(target.Rig,
+                            BrawlCrate.Studio.Retargeting.BrawlRetargeter.Sample(target,snakeClip,0).Local);
+                        foreach(string role in new[]{"left.hand","right.hand"})
+                            posed.SetWorldPoint(target.Rig.Roles[role],posed.Point(role)-
+                                target.Rig.GroundNormal*target.Rig.Surfaces[role].Sample(posed).Clearance);
+                        return posed;
+                    }
+                    var reverseContacts=new BrawlCrate.Studio.Retargeting.ContactMotion(reverse,SnakeHandPlant,4,true,
+                        requireFloorEvidence:true,stabilizeStanding:false,detectSuspended:false);
+                    Check(reverseContacts.FloorEnabled&&reverseContacts.PlantedHandSamples>0,
+                        "Large source rig identifies weighted hand support for the smaller native target");
+                    var reversePlanted=reverseContacts.Evaluate(2);
+                    var reverseUnchanged=reverse.Evaluate(SnakeHandPlant(2));
+                    Check(reverse.TargetMotionControls.All(i=>reversePlanted.Pose.Local[i].Equals(reverseUnchanged.Pose.Local[i]))&&
+                        new[]{"left.hand","right.hand"}.All(role=>
+                            Math.Abs(source.Rig.Surfaces[role].Sample(reversePlanted.Pose).Clearance)<.01f),
+                        "The smaller native target reaches both hand support patches without moving actor controls");
+                    float worst=0;
+                    foreach(float time in new[]{0f,Math.Max(0,(snakeClip.FrameCount-1)*.5f),(float)(snakeClip.FrameCount-1)})
+                    {
+                        var snakePose=BrawlCrate.Studio.Retargeting.BrawlRetargeter.Sample(target,snakeClip,time);
+                        var pose=reverse.Evaluate(snakePose,true);
+                        var roots=reverse.TargetMotionControls.Select(i=>pose.Pose.Local[i]).ToArray();
+                        reverseHeight.Apply(snakePose,pose.Pose);
+                        worst=Math.Max(worst,pose.MaximumLimbResidual);
+                        Check(pose.Pose.Local.Length==source.Rig.Joints.Length&&
+                            source.Rig.Roles.ContainsKey("left.foot")&&source.Rig.Roles.ContainsKey("right.foot")&&
+                            BrawlCrate.Studio.Retargeting.RigMath.Finite(pose.Pose.Point("left.foot"))&&
+                            BrawlCrate.Studio.Retargeting.RigMath.Finite(pose.Pose.Point("right.foot"))&&
+                            reverse.TargetMotionControls.Select(i=>pose.Pose.Local[i]).SequenceEqual(roots),
+                            "Snake pose bridges into the smaller native GT Goku rig without replacing its bones or weights");
+                    }
+                    Console.WriteLine("TRACE Snake to BT3 GT pose plan maps="+reverse.Mapping.Length+
+                        " leg scale="+reverse.LegScale+" arm scale="+reverse.ArmScale+
+                        " maximum limb residual="+worst+" native writing=not qualified");
+                }
+            }
+            string otherFixture=Path.Combine(".local","optimization-next-bake-draft","mario","next-target-before.mdl0");
+            using(var otherModel=NodeFactory.FromFile(null,otherFixture) as MDL0Node)
+            {
+                var otherTarget=BrawlCrate.Studio.Retargeting.BrawlRetargeter.Capture(otherModel);
+                var otherPlan=new BrawlCrate.Studio.Retargeting.HumanoidRetargeter(source.Rig,otherTarget.Rig,
+                    Bt3TrajectoryBinding.Prepare(source,otherTarget.Rig),Bt3DetailBinding.Prepare(source,otherTarget.Rig));
+                using(var result=BrawlCrate.Studio.Retargeting.BrawlRetargeter.BakeBt3(lease,otherTarget))
+                {
+                    string path=Path.Combine(output,"bt3-gt-to-mario-action000.chr0");
+                    result.Animation.ExportChecked(path);
+                    using(var reopened=NodeFactory.FromFile(null,path) as CHR0Node)
+                    foreach(float time in new[]{0f,source.Motion.Length*.5f,(float)source.Motion.Length})
+                    {
+                        float expectedSole=new[]{"left.foot","right.foot"}.Min(role=>
+                            source.Rig.Surfaces[role].Sample(source.Sample(time)).Clearance)*otherPlan.LegScale;
+                        var pose=BrawlCrate.Studio.Retargeting.BrawlRetargeter.Sample(otherTarget,reopened,time);
+                        float actual=new[]{"left.foot","right.foot"}.Min(role=>
+                            otherTarget.Rig.Surfaces[role].Sample(pose).Clearance);
+                        Check(Math.Abs(actual-expectedSole)<.001f,
+                            "A second unequal target rig reopens with its source-proportional sole height");
+                    }
+                    Console.WriteLine("TRACE BT3 GT to Mario bytes="+new FileInfo(path).Length+
+                        " leg scale="+otherPlan.LegScale+" "+result.OptimizationReport);
+                }
+            }
+        }
         if(args.Contains("--bt3-source-rig"))
         {
             foreach(var pair in new[]{Tuple.Create(mid,mid.Costumes[0],0),

@@ -1,5 +1,18 @@
 # Current milestone M2 — simpler native workspace
 
+3 November: preview.90 extends the format-neutral proportion bridge with
+weighted BT3 hand/body patches and fixes zero-weight contact-marker NaNs.
+A palm-geometry preflight admits the existing coupled Next contact solver
+only when source palms actually reach its floor band; decoded output and
+complete support evidence remain hard gates. For nonstatic, nonplanted
+motions, a separate pelvis correction keeps the lowest source-scaled sole
+height without changing actor controls or weights. The checked GT Goku
+action 000 reopens on Brawl Snake/Mario; synthetic two-hand plants pass at
+both large and small target proportions. The second foot can still differ by
+0.0127303 native units, and reverse BT3 output, real hand-supported action
+acceptance, body-only/ledge context and game playback remain OPEN within the
+same incomplete G1/M2. See [bounded evidence](../BT3_PROPORTION_SUPPORT_2026-11-03.md).
+
 3 November: preview.89 corrects the checked BT3 → Brawl rig bridge without
 replacing the original Next solver or Model Previewer. Native J00/J01/J02
 actor, pitch and facing controls now follow only their own authored local

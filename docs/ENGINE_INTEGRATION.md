@@ -1,5 +1,18 @@
 # Native Next integration
 
+Preview.90 keeps source and target skinned support geometry inside the
+format-neutral `Rig`/`ContactSurface` boundary. The BT3 adapter supplies
+two-pivot hand/body patches, screens source palm proximity offline, and
+calls the existing `ContactMotion` body/limb solver only for measured palm
+support. A common marker fix excludes zero-weight influence slots before
+averaging. Native BT3 → Brawl output still passes `WindowedNativeCurveBaker`
+and fresh CHR0 reopen; decoded full-support heights, locks and orientations
+are checked, and missing complete support evidence rejects publication.
+Other BT3 motion uses a separate lowest-sole proportion correction or the
+existing static bilateral stance gate. No MDL0 bind, weight, Next solver or
+Model Previewer ownership changes. See
+[bounded acceptance](BT3_PROPORTION_SUPPORT_2026-11-03.md).
+
 Preview.89 keeps the original Next call path intact while the BT3 adapter
 supplies checked native J00/J01/J02 → target actor/pitch/facing bindings and
 structurally matched skinned finger branches. The shared solver's optional
