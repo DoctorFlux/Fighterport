@@ -1,11 +1,23 @@
 # Native Next integration
 
+Preview.94 adds a separate portable animation publication boundary for exact
+BT3 native action members. `PortableAnimationExport` freezes selected clips,
+stages verified GLB candidates and commits a new folder only after exact
+costume/action and edited-motion dependencies still match. The BT3 viewer
+offers either one GLB per action or selected actions in one GLB, with optional
+rigged model and textures. Animation-only GLBs contain the skeleton and
+channels, while model-only exports still contain no clips. The current native
+edited action is serialized into an independent export snapshot; ordinary
+project/native saving and the Next retargeter remain separate. FBX requires a
+direct in-app writer and independent round-trip qualification before exposure.
+See [bounded acceptance](PORTABLE_ANIMATION_BUNDLES_2026-11-03.md).
+
 Preview.93 adds `PortableRiggedGltf` as a game-neutral COLLADA rigged-scene
 conversion boundary. It retains each exported joint and every declared skin
 influence through glTF `JOINTS_n`/`WEIGHTS_n`, including embedded PNGs in GLB.
 The BT3 model command passes no animation clip. `PortableBt3Rigged` also has a
 separately tested selected-action encoding path at a declared 60-frame timebase
-for representable native timing; this is reserved for a separate animation
+for representable native timing; preview.94 uses it in a separate animation
 export command and does not alter the model-only default. The existing native
 model/animation document remains the owner; portable output is staged
 independently and never becomes an implicit game-native writer. A static BT3
