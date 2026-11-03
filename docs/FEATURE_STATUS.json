@@ -1,0 +1,6198 @@
+{
+  "schema_version": 1,
+  "accepted_revision": "041ec87a6f7d4d6b42f311cc91fe48fee5f4191b",
+  "active_task_id": "TASK-RETARGET-NONIDENTICAL-001",
+  "status_vocabulary": [
+    "NOT_STARTED",
+    "RESEARCH",
+    "IN_PROGRESS",
+    "IMPLEMENTED_UNVERIFIED",
+    "VERIFIED_BOUNDED",
+    "BLOCKED",
+    "REGRESSED",
+    "DEFERRED"
+  ],
+  "verification_vocabulary": [
+    "PASS_HISTORICAL",
+    "PASS_CURRENT",
+    "NOT_RUN",
+    "FAIL",
+    "UNAVAILABLE",
+    "NOT_APPLICABLE"
+  ],
+  "destination_games": [
+    {
+      "id": "melee",
+      "title": "Super Smash Bros. Melee",
+      "platform": "GameCube",
+      "build": "USA v1.02 fixture; other builds and mods separately qualified"
+    },
+    {
+      "id": "brawl",
+      "title": "Super Smash Bros. Brawl",
+      "platform": "Wii",
+      "build": "RSBE01 revision 1 fixture; other builds/mods separately qualified"
+    },
+    {
+      "id": "ultimate",
+      "title": "Super Smash Bros. Ultimate",
+      "platform": "Nintendo Switch",
+      "build": "unqualified"
+    },
+    {
+      "id": "rivals2",
+      "title": "Rivals of Aether 2",
+      "platform": "Windows/UE5.8 Modkit",
+      "build": "unqualified"
+    }
+  ],
+  "source_only_games": [
+    {
+      "id": "bt3",
+      "title": "Dragon Ball Z: Budokai Tenkaichi 3",
+      "platform": "PlayStation 2",
+      "build": "SLUS-21678 USA fixture"
+    },
+    {
+      "id": "fighterz",
+      "title": "Dragon Ball FighterZ",
+      "platform": "Windows/PlayStation/Xbox",
+      "build": "unqualified"
+    },
+    {
+      "id": "sparking_zero",
+      "title": "Dragon Ball: Sparking! ZERO",
+      "platform": "Windows/PlayStation/Xbox",
+      "build": "unqualified"
+    },
+    {
+      "id": "zenkai",
+      "title": "Dragon Ball Z: Zenkai Battle",
+      "platform": "Arcade",
+      "build": "unqualified"
+    },
+    {
+      "id": "battle_stadium_don",
+      "title": "Battle Stadium D.O.N",
+      "platform": "PlayStation 2/GameCube",
+      "build": "unqualified"
+    },
+    {
+      "id": "budokai3",
+      "title": "Dragon Ball Z: Budokai 3",
+      "platform": "PlayStation 2",
+      "build": "unqualified"
+    },
+    {
+      "id": "xenoverse",
+      "title": "Dragon Ball Xenoverse 1/2",
+      "platform": "multiple",
+      "build": "unqualified"
+    },
+    {
+      "id": "naruto",
+      "title": "Naruto games",
+      "platform": "multiple",
+      "build": "unqualified"
+    },
+    {
+      "id": "one_piece",
+      "title": "One Piece games",
+      "platform": "multiple",
+      "build": "unqualified"
+    },
+    {
+      "id": "jump_force",
+      "title": "Jump Force",
+      "platform": "multiple",
+      "build": "unqualified"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "REQ01",
+      "title": "Next/BrawlCrate basis",
+      "disposition": "APPROVED",
+      "source": "docs/MASTER_PLAN.md",
+      "feature_ids": [
+        "FP-NATIVE-EDITOR"
+      ],
+      "source_section": "§16"
+    },
+    {
+      "id": "REQ02",
+      "title": "Both port modes",
+      "disposition": "APPROVED",
+      "source": "docs/MASTER_PLAN.md",
+      "feature_ids": [
+        "FP-MODEL-PORT",
+        "FP-MULTI-TARGET",
+        "FP-PORTABLE-EXPORT",
+        "FP-PORTABLE-IMPORT",
+        "FP-RETARGET-QUALITY"
+      ],
+      "source_section": "§16"
+    },
+    {
+      "id": "REQ03",
+      "title": "Four destination games",
+      "disposition": "APPROVED",
+      "source": "docs/MASTER_PLAN.md",
+      "feature_ids": [
+        "FP-BRAWL-ADAPTER",
+        "FP-BT3-SOURCE",
+        "FP-LIBRARY",
+        "FP-MELEE-ADAPTER",
+        "FP-MULTI-TARGET",
+        "FP-NATIVE-EXPORT",
+        "FP-OTHER-DONORS",
+        "FP-RIVALS2-ADAPTER",
+        "FP-ULTIMATE-ADAPTER"
+      ],
+      "source_section": "§16"
+    },
+    {
+      "id": "REQ04",
+      "title": "General motion",
+      "disposition": "APPROVED",
+      "source": "docs/MASTER_PLAN.md",
+      "feature_ids": [
+        "FP-BATCH",
+        "FP-CONTACTS",
+        "FP-EXACT-RIG",
+        "FP-RETARGET-QUALITY",
+        "FP-ROOT-MOTION",
+        "FP-VALIDATION"
+      ],
+      "source_section": "§16"
+    },
+    {
+      "id": "REQ05",
+      "title": "Native preservation",
+      "disposition": "APPROVED",
+      "source": "docs/MASTER_PLAN.md",
+      "feature_ids": [
+        "FP-BRAWL-ADAPTER",
+        "FP-EXACT-RIG",
+        "FP-LIBRARY",
+        "FP-MELEE-ADAPTER",
+        "FP-MODEL-PORT",
+        "FP-NATIVE-EXPORT",
+        "FP-OPTIMIZATION",
+        "FP-PROJECT-PRESERVATION",
+        "FP-RETARGET-QUALITY",
+        "FP-RIVALS2-ADAPTER",
+        "FP-ROOT-MOTION",
+        "FP-ULTIMATE-ADAPTER",
+        "FP-VALIDATION"
+      ],
+      "source_section": "§16"
+    },
+    {
+      "id": "REQ06",
+      "title": "Offline work",
+      "disposition": "APPROVED",
+      "source": "docs/MASTER_PLAN.md",
+      "feature_ids": [
+        "FP-OFFLINE"
+      ],
+      "source_section": "§16"
+    },
+    {
+      "id": "REQ07",
+      "title": "Shared library",
+      "disposition": "APPROVED",
+      "source": "docs/MASTER_PLAN.md",
+      "feature_ids": [
+        "FP-BATCH",
+        "FP-BRAWL-ADAPTER",
+        "FP-BT3-SOURCE",
+        "FP-COSTUMES-FORMS-PROPS",
+        "FP-LIBRARY",
+        "FP-MELEE-ADAPTER",
+        "FP-OTHER-DONORS",
+        "FP-RIVALS2-ADAPTER",
+        "FP-ULTIMATE-ADAPTER"
+      ],
+      "source_section": "§16"
+    },
+    {
+      "id": "REQ08",
+      "title": "Native editor",
+      "disposition": "APPROVED",
+      "source": "docs/MASTER_PLAN.md",
+      "feature_ids": [
+        "FP-FK-IK",
+        "FP-NATIVE-EDITOR",
+        "FP-PROJECT-PRESERVATION",
+        "FP-RETARGET-QUALITY",
+        "FP-WORKSPACE"
+      ],
+      "source_section": "§16"
+    },
+    {
+      "id": "REQ09",
+      "title": "Complete models",
+      "disposition": "APPROVED",
+      "source": "docs/MASTER_PLAN.md",
+      "feature_ids": [
+        "FP-ASSET-CHANNELS",
+        "FP-BT3-SOURCE",
+        "FP-COSTUMES-FORMS-PROPS",
+        "FP-MODEL-PORT",
+        "FP-PORTABLE-EXPORT",
+        "FP-PORTABLE-IMPORT"
+      ],
+      "source_section": "§16"
+    },
+    {
+      "id": "REQ10",
+      "title": "All meaningful bones",
+      "disposition": "APPROVED",
+      "source": "docs/MASTER_PLAN.md",
+      "feature_ids": [
+        "FP-EXACT-RIG",
+        "FP-RETARGET-QUALITY",
+        "FP-ROOT-MOTION"
+      ],
+      "source_section": "§16"
+    },
+    {
+      "id": "REQ11",
+      "title": "Independent FK",
+      "disposition": "APPROVED",
+      "source": "docs/MASTER_PLAN.md",
+      "feature_ids": [
+        "FP-FK-IK",
+        "FP-NATIVE-EDITOR"
+      ],
+      "source_section": "§16"
+    },
+    {
+      "id": "REQ12",
+      "title": "Independent IK",
+      "disposition": "APPROVED",
+      "source": "docs/MASTER_PLAN.md",
+      "feature_ids": [
+        "FP-FK-IK",
+        "FP-NATIVE-EDITOR"
+      ],
+      "source_section": "§16"
+    },
+    {
+      "id": "REQ13",
+      "title": "Proportions",
+      "disposition": "APPROVED",
+      "source": "docs/MASTER_PLAN.md",
+      "feature_ids": [
+        "FP-CONTACTS",
+        "FP-RETARGET-QUALITY"
+      ],
+      "source_section": "§16"
+    },
+    {
+      "id": "REQ14",
+      "title": "Contacts",
+      "disposition": "APPROVED",
+      "source": "docs/MASTER_PLAN.md",
+      "feature_ids": [
+        "FP-CONTACTS",
+        "FP-FITTING",
+        "FP-RETARGET-QUALITY",
+        "FP-VALIDATION"
+      ],
+      "source_section": "§16"
+    },
+    {
+      "id": "REQ15",
+      "title": "Timing/style",
+      "disposition": "APPROVED",
+      "source": "docs/MASTER_PLAN.md",
+      "feature_ids": [
+        "FP-FITTING",
+        "FP-SETS"
+      ],
+      "source_section": "§16"
+    },
+    {
+      "id": "REQ16",
+      "title": "Fixed-duration fitting",
+      "disposition": "APPROVED",
+      "source": "docs/MASTER_PLAN.md",
+      "feature_ids": [
+        "FP-FITTING"
+      ],
+      "source_section": "§16"
+    },
+    {
+      "id": "REQ17",
+      "title": "Native sets",
+      "disposition": "APPROVED",
+      "source": "docs/MASTER_PLAN.md",
+      "feature_ids": [
+        "FP-BATCH",
+        "FP-FILL-MISSING",
+        "FP-NATIVE-EXPORT",
+        "FP-SETS"
+      ],
+      "source_section": "§16"
+    },
+    {
+      "id": "REQ18",
+      "title": "Protected Fill Missing",
+      "disposition": "APPROVED",
+      "source": "docs/MASTER_PLAN.md",
+      "feature_ids": [
+        "FP-FILL-MISSING"
+      ],
+      "source_section": "§16"
+    },
+    {
+      "id": "REQ19",
+      "title": "Optimization",
+      "disposition": "APPROVED",
+      "source": "docs/MASTER_PLAN.md",
+      "feature_ids": [
+        "FP-OPTIMIZATION"
+      ],
+      "source_section": "§16"
+    },
+    {
+      "id": "REQ20",
+      "title": "Simpler workspace",
+      "disposition": "APPROVED",
+      "source": "docs/MASTER_PLAN.md",
+      "feature_ids": [
+        "FP-PERFORMANCE-RECOVERY",
+        "FP-WORKSPACE"
+      ],
+      "source_section": "§16"
+    },
+    {
+      "id": "REQ21",
+      "title": "Asset scope",
+      "disposition": "APPROVED",
+      "source": "docs/MASTER_PLAN.md",
+      "feature_ids": [
+        "FP-ASSET-CHANNELS",
+        "FP-COSTUMES-FORMS-PROPS",
+        "FP-GAMEPLAY-AUTHORING",
+        "FP-MULTI-TARGET",
+        "FP-OFFLINE",
+        "FP-OTHER-DONORS",
+        "FP-PERFORMANCE-RECOVERY",
+        "FP-PORTABLE-EXPORT",
+        "FP-PORTABLE-IMPORT",
+        "FP-VALIDATION"
+      ],
+      "source_section": "§16"
+    }
+  ],
+  "features": [
+    {
+      "id": "FP-NATIVE-EDITOR",
+      "requirement_ids": [
+        "REQ01",
+        "REQ08",
+        "REQ11",
+        "REQ12"
+      ],
+      "scope": "APPROVED",
+      "status": "VERIFIED_BOUNDED",
+      "outcome": "Retain the complete BrawlCrate Model Previewer and one native authoring document for supported Brawl assets.",
+      "acceptance": [
+        "Native bones, animation lists, gizmos, interpolation, timeline, Transform All, automatic keys and Undo/Redo survive edit, Save and reopen on qualified fixtures."
+      ],
+      "priority": "P0",
+      "depends_on": [],
+      "aggregate": false,
+      "evidence": [
+        {
+          "path": "docs/NATIVE_CONTROLS_WORKSPACE_ACCEPTANCE_2026-10-23.md",
+          "revision": "6b543a5b61d3d65476421691cdbfc1a6f77405bb",
+          "coverage": "Native BrawlCrate editor, controls, Undo and CHR0/project reopen on supplied Brawl fixtures."
+        }
+      ],
+      "references": {
+        "code": [
+          "BrawlCrate/UI/ModelForm.cs"
+        ],
+        "tests": [],
+        "receipts": [
+          "docs/NATIVE_CONTROLS_WORKSPACE_ACCEPTANCE_2026-10-23.md"
+        ]
+      },
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/NATIVE_CONTROLS_WORKSPACE_ACCEPTANCE_2026-10-23.md",
+              "revision": "6b543a5b61d3d65476421691cdbfc1a6f77405bb",
+              "coverage": "Native BrawlCrate editor, controls, Undo and CHR0/project reopen on supplied Brawl fixtures."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/NATIVE_CONTROLS_WORKSPACE_ACCEPTANCE_2026-10-23.md",
+              "revision": "6b543a5b61d3d65476421691cdbfc1a6f77405bb",
+              "coverage": "Native BrawlCrate editor, controls, Undo and CHR0/project reopen on supplied Brawl fixtures."
+            }
+          ]
+        },
+        "visual": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/NATIVE_CONTROLS_WORKSPACE_ACCEPTANCE_2026-10-23.md",
+              "revision": "6b543a5b61d3d65476421691cdbfc1a6f77405bb",
+              "coverage": "Native BrawlCrate editor, controls, Undo and CHR0/project reopen on supplied Brawl fixtures."
+            }
+          ]
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [
+        "Bounded Brawl fixtures; other game-native editing requires its own adapter and gates."
+      ],
+      "next_step": "Keep this editor as the target UI for all qualified native adapters."
+    },
+    {
+      "id": "FP-WORKSPACE",
+      "requirement_ids": [
+        "REQ20",
+        "REQ08"
+      ],
+      "scope": "APPROVED",
+      "status": "IN_PROGRESS",
+      "outcome": "Provide one target → source → preview → Use on Target → edit → export workflow around the native editor.",
+      "acceptance": [
+        "Primary task path is discoverable without removing native menus or editing controls.",
+        "Human completion and physical-input outcomes are measured separately."
+      ],
+      "priority": "P1",
+      "depends_on": [
+        "FP-NATIVE-EDITOR"
+      ],
+      "aggregate": false,
+      "evidence": [
+        {
+          "path": "docs/SIMPLE_WORKSPACE_ACCEPTANCE_2026-10-24.md",
+          "revision": "ccb4f84f339bf65f90ec264253a403c865909a0d",
+          "coverage": "Preview.15 source-target workflow on supplied Brawl fixtures; background capture only."
+        }
+      ],
+      "references": {
+        "code": [
+          "BrawlCrate/UI/ModelForm.SimpleWorkspace.cs"
+        ],
+        "tests": [],
+        "receipts": [
+          "docs/SIMPLE_WORKSPACE_ACCEPTANCE_2026-10-24.md"
+        ]
+      },
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/SIMPLE_WORKSPACE_ACCEPTANCE_2026-10-24.md",
+              "revision": "ccb4f84f339bf65f90ec264253a403c865909a0d",
+              "coverage": "Preview.15 source-target workflow on supplied Brawl fixtures; background capture only."
+            }
+          ]
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [
+        "Background UI harness is not a human-usability or mixed-monitor DPI test."
+      ],
+      "next_step": "Run prepared human walkthrough and physical-input/DPI checks after current quality work."
+    },
+    {
+      "id": "FP-LIBRARY",
+      "requirement_ids": [
+        "REQ07",
+        "REQ03",
+        "REQ05"
+      ],
+      "scope": "APPROVED",
+      "status": "IN_PROGRESS",
+      "outcome": "Register exact source identities from supported files, discs and installs, with costumes, forms, favorites and filters.",
+      "acceptance": [
+        "Inventory, original preview and target association are checked independently by adapter.",
+        "Private game bytes remain at their source and are not committed."
+      ],
+      "priority": "P1",
+      "depends_on": [],
+      "aggregate": true,
+      "evidence": [
+        {
+          "path": "docs/LIBRARY_ORGANIZATION_ACCEPTANCE_2026-10-24.md",
+          "revision": "4f957f33ad4a5c4eaf26e9af2e8405fa23cd42f5",
+          "coverage": "Exact Brawl clip favorites/filter state and native document preservation."
+        },
+        {
+          "path": "docs/DIRECT_GAME_SOURCES_ACCEPTANCE_2026-10-26.md",
+          "revision": "e83379c21f53f7b718df25320e1762877ef13164",
+          "coverage": "Brawl ISO/WBFS direct inventory and selected package loading on named local fixture."
+        },
+        {
+          "path": "docs/MELEE_SOURCE_ACCEPTANCE_2026-11-01.md",
+          "revision": "36bbb2ce6a626b2936f6a8f3a43c614917387e97",
+          "coverage": "Melee USA v1.02 source inventory/preview on named local fixture; not general Melee support."
+        },
+        {
+          "path": "docs/BT3_DIRECT_LIBRARY_2026-11-02.md",
+          "revision": "984c59bfb544aedd18e4ea7e1a130a2b7a0bf56b",
+          "coverage": "Selected BT3 USA source inventory and direct library route; donor-side only."
+        }
+      ],
+      "references": {
+        "code": [
+          "BrawlCrate/Studio/AnimationLibrary.cs"
+        ],
+        "tests": [],
+        "receipts": [
+          "docs/LIBRARY_ORGANIZATION_ACCEPTANCE_2026-10-24.md",
+          "docs/DIRECT_GAME_SOURCES_ACCEPTANCE_2026-10-26.md",
+          "docs/MELEE_SOURCE_ACCEPTANCE_2026-11-01.md",
+          "docs/BT3_DIRECT_LIBRARY_2026-11-02.md"
+        ]
+      },
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/LIBRARY_ORGANIZATION_ACCEPTANCE_2026-10-24.md",
+              "revision": "4f957f33ad4a5c4eaf26e9af2e8405fa23cd42f5",
+              "coverage": "Exact Brawl clip favorites/filter state and native document preservation."
+            },
+            {
+              "path": "docs/DIRECT_GAME_SOURCES_ACCEPTANCE_2026-10-26.md",
+              "revision": "e83379c21f53f7b718df25320e1762877ef13164",
+              "coverage": "Brawl ISO/WBFS direct inventory and selected package loading on named local fixture."
+            },
+            {
+              "path": "docs/MELEE_SOURCE_ACCEPTANCE_2026-11-01.md",
+              "revision": "36bbb2ce6a626b2936f6a8f3a43c614917387e97",
+              "coverage": "Melee USA v1.02 source inventory/preview on named local fixture; not general Melee support."
+            },
+            {
+              "path": "docs/BT3_DIRECT_LIBRARY_2026-11-02.md",
+              "revision": "984c59bfb544aedd18e4ea7e1a130a2b7a0bf56b",
+              "coverage": "Selected BT3 USA source inventory and direct library route; donor-side only."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/LIBRARY_ORGANIZATION_ACCEPTANCE_2026-10-24.md",
+              "revision": "4f957f33ad4a5c4eaf26e9af2e8405fa23cd42f5",
+              "coverage": "Exact Brawl clip favorites/filter state and native document preservation."
+            },
+            {
+              "path": "docs/DIRECT_GAME_SOURCES_ACCEPTANCE_2026-10-26.md",
+              "revision": "e83379c21f53f7b718df25320e1762877ef13164",
+              "coverage": "Brawl ISO/WBFS direct inventory and selected package loading on named local fixture."
+            },
+            {
+              "path": "docs/MELEE_SOURCE_ACCEPTANCE_2026-11-01.md",
+              "revision": "36bbb2ce6a626b2936f6a8f3a43c614917387e97",
+              "coverage": "Melee USA v1.02 source inventory/preview on named local fixture; not general Melee support."
+            },
+            {
+              "path": "docs/BT3_DIRECT_LIBRARY_2026-11-02.md",
+              "revision": "984c59bfb544aedd18e4ea7e1a130a2b7a0bf56b",
+              "coverage": "Selected BT3 USA source inventory and direct library route; donor-side only."
+            }
+          ]
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [
+        "Brawl route is bounded; Melee and BT3 routes are partial; Ultimate and Rivals 2 are absent."
+      ],
+      "next_step": "Extend exact association and native source adapters for remaining approved games."
+    },
+    {
+      "id": "FP-EXACT-RIG",
+      "requirement_ids": [
+        "REQ04",
+        "REQ05",
+        "REQ10"
+      ],
+      "scope": "APPROVED",
+      "status": "VERIFIED_BOUNDED",
+      "outcome": "Preserve all authored CHR0 tracks when an independently checked Brawl source and target rig are identical.",
+      "acceptance": [
+        "Admission checks hierarchy, transforms, flags, bind/skin evidence and track membership.",
+        "Independent copy serializes and freshly reopens with zero measured fixture error."
+      ],
+      "priority": "P0",
+      "depends_on": [],
+      "aggregate": false,
+      "evidence": [
+        {
+          "path": "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md",
+          "revision": "041ec87a6f7d4d6b42f311cc91fe48fee5f4191b",
+          "coverage": "Preview.96 exact-rig Peach/Mario and paired Peach/Fox numeric, native reopen, private-desktop evidence; bounded to named fixtures."
+        }
+      ],
+      "references": {
+        "code": [
+          "BrawlCrate/Studio/Retargeting/BrawlRetargeter.ExactRig.cs"
+        ],
+        "tests": [
+          "scripts/Test-RetargetQualityPairs.ps1"
+        ],
+        "receipts": [
+          "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md"
+        ]
+      },
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md",
+              "revision": "041ec87a6f7d4d6b42f311cc91fe48fee5f4191b",
+              "coverage": "Preview.96 exact-rig Peach/Mario and paired Peach/Fox numeric, native reopen, private-desktop evidence; bounded to named fixtures."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md",
+              "revision": "041ec87a6f7d4d6b42f311cc91fe48fee5f4191b",
+              "coverage": "Preview.96 exact-rig Peach/Mario and paired Peach/Fox numeric, native reopen, private-desktop evidence; bounded to named fixtures."
+            }
+          ]
+        },
+        "visual": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md",
+              "revision": "041ec87a6f7d4d6b42f311cc91fe48fee5f4191b",
+              "coverage": "Preview.96 exact-rig Peach/Mario and paired Peach/Fox numeric, native reopen, private-desktop evidence; bounded to named fixtures."
+            }
+          ]
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [
+        "Peach/Mario exact-rig fixtures and helper case; no arbitrary same-rig, contact-mode or game-runtime claim."
+      ],
+      "next_step": "Keep exact-rig route guarded while addressing changed-proportion quality separately."
+    },
+    {
+      "id": "FP-RETARGET-QUALITY",
+      "requirement_ids": [
+        "REQ02",
+        "REQ04",
+        "REQ05",
+        "REQ08",
+        "REQ10",
+        "REQ13",
+        "REQ14"
+      ],
+      "scope": "APPROVED",
+      "status": "IN_PROGRESS",
+      "outcome": "Transfer full target motion across genuinely different rigs and proportions without changing target skeleton, binds or skin weights.",
+      "acceptance": [
+        "Compare source/mapping/solver/native output and skin/contact witnesses for a non-identical rig.",
+        "No character-specific numerical shortcuts or lowered quality gates."
+      ],
+      "priority": "P0",
+      "depends_on": [
+        "FP-EXACT-RIG"
+      ],
+      "aggregate": true,
+      "evidence": [
+        {
+          "path": "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md",
+          "revision": "041ec87a6f7d4d6b42f311cc91fe48fee5f4191b",
+          "coverage": "Preview.96 exact-rig Peach/Mario and paired Peach/Fox numeric, native reopen, private-desktop evidence; bounded to named fixtures."
+        },
+        {
+          "path": "docs/MELEE_SHARED_BRIDGE_2026-11-02.md",
+          "revision": "40cf61800792a26409fdbdafd93d42d9086e0922",
+          "coverage": "Bounded Melee/Brawl shared rig bridge and retarget fixture results."
+        }
+      ],
+      "references": {
+        "code": [
+          "BrawlCrate/Studio/Retargeting/BrawlRetargeter.cs"
+        ],
+        "tests": [
+          "scripts/Test-RetargetQualityPairs.ps1"
+        ],
+        "receipts": [
+          "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md",
+          "docs/MELEE_SHARED_BRIDGE_2026-11-02.md"
+        ]
+      },
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md",
+              "revision": "041ec87a6f7d4d6b42f311cc91fe48fee5f4191b",
+              "coverage": "Preview.96 exact-rig Peach/Mario and paired Peach/Fox numeric, native reopen, private-desktop evidence; bounded to named fixtures."
+            },
+            {
+              "path": "docs/MELEE_SHARED_BRIDGE_2026-11-02.md",
+              "revision": "40cf61800792a26409fdbdafd93d42d9086e0922",
+              "coverage": "Bounded Melee/Brawl shared rig bridge and retarget fixture results."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md",
+              "revision": "041ec87a6f7d4d6b42f311cc91fe48fee5f4191b",
+              "coverage": "Preview.96 exact-rig Peach/Mario and paired Peach/Fox numeric, native reopen, private-desktop evidence; bounded to named fixtures."
+            },
+            {
+              "path": "docs/MELEE_SHARED_BRIDGE_2026-11-02.md",
+              "revision": "40cf61800792a26409fdbdafd93d42d9086e0922",
+              "coverage": "Bounded Melee/Brawl shared rig bridge and retarget fixture results."
+            }
+          ]
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [
+        "Peach/Fox bounded trajectory checks do not establish arbitrary cross-proportion pose, skin or contact quality."
+      ],
+      "next_step": "Reproduce one non-identical-rig non-idle failure with full witnesses, then fix the first demonstrated general cause."
+    },
+    {
+      "id": "FP-ROOT-MOTION",
+      "requirement_ids": [
+        "REQ04",
+        "REQ05",
+        "REQ10"
+      ],
+      "scope": "APPROVED",
+      "status": "VERIFIED_BOUNDED",
+      "outcome": "Reviewed source motion controls follow only their own source-authored local animation during qualified Brawl transfer.",
+      "acceptance": [
+        "Source-owned control tracks retain authored motion and are not replaced by fitted Wait/Fall reference motion."
+      ],
+      "priority": "P1",
+      "depends_on": [],
+      "aggregate": false,
+      "evidence": [
+        {
+          "path": "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md",
+          "revision": "041ec87a6f7d4d6b42f311cc91fe48fee5f4191b",
+          "coverage": "Preview.96 exact-rig Peach/Mario and paired Peach/Fox numeric, native reopen, private-desktop evidence; bounded to named fixtures."
+        }
+      ],
+      "references": {
+        "code": [
+          "BrawlCrate/Studio/Retargeting/BrawlRetargeter.cs"
+        ],
+        "tests": [],
+        "receipts": [
+          "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md"
+        ]
+      },
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md",
+              "revision": "041ec87a6f7d4d6b42f311cc91fe48fee5f4191b",
+              "coverage": "Preview.96 exact-rig Peach/Mario and paired Peach/Fox numeric, native reopen, private-desktop evidence; bounded to named fixtures."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md",
+              "revision": "041ec87a6f7d4d6b42f311cc91fe48fee5f4191b",
+              "coverage": "Preview.96 exact-rig Peach/Mario and paired Peach/Fox numeric, native reopen, private-desktop evidence; bounded to named fixtures."
+            }
+          ]
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [
+        "Role classification requires reviewed bindings; no name-only universal inference."
+      ],
+      "next_step": "Recheck source-control contracts in each future rig bridge and native writer."
+    },
+    {
+      "id": "FP-FK-IK",
+      "requirement_ids": [
+        "REQ11",
+        "REQ12",
+        "REQ08"
+      ],
+      "scope": "APPROVED",
+      "status": "VERIFIED_BOUNDED",
+      "outcome": "Edit existing target rig with independent FK, IK, pin and pole controls through native Undo.",
+      "acceptance": [
+        "Supported controls bake to existing native bones and survive project/CHR0 reopen without reweighting."
+      ],
+      "priority": "P1",
+      "depends_on": [],
+      "aggregate": false,
+      "evidence": [
+        {
+          "path": "docs/NATIVE_CONTROLS_WORKSPACE_ACCEPTANCE_2026-10-23.md",
+          "revision": "6b543a5b61d3d65476421691cdbfc1a6f77405bb",
+          "coverage": "Native BrawlCrate editor, controls, Undo and CHR0/project reopen on supplied Brawl fixtures."
+        }
+      ],
+      "references": {
+        "code": [
+          "BrawlCrate/UI/ModelForm.cs"
+        ],
+        "tests": [],
+        "receipts": [
+          "docs/NATIVE_CONTROLS_WORKSPACE_ACCEPTANCE_2026-10-23.md"
+        ]
+      },
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/NATIVE_CONTROLS_WORKSPACE_ACCEPTANCE_2026-10-23.md",
+              "revision": "6b543a5b61d3d65476421691cdbfc1a6f77405bb",
+              "coverage": "Native BrawlCrate editor, controls, Undo and CHR0/project reopen on supplied Brawl fixtures."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/NATIVE_CONTROLS_WORKSPACE_ACCEPTANCE_2026-10-23.md",
+              "revision": "6b543a5b61d3d65476421691cdbfc1a6f77405bb",
+              "coverage": "Native BrawlCrate editor, controls, Undo and CHR0/project reopen on supplied Brawl fixtures."
+            }
+          ]
+        },
+        "visual": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/NATIVE_CONTROLS_WORKSPACE_ACCEPTANCE_2026-10-23.md",
+              "revision": "6b543a5b61d3d65476421691cdbfc1a6f77405bb",
+              "coverage": "Native BrawlCrate editor, controls, Undo and CHR0/project reopen on supplied Brawl fixtures."
+            }
+          ]
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [
+        "Existing-rig Brawl fixtures only; complex multi-contact IK is a separate quality gate."
+      ],
+      "next_step": "Extend and requalify controls on each non-Brawl native document backend."
+    },
+    {
+      "id": "FP-FITTING",
+      "requirement_ids": [
+        "REQ15",
+        "REQ16",
+        "REQ14"
+      ],
+      "scope": "APPROVED",
+      "status": "IN_PROGRESS",
+      "outcome": "Fit entry/exit to target-owned reference poses inside fixed duration while protecting action motion and reviewed contacts.",
+      "acceptance": [
+        "Fitting preserves the chosen protected middle and attack-owned root motion.",
+        "Decoded result meets target endpoint and contact criteria on each qualified case."
+      ],
+      "priority": "P1",
+      "depends_on": [],
+      "aggregate": false,
+      "evidence": [
+        {
+          "path": "docs/FITTING_CORPUS_2026-11-01.md",
+          "revision": "3b359b9d0f39ff3201b2c8adf69e3d09525accc7",
+          "coverage": "Fitting corpus observations and failures; not full general-quality acceptance."
+        }
+      ],
+      "references": {
+        "code": [
+          "BrawlCrate/Studio/NativeTransitionFit.cs",
+          "engine/src/FighterPort.Core/BoundaryFitting.cs"
+        ],
+        "tests": [],
+        "receipts": [
+          "docs/FITTING_CORPUS_2026-11-01.md"
+        ]
+      },
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/FITTING_CORPUS_2026-11-01.md",
+              "revision": "3b359b9d0f39ff3201b2c8adf69e3d09525accc7",
+              "coverage": "Fitting corpus observations and failures; not full general-quality acceptance."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/FITTING_CORPUS_2026-11-01.md",
+              "revision": "3b359b9d0f39ff3201b2c8adf69e3d09525accc7",
+              "coverage": "Fitting corpus observations and failures; not full general-quality acceptance."
+            }
+          ]
+        },
+        "visual": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/FITTING_CORPUS_2026-11-01.md",
+              "revision": "3b359b9d0f39ff3201b2c8adf69e3d09525accc7",
+              "coverage": "Fitting corpus observations and failures; not full general-quality acceptance."
+            }
+          ]
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [
+        "Several terrain/contact recovery cases remain unqualified; corpus documents failures."
+      ],
+      "next_step": "Continue non-identical-rig fit/contact corpus after retarget-quality cause is resolved."
+    },
+    {
+      "id": "FP-CONTACTS",
+      "requirement_ids": [
+        "REQ14",
+        "REQ04",
+        "REQ13"
+      ],
+      "scope": "APPROVED",
+      "status": "IN_PROGRESS",
+      "outcome": "Review and correct floor, ledge and future environmental contacts using geometry and explicit context.",
+      "acceptance": [
+        "Protected root controls and all skin influences remain intact.",
+        "Contact establishment, hold and release pass reviewed position/orientation bounds."
+      ],
+      "priority": "P1",
+      "depends_on": [],
+      "aggregate": true,
+      "evidence": [
+        {
+          "path": "docs/REVIEWED_GROUND_CONTACT_ACCEPTANCE_2026-10-30.md",
+          "revision": "cf2e7a845bdd91ea4e30e77e9442d8fb6421530b",
+          "coverage": "Reviewed static-ground correction on tested native clips; no universal contacts."
+        }
+      ],
+      "references": {
+        "code": [
+          "BrawlCrate/Studio/NativeReviewedContacts.cs",
+          "engine/src/FighterPort.Core/ReviewedContactSets.cs"
+        ],
+        "tests": [],
+        "receipts": [
+          "docs/REVIEWED_GROUND_CONTACT_ACCEPTANCE_2026-10-30.md"
+        ]
+      },
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/REVIEWED_GROUND_CONTACT_ACCEPTANCE_2026-10-30.md",
+              "revision": "cf2e7a845bdd91ea4e30e77e9442d8fb6421530b",
+              "coverage": "Reviewed static-ground correction on tested native clips; no universal contacts."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/REVIEWED_GROUND_CONTACT_ACCEPTANCE_2026-10-30.md",
+              "revision": "cf2e7a845bdd91ea4e30e77e9442d8fb6421530b",
+              "coverage": "Reviewed static-ground correction on tested native clips; no universal contacts."
+            }
+          ]
+        },
+        "visual": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/REVIEWED_GROUND_CONTACT_ACCEPTANCE_2026-10-30.md",
+              "revision": "cf2e7a845bdd91ea4e30e77e9442d8fb6421530b",
+              "coverage": "Reviewed static-ground correction on tested native clips; no universal contacts."
+            }
+          ]
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [
+        "Static ground evidence is bounded; ledges, props, other actors and moving supports remain open."
+      ],
+      "next_step": "Qualify general static ground and ledge cases, then broader moving-support contexts."
+    },
+    {
+      "id": "FP-SETS",
+      "requirement_ids": [
+        "REQ17",
+        "REQ15"
+      ],
+      "scope": "APPROVED",
+      "status": "IN_PROGRESS",
+      "outcome": "Review multi-animation sets and map them to verified native target slots without overwriting protected existing assignments.",
+      "acceptance": [
+        "Every approved clip has exact content/rig/recipe identity and explicit review.",
+        "Runtime slot taxonomy and package output are qualified per game/build."
+      ],
+      "priority": "P1",
+      "depends_on": [],
+      "aggregate": false,
+      "evidence": [
+        {
+          "path": "docs/VERIFIED_SET_EXPORT_ACCEPTANCE_2026-10-24.md",
+          "revision": "18d30965d4e0d93f2377652e588d331fc9873013",
+          "coverage": "Reviewed Brawl CHR0 set export with decoded candidate checks and atomic directory commit."
+        }
+      ],
+      "references": {
+        "code": [
+          "BrawlCrate/UI/ModelForm.BatchReview.cs"
+        ],
+        "tests": [],
+        "receipts": [
+          "docs/VERIFIED_SET_EXPORT_ACCEPTANCE_2026-10-24.md"
+        ]
+      },
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/VERIFIED_SET_EXPORT_ACCEPTANCE_2026-10-24.md",
+              "revision": "18d30965d4e0d93f2377652e588d331fc9873013",
+              "coverage": "Reviewed Brawl CHR0 set export with decoded candidate checks and atomic directory commit."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/VERIFIED_SET_EXPORT_ACCEPTANCE_2026-10-24.md",
+              "revision": "18d30965d4e0d93f2377652e588d331fc9873013",
+              "coverage": "Reviewed Brawl CHR0 set export with decoded candidate checks and atomic directory commit."
+            }
+          ]
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [
+        "Reviewed Brawl CHR0 set export is bounded; canonical runtime slot profiles are incomplete."
+      ],
+      "next_step": "Define and qualify native game/build slot profiles before calling set mapping complete."
+    },
+    {
+      "id": "FP-FILL-MISSING",
+      "requirement_ids": [
+        "REQ18",
+        "REQ17"
+      ],
+      "scope": "APPROVED",
+      "status": "NOT_STARTED",
+      "outcome": "Fill only missing native animation slots under explicit protection and review.",
+      "acceptance": [
+        "Existing assignments remain byte-identical; one Undo restores the operation.",
+        "No inferred slot substitution is published without build-specific rules."
+      ],
+      "priority": "P2",
+      "depends_on": [
+        "FP-SETS"
+      ],
+      "aggregate": false,
+      "evidence": [],
+      "references": {
+        "code": [],
+        "tests": [],
+        "receipts": []
+      },
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [
+        "No accepted protected Fill Missing implementation."
+      ],
+      "next_step": "Implement after native slot profiles and reviewed set mapping."
+    },
+    {
+      "id": "FP-BATCH",
+      "requirement_ids": [
+        "REQ07",
+        "REQ17",
+        "REQ04"
+      ],
+      "scope": "APPROVED",
+      "status": "VERIFIED_BOUNDED",
+      "outcome": "Prepare several Brawl animations, review individually in native editor and retain one import transaction.",
+      "acceptance": [
+        "Failed rows remain excluded; explicit loss review precedes import.",
+        "Session review approvals invalidate on content or dependency edits."
+      ],
+      "priority": "P1",
+      "depends_on": [],
+      "aggregate": false,
+      "evidence": [
+        {
+          "path": "docs/VERIFIED_SET_EXPORT_ACCEPTANCE_2026-10-24.md",
+          "revision": "18d30965d4e0d93f2377652e588d331fc9873013",
+          "coverage": "Reviewed Brawl CHR0 set export with decoded candidate checks and atomic directory commit."
+        }
+      ],
+      "references": {
+        "code": [
+          "BrawlCrate/UI/ModelForm.BatchReview.cs"
+        ],
+        "tests": [],
+        "receipts": [
+          "docs/VERIFIED_SET_EXPORT_ACCEPTANCE_2026-10-24.md"
+        ]
+      },
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/VERIFIED_SET_EXPORT_ACCEPTANCE_2026-10-24.md",
+              "revision": "18d30965d4e0d93f2377652e588d331fc9873013",
+              "coverage": "Reviewed Brawl CHR0 set export with decoded candidate checks and atomic directory commit."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/VERIFIED_SET_EXPORT_ACCEPTANCE_2026-10-24.md",
+              "revision": "18d30965d4e0d93f2377652e588d331fc9873013",
+              "coverage": "Reviewed Brawl CHR0 set export with decoded candidate checks and atomic directory commit."
+            }
+          ]
+        },
+        "visual": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/VERIFIED_SET_EXPORT_ACCEPTANCE_2026-10-24.md",
+              "revision": "18d30965d4e0d93f2377652e588d331fc9873013",
+              "coverage": "Reviewed Brawl CHR0 set export with decoded candidate checks and atomic directory commit."
+            }
+          ]
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [
+        "Bounded Brawl CHR0 batch workflow, not universal game batch retargeting."
+      ],
+      "next_step": "Extend only after target-specific validation of new native formats."
+    },
+    {
+      "id": "FP-NATIVE-EXPORT",
+      "requirement_ids": [
+        "REQ05",
+        "REQ17",
+        "REQ03"
+      ],
+      "scope": "APPROVED",
+      "status": "IN_PROGRESS",
+      "outcome": "Write independently verified native animation resources to supported destinations.",
+      "acceptance": [
+        "Exact clip/target/dependencies freeze before publication.",
+        "Serialize, fresh decode and validate without mutating live master."
+      ],
+      "priority": "P1",
+      "depends_on": [],
+      "aggregate": true,
+      "evidence": [
+        {
+          "path": "docs/NATIVE_ANIMATION_EXPORT_ACCEPTANCE_2026-10-29.md",
+          "revision": "c92410bbf8a42af7d355b61248aa14e39404655e",
+          "coverage": "Native CHR0 standalone animation output on tested Brawl clips."
+        },
+        {
+          "path": "docs/VERIFIED_SET_EXPORT_ACCEPTANCE_2026-10-24.md",
+          "revision": "18d30965d4e0d93f2377652e588d331fc9873013",
+          "coverage": "Reviewed Brawl CHR0 set export with decoded candidate checks and atomic directory commit."
+        }
+      ],
+      "references": {
+        "code": [
+          "BrawlCrate/Studio/NativeAnimationOptimizationPreparation.Export.cs",
+          "BrawlCrate/Studio/MeleeTargetExport.cs"
+        ],
+        "tests": [],
+        "receipts": [
+          "docs/NATIVE_ANIMATION_EXPORT_ACCEPTANCE_2026-10-29.md",
+          "docs/VERIFIED_SET_EXPORT_ACCEPTANCE_2026-10-24.md"
+        ]
+      },
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/NATIVE_ANIMATION_EXPORT_ACCEPTANCE_2026-10-29.md",
+              "revision": "c92410bbf8a42af7d355b61248aa14e39404655e",
+              "coverage": "Native CHR0 standalone animation output on tested Brawl clips."
+            },
+            {
+              "path": "docs/VERIFIED_SET_EXPORT_ACCEPTANCE_2026-10-24.md",
+              "revision": "18d30965d4e0d93f2377652e588d331fc9873013",
+              "coverage": "Reviewed Brawl CHR0 set export with decoded candidate checks and atomic directory commit."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/NATIVE_ANIMATION_EXPORT_ACCEPTANCE_2026-10-29.md",
+              "revision": "c92410bbf8a42af7d355b61248aa14e39404655e",
+              "coverage": "Native CHR0 standalone animation output on tested Brawl clips."
+            },
+            {
+              "path": "docs/VERIFIED_SET_EXPORT_ACCEPTANCE_2026-10-24.md",
+              "revision": "18d30965d4e0d93f2377652e588d331fc9873013",
+              "coverage": "Reviewed Brawl CHR0 set export with decoded candidate checks and atomic directory commit."
+            }
+          ]
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [
+        "Brawl CHR0 standalone is bounded; target-game packaging and playback are separate."
+      ],
+      "next_step": "Qualify Melee fractional-time output and remaining native containers per game/build."
+    },
+    {
+      "id": "FP-OPTIMIZATION",
+      "requirement_ids": [
+        "REQ19",
+        "REQ05"
+      ],
+      "scope": "APPROVED",
+      "status": "IN_PROGRESS",
+      "outcome": "Reduce finished target animation size on an independent copy using exact and bounded policies while preserving quality gates.",
+      "acceptance": [
+        "Reference is the same finished target master.",
+        "Native serialize/reopen validation and actual bytes decide acceptance."
+      ],
+      "priority": "P1",
+      "depends_on": [],
+      "aggregate": false,
+      "evidence": [
+        {
+          "path": "docs/NATIVE_CHR0_EXPORT_OPTIMIZATION_ACCEPTANCE_2026-10-28.md",
+          "revision": "11d6c1d708e3254d1c68101dfcee70b0c9970214",
+          "coverage": "Brawl CHR0 export optimization and decoded validation on tested fixtures."
+        }
+      ],
+      "references": {
+        "code": [
+          "BrawlCrate/Studio/NativeAnimationOptimization.cs",
+          "engine/src/FighterPort.Core/AnimationOptimization.cs"
+        ],
+        "tests": [],
+        "receipts": [
+          "docs/NATIVE_CHR0_EXPORT_OPTIMIZATION_ACCEPTANCE_2026-10-28.md"
+        ]
+      },
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/NATIVE_CHR0_EXPORT_OPTIMIZATION_ACCEPTANCE_2026-10-28.md",
+              "revision": "11d6c1d708e3254d1c68101dfcee70b0c9970214",
+              "coverage": "Brawl CHR0 export optimization and decoded validation on tested fixtures."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/NATIVE_CHR0_EXPORT_OPTIMIZATION_ACCEPTANCE_2026-10-28.md",
+              "revision": "11d6c1d708e3254d1c68101dfcee70b0c9970214",
+              "coverage": "Brawl CHR0 export optimization and decoded validation on tested fixtures."
+            }
+          ]
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [
+        "Brawl CHR0 bounded; file size savings vary; Melee optimization and runtime acceptance open."
+      ],
+      "next_step": "Revisit geometry-aware per-channel reduction and Melee native codecs after motion quality."
+    },
+    {
+      "id": "FP-BRAWL-ADAPTER",
+      "requirement_ids": [
+        "REQ03",
+        "REQ05",
+        "REQ07"
+      ],
+      "scope": "APPROVED",
+      "status": "IN_PROGRESS",
+      "outcome": "Support Brawl as both source and destination across distinct model, animation, resource and package operations.",
+      "acceptance": [
+        "Exact ISO/WBFS source association and native MDL0/CHR0 edit/export are bounded.",
+        "Container and actual game runtime gates stay separate."
+      ],
+      "priority": "P1",
+      "depends_on": [],
+      "aggregate": true,
+      "evidence": [
+        {
+          "path": "docs/DIRECT_GAME_SOURCES_ACCEPTANCE_2026-10-26.md",
+          "revision": "e83379c21f53f7b718df25320e1762877ef13164",
+          "coverage": "Brawl ISO/WBFS direct source access and selected-package leases."
+        },
+        {
+          "path": "docs/NATIVE_ANIMATION_EXPORT_ACCEPTANCE_2026-10-29.md",
+          "revision": "c92410bbf8a42af7d355b61248aa14e39404655e",
+          "coverage": "Standalone Brawl CHR0 native output with fresh decode and comparison."
+        }
+      ],
+      "references": {
+        "code": [
+          "BrawlCrate/Studio/NativeGameAdapters.cs"
+        ],
+        "tests": [],
+        "receipts": [
+          "docs/DIRECT_GAME_SOURCES_ACCEPTANCE_2026-10-26.md",
+          "docs/NATIVE_ANIMATION_EXPORT_ACCEPTANCE_2026-10-29.md"
+        ]
+      },
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/DIRECT_GAME_SOURCES_ACCEPTANCE_2026-10-26.md",
+              "revision": "e83379c21f53f7b718df25320e1762877ef13164",
+              "coverage": "Brawl ISO/WBFS direct source access and selected-package leases."
+            },
+            {
+              "path": "docs/NATIVE_ANIMATION_EXPORT_ACCEPTANCE_2026-10-29.md",
+              "revision": "c92410bbf8a42af7d355b61248aa14e39404655e",
+              "coverage": "Standalone Brawl CHR0 native output with fresh decode and comparison."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/DIRECT_GAME_SOURCES_ACCEPTANCE_2026-10-26.md",
+              "revision": "e83379c21f53f7b718df25320e1762877ef13164",
+              "coverage": "Brawl ISO/WBFS direct source access and selected-package leases."
+            },
+            {
+              "path": "docs/NATIVE_ANIMATION_EXPORT_ACCEPTANCE_2026-10-29.md",
+              "revision": "c92410bbf8a42af7d355b61248aa14e39404655e",
+              "coverage": "Standalone Brawl CHR0 native output with fresh decode and comparison."
+            }
+          ]
+        },
+        "visual": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/DIRECT_GAME_SOURCES_ACCEPTANCE_2026-10-26.md",
+              "revision": "e83379c21f53f7b718df25320e1762877ef13164",
+              "coverage": "Brawl ISO/WBFS direct source access and selected-package leases."
+            },
+            {
+              "path": "docs/NATIVE_ANIMATION_EXPORT_ACCEPTANCE_2026-10-29.md",
+              "revision": "c92410bbf8a42af7d355b61248aa14e39404655e",
+              "coverage": "Standalone Brawl CHR0 native output with fresh decode and comparison."
+            }
+          ]
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [
+        "Brawl CHR0/MDL0 subset only; no blanket Brawl game acceptance."
+      ],
+      "next_step": "Qualify remaining native channels, model transfers and game packaging."
+    },
+    {
+      "id": "FP-MELEE-ADAPTER",
+      "requirement_ids": [
+        "REQ03",
+        "REQ05",
+        "REQ07"
+      ],
+      "scope": "APPROVED",
+      "status": "IN_PROGRESS",
+      "outcome": "Support Melee as source and destination with its native HSD DAT model/motion identity.",
+      "acceptance": [
+        "Source inventory/preview, selected edit/retarget and native action writing are qualified per member.",
+        "Fractional FOBJ, native model writing and package/runtime checks remain explicit."
+      ],
+      "priority": "P1",
+      "depends_on": [],
+      "aggregate": true,
+      "evidence": [
+        {
+          "path": "docs/MELEE_SOURCE_ACCEPTANCE_2026-11-01.md",
+          "revision": "36bbb2ce6a626b2936f6a8f3a43c614917387e97",
+          "coverage": "Selected Melee USA v1.02 source inventory, native data and preview."
+        },
+        {
+          "path": "docs/MELEE_SHARED_BRIDGE_2026-11-02.md",
+          "revision": "40cf61800792a26409fdbdafd93d42d9086e0922",
+          "coverage": "Selected Melee/Brawl retarget bridge fixtures, not arbitrary cross-game quality."
+        },
+        {
+          "path": "docs/NATIVE_ANIMATION_DESTINATION_2026-11-02.md",
+          "revision": "bce3171502d5778c07c423775c1f79e0a7b2bda5",
+          "coverage": "Selected Melee USA v1.02 action-member DAT output with fresh native reopen; fractional-time result explicitly rejected."
+        }
+      ],
+      "references": {
+        "code": [
+          "BrawlCrate/Studio/MeleeGameSource.cs",
+          "BrawlCrate/Studio/MeleeTargetExport.cs"
+        ],
+        "tests": [],
+        "receipts": [
+          "docs/MELEE_SOURCE_ACCEPTANCE_2026-11-01.md",
+          "docs/MELEE_SHARED_BRIDGE_2026-11-02.md",
+          "docs/NATIVE_ANIMATION_DESTINATION_2026-11-02.md"
+        ]
+      },
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/MELEE_SOURCE_ACCEPTANCE_2026-11-01.md",
+              "revision": "36bbb2ce6a626b2936f6a8f3a43c614917387e97",
+              "coverage": "Selected Melee USA v1.02 source inventory, native data and preview."
+            },
+            {
+              "path": "docs/MELEE_SHARED_BRIDGE_2026-11-02.md",
+              "revision": "40cf61800792a26409fdbdafd93d42d9086e0922",
+              "coverage": "Selected Melee/Brawl retarget bridge fixtures, not arbitrary cross-game quality."
+            },
+            {
+              "path": "docs/NATIVE_ANIMATION_DESTINATION_2026-11-02.md",
+              "revision": "bce3171502d5778c07c423775c1f79e0a7b2bda5",
+              "coverage": "Selected Melee USA v1.02 action-member DAT output with fresh native reopen; fractional-time result explicitly rejected."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/MELEE_SOURCE_ACCEPTANCE_2026-11-01.md",
+              "revision": "36bbb2ce6a626b2936f6a8f3a43c614917387e97",
+              "coverage": "Selected Melee USA v1.02 source inventory, native data and preview."
+            },
+            {
+              "path": "docs/MELEE_SHARED_BRIDGE_2026-11-02.md",
+              "revision": "40cf61800792a26409fdbdafd93d42d9086e0922",
+              "coverage": "Selected Melee/Brawl retarget bridge fixtures, not arbitrary cross-game quality."
+            },
+            {
+              "path": "docs/NATIVE_ANIMATION_DESTINATION_2026-11-02.md",
+              "revision": "bce3171502d5778c07c423775c1f79e0a7b2bda5",
+              "coverage": "Selected Melee USA v1.02 action-member DAT output with fresh native reopen; fractional-time result explicitly rejected."
+            }
+          ]
+        },
+        "visual": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/MELEE_SOURCE_ACCEPTANCE_2026-11-01.md",
+              "revision": "36bbb2ce6a626b2936f6a8f3a43c614917387e97",
+              "coverage": "Selected Melee USA v1.02 source inventory, native data and preview."
+            },
+            {
+              "path": "docs/MELEE_SHARED_BRIDGE_2026-11-02.md",
+              "revision": "40cf61800792a26409fdbdafd93d42d9086e0922",
+              "coverage": "Selected Melee/Brawl retarget bridge fixtures, not arbitrary cross-game quality."
+            },
+            {
+              "path": "docs/NATIVE_ANIMATION_DESTINATION_2026-11-02.md",
+              "revision": "bce3171502d5778c07c423775c1f79e0a7b2bda5",
+              "coverage": "Selected Melee USA v1.02 action-member DAT output with fresh native reopen; fractional-time result explicitly rejected."
+            }
+          ]
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [
+        "Selected USA v1.02 fixtures only; not all Melee builds/modpacks/channels."
+      ],
+      "next_step": "Implement native fractional-time FOBJ and broaden Melee model writer after retarget quality."
+    },
+    {
+      "id": "FP-ULTIMATE-ADAPTER",
+      "requirement_ids": [
+        "REQ03",
+        "REQ05",
+        "REQ07"
+      ],
+      "scope": "APPROVED",
+      "status": "NOT_STARTED",
+      "outcome": "Add Ultimate as native source and destination through build-specific adapters.",
+      "acceptance": [
+        "Inventory, preview, edit, retarget, writer, package and runtime evidence are distinct."
+      ],
+      "priority": "P2",
+      "depends_on": [],
+      "aggregate": false,
+      "evidence": [],
+      "references": {
+        "code": [],
+        "tests": [],
+        "receipts": []
+      },
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [
+        "No registered native Ultimate adapter or qualified output."
+      ],
+      "next_step": "Research and implement source/native output formats after current priorities."
+    },
+    {
+      "id": "FP-RIVALS2-ADAPTER",
+      "requirement_ids": [
+        "REQ03",
+        "REQ05",
+        "REQ07"
+      ],
+      "scope": "APPROVED",
+      "status": "NOT_STARTED",
+      "outcome": "Add Rivals of Aether 2 as source and destination through its qualified Modkit/native route.",
+      "acceptance": [
+        "Source and Modkit/FBX target capabilities are tested separately against a pinned build."
+      ],
+      "priority": "P2",
+      "depends_on": [],
+      "aggregate": false,
+      "evidence": [],
+      "references": {
+        "code": [],
+        "tests": [],
+        "receipts": []
+      },
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [
+        "No registered native Rivals 2 adapter or qualified Modkit output."
+      ],
+      "next_step": "Research source and UE Modkit output contract after current priorities."
+    },
+    {
+      "id": "FP-BT3-SOURCE",
+      "requirement_ids": [
+        "REQ07",
+        "REQ03",
+        "REQ09"
+      ],
+      "scope": "APPROVED",
+      "status": "IN_PROGRESS",
+      "outcome": "Use BT3 forms, costumes, models, textures and animation as donor assets only.",
+      "acceptance": [
+        "Inventory, preview, donor editing and portable export do not imply BT3 native game writing.",
+        "Cross-game retargeting must pass target-native quality criteria."
+      ],
+      "priority": "P2",
+      "depends_on": [],
+      "aggregate": true,
+      "evidence": [
+        {
+          "path": "docs/BT3_DIRECT_LIBRARY_2026-11-02.md",
+          "revision": "984c59bfb544aedd18e4ea7e1a130a2b7a0bf56b",
+          "coverage": "Selected BT3 USA ISO form/costume/action source library."
+        },
+        {
+          "path": "docs/BT3_RIG_BRIDGE_2026-11-03.md",
+          "revision": "bfa9eb6c3e634663268fd35526d63e4f0a308812",
+          "coverage": "Selected BT3 USA Goku action to Brawl Mario/Snake draft, native reopen and static stance witnesses; no broad dynamic quality."
+        }
+      ],
+      "references": {
+        "code": [
+          "BrawlCrate/Studio/Bt3NativeAssetReader.cs"
+        ],
+        "tests": [],
+        "receipts": [
+          "docs/BT3_DIRECT_LIBRARY_2026-11-02.md",
+          "docs/BT3_RIG_BRIDGE_2026-11-03.md"
+        ]
+      },
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/BT3_DIRECT_LIBRARY_2026-11-02.md",
+              "revision": "984c59bfb544aedd18e4ea7e1a130a2b7a0bf56b",
+              "coverage": "Selected BT3 USA ISO form/costume/action source library."
+            },
+            {
+              "path": "docs/BT3_RIG_BRIDGE_2026-11-03.md",
+              "revision": "bfa9eb6c3e634663268fd35526d63e4f0a308812",
+              "coverage": "Selected BT3 USA Goku action to Brawl Mario/Snake draft, native reopen and static stance witnesses; no broad dynamic quality."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/BT3_DIRECT_LIBRARY_2026-11-02.md",
+              "revision": "984c59bfb544aedd18e4ea7e1a130a2b7a0bf56b",
+              "coverage": "Selected BT3 USA ISO form/costume/action source library."
+            }
+          ]
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [
+        "Selected USA ISO and forms/actions; general donor motion/retarget quality remains open."
+      ],
+      "next_step": "Expand semantic action/bone mapping and quality evidence without making BT3 a destination."
+    },
+    {
+      "id": "FP-OTHER-DONORS",
+      "requirement_ids": [
+        "REQ07",
+        "REQ03",
+        "REQ21"
+      ],
+      "scope": "APPROVED",
+      "status": "RESEARCH",
+      "outcome": "Add approved source-only games with independent inventory, rig/motion, preview and provenance adapters.",
+      "acceptance": [
+        "Each game/build/channel gets its own bounded evidence; no native game-writing requirement arises."
+      ],
+      "priority": "P3",
+      "depends_on": [],
+      "aggregate": false,
+      "evidence": [],
+      "references": {
+        "code": [],
+        "tests": [],
+        "receipts": []
+      },
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [
+        "FighterZ, Sparking ZERO, Zenkai, Battle Stadium D.O.N, Budokai 3, Xenoverse, Naruto, One Piece and Jump Force lack qualified adapters."
+      ],
+      "next_step": "Prioritize one donor and record inspectable format/revision evidence before implementation."
+    },
+    {
+      "id": "FP-MODEL-PORT",
+      "requirement_ids": [
+        "REQ02",
+        "REQ09",
+        "REQ05"
+      ],
+      "scope": "APPROVED",
+      "status": "IN_PROGRESS",
+      "outcome": "Convert complete rigged models, textures and authored channels into target-native revisions separate from animation-only retargeting.",
+      "acceptance": [
+        "Never alter the existing target skeleton, binds or all represented weights in animation-only operations.",
+        "Model/material/texture/morph losses and target writer limits are explicit."
+      ],
+      "priority": "P2",
+      "depends_on": [],
+      "aggregate": true,
+      "evidence": [
+        {
+          "path": "docs/PORTABLE_RIGGED_INTERCHANGE_2026-11-03.md",
+          "revision": "5b0b3c04dadb622b3f32a9d6bb903a42203a2584",
+          "coverage": "Portable rigged output and interchange evidence scoped to recorded models."
+        }
+      ],
+      "references": {
+        "code": [
+          "BrawlCrate/Studio/PortableModelExport.cs"
+        ],
+        "tests": [],
+        "receipts": [
+          "docs/PORTABLE_RIGGED_INTERCHANGE_2026-11-03.md"
+        ]
+      },
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/PORTABLE_RIGGED_INTERCHANGE_2026-11-03.md",
+              "revision": "5b0b3c04dadb622b3f32a9d6bb903a42203a2584",
+              "coverage": "Portable rigged output and interchange evidence scoped to recorded models."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/PORTABLE_RIGGED_INTERCHANGE_2026-11-03.md",
+              "revision": "5b0b3c04dadb622b3f32a9d6bb903a42203a2584",
+              "coverage": "Portable rigged output and interchange evidence scoped to recorded models."
+            }
+          ]
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [
+        "Portable model export is bounded; target-native cross-game model writing is not complete."
+      ],
+      "next_step": "Qualify portable import and target-native model writers per destination."
+    },
+    {
+      "id": "FP-ASSET-CHANNELS",
+      "requirement_ids": [
+        "REQ09",
+        "REQ21"
+      ],
+      "scope": "APPROVED",
+      "status": "IN_PROGRESS",
+      "outcome": "Preserve model geometry, skin, materials, textures, morphs, visibility and non-skeletal animation where supported.",
+      "acceptance": [
+        "Each asset/channel has explicit read, preview, edit and write status.",
+        "Unknown channels are retained or loss-reported, never silently discarded."
+      ],
+      "priority": "P2",
+      "depends_on": [],
+      "aggregate": true,
+      "evidence": [
+        {
+          "path": "docs/PORTABLE_RIGGED_INTERCHANGE_2026-11-03.md",
+          "revision": "5b0b3c04dadb622b3f32a9d6bb903a42203a2584",
+          "coverage": "Portable rigged output and interchange evidence scoped to recorded models."
+        }
+      ],
+      "references": {
+        "code": [
+          "BrawlCrate/Studio/PortableModelExport.cs"
+        ],
+        "tests": [],
+        "receipts": [
+          "docs/PORTABLE_RIGGED_INTERCHANGE_2026-11-03.md"
+        ]
+      },
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/PORTABLE_RIGGED_INTERCHANGE_2026-11-03.md",
+              "revision": "5b0b3c04dadb622b3f32a9d6bb903a42203a2584",
+              "coverage": "Portable rigged output and interchange evidence scoped to recorded models."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/PORTABLE_RIGGED_INTERCHANGE_2026-11-03.md",
+              "revision": "5b0b3c04dadb622b3f32a9d6bb903a42203a2584",
+              "coverage": "Portable rigged output and interchange evidence scoped to recorded models."
+            }
+          ]
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [
+        "Not all game-native materials, morphs or visibility channels have end-to-end qualification."
+      ],
+      "next_step": "Add per-channel qualification and destination writers for morph/visibility/material routes."
+    },
+    {
+      "id": "FP-COSTUMES-FORMS-PROPS",
+      "requirement_ids": [
+        "REQ09",
+        "REQ21",
+        "REQ07"
+      ],
+      "scope": "APPROVED",
+      "status": "IN_PROGRESS",
+      "outcome": "Associate exact costume/form/model/prop identities with their compatible animations.",
+      "acceptance": [
+        "Same-name assets from different games/mods remain distinct.",
+        "Default and alternate costumes/forms are selected by exact source identity."
+      ],
+      "priority": "P1",
+      "depends_on": [],
+      "aggregate": false,
+      "evidence": [
+        {
+          "path": "docs/DIRECT_GAME_SOURCES_ACCEPTANCE_2026-10-26.md",
+          "revision": "e83379c21f53f7b718df25320e1762877ef13164",
+          "coverage": "Brawl ISO/WBFS direct source access and selected-package leases."
+        },
+        {
+          "path": "docs/BT3_DIRECT_LIBRARY_2026-11-02.md",
+          "revision": "984c59bfb544aedd18e4ea7e1a130a2b7a0bf56b",
+          "coverage": "Selected BT3 USA ISO form/costume/action source library."
+        }
+      ],
+      "references": {
+        "code": [
+          "BrawlCrate/Studio/AnimationLibrary.cs"
+        ],
+        "tests": [],
+        "receipts": [
+          "docs/DIRECT_GAME_SOURCES_ACCEPTANCE_2026-10-26.md",
+          "docs/BT3_DIRECT_LIBRARY_2026-11-02.md"
+        ]
+      },
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/DIRECT_GAME_SOURCES_ACCEPTANCE_2026-10-26.md",
+              "revision": "e83379c21f53f7b718df25320e1762877ef13164",
+              "coverage": "Brawl ISO/WBFS direct source access and selected-package leases."
+            },
+            {
+              "path": "docs/BT3_DIRECT_LIBRARY_2026-11-02.md",
+              "revision": "984c59bfb544aedd18e4ea7e1a130a2b7a0bf56b",
+              "coverage": "Selected BT3 USA ISO form/costume/action source library."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/DIRECT_GAME_SOURCES_ACCEPTANCE_2026-10-26.md",
+              "revision": "e83379c21f53f7b718df25320e1762877ef13164",
+              "coverage": "Brawl ISO/WBFS direct source access and selected-package leases."
+            },
+            {
+              "path": "docs/BT3_DIRECT_LIBRARY_2026-11-02.md",
+              "revision": "984c59bfb544aedd18e4ea7e1a130a2b7a0bf56b",
+              "coverage": "Selected BT3 USA ISO form/costume/action source library."
+            }
+          ]
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [
+        "Brawl/BT3 bounded; game-specific form and prop semantics differ."
+      ],
+      "next_step": "Extend association proof and attachment/prop transfer to later adapters."
+    },
+    {
+      "id": "FP-PORTABLE-EXPORT",
+      "requirement_ids": [
+        "REQ02",
+        "REQ09",
+        "REQ21"
+      ],
+      "scope": "APPROVED",
+      "status": "IN_PROGRESS",
+      "outcome": "Export portable rigged models, textures and selected animations to interchange formats.",
+      "acceptance": [
+        "Model-only output has no unwanted clips.",
+        "Animation bundles and per-clip output keep selected identities and sampled motion."
+      ],
+      "priority": "P2",
+      "depends_on": [],
+      "aggregate": true,
+      "evidence": [
+        {
+          "path": "docs/PORTABLE_RIGGED_INTERCHANGE_2026-11-03.md",
+          "revision": "5b0b3c04dadb622b3f32a9d6bb903a42203a2584",
+          "coverage": "Portable rigged output and interchange evidence scoped to recorded models."
+        },
+        {
+          "path": "docs/PORTABLE_ANIMATION_BUNDLES_2026-11-03.md",
+          "revision": "1802c548b101ec3e5e8714e2c639e0c08d8ea1cc",
+          "coverage": "Selected BT3 action-only and combined rigged GLB export, cancellation and external validator; no broad DCC playback."
+        }
+      ],
+      "references": {
+        "code": [
+          "BrawlCrate/Studio/PortableRiggedGltf.cs",
+          "BrawlCrate/Studio/PortableAnimationExport.cs"
+        ],
+        "tests": [],
+        "receipts": [
+          "docs/PORTABLE_RIGGED_INTERCHANGE_2026-11-03.md",
+          "docs/PORTABLE_ANIMATION_BUNDLES_2026-11-03.md"
+        ]
+      },
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/PORTABLE_RIGGED_INTERCHANGE_2026-11-03.md",
+              "revision": "5b0b3c04dadb622b3f32a9d6bb903a42203a2584",
+              "coverage": "Portable rigged output and interchange evidence scoped to recorded models."
+            },
+            {
+              "path": "docs/PORTABLE_ANIMATION_BUNDLES_2026-11-03.md",
+              "revision": "1802c548b101ec3e5e8714e2c639e0c08d8ea1cc",
+              "coverage": "Selected BT3 action-only and combined rigged GLB export, cancellation and external validator; no broad DCC playback."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/PORTABLE_RIGGED_INTERCHANGE_2026-11-03.md",
+              "revision": "5b0b3c04dadb622b3f32a9d6bb903a42203a2584",
+              "coverage": "Portable rigged output and interchange evidence scoped to recorded models."
+            }
+          ]
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/PORTABLE_RIGGED_INTERCHANGE_2026-11-03.md",
+              "revision": "5b0b3c04dadb622b3f32a9d6bb903a42203a2584",
+              "coverage": "Portable rigged output and interchange evidence scoped to recorded models."
+            },
+            {
+              "path": "docs/PORTABLE_ANIMATION_BUNDLES_2026-11-03.md",
+              "revision": "1802c548b101ec3e5e8714e2c639e0c08d8ea1cc",
+              "coverage": "Selected BT3 action-only and combined rigged GLB export, cancellation and external validator; no broad DCC playback."
+            }
+          ]
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [
+        "Export routes are bounded; all Blender/3ds Max/Maya versions and full roundtrip are unverified."
+      ],
+      "next_step": "Qualify complete GLB/DAE/FBX selection and external application imports independently."
+    },
+    {
+      "id": "FP-PORTABLE-IMPORT",
+      "requirement_ids": [
+        "REQ02",
+        "REQ09",
+        "REQ21"
+      ],
+      "scope": "APPROVED",
+      "status": "NOT_STARTED",
+      "outcome": "Import portable rigged model and animation files, starting with GLB, as source or prepared target revisions.",
+      "acceptance": [
+        "Imported hierarchy, weights, transforms, texture/material and timing losses are measured.",
+        "No silent native target skeleton replacement during animation-only work."
+      ],
+      "priority": "P2",
+      "depends_on": [
+        "FP-PORTABLE-EXPORT"
+      ],
+      "aggregate": false,
+      "evidence": [],
+      "references": {
+        "code": [],
+        "tests": [],
+        "receipts": []
+      },
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [
+        "No qualified general portable rigged import."
+      ],
+      "next_step": "Implement and independently test GLB import before broader interchange formats."
+    },
+    {
+      "id": "FP-MULTI-TARGET",
+      "requirement_ids": [
+        "REQ02",
+        "REQ03",
+        "REQ21"
+      ],
+      "scope": "APPROVED",
+      "status": "NOT_STARTED",
+      "outcome": "Produce independent reviewed outputs for multiple destination games or fighter rigs from one source.",
+      "acceptance": [
+        "Each target has separate identity, quality and native writer acceptance."
+      ],
+      "priority": "P3",
+      "depends_on": [
+        "FP-RETARGET-QUALITY",
+        "FP-NATIVE-EXPORT"
+      ],
+      "aggregate": false,
+      "evidence": [],
+      "references": {
+        "code": [],
+        "tests": [],
+        "receipts": []
+      },
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [
+        "No qualified multi-target publication workflow."
+      ],
+      "next_step": "Implement after source bridge and destination writers are individually qualified."
+    },
+    {
+      "id": "FP-PROJECT-PRESERVATION",
+      "requirement_ids": [
+        "REQ05",
+        "REQ08"
+      ],
+      "scope": "APPROVED",
+      "status": "VERIFIED_BOUNDED",
+      "outcome": "Keep immutable source bytes/hashes and exact project-owned native edit/Undo state.",
+      "acceptance": [
+        "Save/reopen keeps selected clip and native channel content on qualified Brawl fixtures.",
+        "Independent output never mutates original source resources."
+      ],
+      "priority": "P1",
+      "depends_on": [],
+      "aggregate": false,
+      "evidence": [
+        {
+          "path": "docs/NATIVE_CONTROLS_WORKSPACE_ACCEPTANCE_2026-10-23.md",
+          "revision": "6b543a5b61d3d65476421691cdbfc1a6f77405bb",
+          "coverage": "Brawl native authoring and document preservation on supplied clips."
+        },
+        {
+          "path": "docs/NATIVE_ANIMATION_EXPORT_ACCEPTANCE_2026-10-29.md",
+          "revision": "c92410bbf8a42af7d355b61248aa14e39404655e",
+          "coverage": "Standalone Brawl CHR0 native output with fresh decode and comparison."
+        }
+      ],
+      "references": {
+        "code": [
+          "BrawlCrate/Studio/NativeGameAdapters.cs"
+        ],
+        "tests": [],
+        "receipts": [
+          "docs/NATIVE_CONTROLS_WORKSPACE_ACCEPTANCE_2026-10-23.md",
+          "docs/NATIVE_ANIMATION_EXPORT_ACCEPTANCE_2026-10-29.md"
+        ]
+      },
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/NATIVE_CONTROLS_WORKSPACE_ACCEPTANCE_2026-10-23.md",
+              "revision": "6b543a5b61d3d65476421691cdbfc1a6f77405bb",
+              "coverage": "Brawl native authoring and document preservation on supplied clips."
+            },
+            {
+              "path": "docs/NATIVE_ANIMATION_EXPORT_ACCEPTANCE_2026-10-29.md",
+              "revision": "c92410bbf8a42af7d355b61248aa14e39404655e",
+              "coverage": "Standalone Brawl CHR0 native output with fresh decode and comparison."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/NATIVE_CONTROLS_WORKSPACE_ACCEPTANCE_2026-10-23.md",
+              "revision": "6b543a5b61d3d65476421691cdbfc1a6f77405bb",
+              "coverage": "Brawl native authoring and document preservation on supplied clips."
+            },
+            {
+              "path": "docs/NATIVE_ANIMATION_EXPORT_ACCEPTANCE_2026-10-29.md",
+              "revision": "c92410bbf8a42af7d355b61248aa14e39404655e",
+              "coverage": "Standalone Brawl CHR0 native output with fresh decode and comparison."
+            }
+          ]
+        },
+        "visual": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/NATIVE_CONTROLS_WORKSPACE_ACCEPTANCE_2026-10-23.md",
+              "revision": "6b543a5b61d3d65476421691cdbfc1a6f77405bb",
+              "coverage": "Brawl native authoring and document preservation on supplied clips."
+            },
+            {
+              "path": "docs/NATIVE_ANIMATION_EXPORT_ACCEPTANCE_2026-10-29.md",
+              "revision": "c92410bbf8a42af7d355b61248aa14e39404655e",
+              "coverage": "Standalone Brawl CHR0 native output with fresh decode and comparison."
+            }
+          ]
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [
+        "Current bounded Brawl document cases; game runtime remains unverified."
+      ],
+      "next_step": "Requalify per new native document backend and schema migration."
+    },
+    {
+      "id": "FP-OFFLINE",
+      "requirement_ids": [
+        "REQ06",
+        "REQ21"
+      ],
+      "scope": "APPROVED",
+      "status": "VERIFIED_BOUNDED",
+      "outcome": "Run qualified local source, authoring and export operations without mandatory network services.",
+      "acceptance": [
+        "Core Brawl workflows succeed with local assets and tools."
+      ],
+      "priority": "P2",
+      "depends_on": [],
+      "aggregate": false,
+      "evidence": [
+        {
+          "path": "docs/DIRECT_GAME_SOURCES_ACCEPTANCE_2026-10-26.md",
+          "revision": "e83379c21f53f7b718df25320e1762877ef13164",
+          "coverage": "Brawl ISO/WBFS direct source access and selected-package leases."
+        },
+        {
+          "path": "docs/NATIVE_CONTROLS_WORKSPACE_ACCEPTANCE_2026-10-23.md",
+          "revision": "6b543a5b61d3d65476421691cdbfc1a6f77405bb",
+          "coverage": "Brawl native authoring and document preservation on supplied clips."
+        }
+      ],
+      "references": {
+        "code": [],
+        "tests": [],
+        "receipts": [
+          "docs/DIRECT_GAME_SOURCES_ACCEPTANCE_2026-10-26.md",
+          "docs/NATIVE_CONTROLS_WORKSPACE_ACCEPTANCE_2026-10-23.md"
+        ]
+      },
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/DIRECT_GAME_SOURCES_ACCEPTANCE_2026-10-26.md",
+              "revision": "e83379c21f53f7b718df25320e1762877ef13164",
+              "coverage": "Brawl ISO/WBFS direct source access and selected-package leases."
+            },
+            {
+              "path": "docs/NATIVE_CONTROLS_WORKSPACE_ACCEPTANCE_2026-10-23.md",
+              "revision": "6b543a5b61d3d65476421691cdbfc1a6f77405bb",
+              "coverage": "Brawl native authoring and document preservation on supplied clips."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [
+        "Only currently implemented local workflows; future adapters require separate checks."
+      ],
+      "next_step": "Verify future game adapters retain local operation and no mandatory cloud dependency."
+    },
+    {
+      "id": "FP-PERFORMANCE-RECOVERY",
+      "requirement_ids": [
+        "REQ20",
+        "REQ21"
+      ],
+      "scope": "APPROVED",
+      "status": "IN_PROGRESS",
+      "outcome": "Keep preview/editor responsive across repeated imports, retargets and large source catalogues with recoverable failure paths.",
+      "acceptance": [
+        "Playback performs no decode/bake/solve and stale work cannot publish.",
+        "Repeated sequential cross-game transfers do not freeze the main window."
+      ],
+      "priority": "P1",
+      "depends_on": [],
+      "aggregate": false,
+      "evidence": [
+        {
+          "path": "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md",
+          "revision": "041ec87a6f7d4d6b42f311cc91fe48fee5f4191b",
+          "coverage": "Preview.96 scoped native adapter audit and exact-rig/cross-rig evidence; future games unimplemented."
+        }
+      ],
+      "references": {
+        "code": [
+          "BrawlCrate/Studio/Retargeting/BrawlRetargeter.cs"
+        ],
+        "tests": [],
+        "receipts": [
+          "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md"
+        ]
+      },
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [
+        "Historical user-reported freezes and process/work-budget failures require continued regression coverage."
+      ],
+      "next_step": "Keep repeated-transfer responsiveness as a regression gate during bridge changes."
+    },
+    {
+      "id": "FP-VALIDATION",
+      "requirement_ids": [
+        "REQ04",
+        "REQ05",
+        "REQ14",
+        "REQ21"
+      ],
+      "scope": "APPROVED",
+      "status": "IN_PROGRESS",
+      "outcome": "Record numerical, native reopen, visual, external-tool and actual game evidence as distinct acceptance gates.",
+      "acceptance": [
+        "No new adapter or quality claim is promoted from parsing/building alone.",
+        "Private fixtures and captures stay ignored; receipts pin exact revisions."
+      ],
+      "priority": "P0",
+      "depends_on": [],
+      "aggregate": true,
+      "evidence": [
+        {
+          "path": "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md",
+          "revision": "041ec87a6f7d4d6b42f311cc91fe48fee5f4191b",
+          "coverage": "Preview.96 scoped native adapter audit and exact-rig/cross-rig evidence; future games unimplemented."
+        }
+      ],
+      "references": {
+        "code": [],
+        "tests": [
+          "scripts/Test-RetargetQualityPairs.ps1"
+        ],
+        "receipts": [
+          "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md"
+        ]
+      },
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md",
+              "revision": "041ec87a6f7d4d6b42f311cc91fe48fee5f4191b",
+              "coverage": "Preview.96 scoped native adapter audit and exact-rig/cross-rig evidence; future games unimplemented."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md",
+              "revision": "041ec87a6f7d4d6b42f311cc91fe48fee5f4191b",
+              "coverage": "Preview.96 scoped native adapter audit and exact-rig/cross-rig evidence; future games unimplemented."
+            }
+          ]
+        },
+        "visual": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md",
+              "revision": "041ec87a6f7d4d6b42f311cc91fe48fee5f4191b",
+              "coverage": "Preview.96 scoped native adapter audit and exact-rig/cross-rig evidence; future games unimplemented."
+            }
+          ]
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [
+        "Physical input, broad contacts, external-tool and actual game tests remain unverified."
+      ],
+      "next_step": "Expand non-identical-rig motion witnesses and destination runtime checks."
+    },
+    {
+      "id": "FP-GAMEPLAY-AUTHORING",
+      "requirement_ids": [
+        "REQ21"
+      ],
+      "scope": "DEFERRED",
+      "status": "DEFERRED",
+      "outcome": "Gameplay scripts, PSA/REL authoring, hitboxes, state machines and runtime mechanics remain outside current asset-tool implementation.",
+      "acceptance": [
+        "Asset exports preserve related existing metadata without claiming gameplay authoring."
+      ],
+      "priority": "P3",
+      "depends_on": [],
+      "aggregate": false,
+      "evidence": [],
+      "references": {
+        "code": [],
+        "tests": [],
+        "receipts": []
+      },
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [
+        "Explicitly deferred in master scope."
+      ],
+      "next_step": "Revisit only through a separate approved product decision."
+    }
+  ],
+  "capabilities": [
+    {
+      "id": "CAP-BRAWL-SOURCE-INVENTORY",
+      "feature_id": "FP-BRAWL-ADAPTER",
+      "game": "brawl",
+      "platform": "Wii",
+      "build": "RSBE01 revision 1 fixture",
+      "direction": "source",
+      "asset": "model+animation",
+      "channel": "MDL0/CHR0 and indexed native channels",
+      "operation": "inventory",
+      "status": "VERIFIED_BOUNDED",
+      "required": true,
+      "summary": "In-process ISO/WBFS source inventory and exact selected package identity.",
+      "evidence": [
+        {
+          "path": "docs/DIRECT_GAME_SOURCES_ACCEPTANCE_2026-10-26.md",
+          "revision": "e83379c21f53f7b718df25320e1762877ef13164",
+          "coverage": "Direct Brawl ISO/WBFS selected-package and catalogue fixture."
+        }
+      ],
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/DIRECT_GAME_SOURCES_ACCEPTANCE_2026-10-26.md",
+              "revision": "e83379c21f53f7b718df25320e1762877ef13164",
+              "coverage": "Direct Brawl ISO/WBFS selected-package and catalogue fixture."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Extend unqualified disc/build/container cases."
+    },
+    {
+      "id": "CAP-BRAWL-SOURCE-PREVIEW",
+      "feature_id": "FP-BRAWL-ADAPTER",
+      "game": "brawl",
+      "platform": "Wii",
+      "build": "RSBE01 revision 1 fixture",
+      "direction": "source",
+      "asset": "model+animation",
+      "channel": "MDL0/CHR0",
+      "operation": "preview",
+      "status": "VERIFIED_BOUNDED",
+      "required": true,
+      "summary": "Original model, costume and motion preview in native source pane.",
+      "evidence": [
+        {
+          "path": "docs/DIRECT_GAME_SOURCES_ACCEPTANCE_2026-10-26.md",
+          "revision": "e83379c21f53f7b718df25320e1762877ef13164",
+          "coverage": "Direct Brawl ISO/WBFS selected-package and catalogue fixture."
+        }
+      ],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/DIRECT_GAME_SOURCES_ACCEPTANCE_2026-10-26.md",
+              "revision": "e83379c21f53f7b718df25320e1762877ef13164",
+              "coverage": "Direct Brawl ISO/WBFS selected-package and catalogue fixture."
+            }
+          ]
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Qualify all channel/build combinations."
+    },
+    {
+      "id": "CAP-BRAWL-TARGET-EDIT",
+      "feature_id": "FP-BRAWL-ADAPTER",
+      "game": "brawl",
+      "platform": "Wii",
+      "build": "RSBE01 revision 1 fixture",
+      "direction": "destination",
+      "asset": "model+animation",
+      "channel": "MDL0/CHR0",
+      "operation": "editing",
+      "status": "VERIFIED_BOUNDED",
+      "required": true,
+      "summary": "Complete native Model Previewer edits selected Brawl target.",
+      "evidence": [
+        {
+          "path": "docs/NATIVE_CONTROLS_WORKSPACE_ACCEPTANCE_2026-10-23.md",
+          "revision": "6b543a5b61d3d65476421691cdbfc1a6f77405bb",
+          "coverage": "Native Brawl model/animation editor and reopen fixtures."
+        }
+      ],
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/NATIVE_CONTROLS_WORKSPACE_ACCEPTANCE_2026-10-23.md",
+              "revision": "6b543a5b61d3d65476421691cdbfc1a6f77405bb",
+              "coverage": "Native Brawl model/animation editor and reopen fixtures."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/NATIVE_CONTROLS_WORKSPACE_ACCEPTANCE_2026-10-23.md",
+              "revision": "6b543a5b61d3d65476421691cdbfc1a6f77405bb",
+              "coverage": "Native Brawl model/animation editor and reopen fixtures."
+            }
+          ]
+        },
+        "visual": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/NATIVE_CONTROLS_WORKSPACE_ACCEPTANCE_2026-10-23.md",
+              "revision": "6b543a5b61d3d65476421691cdbfc1a6f77405bb",
+              "coverage": "Native Brawl model/animation editor and reopen fixtures."
+            }
+          ]
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Preserve during adapter integration."
+    },
+    {
+      "id": "CAP-BRAWL-RETARGET",
+      "feature_id": "FP-BRAWL-ADAPTER",
+      "game": "brawl",
+      "platform": "Wii",
+      "build": "RSBE01 revision 1 fixture",
+      "direction": "destination",
+      "asset": "animation",
+      "channel": "skeletal CHR0",
+      "operation": "retargeting",
+      "status": "IN_PROGRESS",
+      "required": true,
+      "summary": "Original Next and guarded exact-rig path; arbitrary changed proportions remain open.",
+      "evidence": [
+        {
+          "path": "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md",
+          "revision": "041ec87a6f7d4d6b42f311cc91fe48fee5f4191b",
+          "coverage": "Preview.96 exact-rig and changed-proportion named Brawl cases."
+        }
+      ],
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md",
+              "revision": "041ec87a6f7d4d6b42f311cc91fe48fee5f4191b",
+              "coverage": "Preview.96 exact-rig and changed-proportion named Brawl cases."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md",
+              "revision": "041ec87a6f7d4d6b42f311cc91fe48fee5f4191b",
+              "coverage": "Preview.96 exact-rig and changed-proportion named Brawl cases."
+            }
+          ]
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Resolve non-identical-rig quality case."
+    },
+    {
+      "id": "CAP-BRAWL-CHR0-WRITE",
+      "feature_id": "FP-BRAWL-ADAPTER",
+      "game": "brawl",
+      "platform": "Wii",
+      "build": "RSBE01 revision 1 fixture",
+      "direction": "destination",
+      "asset": "animation",
+      "channel": "skeletal CHR0 v4/v5",
+      "operation": "writing",
+      "status": "VERIFIED_BOUNDED",
+      "required": true,
+      "summary": "Standalone precise/verified CHR0 export from owned target clips.",
+      "evidence": [
+        {
+          "path": "docs/NATIVE_ANIMATION_EXPORT_ACCEPTANCE_2026-10-29.md",
+          "revision": "c92410bbf8a42af7d355b61248aa14e39404655e",
+          "coverage": "Native Brawl CHR0 output and fresh decode."
+        }
+      ],
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/NATIVE_ANIMATION_EXPORT_ACCEPTANCE_2026-10-29.md",
+              "revision": "c92410bbf8a42af7d355b61248aa14e39404655e",
+              "coverage": "Native Brawl CHR0 output and fresh decode."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/NATIVE_ANIMATION_EXPORT_ACCEPTANCE_2026-10-29.md",
+              "revision": "c92410bbf8a42af7d355b61248aa14e39404655e",
+              "coverage": "Native Brawl CHR0 output and fresh decode."
+            }
+          ]
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Qualify further native channel/container routes."
+    },
+    {
+      "id": "CAP-BRAWL-MODEL-WRITE",
+      "feature_id": "FP-BRAWL-ADAPTER",
+      "game": "brawl",
+      "platform": "Wii",
+      "build": "RSBE01 revision 1 fixture",
+      "direction": "destination",
+      "asset": "model",
+      "channel": "MDL0/material/texture",
+      "operation": "writing",
+      "status": "IMPLEMENTED_UNVERIFIED",
+      "required": true,
+      "summary": "Inherited BrawlCrate model writing exists; cross-game target model conversion is not qualified.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Test exact and converted model writes separately."
+    },
+    {
+      "id": "CAP-BRAWL-PACKAGE",
+      "feature_id": "FP-BRAWL-ADAPTER",
+      "game": "brawl",
+      "platform": "Wii",
+      "build": "RSBE01 revision 1 fixture",
+      "direction": "destination",
+      "asset": "model+animation",
+      "channel": "PAC/PCS/BRRES",
+      "operation": "packaging",
+      "status": "IMPLEMENTED_UNVERIFIED",
+      "required": true,
+      "summary": "Inherited container editing exists; target package acceptance is not recorded for all assets.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Measure native container insertion and runtime acceptance by build."
+    },
+    {
+      "id": "CAP-MELEE-SOURCE-INVENTORY",
+      "feature_id": "FP-MELEE-ADAPTER",
+      "game": "melee",
+      "platform": "GameCube",
+      "build": "USA v1.02 fixture",
+      "direction": "source",
+      "asset": "model+animation",
+      "channel": "HSD DAT",
+      "operation": "inventory",
+      "status": "VERIFIED_BOUNDED",
+      "required": true,
+      "summary": "Selected USA v1.02 ISO roster/action inventory.",
+      "evidence": [
+        {
+          "path": "docs/MELEE_SOURCE_ACCEPTANCE_2026-11-01.md",
+          "revision": "36bbb2ce6a626b2936f6a8f3a43c614917387e97",
+          "coverage": "Melee USA v1.02 HSD DAT source fixture."
+        }
+      ],
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/MELEE_SOURCE_ACCEPTANCE_2026-11-01.md",
+              "revision": "36bbb2ce6a626b2936f6a8f3a43c614917387e97",
+              "coverage": "Melee USA v1.02 HSD DAT source fixture."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Qualify modpacks, builds and ambiguous symbols."
+    },
+    {
+      "id": "CAP-MELEE-SOURCE-PREVIEW",
+      "feature_id": "FP-MELEE-ADAPTER",
+      "game": "melee",
+      "platform": "GameCube",
+      "build": "USA v1.02 fixture",
+      "direction": "source",
+      "asset": "model+animation",
+      "channel": "HSD DAT",
+      "operation": "preview",
+      "status": "VERIFIED_BOUNDED",
+      "required": true,
+      "summary": "Native HSD model, texture and motion preview on selected fighters.",
+      "evidence": [
+        {
+          "path": "docs/MELEE_SOURCE_ACCEPTANCE_2026-11-01.md",
+          "revision": "36bbb2ce6a626b2936f6a8f3a43c614917387e97",
+          "coverage": "Melee USA v1.02 HSD DAT source fixture."
+        }
+      ],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/MELEE_SOURCE_ACCEPTANCE_2026-11-01.md",
+              "revision": "36bbb2ce6a626b2936f6a8f3a43c614917387e97",
+              "coverage": "Melee USA v1.02 HSD DAT source fixture."
+            }
+          ]
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Broaden costume, action and renderer checks."
+    },
+    {
+      "id": "CAP-MELEE-TARGET-EDIT",
+      "feature_id": "FP-MELEE-ADAPTER",
+      "game": "melee",
+      "platform": "GameCube",
+      "build": "USA v1.02 fixture",
+      "direction": "destination",
+      "asset": "animation",
+      "channel": "HSD motion through owned editable bridge",
+      "operation": "editing",
+      "status": "VERIFIED_BOUNDED",
+      "required": true,
+      "summary": "Selected Melee target actions can be edited in full native window with shared Undo.",
+      "evidence": [
+        {
+          "path": "docs/MELEE_SHARED_BRIDGE_2026-11-02.md",
+          "revision": "40cf61800792a26409fdbdafd93d42d9086e0922",
+          "coverage": "Selected Melee/Brawl shared bridge outputs."
+        }
+      ],
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/MELEE_SHARED_BRIDGE_2026-11-02.md",
+              "revision": "40cf61800792a26409fdbdafd93d42d9086e0922",
+              "coverage": "Selected Melee/Brawl shared bridge outputs."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/MELEE_SHARED_BRIDGE_2026-11-02.md",
+              "revision": "40cf61800792a26409fdbdafd93d42d9086e0922",
+              "coverage": "Selected Melee/Brawl shared bridge outputs."
+            }
+          ]
+        },
+        "visual": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/MELEE_SHARED_BRIDGE_2026-11-02.md",
+              "revision": "40cf61800792a26409fdbdafd93d42d9086e0922",
+              "coverage": "Selected Melee/Brawl shared bridge outputs."
+            }
+          ]
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [
+        "Authoring master still uses internal MDL0/BRRES/CHR0 contracts; not a native DAT document owner."
+      ],
+      "next_step": "Advance native document ownership and unqualified channels."
+    },
+    {
+      "id": "CAP-MELEE-RETARGET",
+      "feature_id": "FP-MELEE-ADAPTER",
+      "game": "melee",
+      "platform": "GameCube",
+      "build": "USA v1.02 fixture",
+      "direction": "destination",
+      "asset": "animation",
+      "channel": "skeletal HSD action",
+      "operation": "retargeting",
+      "status": "IN_PROGRESS",
+      "required": true,
+      "summary": "Selected Brawl/Melee bridge results; broad motion and fractional keys remain open.",
+      "evidence": [
+        {
+          "path": "docs/MELEE_SHARED_BRIDGE_2026-11-02.md",
+          "revision": "40cf61800792a26409fdbdafd93d42d9086e0922",
+          "coverage": "Selected Melee/Brawl shared bridge outputs."
+        }
+      ],
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/MELEE_SHARED_BRIDGE_2026-11-02.md",
+              "revision": "40cf61800792a26409fdbdafd93d42d9086e0922",
+              "coverage": "Selected Melee/Brawl shared bridge outputs."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/MELEE_SHARED_BRIDGE_2026-11-02.md",
+              "revision": "40cf61800792a26409fdbdafd93d42d9086e0922",
+              "coverage": "Selected Melee/Brawl shared bridge outputs."
+            }
+          ]
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Resolve current cross-rig quality and fractional native timing."
+    },
+    {
+      "id": "CAP-MELEE-ACTION-WRITE",
+      "feature_id": "FP-MELEE-ADAPTER",
+      "game": "melee",
+      "platform": "GameCube",
+      "build": "USA v1.02 fixture",
+      "direction": "destination",
+      "asset": "animation",
+      "channel": "HSD DAT action integer-wait FOBJ",
+      "operation": "writing",
+      "status": "VERIFIED_BOUNDED",
+      "required": true,
+      "summary": "Selected edited action member DAT output freshly reopens under integer timing gates.",
+      "evidence": [
+        {
+          "path": "docs/NATIVE_ANIMATION_DESTINATION_2026-11-02.md",
+          "revision": "bce3171502d5778c07c423775c1f79e0a7b2bda5",
+          "coverage": "Selected Melee USA v1.02 action-member DAT output with fresh native reopen; fractional-time result explicitly rejected."
+        }
+      ],
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/NATIVE_ANIMATION_DESTINATION_2026-11-02.md",
+              "revision": "bce3171502d5778c07c423775c1f79e0a7b2bda5",
+              "coverage": "Selected Melee USA v1.02 action-member DAT output with fresh native reopen; fractional-time result explicitly rejected."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/NATIVE_ANIMATION_DESTINATION_2026-11-02.md",
+              "revision": "bce3171502d5778c07c423775c1f79e0a7b2bda5",
+              "coverage": "Selected Melee USA v1.02 action-member DAT output with fresh native reopen; fractional-time result explicitly rejected."
+            }
+          ]
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [
+        "Fractional authored time and some terminal/loop cases reject."
+      ],
+      "next_step": "Implement and verify fractional-time FOBJ."
+    },
+    {
+      "id": "CAP-MELEE-MODEL-WRITE",
+      "feature_id": "FP-MELEE-ADAPTER",
+      "game": "melee",
+      "platform": "GameCube",
+      "build": "USA v1.02 fixture",
+      "direction": "destination",
+      "asset": "model",
+      "channel": "HSD DAT geometry/texture",
+      "operation": "writing",
+      "status": "NOT_STARTED",
+      "required": true,
+      "summary": "Original model/texture extraction exists; derived native model writer is separate.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Define and implement native HSD model write/reopen pipeline."
+    },
+    {
+      "id": "CAP-MELEE-PACKAGE",
+      "feature_id": "FP-MELEE-ADAPTER",
+      "game": "melee",
+      "platform": "GameCube",
+      "build": "USA v1.02 fixture",
+      "direction": "destination",
+      "asset": "model+animation",
+      "channel": "HSD fighter/action archive",
+      "operation": "packaging",
+      "status": "IN_PROGRESS",
+      "required": true,
+      "summary": "Selected action-member output is separate from installing native game archive slots.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Qualify complete target archive insertion and runtime."
+    },
+    {
+      "id": "CAP-ULTIMATE-SOURCE",
+      "feature_id": "FP-ULTIMATE-ADAPTER",
+      "game": "ultimate",
+      "platform": "Nintendo Switch",
+      "build": "unqualified",
+      "direction": "source",
+      "asset": "model+animation",
+      "channel": "native unqualified",
+      "operation": "inventory",
+      "status": "NOT_STARTED",
+      "required": true,
+      "summary": "No registered Ultimate source adapter.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Pin build and document native source layout."
+    },
+    {
+      "id": "CAP-ULTIMATE-PREVIEW",
+      "feature_id": "FP-ULTIMATE-ADAPTER",
+      "game": "ultimate",
+      "platform": "Nintendo Switch",
+      "build": "unqualified",
+      "direction": "source",
+      "asset": "model+animation",
+      "channel": "native unqualified",
+      "operation": "preview",
+      "status": "NOT_STARTED",
+      "required": true,
+      "summary": "No qualified Ultimate native preview.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Implement after source parser and rig bridge."
+    },
+    {
+      "id": "CAP-ULTIMATE-EDIT",
+      "feature_id": "FP-ULTIMATE-ADAPTER",
+      "game": "ultimate",
+      "platform": "Nintendo Switch",
+      "build": "unqualified",
+      "direction": "destination",
+      "asset": "animation",
+      "channel": "native unqualified",
+      "operation": "editing",
+      "status": "NOT_STARTED",
+      "required": true,
+      "summary": "No qualified editable Ultimate target backend.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Define native target document and authoring bridge."
+    },
+    {
+      "id": "CAP-ULTIMATE-RETARGET",
+      "feature_id": "FP-ULTIMATE-ADAPTER",
+      "game": "ultimate",
+      "platform": "Nintendo Switch",
+      "build": "unqualified",
+      "direction": "destination",
+      "asset": "animation",
+      "channel": "native unqualified",
+      "operation": "retargeting",
+      "status": "NOT_STARTED",
+      "required": true,
+      "summary": "No qualified Ultimate target retarget result.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Qualify rig bridge and full motion quality."
+    },
+    {
+      "id": "CAP-ULTIMATE-WRITE",
+      "feature_id": "FP-ULTIMATE-ADAPTER",
+      "game": "ultimate",
+      "platform": "Nintendo Switch",
+      "build": "unqualified",
+      "direction": "destination",
+      "asset": "model+animation",
+      "channel": "native unqualified",
+      "operation": "writing",
+      "status": "NOT_STARTED",
+      "required": true,
+      "summary": "No qualified Ultimate native writer.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Implement writer after native format and target contracts."
+    },
+    {
+      "id": "CAP-ULTIMATE-PACKAGE",
+      "feature_id": "FP-ULTIMATE-ADAPTER",
+      "game": "ultimate",
+      "platform": "Nintendo Switch",
+      "build": "unqualified",
+      "direction": "destination",
+      "asset": "model+animation",
+      "channel": "native unqualified",
+      "operation": "packaging",
+      "status": "NOT_STARTED",
+      "required": true,
+      "summary": "No qualified Ultimate package or game test.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Qualify build-specific packaging and game runtime."
+    },
+    {
+      "id": "CAP-RIVALS2-SOURCE",
+      "feature_id": "FP-RIVALS2-ADAPTER",
+      "game": "rivals2",
+      "platform": "Windows/UE5.8",
+      "build": "unqualified",
+      "direction": "source",
+      "asset": "model+animation",
+      "channel": "UE asset/FBX unqualified",
+      "operation": "inventory",
+      "status": "NOT_STARTED",
+      "required": true,
+      "summary": "No registered Rivals 2 source adapter.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Pin game/Modkit build and inspect source format."
+    },
+    {
+      "id": "CAP-RIVALS2-PREVIEW",
+      "feature_id": "FP-RIVALS2-ADAPTER",
+      "game": "rivals2",
+      "platform": "Windows/UE5.8",
+      "build": "unqualified",
+      "direction": "source",
+      "asset": "model+animation",
+      "channel": "UE asset/FBX unqualified",
+      "operation": "preview",
+      "status": "NOT_STARTED",
+      "required": true,
+      "summary": "No qualified Rivals 2 source preview.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Implement after source parser and rig bridge."
+    },
+    {
+      "id": "CAP-RIVALS2-EDIT",
+      "feature_id": "FP-RIVALS2-ADAPTER",
+      "game": "rivals2",
+      "platform": "Windows/UE5.8",
+      "build": "unqualified",
+      "direction": "destination",
+      "asset": "animation",
+      "channel": "UE asset/FBX unqualified",
+      "operation": "editing",
+      "status": "NOT_STARTED",
+      "required": true,
+      "summary": "No qualified editable Rivals 2 target backend.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Define native target and Modkit authoring contract."
+    },
+    {
+      "id": "CAP-RIVALS2-RETARGET",
+      "feature_id": "FP-RIVALS2-ADAPTER",
+      "game": "rivals2",
+      "platform": "Windows/UE5.8",
+      "build": "unqualified",
+      "direction": "destination",
+      "asset": "animation",
+      "channel": "UE asset/FBX unqualified",
+      "operation": "retargeting",
+      "status": "NOT_STARTED",
+      "required": true,
+      "summary": "No qualified Rivals 2 target transfer.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Qualify rig bridge and full motion quality."
+    },
+    {
+      "id": "CAP-RIVALS2-WRITE",
+      "feature_id": "FP-RIVALS2-ADAPTER",
+      "game": "rivals2",
+      "platform": "Windows/UE5.8",
+      "build": "unqualified",
+      "direction": "destination",
+      "asset": "model+animation",
+      "channel": "UE5.8 Modkit/FBX",
+      "operation": "writing",
+      "status": "NOT_STARTED",
+      "required": true,
+      "summary": "No qualified Rivals 2 Modkit/native output.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Implement after pinned Modkit import contract."
+    },
+    {
+      "id": "CAP-RIVALS2-PACKAGE",
+      "feature_id": "FP-RIVALS2-ADAPTER",
+      "game": "rivals2",
+      "platform": "Windows/UE5.8",
+      "build": "unqualified",
+      "direction": "destination",
+      "asset": "model+animation",
+      "channel": "UE5.8 Modkit",
+      "operation": "packaging",
+      "status": "NOT_STARTED",
+      "required": true,
+      "summary": "No qualified cooked package or in-game result.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Qualify build/cook/runtime separately."
+    },
+    {
+      "id": "CAP-BT3-SOURCE-INVENTORY",
+      "feature_id": "FP-BT3-SOURCE",
+      "game": "bt3",
+      "platform": "PlayStation 2",
+      "build": "SLUS-21678 USA fixture",
+      "direction": "source",
+      "asset": "model+animation",
+      "channel": "PZS/PB3 native",
+      "operation": "inventory",
+      "status": "VERIFIED_BOUNDED",
+      "required": true,
+      "summary": "Selected USA ISO form/costume/action inventory.",
+      "evidence": [
+        {
+          "path": "docs/BT3_DIRECT_LIBRARY_2026-11-02.md",
+          "revision": "984c59bfb544aedd18e4ea7e1a130a2b7a0bf56b",
+          "coverage": "Selected BT3 USA ISO source inventory and preview."
+        }
+      ],
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/BT3_DIRECT_LIBRARY_2026-11-02.md",
+              "revision": "984c59bfb544aedd18e4ea7e1a130a2b7a0bf56b",
+              "coverage": "Selected BT3 USA ISO source inventory and preview."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Broaden form/action/modification coverage."
+    },
+    {
+      "id": "CAP-BT3-SOURCE-PREVIEW",
+      "feature_id": "FP-BT3-SOURCE",
+      "game": "bt3",
+      "platform": "PlayStation 2",
+      "build": "SLUS-21678 USA fixture",
+      "direction": "source",
+      "asset": "model+animation",
+      "channel": "PZS/PB3 native",
+      "operation": "preview",
+      "status": "VERIFIED_BOUNDED",
+      "required": true,
+      "summary": "Native BT3 source model, bone, texture and motion preview.",
+      "evidence": [
+        {
+          "path": "docs/BT3_DIRECT_LIBRARY_2026-11-02.md",
+          "revision": "984c59bfb544aedd18e4ea7e1a130a2b7a0bf56b",
+          "coverage": "Selected BT3 USA ISO source inventory and preview."
+        }
+      ],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/BT3_DIRECT_LIBRARY_2026-11-02.md",
+              "revision": "984c59bfb544aedd18e4ea7e1a130a2b7a0bf56b",
+              "coverage": "Selected BT3 USA ISO source inventory and preview."
+            }
+          ]
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Qualify more actions and transformed/costume variants."
+    },
+    {
+      "id": "CAP-BT3-SOURCE-RETARGET",
+      "feature_id": "FP-BT3-SOURCE",
+      "game": "bt3",
+      "platform": "PlayStation 2",
+      "build": "SLUS-21678 USA fixture",
+      "direction": "source",
+      "asset": "animation",
+      "channel": "native action to shared rig",
+      "operation": "retargeting",
+      "status": "IN_PROGRESS",
+      "required": true,
+      "summary": "Bounded Brawl target drafts exist; broad dynamic quality remains open.",
+      "evidence": [
+        {
+          "path": "docs/BT3_RIG_BRIDGE_2026-11-03.md",
+          "revision": "bfa9eb6c3e634663268fd35526d63e4f0a308812",
+          "coverage": "Selected BT3 USA Goku action to Brawl Mario/Snake draft, native reopen and static stance witnesses; no broad dynamic quality."
+        }
+      ],
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/BT3_RIG_BRIDGE_2026-11-03.md",
+              "revision": "bfa9eb6c3e634663268fd35526d63e4f0a308812",
+              "coverage": "Selected BT3 USA Goku action to Brawl Mario/Snake draft, native reopen and static stance witnesses; no broad dynamic quality."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/BT3_RIG_BRIDGE_2026-11-03.md",
+              "revision": "bfa9eb6c3e634663268fd35526d63e4f0a308812",
+              "coverage": "Selected BT3 USA Goku action to Brawl Mario/Snake draft, native reopen and static stance witnesses; no broad dynamic quality."
+            }
+          ]
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Measure nonstatic BT3-to-target pose/skin/contact quality."
+    },
+    {
+      "id": "CAP-BT3-PORTABLE-WRITE",
+      "feature_id": "FP-BT3-SOURCE",
+      "game": "bt3",
+      "platform": "PlayStation 2",
+      "build": "SLUS-21678 USA fixture",
+      "direction": "source",
+      "asset": "model+animation",
+      "channel": "glTF/GLB",
+      "operation": "writing",
+      "status": "VERIFIED_BOUNDED",
+      "required": true,
+      "summary": "Selected BT3 costume model and action portable output; no native BT3 game writing.",
+      "evidence": [
+        {
+          "path": "docs/PORTABLE_RIGGED_INTERCHANGE_2026-11-03.md",
+          "revision": "5b0b3c04dadb622b3f32a9d6bb903a42203a2584",
+          "coverage": "Brawl/Melee/BT3 portable rigged model GLB examples."
+        },
+        {
+          "path": "docs/PORTABLE_ANIMATION_BUNDLES_2026-11-03.md",
+          "revision": "1802c548b101ec3e5e8714e2c639e0c08d8ea1cc",
+          "coverage": "Selected BT3 action-only and combined rigged GLB export, cancellation and external validator; no broad DCC playback."
+        }
+      ],
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/PORTABLE_RIGGED_INTERCHANGE_2026-11-03.md",
+              "revision": "5b0b3c04dadb622b3f32a9d6bb903a42203a2584",
+              "coverage": "Brawl/Melee/BT3 portable rigged model GLB examples."
+            },
+            {
+              "path": "docs/PORTABLE_ANIMATION_BUNDLES_2026-11-03.md",
+              "revision": "1802c548b101ec3e5e8714e2c639e0c08d8ea1cc",
+              "coverage": "Selected BT3 action-only and combined rigged GLB export, cancellation and external validator; no broad DCC playback."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/PORTABLE_RIGGED_INTERCHANGE_2026-11-03.md",
+              "revision": "5b0b3c04dadb622b3f32a9d6bb903a42203a2584",
+              "coverage": "Brawl/Melee/BT3 portable rigged model GLB examples."
+            }
+          ]
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/PORTABLE_RIGGED_INTERCHANGE_2026-11-03.md",
+              "revision": "5b0b3c04dadb622b3f32a9d6bb903a42203a2584",
+              "coverage": "Brawl/Melee/BT3 portable rigged model GLB examples."
+            },
+            {
+              "path": "docs/PORTABLE_ANIMATION_BUNDLES_2026-11-03.md",
+              "revision": "1802c548b101ec3e5e8714e2c639e0c08d8ea1cc",
+              "coverage": "Selected BT3 action-only and combined rigged GLB export, cancellation and external validator; no broad DCC playback."
+            }
+          ]
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Broaden actions and DCC playback checks."
+    },
+    {
+      "id": "CAP-SHARED-EXACT-RIG",
+      "feature_id": "FP-RETARGET-QUALITY",
+      "game": "shared",
+      "platform": "multiple",
+      "build": "per accepted fixture",
+      "direction": "source",
+      "asset": "animation",
+      "channel": "Brawl CHR0 same rig",
+      "operation": "retargeting",
+      "status": "VERIFIED_BOUNDED",
+      "required": true,
+      "summary": "Exact-rig guarded path retains authored tracks on named fixtures.",
+      "evidence": [
+        {
+          "path": "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md",
+          "revision": "041ec87a6f7d4d6b42f311cc91fe48fee5f4191b",
+          "coverage": "Preview.96 exact-rig and changed-proportion named Brawl cases."
+        }
+      ],
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md",
+              "revision": "041ec87a6f7d4d6b42f311cc91fe48fee5f4191b",
+              "coverage": "Preview.96 exact-rig and changed-proportion named Brawl cases."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md",
+              "revision": "041ec87a6f7d4d6b42f311cc91fe48fee5f4191b",
+              "coverage": "Preview.96 exact-rig and changed-proportion named Brawl cases."
+            }
+          ]
+        },
+        "visual": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md",
+              "revision": "041ec87a6f7d4d6b42f311cc91fe48fee5f4191b",
+              "coverage": "Preview.96 exact-rig and changed-proportion named Brawl cases."
+            }
+          ]
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Use as regression while fixing changed-rig case."
+    },
+    {
+      "id": "CAP-SHARED-NONIDENTICAL",
+      "feature_id": "FP-RETARGET-QUALITY",
+      "game": "shared",
+      "platform": "multiple",
+      "build": "per accepted fixture",
+      "direction": "destination",
+      "asset": "animation",
+      "channel": "rig bridge",
+      "operation": "retargeting",
+      "status": "IN_PROGRESS",
+      "required": true,
+      "summary": "Changed-proportion results have bounded trajectory checks; broad pose/skin/contact quality open.",
+      "evidence": [
+        {
+          "path": "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md",
+          "revision": "041ec87a6f7d4d6b42f311cc91fe48fee5f4191b",
+          "coverage": "Preview.96 exact-rig and changed-proportion named Brawl cases."
+        }
+      ],
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md",
+              "revision": "041ec87a6f7d4d6b42f311cc91fe48fee5f4191b",
+              "coverage": "Preview.96 exact-rig and changed-proportion named Brawl cases."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md",
+              "revision": "041ec87a6f7d4d6b42f311cc91fe48fee5f4191b",
+              "coverage": "Preview.96 exact-rig and changed-proportion named Brawl cases."
+            }
+          ]
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Reproduce complete non-identical-rig failure."
+    },
+    {
+      "id": "CAP-CONTACT-GROUND",
+      "feature_id": "FP-CONTACTS",
+      "game": "shared",
+      "platform": "multiple",
+      "build": "per accepted fixture",
+      "direction": "destination",
+      "asset": "animation",
+      "channel": "static floor",
+      "operation": "editing",
+      "status": "VERIFIED_BOUNDED",
+      "required": true,
+      "summary": "Reviewed ground contact correction on selected Brawl fixtures.",
+      "evidence": [
+        {
+          "path": "docs/REVIEWED_GROUND_CONTACT_ACCEPTANCE_2026-10-30.md",
+          "revision": "cf2e7a845bdd91ea4e30e77e9442d8fb6421530b",
+          "coverage": "Brawl static-ground contact correction fixtures."
+        }
+      ],
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/REVIEWED_GROUND_CONTACT_ACCEPTANCE_2026-10-30.md",
+              "revision": "cf2e7a845bdd91ea4e30e77e9442d8fb6421530b",
+              "coverage": "Brawl static-ground contact correction fixtures."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/REVIEWED_GROUND_CONTACT_ACCEPTANCE_2026-10-30.md",
+              "revision": "cf2e7a845bdd91ea4e30e77e9442d8fb6421530b",
+              "coverage": "Brawl static-ground contact correction fixtures."
+            }
+          ]
+        },
+        "visual": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/REVIEWED_GROUND_CONTACT_ACCEPTANCE_2026-10-30.md",
+              "revision": "cf2e7a845bdd91ea4e30e77e9442d8fb6421530b",
+              "coverage": "Brawl static-ground contact correction fixtures."
+            }
+          ]
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Expand held-out anatomy and action coverage."
+    },
+    {
+      "id": "CAP-CONTACT-LEDGE",
+      "feature_id": "FP-CONTACTS",
+      "game": "shared",
+      "platform": "multiple",
+      "build": "per accepted fixture",
+      "direction": "destination",
+      "asset": "animation",
+      "channel": "finite static ledge",
+      "operation": "editing",
+      "status": "NOT_STARTED",
+      "required": true,
+      "summary": "Reviewed ledge constraints remain open.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Implement after grounded contact and retarget quality."
+    },
+    {
+      "id": "CAP-CONTACT-MOVING",
+      "feature_id": "FP-CONTACTS",
+      "game": "shared",
+      "platform": "multiple",
+      "build": "per accepted fixture",
+      "direction": "destination",
+      "asset": "animation",
+      "channel": "moving supports/actors/props",
+      "operation": "editing",
+      "status": "NOT_STARTED",
+      "required": true,
+      "summary": "Moving support and multi-actor contact context remains open.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Define explicit support frames and solve/acceptance corpus."
+    },
+    {
+      "id": "CAP-OPT-BRAWL-CHR0",
+      "feature_id": "FP-OPTIMIZATION",
+      "game": "brawl",
+      "platform": "Wii",
+      "build": "RSBE01 revision 1 fixture",
+      "direction": "destination",
+      "asset": "animation",
+      "channel": "CHR0 v4/v5",
+      "operation": "writing",
+      "status": "VERIFIED_BOUNDED",
+      "required": true,
+      "summary": "Independent size-optimized CHR0 export compared against finished master on fixtures.",
+      "evidence": [
+        {
+          "path": "docs/NATIVE_CHR0_EXPORT_OPTIMIZATION_ACCEPTANCE_2026-10-28.md",
+          "revision": "11d6c1d708e3254d1c68101dfcee70b0c9970214",
+          "coverage": "Brawl CHR0 independent optimized export validation."
+        }
+      ],
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/NATIVE_CHR0_EXPORT_OPTIMIZATION_ACCEPTANCE_2026-10-28.md",
+              "revision": "11d6c1d708e3254d1c68101dfcee70b0c9970214",
+              "coverage": "Brawl CHR0 independent optimized export validation."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/NATIVE_CHR0_EXPORT_OPTIMIZATION_ACCEPTANCE_2026-10-28.md",
+              "revision": "11d6c1d708e3254d1c68101dfcee70b0c9970214",
+              "coverage": "Brawl CHR0 independent optimized export validation."
+            }
+          ]
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Improve geometry-aware compression without changing quality limits."
+    },
+    {
+      "id": "CAP-OPT-MELEE-HSD",
+      "feature_id": "FP-OPTIMIZATION",
+      "game": "melee",
+      "platform": "GameCube",
+      "build": "USA v1.02 fixture",
+      "direction": "destination",
+      "asset": "animation",
+      "channel": "HSD FOBJ",
+      "operation": "writing",
+      "status": "NOT_STARTED",
+      "required": true,
+      "summary": "Native Melee animation size optimization not qualified.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Implement after fractional-time writer and same-master validation."
+    },
+    {
+      "id": "CAP-LIBRARY-BRAWL",
+      "feature_id": "FP-LIBRARY",
+      "game": "brawl",
+      "platform": "Wii",
+      "build": "RSBE01 revision 1 fixture",
+      "direction": "source",
+      "asset": "model+animation",
+      "channel": "native indexed game source",
+      "operation": "inventory",
+      "status": "VERIFIED_BOUNDED",
+      "required": true,
+      "summary": "Original Brawl disc/library source identities, favorites and filters.",
+      "evidence": [
+        {
+          "path": "docs/LIBRARY_ORGANIZATION_ACCEPTANCE_2026-10-24.md",
+          "revision": "4f957f33ad4a5c4eaf26e9af2e8405fa23cd42f5",
+          "coverage": "Brawl library exact clip favorites and filtered counts."
+        },
+        {
+          "path": "docs/DIRECT_GAME_SOURCES_ACCEPTANCE_2026-10-26.md",
+          "revision": "e83379c21f53f7b718df25320e1762877ef13164",
+          "coverage": "Brawl original ISO/WBFS direct source library."
+        }
+      ],
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/LIBRARY_ORGANIZATION_ACCEPTANCE_2026-10-24.md",
+              "revision": "4f957f33ad4a5c4eaf26e9af2e8405fa23cd42f5",
+              "coverage": "Brawl library exact clip favorites and filtered counts."
+            },
+            {
+              "path": "docs/DIRECT_GAME_SOURCES_ACCEPTANCE_2026-10-26.md",
+              "revision": "e83379c21f53f7b718df25320e1762877ef13164",
+              "coverage": "Brawl original ISO/WBFS direct source library."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/LIBRARY_ORGANIZATION_ACCEPTANCE_2026-10-24.md",
+              "revision": "4f957f33ad4a5c4eaf26e9af2e8405fa23cd42f5",
+              "coverage": "Brawl library exact clip favorites and filtered counts."
+            },
+            {
+              "path": "docs/DIRECT_GAME_SOURCES_ACCEPTANCE_2026-10-26.md",
+              "revision": "e83379c21f53f7b718df25320e1762877ef13164",
+              "coverage": "Brawl original ISO/WBFS direct source library."
+            }
+          ]
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Retain exact association during new adapter work."
+    },
+    {
+      "id": "CAP-LIBRARY-MELEE",
+      "feature_id": "FP-LIBRARY",
+      "game": "melee",
+      "platform": "GameCube",
+      "build": "USA v1.02 fixture",
+      "direction": "source",
+      "asset": "model+animation",
+      "channel": "HSD DAT",
+      "operation": "inventory",
+      "status": "VERIFIED_BOUNDED",
+      "required": true,
+      "summary": "Selected Melee native fighter and motion inventory.",
+      "evidence": [
+        {
+          "path": "docs/MELEE_SOURCE_ACCEPTANCE_2026-11-01.md",
+          "revision": "36bbb2ce6a626b2936f6a8f3a43c614917387e97",
+          "coverage": "Melee USA source inventory."
+        }
+      ],
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/MELEE_SOURCE_ACCEPTANCE_2026-11-01.md",
+              "revision": "36bbb2ce6a626b2936f6a8f3a43c614917387e97",
+              "coverage": "Melee USA source inventory."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Expand modpack/build association checks."
+    },
+    {
+      "id": "CAP-LIBRARY-BT3",
+      "feature_id": "FP-LIBRARY",
+      "game": "bt3",
+      "platform": "PlayStation 2",
+      "build": "SLUS-21678 USA fixture",
+      "direction": "source",
+      "asset": "model+animation",
+      "channel": "PZS/PB3",
+      "operation": "inventory",
+      "status": "VERIFIED_BOUNDED",
+      "required": true,
+      "summary": "Selected BT3 form/costume/action inventory.",
+      "evidence": [
+        {
+          "path": "docs/BT3_DIRECT_LIBRARY_2026-11-02.md",
+          "revision": "984c59bfb544aedd18e4ea7e1a130a2b7a0bf56b",
+          "coverage": "BT3 USA source inventory."
+        }
+      ],
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/BT3_DIRECT_LIBRARY_2026-11-02.md",
+              "revision": "984c59bfb544aedd18e4ea7e1a130a2b7a0bf56b",
+              "coverage": "BT3 USA source inventory."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Expand source association and labeling coverage."
+    },
+    {
+      "id": "CAP-LIBRARY-ULTIMATE",
+      "feature_id": "FP-LIBRARY",
+      "game": "ultimate",
+      "platform": "Nintendo Switch",
+      "build": "unqualified",
+      "direction": "source",
+      "asset": "model+animation",
+      "channel": "native unqualified",
+      "operation": "inventory",
+      "status": "NOT_STARTED",
+      "required": true,
+      "summary": "Ultimate source library adapter absent.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Implement after format research."
+    },
+    {
+      "id": "CAP-LIBRARY-RIVALS2",
+      "feature_id": "FP-LIBRARY",
+      "game": "rivals2",
+      "platform": "Windows/UE5.8",
+      "build": "unqualified",
+      "direction": "source",
+      "asset": "model+animation",
+      "channel": "UE native unqualified",
+      "operation": "inventory",
+      "status": "NOT_STARTED",
+      "required": true,
+      "summary": "Rivals 2 source library adapter absent.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Implement after Modkit/source research."
+    },
+    {
+      "id": "CAP-SET-BRAWL-REVIEW",
+      "feature_id": "FP-SETS",
+      "game": "brawl",
+      "platform": "Wii",
+      "build": "RSBE01 revision 1 fixture",
+      "direction": "destination",
+      "asset": "animation set",
+      "channel": "CHR0 clips",
+      "operation": "editing",
+      "status": "VERIFIED_BOUNDED",
+      "required": true,
+      "summary": "Exact per-clip session approval and reviewed set navigation.",
+      "evidence": [
+        {
+          "path": "docs/VERIFIED_SET_EXPORT_ACCEPTANCE_2026-10-24.md",
+          "revision": "18d30965d4e0d93f2377652e588d331fc9873013",
+          "coverage": "Reviewed Brawl CHR0 set export."
+        }
+      ],
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/VERIFIED_SET_EXPORT_ACCEPTANCE_2026-10-24.md",
+              "revision": "18d30965d4e0d93f2377652e588d331fc9873013",
+              "coverage": "Reviewed Brawl CHR0 set export."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/VERIFIED_SET_EXPORT_ACCEPTANCE_2026-10-24.md",
+              "revision": "18d30965d4e0d93f2377652e588d331fc9873013",
+              "coverage": "Reviewed Brawl CHR0 set export."
+            }
+          ]
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Qualify build-specific slot taxonomy."
+    },
+    {
+      "id": "CAP-SET-BRAWL-EXPORT",
+      "feature_id": "FP-NATIVE-EXPORT",
+      "game": "brawl",
+      "platform": "Wii",
+      "build": "RSBE01 revision 1 fixture",
+      "direction": "destination",
+      "asset": "animation set",
+      "channel": "CHR0 files",
+      "operation": "writing",
+      "status": "VERIFIED_BOUNDED",
+      "required": true,
+      "summary": "Atomic new-directory export of verified approved CHR0 set.",
+      "evidence": [
+        {
+          "path": "docs/VERIFIED_SET_EXPORT_ACCEPTANCE_2026-10-24.md",
+          "revision": "18d30965d4e0d93f2377652e588d331fc9873013",
+          "coverage": "Reviewed Brawl CHR0 set export."
+        }
+      ],
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/VERIFIED_SET_EXPORT_ACCEPTANCE_2026-10-24.md",
+              "revision": "18d30965d4e0d93f2377652e588d331fc9873013",
+              "coverage": "Reviewed Brawl CHR0 set export."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/VERIFIED_SET_EXPORT_ACCEPTANCE_2026-10-24.md",
+              "revision": "18d30965d4e0d93f2377652e588d331fc9873013",
+              "coverage": "Reviewed Brawl CHR0 set export."
+            }
+          ]
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Keep separate from native package installation."
+    },
+    {
+      "id": "CAP-SET-RUNTIME-SLOTS",
+      "feature_id": "FP-SETS",
+      "game": "shared",
+      "platform": "multiple",
+      "build": "per accepted fixture",
+      "direction": "destination",
+      "asset": "animation set",
+      "channel": "build-specific slots",
+      "operation": "packaging",
+      "status": "NOT_STARTED",
+      "required": true,
+      "summary": "Canonical complete runtime slot profiles and insertion are not qualified.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Build exact per-game/build slot profiles and protected assignment tests."
+    },
+    {
+      "id": "CAP-FILL-MISSING",
+      "feature_id": "FP-FILL-MISSING",
+      "game": "shared",
+      "platform": "multiple",
+      "build": "per accepted fixture",
+      "direction": "destination",
+      "asset": "animation set",
+      "channel": "protected native slots",
+      "operation": "editing",
+      "status": "NOT_STARTED",
+      "required": true,
+      "summary": "Protected fill of only empty target slots is unimplemented.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Implement once runtime slot profiles exist."
+    },
+    {
+      "id": "CAP-FIT-ENTRY-EXIT",
+      "feature_id": "FP-FITTING",
+      "game": "brawl",
+      "platform": "Wii",
+      "build": "RSBE01 revision 1 fixture",
+      "direction": "destination",
+      "asset": "animation",
+      "channel": "CHR0 start/end transitions",
+      "operation": "editing",
+      "status": "IN_PROGRESS",
+      "required": true,
+      "summary": "Fixed-duration fitting exists, but arbitrary contact/recovery quality remains open.",
+      "evidence": [
+        {
+          "path": "docs/FITTING_CORPUS_2026-11-01.md",
+          "revision": "3b359b9d0f39ff3201b2c8adf69e3d09525accc7",
+          "coverage": "Selected fit corpus and observed failures."
+        }
+      ],
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/FITTING_CORPUS_2026-11-01.md",
+              "revision": "3b359b9d0f39ff3201b2c8adf69e3d09525accc7",
+              "coverage": "Selected fit corpus and observed failures."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Qualify non-identical-rig fit results and reviewed reference contacts."
+    },
+    {
+      "id": "CAP-MODEL-PORT-BRAWL",
+      "feature_id": "FP-MODEL-PORT",
+      "game": "brawl",
+      "platform": "Wii",
+      "build": "RSBE01 revision 1 fixture",
+      "direction": "destination",
+      "asset": "model+texture",
+      "channel": "MDL0/BRRES",
+      "operation": "writing",
+      "status": "NOT_STARTED",
+      "required": true,
+      "summary": "Cross-game model/texture conversion to Brawl-native revision is not qualified.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Implement separate model-port writer and loss report."
+    },
+    {
+      "id": "CAP-MODEL-PORT-MELEE",
+      "feature_id": "FP-MODEL-PORT",
+      "game": "melee",
+      "platform": "GameCube",
+      "build": "USA v1.02 fixture",
+      "direction": "destination",
+      "asset": "model+texture",
+      "channel": "HSD DAT",
+      "operation": "writing",
+      "status": "NOT_STARTED",
+      "required": true,
+      "summary": "Cross-game model/texture conversion to Melee-native revision is not qualified.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Implement native HSD model writer and quality gates."
+    },
+    {
+      "id": "CAP-ASSET-MORPH",
+      "feature_id": "FP-ASSET-CHANNELS",
+      "game": "shared",
+      "platform": "multiple",
+      "build": "per accepted fixture",
+      "direction": "destination",
+      "asset": "model+animation",
+      "channel": "morph/visibility/material/non-skeletal",
+      "operation": "writing",
+      "status": "IN_PROGRESS",
+      "required": true,
+      "summary": "Some native channels preview or preserve, but cross-game end-to-end output is incomplete.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Qualify each channel and destination separately."
+    },
+    {
+      "id": "CAP-PORTABLE-MODEL-GLB",
+      "feature_id": "FP-PORTABLE-EXPORT",
+      "game": "portable",
+      "platform": "interchange",
+      "build": "format-specific",
+      "direction": "source",
+      "asset": "rigged model+texture",
+      "channel": "glTF 2.0 GLB",
+      "operation": "writing",
+      "status": "VERIFIED_BOUNDED",
+      "required": true,
+      "summary": "Model-only Brawl/Melee/BT3 GLB on named fixtures.",
+      "evidence": [
+        {
+          "path": "docs/PORTABLE_RIGGED_INTERCHANGE_2026-11-03.md",
+          "revision": "5b0b3c04dadb622b3f32a9d6bb903a42203a2584",
+          "coverage": "Bounded model-only GLB and rigged output."
+        }
+      ],
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/PORTABLE_RIGGED_INTERCHANGE_2026-11-03.md",
+              "revision": "5b0b3c04dadb622b3f32a9d6bb903a42203a2584",
+              "coverage": "Bounded model-only GLB and rigged output."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/PORTABLE_RIGGED_INTERCHANGE_2026-11-03.md",
+              "revision": "5b0b3c04dadb622b3f32a9d6bb903a42203a2584",
+              "coverage": "Bounded model-only GLB and rigged output."
+            }
+          ]
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/PORTABLE_RIGGED_INTERCHANGE_2026-11-03.md",
+              "revision": "5b0b3c04dadb622b3f32a9d6bb903a42203a2584",
+              "coverage": "Bounded model-only GLB and rigged output."
+            }
+          ]
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Broaden rigs, materials and DCC import coverage."
+    },
+    {
+      "id": "CAP-PORTABLE-ANIM-GLB",
+      "feature_id": "FP-PORTABLE-EXPORT",
+      "game": "portable",
+      "platform": "interchange",
+      "build": "format-specific",
+      "direction": "source",
+      "asset": "animation",
+      "channel": "glTF 2.0 GLB",
+      "operation": "writing",
+      "status": "VERIFIED_BOUNDED",
+      "required": true,
+      "summary": "Selected BT3 action-only and selected combined-action GLB exports.",
+      "evidence": [
+        {
+          "path": "docs/PORTABLE_ANIMATION_BUNDLES_2026-11-03.md",
+          "revision": "1802c548b101ec3e5e8714e2c639e0c08d8ea1cc",
+          "coverage": "BT3 selected action-only or combined GLB output."
+        }
+      ],
+      "verification": {
+        "numerical": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/PORTABLE_ANIMATION_BUNDLES_2026-11-03.md",
+              "revision": "1802c548b101ec3e5e8714e2c639e0c08d8ea1cc",
+              "coverage": "BT3 selected action-only or combined GLB output."
+            }
+          ]
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/PORTABLE_ANIMATION_BUNDLES_2026-11-03.md",
+              "revision": "1802c548b101ec3e5e8714e2c639e0c08d8ea1cc",
+              "coverage": "BT3 selected action-only or combined GLB output."
+            }
+          ]
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Add qualified Brawl/Melee animation interchange and timing cases."
+    },
+    {
+      "id": "CAP-PORTABLE-FBX",
+      "feature_id": "FP-PORTABLE-EXPORT",
+      "game": "portable",
+      "platform": "interchange",
+      "build": "format-specific",
+      "direction": "source",
+      "asset": "model+animation",
+      "channel": "FBX",
+      "operation": "writing",
+      "status": "NOT_STARTED",
+      "required": true,
+      "summary": "Direct in-app FBX writer is not qualified.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Implement model-only, animation-only and combined FBX with independent DCC checks."
+    },
+    {
+      "id": "CAP-PORTABLE-GLB-IMPORT",
+      "feature_id": "FP-PORTABLE-IMPORT",
+      "game": "portable",
+      "platform": "interchange",
+      "build": "format-specific",
+      "direction": "source",
+      "asset": "rigged model+animation",
+      "channel": "glTF 2.0 GLB",
+      "operation": "inventory",
+      "status": "NOT_STARTED",
+      "required": true,
+      "summary": "General portable rigged GLB import is not qualified.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Implement immutable import snapshot and rig/weight/timing validation."
+    },
+    {
+      "id": "CAP-MULTI-TARGET",
+      "feature_id": "FP-MULTI-TARGET",
+      "game": "shared",
+      "platform": "multiple",
+      "build": "per accepted fixture",
+      "direction": "destination",
+      "asset": "model+animation",
+      "channel": "multiple native formats",
+      "operation": "packaging",
+      "status": "NOT_STARTED",
+      "required": true,
+      "summary": "No one-source/many-target reviewed publication.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Implement after per-target writers and quality gates."
+    },
+    {
+      "id": "CAP-NATIVE-EXTERNAL-TOOL",
+      "feature_id": "FP-VALIDATION",
+      "game": "shared",
+      "platform": "multiple",
+      "build": "per accepted fixture",
+      "direction": "destination",
+      "asset": "model+animation",
+      "channel": "native/portable",
+      "operation": "packaging",
+      "status": "IN_PROGRESS",
+      "required": true,
+      "summary": "Some portable glTF structure tests exist; target editors and game runtimes are not covered broadly.",
+      "evidence": [
+        {
+          "path": "docs/PORTABLE_RIGGED_INTERCHANGE_2026-11-03.md",
+          "revision": "5b0b3c04dadb622b3f32a9d6bb903a42203a2584",
+          "coverage": "Bounded model-only GLB and rigged output."
+        }
+      ],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "PASS_HISTORICAL",
+          "evidence": [
+            {
+              "path": "docs/PORTABLE_RIGGED_INTERCHANGE_2026-11-03.md",
+              "revision": "5b0b3c04dadb622b3f32a9d6bb903a42203a2584",
+              "coverage": "Bounded model-only GLB and rigged output."
+            }
+          ]
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Pin BrawlCrate, Blender, Maya, 3ds Max and game build checks per output."
+    },
+    {
+      "id": "CAP-NATIVE-GAME-RUNTIME",
+      "feature_id": "FP-VALIDATION",
+      "game": "shared",
+      "platform": "multiple",
+      "build": "per accepted fixture",
+      "direction": "destination",
+      "asset": "model+animation",
+      "channel": "native game assets",
+      "operation": "packaging",
+      "status": "NOT_STARTED",
+      "required": true,
+      "summary": "No accepted actual game playback across four target games.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Run per-game build/packaging/runtime verification when native writers qualify."
+    },
+    {
+      "id": "CAP-FIGHTERZ-SOURCE",
+      "feature_id": "FP-OTHER-DONORS",
+      "game": "fighterz",
+      "platform": "Windows/PlayStation/Xbox",
+      "build": "unqualified",
+      "direction": "source",
+      "asset": "model+animation",
+      "channel": "native unqualified",
+      "operation": "inventory",
+      "status": "RESEARCH",
+      "required": true,
+      "summary": "Dragon Ball FighterZ source adapter is research-only; no qualified native inventory.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Pin one build and inspect native model, texture, skeleton and motion formats."
+    },
+    {
+      "id": "CAP-SPARKING-ZERO-SOURCE",
+      "feature_id": "FP-OTHER-DONORS",
+      "game": "sparking_zero",
+      "platform": "Windows/PlayStation/Xbox",
+      "build": "unqualified",
+      "direction": "source",
+      "asset": "model+animation",
+      "channel": "native unqualified",
+      "operation": "inventory",
+      "status": "RESEARCH",
+      "required": true,
+      "summary": "Dragon Ball: Sparking! ZERO source adapter is research-only; no qualified native inventory.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Pin one build and inspect native model, texture, skeleton and motion formats."
+    },
+    {
+      "id": "CAP-ZENKAI-SOURCE",
+      "feature_id": "FP-OTHER-DONORS",
+      "game": "zenkai",
+      "platform": "Arcade",
+      "build": "unqualified",
+      "direction": "source",
+      "asset": "model+animation",
+      "channel": "native unqualified",
+      "operation": "inventory",
+      "status": "RESEARCH",
+      "required": true,
+      "summary": "Dragon Ball Z: Zenkai Battle source adapter is research-only; no qualified native inventory.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Pin one build and inspect native model, texture, skeleton and motion formats."
+    },
+    {
+      "id": "CAP-BATTLE-STADIUM-DON-SOURCE",
+      "feature_id": "FP-OTHER-DONORS",
+      "game": "battle_stadium_don",
+      "platform": "PlayStation 2/GameCube",
+      "build": "unqualified",
+      "direction": "source",
+      "asset": "model+animation",
+      "channel": "native unqualified",
+      "operation": "inventory",
+      "status": "RESEARCH",
+      "required": true,
+      "summary": "Battle Stadium D.O.N source adapter is research-only; no qualified native inventory.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Pin one build and inspect native model, texture, skeleton and motion formats."
+    },
+    {
+      "id": "CAP-BUDOKAI3-SOURCE",
+      "feature_id": "FP-OTHER-DONORS",
+      "game": "budokai3",
+      "platform": "PlayStation 2",
+      "build": "unqualified",
+      "direction": "source",
+      "asset": "model+animation",
+      "channel": "native unqualified",
+      "operation": "inventory",
+      "status": "RESEARCH",
+      "required": true,
+      "summary": "Dragon Ball Z: Budokai 3 source adapter is research-only; no qualified native inventory.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Pin one build and inspect native model, texture, skeleton and motion formats."
+    },
+    {
+      "id": "CAP-XENOVERSE-SOURCE",
+      "feature_id": "FP-OTHER-DONORS",
+      "game": "xenoverse",
+      "platform": "multiple",
+      "build": "unqualified",
+      "direction": "source",
+      "asset": "model+animation",
+      "channel": "native unqualified",
+      "operation": "inventory",
+      "status": "RESEARCH",
+      "required": true,
+      "summary": "Dragon Ball Xenoverse 1/2 source adapter is research-only; no qualified native inventory.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Pin one build and inspect native model, texture, skeleton and motion formats."
+    },
+    {
+      "id": "CAP-NARUTO-SOURCE",
+      "feature_id": "FP-OTHER-DONORS",
+      "game": "naruto",
+      "platform": "multiple",
+      "build": "unqualified",
+      "direction": "source",
+      "asset": "model+animation",
+      "channel": "native unqualified",
+      "operation": "inventory",
+      "status": "RESEARCH",
+      "required": true,
+      "summary": "Naruto games source adapter is research-only; no qualified native inventory.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Pin one build and inspect native model, texture, skeleton and motion formats."
+    },
+    {
+      "id": "CAP-ONE-PIECE-SOURCE",
+      "feature_id": "FP-OTHER-DONORS",
+      "game": "one_piece",
+      "platform": "multiple",
+      "build": "unqualified",
+      "direction": "source",
+      "asset": "model+animation",
+      "channel": "native unqualified",
+      "operation": "inventory",
+      "status": "RESEARCH",
+      "required": true,
+      "summary": "One Piece games source adapter is research-only; no qualified native inventory.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Pin one build and inspect native model, texture, skeleton and motion formats."
+    },
+    {
+      "id": "CAP-JUMP-FORCE-SOURCE",
+      "feature_id": "FP-OTHER-DONORS",
+      "game": "jump_force",
+      "platform": "multiple",
+      "build": "unqualified",
+      "direction": "source",
+      "asset": "model+animation",
+      "channel": "native unqualified",
+      "operation": "inventory",
+      "status": "RESEARCH",
+      "required": true,
+      "summary": "Jump Force source adapter is research-only; no qualified native inventory.",
+      "evidence": [],
+      "verification": {
+        "numerical": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "native_reopen": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "visual": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "human_input": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "external_tool": {
+          "state": "NOT_RUN",
+          "evidence": []
+        },
+        "game_runtime": {
+          "state": "NOT_RUN",
+          "evidence": []
+        }
+      },
+      "limitations": [],
+      "next_step": "Pin one build and inspect native model, texture, skeleton and motion formats."
+    }
+  ],
+  "retirements": []
+}

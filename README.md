@@ -1,12 +1,15 @@
 # Fighterport
 
 This is the public unified source repository at https://github.com/DoctorFlux/Fighterport.
-It imports the BrawlCrate-based Next preview.14 source and integrated owned engine.
-The current bounded implementation is **preview.96 exact-rig retarget quality**;
-see the [current acceptance record](docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md),
-[one current M2 task](docs/plans/current.md), and
-[CHR0 format map](docs/CHR0_BINARY_FORMAT.md). Broader retarget quality,
-native game acceptance and the authentic animation size gap remain open.
+It preserves the BrawlCrate-based Next application and integrated owned engine.
+For the latest accepted revision, active task, exact next action and known limits,
+read [project state](docs/PROJECT_STATE.md),
+[the one current task](docs/plans/current.md), and
+[the feature ledger](docs/FEATURE_STATUS.json). The complete approved scope is in
+[the master plan](docs/MASTER_PLAN.md); the [generated capability table](docs/FORMAT_SUPPORT.md)
+summarizes game operations. The [preview.96 acceptance record](docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md)
+is bounded historical evidence for the exact-rig fix, not a general retarget or game-playback claim.
+The [CHR0 format map](docs/CHR0_BINARY_FORMAT.md) records the native size investigation.
 See the [current-animation fitting acceptance](docs/APPLY_CURRENT_FIT_ACCEPTANCE_2026-10-27.md),
 [recovery setup acceptance](docs/RECOVERY_SETUP_ACCEPTANCE_2026-10-26.md),
 [fitting reference acceptance](docs/FITTING_REFERENCES_ACCEPTANCE_2026-10-26.md),
@@ -15,9 +18,7 @@ and the [source/fit and saved-source acceptance](docs/SOURCE_FIT_WORKFLOW_ACCEPT
 The two predecessor repositories are private preserved histories.
 Upstream copyrights, licenses and notices remain intact.
 
-Read the [full product plan](docs/MASTER_PLAN.md),
-[one current M2 task](docs/plans/current.md), and
-[source-import record](docs/SOURCE_IMPORT_2026-10-24.md).
+For source provenance, see the [source-import record](docs/SOURCE_IMPORT_2026-10-24.md).
 The supplied workspace image guided the first simpler-workspace increment. The
 native app and executable name are retained; broader game adapters and universal
 contact quality remain unfinished.
