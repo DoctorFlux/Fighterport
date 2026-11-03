@@ -3,6 +3,7 @@ using BrawlCrate.Studio.Retargeting;
 using BrawlLib.SSBB.ResourceNodes;
 using System;
 using System.Diagnostics;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -38,15 +39,38 @@ internal static partial class Program
             if(clip.FrameCount!=f.SourceFrames||clip.Version!=f.SourceVersion||clip.Loop!=f.SourceLoop)throw new InvalidDataException("Exact native member timing differs.");
             string sourceState=NativeOwnership(sm),targetState=NativeOwnership(tm),sourceContent=NativeAnimationOptimization.SourceContentKey(clip);
             string stage="master",failure=null;bool master=false,channel=false,roots=false;RetargetKeyframeReport quality=null;string diagnostic=null;
+            float[] witnessTimes=TransferWitnessTimes(clip);
+            var witness=new Dictionary<string,object>(StringComparer.Ordinal)
+            {
+                {"Schema","fighterport-retarget-stage-witness-1"},{"SourceModelSha256",hashes[sourcePath]},
+                {"TargetModelSha256",hashes[targetPath]},{"SourceMotionSha256",hashes[motionPath]},
+                {"SourceRig",source.Fingerprint},{"TargetRig",target.Fingerprint},
+                {"SourceMember",Member(clip)},{"SourceClip",clip.Name},
+                {"Times",witnessTimes},{"Stage","pre-bake"},
+                {"AuthoredEntries",clip.Children.OfType<CHR0EntryNode>().Count()},
+                {"AuthoredKeys",clip.Children.OfType<CHR0EntryNode>().Sum(e=>e.KeyArrays.Sum(a=>(long)a.KeyCount))}
+            };
+            try { witness["SourceMappingSolver"] = CaptureTransferPreflight(source,target,sm,tm,clip,witnessTimes); }
+            catch(Exception error) { witness["PreflightFailure"] = WitnessError(error); }
+            WriteTransferWitness(output,witness);
             var watch=Stopwatch.StartNew();long masterMs=0,channelMs=0;
             try
             {
                 using(var result=BrawlRetargeter.Bake(source,target,clip,groundMode:GroundContactMode.Auto,progress:(p,message)=>Console.WriteLine(watch.ElapsedMilliseconds+" ms "+p+"% "+message)))
                 {
+                    witness["Stage"]="baked";
+                    try { witness["ContactCorrection"] = CaptureTransferContacts(source,target,tm,clip,result,witnessTimes); }
+                    catch(Exception error) { witness["ContactWitnessFailure"] = WitnessError(error); }
                     result.Animation.ExportChecked(Path.Combine(output,"dense-target.chr0"));masterMs=watch.ElapsedMilliseconds;
                     using(var fresh=NodeFactory.FromFile(null,Path.Combine(output,"dense-target.chr0")) as CHR0Node)
+                    {
                         if(fresh==null||NativeAnimationOptimization.ContentKey(fresh)!=NativeAnimationOptimization.ContentKey(result.Animation))throw new InvalidDataException("Full-quality target changed on fresh native reopen.");
+                        try { witness["BakedToReopened"] = CompareTransferNative(target,tm,result.Animation,fresh,witnessTimes,result.Contacts); }
+                        catch(Exception error) { witness["MasterNativeWitnessFailure"] = WitnessError(error); }
+                    }
                     master=true;
+                    witness["Stage"]="master-reopened";
+                    WriteTransferWitness(output,witness);
                     var controls=result.Plan.TargetMotionControls.Select(i=>target.Bones[i].Name).ToArray();
                     string protection=ProtectedTransferKeys(result.Animation,controls);
                     File.WriteAllText(Path.Combine(output,"master-report.txt"),result.OptimizationReport??"");
@@ -58,11 +82,22 @@ internal static partial class Program
                     if(!roots)throw new InvalidDataException("Protected motion controls changed in default representation.");
                     string file=Path.Combine(output,"current-target.chr0");result.Animation.ExportChecked(file);
                     using(var fresh=NodeFactory.FromFile(null,file) as CHR0Node)
+                    {
                         if(fresh==null||NativeAnimationOptimization.ContentKey(fresh)!=NativeAnimationOptimization.ContentKey(result.Animation))throw new InvalidDataException("Default native export changed on fresh reopen.");
+                        using(var finished=NodeFactory.FromFile(null,Path.Combine(output,"dense-target.chr0")) as CHR0Node)
+                        {
+                            if(finished==null)throw new InvalidDataException("Full-quality target master is unavailable for sparse-output comparison.");
+                            try { witness["FinishedMasterToDefault"] = CompareTransferNative(target,tm,finished,fresh,witnessTimes); }
+                            catch(Exception error) { witness["DefaultNativeWitnessFailure"] = WitnessError(error); }
+                        }
+                    }
                     channel=true;
+                    witness["Stage"]="default-reopened";
                 }
             }
-            catch(Exception error){failure=error.ToString();if(error.Data.Contains("NativeCurveWitness"))diagnostic=Convert.ToString(error.Data["NativeCurveWitness"]);}
+            catch(Exception error){failure=error.ToString();if(error.Data.Contains("NativeCurveWitness"))diagnostic=Convert.ToString(error.Data["NativeCurveWitness"]);
+                witness["Stage"]="failed: "+stage;witness["Failure"] = WitnessError(error);if(diagnostic!=null)witness["NativeCurveWitness"]=diagnostic.Length<=4096?diagnostic:diagnostic.Substring(0,4096);}
+            WriteTransferWitness(output,witness);
             bool state=sourceState==NativeOwnership(sm)&&targetState==NativeOwnership(tm)&&sourceContent==NativeAnimationOptimization.SourceContentKey(clip);
             bool originals=hashes.All(p=>FighterProject.HashFile(p.Key)==p.Value);
             File.WriteAllText(Path.Combine(output,"case.json"),json.Serialize(new{MasterReady=master,DefaultReady=channel,ProtectedControlsExact=roots,NativeOwnershipUnchanged=state,OriginalFilesUnchanged=originals,

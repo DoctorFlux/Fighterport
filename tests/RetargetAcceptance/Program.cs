@@ -19,12 +19,14 @@ internal static partial class Program
                 (BrawlCrate.Studio.Retargeting.RetargetKeyframeMode)Enum.Parse(typeof(BrawlCrate.Studio.Retargeting.RetargetKeyframeMode),args[5],true));
             if(args.Length==6&&args[0]=="--retarget-case")return NativeTransferCase(args[1],args[2],args[3],args[4],args[5]);
             if(args.Length==3&&args[0]=="--mapping-audit")return MappingAudit(args[1],args[2]);
+            if(args.Length==2&&args[0]=="--branched-head-characterization")return BranchedHeadCharacterizationChecks(args[1]);
             if(args.Length==2&&args[0]=="--terminal-contacts")return TerminalContactChecks(args[1]);
             if(args.Length==6&&args[0]=="--native-pair-fixture")return NativePairFixture(args[1],args[2],args[3],args[4],args[5]);
             if(args.Length==2&&args[0]=="--adaptive-budget")return AdaptiveBudgetChecks(args[1]);
             if(args.Length==2&&args[0]=="--adaptive-budget-baseline")return AdaptiveBudgetChecks(args[1],false);
             if(args.Length==7&&args[0]=="--fractional-probe")return FractionalRetargetProbe(args[1],args[2],args[3],args[4],args[5],args[6]);
             if(args.Length==7&&args[0]=="--verify-trajectory")return VerifyRetargetTrajectory(args[1],args[2],args[3],args[4],args[5],args[6]);
+            if(args.Length==8&&args[0]=="--verify-trajectory")return VerifyRetargetTrajectory(args[1],args[2],args[3],args[4],args[5],args[6],args[7]);
             if(args.Length==4&&args[0]=="--native-member-audit")return NativeMemberAudit(args[1],args[2],args[3]);
             if(args.Length==6&&args[0]=="--compare-contact-proposal")return CompareContactProposal(args[1],args[2],args[3],args[4],args[5]);
             if(args.Length==4 && args[0]=="--motion-controls")return MotionControls(args[1],args[2],args[3]);

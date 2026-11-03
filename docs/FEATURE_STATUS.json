@@ -783,23 +783,32 @@
           "path": "docs/MELEE_SHARED_BRIDGE_2026-11-02.md",
           "revision": "40cf61800792a26409fdbdafd93d42d9086e0922",
           "coverage": "Bounded Melee/Brawl shared rig bridge and retarget fixture results."
+        },
+        {
+          "path": "docs/RETARGET_NONIDENTICAL_CHECKPOINT_2026-11-03.md",
+          "revision": "HEAD+diff:5654c133ab368d41e3f57201d28c109924e6b835",
+          "coverage": "Fresh exact Sonic/Mario stage and whole-mesh witness identifies a quill-as-head automatic mapping defect before CHR0 writing; the changed code refuses that mapping. Link/Samus bidirectional native/contact regressions pass. Shared cranial mapping and whole-body clearance remain open."
         }
       ],
       "references": {
         "code": [
-          "BrawlCrate/Studio/Retargeting/BrawlRetargeter.cs"
+          "BrawlCrate/Studio/Retargeting/BrawlRetargeter.cs",
+          "BrawlCrate/Studio/Retargeting/SkeletonCharacterizer.cs"
         ],
         "tests": [
-          "scripts/Test-RetargetQualityPairs.ps1"
+          "scripts/Test-RetargetQualityPairs.ps1",
+          "tests/RetargetAcceptance/BranchedHeadCharacterization.cs",
+          "tests/RetargetAcceptance/TransferWitness.cs"
         ],
         "receipts": [
           "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md",
-          "docs/MELEE_SHARED_BRIDGE_2026-11-02.md"
+          "docs/MELEE_SHARED_BRIDGE_2026-11-02.md",
+          "docs/RETARGET_NONIDENTICAL_CHECKPOINT_2026-11-03.md"
         ]
       },
       "verification": {
         "numerical": {
-          "state": "PASS_HISTORICAL",
+          "state": "PASS_CURRENT",
           "evidence": [
             {
               "path": "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md",
@@ -810,11 +819,16 @@
               "path": "docs/MELEE_SHARED_BRIDGE_2026-11-02.md",
               "revision": "40cf61800792a26409fdbdafd93d42d9086e0922",
               "coverage": "Bounded Melee/Brawl shared rig bridge and retarget fixture results."
+            },
+            {
+              "path": "docs/RETARGET_NONIDENTICAL_CHECKPOINT_2026-11-03.md",
+              "revision": "HEAD+diff:5654c133ab368d41e3f57201d28c109924e6b835",
+              "coverage": "20 procedural head-mapping checks, exact Sonic ambiguity refusal and Link/Samus bidirectional 430-sample contact oracles; Sonic whole-body clearance remains unresolved."
             }
           ]
         },
         "native_reopen": {
-          "state": "PASS_HISTORICAL",
+          "state": "PASS_CURRENT",
           "evidence": [
             {
               "path": "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md",
@@ -825,6 +839,11 @@
               "path": "docs/MELEE_SHARED_BRIDGE_2026-11-02.md",
               "revision": "40cf61800792a26409fdbdafd93d42d9086e0922",
               "coverage": "Bounded Melee/Brawl shared rig bridge and retarget fixture results."
+            },
+            {
+              "path": "docs/RETARGET_NONIDENTICAL_CHECKPOINT_2026-11-03.md",
+              "revision": "HEAD+diff:5654c133ab368d41e3f57201d28c109924e6b835",
+              "coverage": "Post-guard Link/Samus AttackS3S in both directions: exact-member full-quality/default CHR0 reopened, source/target ownership and protected roots unchanged; Sonic refusal writes no CHR0."
             }
           ]
         },
@@ -846,9 +865,10 @@
         }
       },
       "limitations": [
-        "Peach/Fox bounded trajectory checks do not establish arbitrary cross-proportion pose, skin or contact quality."
+        "Peach/Fox and Link/Samus bounded trajectory checks do not establish arbitrary cross-proportion pose, skin or contact quality.",
+        "Sonic AttackS3S to Mario is now explicitly blocked by ambiguous cranial mapping; prior target whole-body floor crossing predates serialization and remains unresolved."
       ],
-      "next_step": "Reproduce one non-identical-rig non-idle failure with full witnesses, then fix the first demonstrated general cause."
+      "next_step": "Qualify a structural/skin-backed shared cranial-parent or reviewed head mapping, rerun exact Sonic-to-Mario head/hand motion and native checks, then address source-relative whole-body clearance without weakening contact gates."
     },
     {
       "id": "FP-ROOT-MOTION",

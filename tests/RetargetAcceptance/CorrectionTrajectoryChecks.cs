@@ -114,14 +114,34 @@ internal static partial class Program
         }
     }
 
-    static int VerifyRetargetTrajectory(string sourcePath,string targetPath,string motionPath,string name,string animationPath,string output)
+    static int VerifyRetargetTrajectory(string sourcePath,string targetPath,string motionPath,string name,string animationPath,string output,string manifestPath=null)
     {
         Directory.CreateDirectory(output);
+        TransferFixture fixture=null;
+        if(manifestPath!=null)
+        {
+            if(new FileInfo(manifestPath).Length>16384)throw new InvalidDataException("Unbounded trajectory fixture manifest.");
+            fixture=new JavaScriptSerializer().Deserialize<TransferFixture>(File.ReadAllText(manifestPath));
+            if(fixture==null||fixture.Schema!="fighterport-authentic-export-fixture-1"||fixture.SourceClipName!=name||
+                !Same(FighterProject.HashFile(sourcePath),fixture.SourceModelSha256)||
+                !Same(FighterProject.HashFile(targetPath),fixture.TargetModelSha256)||
+                !Same(FighterProject.HashFile(motionPath),fixture.SourceClipSha256))
+                throw new InvalidDataException("Exact trajectory fixture input hashes or clip name differ.");
+        }
         using(var s=NodeFactory.FromFile(null,sourcePath))using(var t=NodeFactory.FromFile(null,targetPath))using(var m=NodeFactory.FromFile(null,motionPath))using(var saved=NodeFactory.FromFile(null,animationPath) as CHR0Node)
         {
-            var source=BrawlRetargeter.Capture(Walk(s).OfType<MDL0Node>().First(n=>!n.Name.ToLowerInvariant().Contains("shadow")));
-            var target=BrawlRetargeter.Capture(Walk(t).OfType<MDL0Node>().First(n=>!n.Name.ToLowerInvariant().Contains("shadow")));
-            var clip=Walk(m).OfType<CHR0Node>().Single(c=>c.Name==name);var plan=new HumanoidRetargeter(source.Rig,target.Rig);
+            string Member(ResourceNode node)=>node.Parent==null?"root":Member(node.Parent)+"/"+node.Index;
+            var sourceModel=fixture==null?Walk(s).OfType<MDL0Node>().First(n=>!n.Name.ToLowerInvariant().Contains("shadow")):
+                Walk(s).OfType<MDL0Node>().Single(model=>Same(BrawlRetargeter.SkeletonFingerprint(model),fixture.SourceRigFingerprint));
+            var targetModel=fixture==null?Walk(t).OfType<MDL0Node>().First(n=>!n.Name.ToLowerInvariant().Contains("shadow")):
+                Walk(t).OfType<MDL0Node>().Single(model=>Same(BrawlRetargeter.SkeletonFingerprint(model),fixture.TargetRigFingerprint));
+            var source=BrawlRetargeter.Capture(sourceModel);
+            var target=BrawlRetargeter.Capture(targetModel);
+            var clip=fixture==null?Walk(m).OfType<CHR0Node>().Single(c=>c.Name==name):
+                Walk(m).OfType<CHR0Node>().Single(c=>c.Name==name&&Member(c)==fixture.SourceNativeMember);
+            if(fixture!=null&&(clip.FrameCount!=fixture.SourceFrames||clip.Version!=fixture.SourceVersion||clip.Loop!=fixture.SourceLoop))
+                throw new InvalidDataException("Exact trajectory fixture native member timing differs.");
+            var plan=new HumanoidRetargeter(source.Rig,target.Rig);
             int last=clip.Loop?clip.FrameCount:clip.FrameCount-1;
             var contacts=new ContactMotion(plan,time=>BrawlRetargeter.Sample(source,clip,time),last,true,requireFloorEvidence:true,loop:clip.Loop);
             double supportOrientation=0,intendedOrientation=0;float orientationTime=0;string orientationRole=null;
@@ -167,7 +187,12 @@ internal static partial class Program
                     if(goal.Marker!=null&&goal.Lock>.99f){var delta=goal.Marker.Evaluate(actual)-goal.Anchor;delta-=target.Rig.GroundNormal*Vector3.Dot(delta,target.Rig.GroundNormal);if(delta.Length()>lockDrift){lockDrift=delta.Length();lockTime=time;lockRole=pair.Key;} var rawDelta=goal.Marker.Evaluate(expected)-goal.Anchor;rawDelta-=target.Rig.GroundNormal*Vector3.Dot(rawDelta,target.Rig.GroundNormal);rawLockDrift=Math.Max(rawLockDrift,rawDelta.Length());}
                 }
             }
-            var report=new{Clip=name,Passed=maxAngle<=.025&&maxTranslation<=.0002&&maxScale<=.00001&&rootError<.0001&&nativePoseError<.01&&nativeSurfaceError<.01&&penetration<=contactBound&&nativePenetration<=contactBound&&lockDrift<=contactBound&&supportOrientation<=.25,Samples=samples,OriginalSolvedAnchors=last*8+1,MaximumAnchorOrientation=maxAngle,MaximumAnchorTranslation=maxTranslation,MaximumAnchorScale=maxScale,MaximumAnchorWorldPosition=maxWorld,RootLocalError=rootError,FullContactSamples=contactSamples,MaximumPenetration=penetration,PenetrationTime=penetrationTime,PenetrationRole=penetrationRole,NativePenetration=nativePenetration,ContactPositionBound=contactBound,NativeBoneAgreement=nativePoseError,NativeSurfaceAgreement=nativeSurfaceError,RawSolverPenetration=rawPenetration,MaximumPlanarLockDrift=lockDrift,RawPlanarLockDrift=rawLockDrift,PlanarLockTime=lockTime,PlanarLockRole=lockRole,SupportOrientationAgainstRawNext=supportOrientation,SupportOrientationTime=orientationTime,SupportOrientationRole=orientationRole,AllSkinInfluences=true,ContinuousProof=false,RawSubframeOptimaReference=false};
+            var report=new{Clip=name,SourceMember=Member(clip),FixtureIdentityVerified=fixture!=null,
+                SourceRig=source.Fingerprint,TargetRig=target.Fingerprint,
+                Passed=maxAngle<=.025&&maxTranslation<=.0002&&maxScale<=.00001&&rootError<.0001&&nativePoseError<.01&&nativeSurfaceError<.01&&penetration<=contactBound&&nativePenetration<=contactBound&&lockDrift<=contactBound&&supportOrientation<=.25,Samples=samples,OriginalSolvedAnchors=last*8+1,MaximumAnchorOrientation=maxAngle,MaximumAnchorTranslation=maxTranslation,MaximumAnchorScale=maxScale,MaximumAnchorWorldPosition=maxWorld,RootLocalError=rootError,FullContactSamples=contactSamples,MaximumPenetration=penetration,PenetrationTime=penetrationTime,PenetrationRole=penetrationRole,NativePenetration=nativePenetration,ContactPositionBound=contactBound,NativeBoneAgreement=nativePoseError,NativeSurfaceAgreement=nativeSurfaceError,RawSolverPenetration=rawPenetration,MaximumPlanarLockDrift=lockDrift,RawPlanarLockDrift=rawLockDrift,PlanarLockTime=lockTime,PlanarLockRole=lockRole,SupportOrientationAgainstRawNext=supportOrientation,SupportOrientationTime=orientationTime,SupportOrientationRole=orientationRole,
+                ContactPatchNativeVertexCount=nativeSurfaces.Sum(pair=>pair.Value.Length),FullSkinComparisonPerformed=false,
+                FullSkinComparison="The trajectory oracle checks native bone matrices and selected support patches. The transfer-case witness separately compares every target native vertex against the same finished master at bounded diagnostic times.",
+                ContinuousProof=false,RawSubframeOptimaReference=false};
             File.WriteAllText(Path.Combine(output,"trajectory-verification.json"),new JavaScriptSerializer().Serialize(report));
             File.WriteAllText(Path.Combine(output,"intended-orientation-verification.json"),new JavaScriptSerializer().Serialize(new{Passed=intendedOrientation<=.25,MaximumDegrees=intendedOrientation,LimitDegrees=.25,Reference=ContactMotion.EndOrientationPolicy}));
             File.WriteAllText(Path.Combine(output,"support-orientation-witnesses.json"),new JavaScriptSerializer().Serialize(orientationWitnesses));

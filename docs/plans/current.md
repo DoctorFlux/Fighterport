@@ -31,28 +31,28 @@ Completion of this one task requires a pinned fixture and before/after witness s
 - `scripts/Test-RetargetQualityPairs.ps1`, `scripts/Test-BackgroundCapture.ps1`, `scripts/Build.ps1`.
 - [Automatic retargeting contract](../engine/AUTOMATIC_RETARGETING.md), [engine boundary](../ENGINE_INTEGRATION.md), [preview.96 evidence](../RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md).
 
-### Actual command starting point
+### Actual command pattern and local evidence
 
-The following is a **next-task command**, not a test run during the memory setup. From the checkout, with the same ignored local tool/fixture arrangement as preview.96:
+From the checkout, the current native build and exact-member tests use the ignored fixture manifest and a **fresh** ignored output directory. The authentic input hashes, member identity, actual runs and findings are in [the 3 November unequal-rig checkpoint](../RETARGET_NONIDENTICAL_CHECKPOINT_2026-11-03.md). Do not publish the manifest's private paths or generated CHR0s.
 
 ```powershell
 $workspace = (Resolve-Path ../..).Path
-$manifest = Get-Content -LiteralPath (Join-Path $workspace 'artifacts/Fighterport-attacks655-20261101/corpus.json') -Raw | ConvertFrom-Json
-$case = @($manifest.Cases | Where-Object Id -eq 'Link-Samus-AttackS3S')
-if ($case.Count -ne 1) { throw 'Exact fixture unavailable' }
-$native = Join-Path $workspace 'artifacts/Fighterport-quality96-build/native'
-$output = Join-Path $workspace 'artifacts/Fighterport-quality-next-link-samus'
-if (Test-Path -LiteralPath $output) { throw 'Use a new ignored evidence directory' }
-& (Join-Path $native 'RetargetAcceptance.exe') --retarget-case $case[0].SourceModel $case[0].TargetModel $case[0].Motion $case[0].Fixture $output
+$native = Join-Path $workspace 'artifacts/Fighterport-quality-headguard-build/native'
+& scripts/Build.ps1 -NativeOnly -NativeDirectory $native
+& <VS2022-MSBuild> tests/RetargetAcceptance/RetargetAcceptance.csproj /restore /t:Build /p:Configuration=Release /p:Platform=x86 /p:BuildProjectReferences=false "/p:OutDir=$native\" /nologo /v:minimal
+& (Join-Path $native 'RetargetAcceptance.exe') --branched-head-characterization <fresh-ignored-output>
+& (Join-Path $native 'RetargetAcceptance.exe') --retarget-case <source-model> <target-model> <motion> <exact-fixture> <fresh-ignored-output>
+& (Join-Path $native 'RetargetAcceptance.exe') --verify-trajectory <source-model> <target-model> <motion> AttackS3S <saved-chr0> <fresh-ignored-output> <exact-fixture>
 ```
 
-This first reproduction needs added complete mapping/skin/contact witnesses before it can satisfy the task. The old preview.96 binary is a reference, not automatically the current build after a code edit. The exact local fixture and tools were present when this memory checkpoint was prepared; a future session must check again. Native build commands and tool versions are pinned in the preview.96 record. Use a fresh build for changed application code.
+The historical Sonic→Mario master/default outputs were generated **before** the mapping guard on the same starting application revision and retained for stage comparison. The post-guard exact Sonic run must refuse the ambiguous automatic head role before output. Link↔Samus post-guard runs qualify only their named-head and existing contact/native cases. Do not treat a refused Sonic clip or a reopened CHR0 as accepted motion.
 
 ## Progress and exact next step
 
 - **Accepted historical baseline:** preview.96 guarded identical-rig native track retention; Peach `AttackS3S`, Mario `AttackAirHi`, Peach `AttackAirN` and the recorded Peach/Fox pairs passed their bounded checks. These were **not rerun** by the memory setup.
-- **Current task progress:** fixture availability inspected, one non-idle unequal-rig pair selected for first reproduction. No new product failure witness or solver change has yet been recorded for this task.
+- **Current task progress:** Link↔Samus `AttackS3S` passed fresh exact-member native/contact checks in both directions. The exact Sonic→Mario `AttackS3S` case reproduced an early whole-body floor crossing before CHR0 writing; its source already crosses its floor, and its target crossing is larger. The read-only stage harness now distinguishes source, mapping, raw/corrected solver, finished master and reopened native skin values. Sonic's automatic head role was demonstrably an animated quill branch; the general ambiguity guard refuses that mapping rather than producing a wrongly driven target head. See the dated checkpoint for hashes, finite coverage and numbers. This does **not** fix shared-neck/head anatomy or whole-body clearance.
 - **Repository-memory checkpoint:** 12 documentation validator tests and 21/31/66 ledger coverage checks passed; a fresh-context read-only recovery simulation found the task and exposed two links that were corrected. These checks do not advance the retarget-quality acceptance gate.
-- **Known open limits:** arbitrary unequal-rig action/contact quality, complete game adapters, human use, physical input/DPI and actual game playback are unverified. Some contact/context and advanced Apply routes retain prior failures; consult their dated records.
-- **Blockers:** none known for starting read-only reproduction; private fixtures remain local and must be rechecked. If the selected pair passes, use another unqualified real pair and record the no-failure result, not an invented failure.
-- **Next unfinished action:** run the exact `Link-Samus-AttackS3S` native reproduction above on a fresh current binary and capture before-encode mapping/solver plus post-reopen skin/contact witnesses. This is the first action of the next product-work session.
+- **Checks passed on the changed code:** native build; scoped harness build; 20 branched-head procedural assertions; 94 coordinate-frame checks; six existing Brawl rig captures; exact Sonic ambiguity refusal without output; Link↔Samus native/full-quality/default reopen and guarded trajectory oracles; wrong-direction exact manifest rejection; `git diff --check`; 12 documentation-memory tests and 21/31/66 ledger checks. Existing fixtures and outputs remain ignored. These latter checks do not test animation quality.
+- **Failed/limited observations:** the historical Sonic target reaches -2.874385 native units below its reviewed floor after fresh native reopen, versus -2.095862 in the source's own floor coordinates; foot-patch checks still pass. The source itself penetrates, so this is not a standalone proof of an unacceptable absolute floor criterion. The quill-as-head mapping is independently wrong and now refused. Finite diagnostic samples do not prove continuous motion or visual/game acceptance. No fresh visual, human, external-editor or runtime check was run.
+- **Dependency:** Sonic's skeleton has no automatically established distinct central head joint. A safe shared-neck/head or reviewed cranial policy is needed before automatic porting can resume; assigning the neck to both roles without a qualified transfer rule may duplicate scale/translation. Whole-body clearance/source intent remains a separate unresolved quality gate.
+- **Next unfinished action:** implement a general reviewed cranial-parent mapping/solver policy for rigs with branching head geometry, using structural and complete skin-influence evidence; freeze a source-to-target head/hand motion witness on the exact Sonic fixture. Rerun the exact case and Link↔Samus/native/root regressions. Then use the new full-mesh witness to address source-relative body clearance without inventing a floor contact or weakening foot/contact gates. Keep this task open until a corrected non-identical-rig output and inspected offscreen result qualify.

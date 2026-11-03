@@ -158,8 +158,24 @@ namespace BrawlCrate.Studio.Retargeting
                 int tip=subtree(headBranch[0]).OrderByDescending(i=>p[i].Y).First();int[] path=Path(rig,headBranch[0],tip);
                 if(path.Length>=2)
                 {
-                    int[] heads=path.Skip(1).Where(i=>children[i].Length>=2).ToArray();
-                    put("neck",path[0]);put("head",heads.Length>0?heads[0]:path[Math.Max(1,path.Length-2)]);
+                    put("neck",path[0]);
+                    if(!result.Roles.ContainsKey("head"))
+                    {
+                        int neck=result.Roles.TryGetValue("neck",out int mappedNeck)?mappedNeck:path[0];
+                        int[] neckPath=desc(tip,neck)?Path(rig,neck,tip):new int[0];
+                        // A highest tip in one of several separate cranial branches
+                        // does not identify a central head joint. Coincident helper
+                        // branches carry no distinct bind-space evidence; any
+                        // nonzero branch remains material until a map is reviewed.
+                        int branches=children[neck].Count(child=>subtree(child).Any(i=>p[i]!=p[neck]));
+                        if(branches>1 || neckPath.Length<2)
+                            result.Warnings.Add("The head has several distinct branches below the neck or no unique neck-to-head path. Review the head mapping; no appendage tip was assigned as the head.");
+                        else
+                        {
+                            int[] heads=neckPath.Skip(1).Where(i=>children[i].Length>=2).ToArray();
+                            put("head",heads.Length>0?heads[0]:neckPath[Math.Max(1,neckPath.Length-2)]);
+                        }
+                    }
                 }
             }
             foreach(int branch in children[chest].Where(c=>subtree(c).Any(j=>Math.Abs(Vector3.Dot(p[j]-p[chest],lateral))>height*0.18f)))
