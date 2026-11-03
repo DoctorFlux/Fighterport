@@ -31,6 +31,9 @@ namespace BrawlCrate.UI.Model_Previewer
     {
         private NativeViewerItem[] _nativeActions;
         private Action<int> _nativeActionSelected;
+        private Action<int> _nativeActionExport;
+        private ContextMenuStrip _nativeAnimationExportMenu;
+        private int? _nativeContextActionId;
         private Action<int,bool> _nativeObjectVisibility,_nativeTextureVisibility;
         private bool _nativePopulating;
         private int _nativePriorAnimsHeight;
@@ -42,7 +45,7 @@ namespace BrawlCrate.UI.Model_Previewer
 
         public void ShowNativeViewer(Control selectors,NativeViewerItem[] actions,NativeViewerItem[] objects,
             NativeViewerItem[] textures,Action<int> selectAction,Action<int,bool> objectVisibility,
-            Action<int,bool> textureVisibility)
+            Action<int,bool> textureVisibility,Action<int> exportAction=null)
         {
             if(!NativeViewerActive)
             {
@@ -54,6 +57,8 @@ namespace BrawlCrate.UI.Model_Previewer
             }
             _nativeActions=actions??new NativeViewerItem[0];
             _nativeActionSelected=selectAction;
+            _nativeActionExport=exportAction;
+            _nativeContextActionId=null;
             _nativeObjectVisibility=objectVisibility;
             _nativeTextureVisibility=textureVisibility;
             _nativePopulating=true;_updating=true;
@@ -68,7 +73,19 @@ namespace BrawlCrate.UI.Model_Previewer
                 }
                 panel1.Height=84;panel1.Visible=true;chkSyncVis.Visible=false;
                 pnlAnims.Height=Math.Max(240,_nativePriorAnimsHeight);
-                listAnims.ContextMenuStrip=null;
+                if(_nativeAnimationExportMenu==null)
+                {
+                    _nativeAnimationExportMenu=new ContextMenuStrip{ Name="nativeAnimationExportMenu" };
+                    var export=new ToolStripMenuItem("Export selected animation...")
+                        {Name="nativeExportSelectedAnimation"};
+                    export.Click+=(s,e)=>{
+                        if(_nativeContextActionId.HasValue)_nativeActionExport?.Invoke(_nativeContextActionId.Value);
+                    };
+                    _nativeAnimationExportMenu.Items.Add(export);
+                    _nativeAnimationExportMenu.Opening+=(s,e)=>
+                        e.Cancel=_nativeActionExport==null||!_nativeContextActionId.HasValue;
+                }
+                listAnims.ContextMenuStrip=exportAction==null?null:_nativeAnimationExportMenu;
                 listAnims.ShowItemToolTips=true;
                 lstTextures.ContextMenuStrip=null;
                 lstObjects.Items.Clear();lstTextures.Items.Clear();
@@ -84,6 +101,7 @@ namespace BrawlCrate.UI.Model_Previewer
             if(!NativeViewerActive)return;
             var item=listAnims.Items.Cast<ListViewItem>().FirstOrDefault(i=>(i.Tag as NativeViewerItem)?.Id==id);
             if(item==null)return;
+            _nativeContextActionId=id;
             _nativePopulating=true;
             try{listAnims.SelectedItems.Clear();item.Selected=true;item.EnsureVisible();}
             finally{_nativePopulating=false;}
@@ -95,7 +113,8 @@ namespace BrawlCrate.UI.Model_Previewer
             _nativePopulating=true;_updating=true;
             try
             {
-                _nativeActions=null;_nativeActionSelected=null;
+                _nativeActions=null;_nativeActionSelected=null;_nativeActionExport=null;
+                _nativeContextActionId=null;
                 _nativeObjectVisibility=null;_nativeTextureVisibility=null;
                 if(_nativeSelectors!=null)panel1.Controls.Remove(_nativeSelectors);
                 _nativeSelectors=null;
@@ -1906,7 +1925,11 @@ namespace BrawlCrate.UI.Model_Previewer
             if(NativeViewerActive)
             {
                 if(!_nativePopulating&&listAnims.SelectedItems.Count>0&&
-                    listAnims.SelectedItems[0].Tag is NativeViewerItem item)_nativeActionSelected?.Invoke(item.Id);
+                    listAnims.SelectedItems[0].Tag is NativeViewerItem item)
+                {
+                    _nativeContextActionId=item.Id;
+                    _nativeActionSelected?.Invoke(item.Id);
+                }
                 return;
             }
             if (_closing)
@@ -2075,7 +2098,19 @@ namespace BrawlCrate.UI.Model_Previewer
 
         private void listAnims_MouseDown(object sender, MouseEventArgs e)
         {
-            if(NativeViewerActive){listAnims.ContextMenuStrip=null;return;}
+            if(NativeViewerActive)
+            {
+                if(e.Button==MouseButtons.Right)
+                {
+                    var hit=listAnims.GetItemAt(e.X,e.Y);
+                    if(hit!=null){hit.Selected=true;hit.Focused=true;
+                        _nativeContextActionId=(hit.Tag as NativeViewerItem)?.Id;}
+                    else _nativeContextActionId=null;
+                    listAnims.ContextMenuStrip=hit!=null&&_nativeActionExport!=null?
+                        _nativeAnimationExportMenu:null;
+                }
+                return;
+            }
             if (e.Button == MouseButtons.Right)
             {
                 if (_mainWindow.TargetAnimation != null)

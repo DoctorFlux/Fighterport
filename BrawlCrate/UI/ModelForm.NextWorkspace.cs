@@ -9,6 +9,10 @@ namespace BrawlCrate.UI
     internal partial class ModelForm
     {
         private ToolStripDropDownButton _nextAnimationMenu, _nextViewMenu;
+        private ToolStripDropDownButton _portableImportMenu, _portableExportMenu;
+        private ToolStripMenuItem _portableImportModel,_portableImportAnimations,_portableImportSource,
+            _portableExportAnimations,_portableExportNativeMotion,_portableExportModel,
+            _portableExportNativeModel,_portableExportReviewed;
         private bool? _nextToolbarGuide;
 
         private ToolStripMenuItem NextCommand(ToolStripDropDownItem menu, string name, string text, Action action)
@@ -29,10 +33,30 @@ namespace BrawlCrate.UI
             _nextViewMenu = new ToolStripDropDownButton("View") { Name = "nextViewMenu", Overflow = ToolStripItemOverflow.Never };
             _simpleWorkspaceToolbar.Items.Insert(2, _nextAnimationMenu);
             _simpleWorkspaceToolbar.Items.Insert(3, _nextViewMenu);
+            _portableImportMenu=new ToolStripDropDownButton("Import") {Name="portableImportMenu",
+                Overflow=ToolStripItemOverflow.Never,ToolTipText="Import into the active target."};
+            _portableExportMenu=new ToolStripDropDownButton("Export") {Name="portableExportMenu",
+                Overflow=ToolStripItemOverflow.Never,ToolTipText="Export from the active target."};
+            _simpleWorkspaceToolbar.Items.Insert(4,_portableImportMenu);
+            _simpleWorkspaceToolbar.Items.Insert(5,_portableExportMenu);
+            _portableImportModel=NextCommand(_portableImportMenu,"portableImportModel","Open model...",ChooseFighterModel);
+            _portableImportAnimations=NextCommand(_portableImportMenu,"portableImportAnimations","Add animations...",
+                ()=>{if(_bt3TargetHost?.Visible==true)ImportBt3NativeMotion();else ChooseFighterAnimations();});
+            _portableImportSource=NextCommand(_portableImportMenu,"portableImportSource","Load source files...",LoadSessionSource);
+            _portableExportAnimations=NextCommand(_portableExportMenu,"portableExportAnimations","Export animations...",
+                ()=>{if(_bt3TargetHost?.Visible==true)ChooseBt3PortableAnimationExport();else ChooseSimpleWorkspaceExport();});
+            _portableExportNativeMotion=NextCommand(_portableExportMenu,"portableExportNativeMotion","Save native motion...",
+                ()=>{if(_bt3TargetHost?.Visible==true)SaveBt3NativeMotion();else ChooseFighterExport();});
+            _portableExportModel=NextCommand(_portableExportMenu,"portableExportModel","Export model + textures...",
+                ()=>{if(_bt3TargetHost?.Visible==true)ChooseBt3PortableModelExport();else ChoosePortableModelExport();});
+            _portableExportNativeModel=NextCommand(_portableExportMenu,"portableExportNativeModel","Export original native model...",ChooseOriginalNativeModelExport);
+            _portableExportReviewed=NextCommand(_portableExportMenu,"portableExportReviewed","Export reviewed set...",ChooseWorkspaceSetExport);
+            _portableImportMenu.DropDownOpening+=(s,e)=>UpdatePortableToolbarMenus();
+            _portableExportMenu.DropDownOpening+=(s,e)=>UpdatePortableToolbarMenus();
             var load = new ToolStripButton("Load source...") { Name = "nextLoadSourceButton" };
             load.ToolTipText = "Open an original model and animations for this session. Add to library is a separate explicit action.";
             load.Click += (s, e) => WithWorkspaceInvoker(load, () => RunFighterAction(LoadSessionSource));
-            _simpleWorkspaceToolbar.Items.Insert(4, load);
+            _simpleWorkspaceToolbar.Items.Insert(6, load);
             NextCommand(_nextAnimationMenu, "nextLoadSourceFiles", "Load source files...", LoadSessionSource);
             NextCommand(_nextAnimationMenu, "nextSharedLibrary", "Choose from library...", UseSharedSourceLibrary);
             NextCommand(_nextAnimationMenu, "nextAddBrawlDisc", "Add game source...", ShowBrawlDiscLibrary);
@@ -89,10 +113,11 @@ namespace BrawlCrate.UI
             if (_nextToolbarGuide == guide) return;
             _nextToolbarGuide = guide;
             string[] primary = { "fighterProjectMenu", "fighterName", "fighterSave", "fighterUndoImport",
-                "fighterOpenModel", "fighterAddAnimations", "fighterRetarget", "fighterLibrary", "fighterTransitionFit", "nextLoadSourceButton" };
+                "fighterRetarget", "fighterLibrary", "fighterTransitionFit" };
             foreach (ToolStripItem item in _simpleWorkspaceToolbar.Items)
             {
-                if (item == _nextAnimationMenu || item == _nextViewMenu) continue;
+                if (item == _nextAnimationMenu || item == _nextViewMenu ||
+                    item == _portableImportMenu || item == _portableExportMenu) continue;
                 bool retained = guide ? primary.Take(4).Contains(item.Name) : primary.Contains(item.Name);
                 item.Overflow = retained ? ToolStripItemOverflow.AsNeeded : ToolStripItemOverflow.Always;
                 if (item.Name == "workspaceOperation" || item.Name == "workspaceTargetGame") item.Available = guide;
@@ -136,6 +161,32 @@ namespace BrawlCrate.UI
                 var item = _simpleWorkspaceToolbar.Items[name];
                 if (item != null) item.Enabled = !busy && (name != "fighterTransitionFit" || target && clip);
             }
+            _portableImportMenu.Enabled=_portableExportMenu.Enabled=!busy;
+            UpdatePortableToolbarMenus();
+            SetBt3ProjectToolbarState(_bt3TargetHost?.Visible==true);
+        }
+
+        private void UpdatePortableToolbarMenus()
+        {
+            if(_portableImportMenu==null)return;
+            bool bt3=_bt3TargetHost?.Visible==true,ready=bt3&&_bt3TargetEditor!=null;
+            bool target=modelEditControl1.TargetModel!=null;
+            _portableImportModel.Enabled=!bt3;
+            _portableImportModel.Text=bt3?"Open model from library (return to project first)":"Open model...";
+            _portableImportAnimations.Enabled=bt3?ready:true;
+            _portableImportAnimations.Text=bt3?"Load native BT3 motion...":"Add animations...";
+            _portableImportSource.Enabled=!bt3;
+            _portableExportAnimations.Enabled=bt3?ready:target&&modelEditControl1.TargetAnimation!=null;
+            _portableExportAnimations.Text=bt3?"Export selected BT3 actions...":"Export verified animation...";
+            _portableExportNativeMotion.Enabled=bt3?ready:target&&modelEditControl1.TargetAnimation!=null;
+            _portableExportNativeMotion.Text=bt3?"Save native BT3 motion...":"Export native animation...";
+            _portableExportModel.Enabled=bt3?ready:
+                target&&modelEditControl1.TargetModel is BrawlLib.SSBB.ResourceNodes.MDL0Node portable&&
+                OwnsFighterRoot(portable)&&!portable.IsDirty&&
+                (_fighterProject.NativeTarget==null||_fighterProject.NativeTarget.Provider==MeleeGameSource.NativeProvider);
+            _portableExportNativeModel.Enabled=!bt3&&target&&_fighterProject.NativeTarget!=null&&
+                NativeGameAdapters.ForNative(_fighterProject.NativeTarget.Provider) is INativeTargetModelSourceExportAdapter;
+            _portableExportReviewed.Enabled=!bt3&&target;
         }
 
         private void FocusNextEditor()

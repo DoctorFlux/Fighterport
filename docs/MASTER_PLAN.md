@@ -1,5 +1,14 @@
 # Fighterport master plan
 
+Preview.95 makes format-aware Import and Export accessible from the top native
+workspace and exact BT3 animation rows. A direct in-app Maya `.anim` writer
+publishes independent, verified action curves for checked BT3 members, with
+Maya 2022 import evidence. Existing Brawl/Melee native animation exports keep
+their own document formats and `.anim` routes. The bounded implementation and
+remaining FBX, portable import, Brawl/Melee GLB and broad DCC/game gates are
+in [the acceptance record](PORTABLE_ANIMATION_ACCESS_2026-11-03.md). Keep
+one incomplete G1/M2; preserve the full Model Previewer and original Next.
+
 Preview.93 adds a format-neutral, model-only rigged glTF/GLB conversion from
 verified COLLADA projections. BT3 uses a native two-pivot bind preflight;
 separate action encoding has sampled numeric evidence but no exposed model

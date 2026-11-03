@@ -1022,6 +1022,15 @@ internal static partial class Program
                     await Wait(()=>Field(form,"_bt3TargetRenderer") is Bt3NativeRender);
                     var targetPanel=form.FighterEditor.ModelPanel;
                     var targetRenderer=(Bt3NativeRender)Field(form,"_bt3TargetRenderer");
+                    var projectToolbar=SimpleControl<ToolStrip>(form,"fighterToolbar");
+                    var toolbarImport=(ToolStripDropDownButton)projectToolbar.Items.Find("portableImportMenu",false).Single();
+                    var toolbarExport=(ToolStripDropDownButton)projectToolbar.Items.Find("portableExportMenu",false).Single();
+                    Check(projectToolbar.Enabled&&toolbarImport.Enabled&&toolbarExport.Enabled&&
+                        toolbarImport.DropDownItems.Cast<ToolStripItem>().Single(item=>item.Name=="portableImportAnimations").Enabled&&
+                        toolbarExport.DropDownItems.Cast<ToolStripItem>().Single(item=>item.Name=="portableExportAnimations").Enabled&&
+                        !projectToolbar.Items.Find("fighterSave",false).Single().Enabled,
+                        "BT3 target keeps the top Import and Export menus usable while project-only commands are disabled");
+                    await CaptureWindow(form,Path.Combine(output,"bt3-target-toolbar.png"));
                     var targetForm=SimpleControl<ComboBox>(form,"bt3TargetTransform");
                     var targetCostume=SimpleControl<ComboBox>(form,"bt3TargetCostume");
                     var targetAction=form.FighterEditor.leftPanel.listAnims;

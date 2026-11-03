@@ -103,8 +103,26 @@ internal static partial class Program
                 bt3Button.AccessibleDescription.Contains("without animation clips"),
                 "BT3 model export is visibly separate from animation clips");
             var motionButton=bt3Panel.Controls.Cast<Control>().Single(control=>control.Name=="bt3ExportPortableAnimations");
-            Check(motionButton.Text.Contains("animations")&&motionButton.AccessibleDescription.Contains("one GLB per action"),
+            Check(motionButton.Text.Contains("animations")&&motionButton.AccessibleDescription.Contains("Maya .anim"),
                 "BT3 viewer exposes a separate, discoverable animation export action");
+            var importMenu=(ToolStripDropDownButton)Field(form,"_portableImportMenu");
+            var exportMenu=(ToolStripDropDownButton)Field(form,"_portableExportMenu");
+            Check(importMenu.Text=="Import"&&exportMenu.Text=="Export"&&
+                importMenu.DropDownItems.Cast<ToolStripItem>().Any(command=>command.Name=="portableImportAnimations")&&
+                exportMenu.DropDownItems.Cast<ToolStripItem>().Any(command=>command.Name=="portableExportAnimations"),
+                "Top toolbar keeps visible import and export menus for the active target");
+            var left=form.FighterEditor.leftPanel;
+            int exportedAction=-1;
+            left.ShowNativeViewer(new Panel(),new[]{new BrawlCrate.UI.Model_Previewer.NativeViewerItem(7,"Native action 007")},
+                Array.Empty<BrawlCrate.UI.Model_Previewer.NativeViewerItem>(),
+                Array.Empty<BrawlCrate.UI.Model_Previewer.NativeViewerItem>(),_=>{},(id,visible)=>{},
+                (id,visible)=>{},id=>exportedAction=id);
+            left.SelectNativeAnimation(7);
+            var nativeExport=left.listAnims.ContextMenuStrip.Items.Cast<ToolStripItem>()
+                .Single(command=>command.Name=="nativeExportSelectedAnimation");
+            nativeExport.PerformClick();
+            Check(exportedAction==7,"Native animation rows expose exact-member export from right click");
+            left.HideNativeViewer();
         }
         int riggedArgument=Array.IndexOf(args,"--portable-rigged-input");
         if(riggedArgument>=0)
@@ -238,6 +256,46 @@ internal static partial class Program
                     separateFiles.All(file=>File.Exists(Path.Combine(separate,file)))&&
                     File.ReadAllText(Path.Combine(separate,"Export-info.txt")).Contains("Model included: True"),
                     "One-per-clip export publishes distinct GLBs with rigged model included");
+                string maya=Path.Combine(output,"bt3-maya-animation-export");
+                var mayaFiles=PortableMayaAnimation.Publish(maya,new[]{first,second},null,CancellationToken.None);
+                string mayaText=File.ReadAllText(Path.Combine(maya,mayaFiles[0]));
+                Check(mayaFiles.Length==2&&mayaFiles.Distinct(StringComparer.OrdinalIgnoreCase).Count()==2&&
+                    Directory.GetFiles(maya,"*.anim").Length==2&&
+                    mayaText.StartsWith("animVersion 1.1;")&&mayaText.Contains("timeUnit ntscf;")&&
+                    mayaText.Contains("anim rotate.rotateX rotateX BT3_J")&&
+                    !File.Exists(Path.Combine(maya,"Model.dae"))&&
+                    File.ReadAllText(Path.Combine(maya,"Export-info.txt")).Contains("XYZ local Euler"),
+                    "Exact BT3 action selection exports separate portable Maya .anim curves without a CHR0 document");
+                bool mayaExistingRejected=false;
+                try{PortableMayaAnimation.Publish(maya,new[]{first},null,CancellationToken.None);}
+                catch(IOException){mayaExistingRejected=true;}
+                Check(mayaExistingRejected&&File.Exists(Path.Combine(maya,mayaFiles[0])),
+                    "Existing Maya animation bundle is preserved when a second export is rejected");
+                string mayaCancelled=Path.Combine(output,"bt3-maya-cancelled");
+                using(var stopMaya=new CancellationTokenSource())
+                {
+                    stopMaya.Cancel();bool stoppedMaya=false;
+                    try{PortableMayaAnimation.Publish(mayaCancelled,new[]{first},null,stopMaya.Token);}
+                    catch(OperationCanceledException){stoppedMaya=true;}
+                    Check(stoppedMaya&&!Directory.Exists(mayaCancelled),
+                        "Cancelled Maya animation export publishes no partial folder");
+                }
+                string mayaStale=Path.Combine(output,"bt3-maya-stale");
+                bool staleMaya=false;
+                try{PortableMayaAnimation.Publish(mayaStale,new[]{first},
+                    ()=>throw new InvalidOperationException("Source changed"),CancellationToken.None);}
+                catch(InvalidOperationException){staleMaya=true;}
+                Check(staleMaya&&!Directory.Exists(mayaStale),
+                    "Changed Maya animation dependencies block publication");
+                var oneFrame=new PortableRiggedGltf.Clip{Name="One frame",Identity="procedural-one-frame",
+                    FramesPerSecond=60,Tracks=new[]{new PortableRiggedGltf.Track{Bone="BT3_J0000",
+                        Frames=new[]{0f},Translation=new[]{new Vector3(1,2,3)},
+                        Rotation=new[]{Quaternion.Identity}}}};
+                string mayaOne=Path.Combine(output,"procedural-maya-one-frame");
+                var oneFile=PortableMayaAnimation.Publish(mayaOne,new[]{oneFrame},null,CancellationToken.None).Single();
+                Check(File.ReadAllText(Path.Combine(mayaOne,oneFile)).Contains("endTime 0;")&&
+                    File.ReadAllText(Path.Combine(mayaOne,oneFile)).Contains("translateX BT3_J0000"),
+                    "One-frame Maya .anim retains exact native-frame timing and translation without extra frames");
                 int otherAction=actionId==10?0:10;
                 var otherMember=form.MotionMembers[0].Single(member=>member.PackIndex==otherAction);
                 var otherMotion=Bt3NativeAssetReader.ReadMotion(inventory.ReadOwned(otherMember,4*1024*1024),otherAction);

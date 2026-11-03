@@ -70,7 +70,7 @@ namespace BrawlCrate.UI
         private NumericUpDown[] _bt3EditTranslation,_bt3EditRotation;
         private Button _bt3EditApply,_bt3EditUndo,_bt3EditRedo,_bt3EditExport;
         private Button _bt3EditImport;
-        private ToolStrip _bt3HiddenProjectToolbar;
+        private Dictionary<ToolStripItem,bool> _bt3ProjectToolbarState;
         private CancellationTokenSource _bt3TargetCancel;
         private double _bt3TargetTime;
         private int _bt3TargetEpoch;
@@ -164,6 +164,26 @@ namespace BrawlCrate.UI
             modelEditControl1.ModelPanel.Parent.Controls.Add(_bt3TargetHost);
         }
 
+        private void SetBt3ProjectToolbarState(bool active)
+        {
+            if(_simpleWorkspaceToolbar==null)return;
+            if(active)
+            {
+                if(_bt3ProjectToolbarState==null)
+                    _bt3ProjectToolbarState=_simpleWorkspaceToolbar.Items.Cast<ToolStripItem>()
+                        .Where(item=>item!=_portableImportMenu&&item!=_portableExportMenu)
+                        .ToDictionary(item=>item,item=>item.Enabled);
+                foreach(var item in _bt3ProjectToolbarState.Keys)item.Enabled=false;
+                if(_portableImportMenu!=null)_portableImportMenu.Enabled=!SimpleWorkspaceBusy;
+                if(_portableExportMenu!=null)_portableExportMenu.Enabled=!SimpleWorkspaceBusy;
+            }
+            else if(_bt3ProjectToolbarState!=null)
+            {
+                foreach(var pair in _bt3ProjectToolbarState)pair.Key.Enabled=pair.Value;
+                _bt3ProjectToolbarState=null;
+            }
+        }
+
         private void SyncBt3NativeRenderToggles()
         {
             if(_bt3TargetRenderer==null)return;
@@ -229,12 +249,12 @@ namespace BrawlCrate.UI
             portable.AccessibleDescription="Export this BT3 costume without animation clips as rigged COLLADA, glTF and GLB when its native skin passes portable validation.";
             portable.Click+=(s,e)=>ChooseBt3PortableModelExport();panel.Controls.Add(portable);
             var animations=new Button{Name="bt3ExportPortableAnimations",Text="Export animations...",Width=204,Height=32};
-            animations.AccessibleDescription="Choose exact native actions. Export one GLB per action or all selected actions in one GLB, with an optional model.";
+            animations.AccessibleDescription="Choose exact native actions. Export GLB animations together or separately, or separate Maya .anim files. GLB can include the model.";
             animations.Click+=(s,e)=>ChooseBt3PortableAnimationExport();panel.Controls.Add(animations);
             panel.Controls.Add(new Label{Text="Original disc remains unchanged.",Width=204,Height=30,ForeColor=Color.White});
             return panel;
         }
-        private void ChooseBt3PortableAnimationExport()
+        private void ChooseBt3PortableAnimationExport(int? requestedAction=null)
         {
             if(_bt3TargetHost?.Visible!=true||_bt3TargetRenderer==null||_bt3TargetChoice==null)
                 throw new InvalidOperationException("Open an exact BT3 costume in the native viewer first.");
@@ -245,9 +265,10 @@ namespace BrawlCrate.UI
                 FormBorderStyle=FormBorderStyle.Sizable,MinimumSize=new Size(400,420),
                 StartPosition=FormStartPosition.CenterParent,ShowInTaskbar=false})
             {
-                var layout=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=1,RowCount=5,Padding=new Padding(10)};
+                var layout=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=1,RowCount=6,Padding=new Padding(10)};
                 layout.RowStyles.Add(new RowStyle(SizeType.Absolute,36));
                 layout.RowStyles.Add(new RowStyle(SizeType.Percent,100));
+                layout.RowStyles.Add(new RowStyle(SizeType.Absolute,32));
                 layout.RowStyles.Add(new RowStyle(SizeType.Absolute,32));
                 layout.RowStyles.Add(new RowStyle(SizeType.Absolute,32));
                 layout.RowStyles.Add(new RowStyle(SizeType.Absolute,44));
@@ -255,20 +276,29 @@ namespace BrawlCrate.UI
                     TextAlign=ContentAlignment.MiddleLeft},0,0);
                 var list=new CheckedListBox{Name="bt3PortableClipSelection",Dock=DockStyle.Fill,
                     CheckOnClick=true,IntegralHeight=false};
-                foreach(var option in options)list.Items.Add(option,option.Action==choice.Action);
+                foreach(var option in options)list.Items.Add(option,option.Action==(requestedAction??choice.Action));
                 layout.Controls.Add(list,0,1);
+                var format=new ComboBox{Name="bt3PortableAnimationFormat",DropDownStyle=ComboBoxStyle.DropDownList,
+                    Dock=DockStyle.Fill};
+                format.Items.AddRange(new object[]{"GLB · rigged animation","Maya .anim · separate animation"});
+                format.SelectedIndex=0;layout.Controls.Add(format,0,2);
                 var grouping=new CheckBox{Name="bt3PortableOnePerClip",Text="One file per animation",Checked=true,
-                    Dock=DockStyle.Fill};layout.Controls.Add(grouping,0,2);
+                    Dock=DockStyle.Fill};layout.Controls.Add(grouping,0,3);
                 var model=new CheckBox{Name="bt3PortableIncludeModel",Text="Include model and textures",Checked=false,
-                    Dock=DockStyle.Fill};layout.Controls.Add(model,0,3);
+                    Dock=DockStyle.Fill};layout.Controls.Add(model,0,4);
+                format.SelectedIndexChanged+=(s,e)=>{
+                    bool glb=format.SelectedIndex==0;
+                    if(!glb){grouping.Checked=true;model.Checked=false;}
+                    grouping.Enabled=model.Enabled=glb;
+                };
                 var actions=new FlowLayoutPanel{Dock=DockStyle.Fill,FlowDirection=FlowDirection.RightToLeft};
-                var export=new Button{Text="Export GLB...",Width=120,DialogResult=DialogResult.OK};
+                var export=new Button{Text="Export...",Width=120,DialogResult=DialogResult.OK};
                 var cancel=new Button{Text="Cancel",Width=90,DialogResult=DialogResult.Cancel};
-                actions.Controls.Add(export);actions.Controls.Add(cancel);layout.Controls.Add(actions,0,4);
+                actions.Controls.Add(export);actions.Controls.Add(cancel);layout.Controls.Add(actions,0,5);
                 dialog.Controls.Add(layout);dialog.AcceptButton=export;dialog.CancelButton=cancel;
                 if(dialog.ShowDialog(this)!=DialogResult.OK)return;
                 var selected=list.CheckedItems.Cast<Bt3ActionOption>().OrderBy(a=>a.Action).ToArray();
-                bool onePerFile=grouping.Checked,includeModel=model.Checked;
+                bool glbFormat=format.SelectedIndex==0,onePerFile=grouping.Checked,includeModel=model.Checked;
                 if(selected.Length==0)
                 {MessageBox.Show(this,"Select at least one animation.","Export animations",MessageBoxButtons.OK,
                     MessageBoxIcon.Information);return;}
@@ -310,7 +340,10 @@ namespace BrawlCrate.UI
                                 bool same=false;
                                 if(!IsDisposed&&IsHandleCreated)Invoke((Action)(()=>same=
                                     _bt3TargetHost?.Visible==true&&ReferenceEquals(renderer,_bt3TargetRenderer)&&
-                                    ReferenceEquals(choice,_bt3TargetChoice)&&requests.All(request=>
+                                    ReferenceEquals(choice.Form,_bt3TargetChoice?.Form)&&
+                                    ReferenceEquals(choice.Costume,_bt3TargetChoice?.Costume)&&
+                                    string.Equals(choice.SourceId,_bt3TargetChoice?.SourceId,StringComparison.Ordinal)&&
+                                    requests.All(request=>
                                         request.Editor==null||ReferenceEquals(request.Version,request.Editor.Motion))));
                                 if(!same)throw new InvalidOperationException("The target costume or an edited action changed during export.");
                                 if(!costumeBytes.SequenceEqual(choice.Inventory.ReadOwned(choice.Costume,4*1024*1024)))
@@ -321,6 +354,7 @@ namespace BrawlCrate.UI
                                         throw new InvalidOperationException("A native action member changed during export.");
                             }
                             progress.Report("Validating portable animation bundle...");
+                            if(!glbFormat)return PortableMayaAnimation.Publish(destination,clips,Validate,token);
                             return PortableAnimationExport.Publish(destination,stage=>{
                                 if(!PortableModelExport.WriteBt3WithRig(scene,meshes,null,stage))
                                     throw new InvalidDataException("The current native skin cannot be represented as a rigged portable model.");
@@ -516,7 +550,8 @@ namespace BrawlCrate.UI
                     if(option!=null)_bt3TargetAction.SelectedItem=option;
                 },
                 (id,visible)=>{_bt3TargetRenderer?.SetBatchVisible(id,visible);_bt3TargetViewport.Invalidate();},
-                (id,visible)=>{_bt3TargetRenderer?.SetTextureVisible(id,visible);_bt3TargetViewport.Invalidate();});
+                (id,visible)=>{_bt3TargetRenderer?.SetTextureVisible(id,visible);_bt3TargetViewport.Invalidate();},
+                id=>RunFighterAction(()=>ChooseBt3PortableAnimationExport(id)));
             if(_bt3TargetAction.SelectedItem is Bt3ActionOption current)
                 modelEditControl1.leftPanel.SelectNativeAnimation(current.Action);
         }
@@ -631,9 +666,6 @@ namespace BrawlCrate.UI
             PopulateBt3TargetActions(selected.Action);
             RefreshBt3NativeLists(null);
             if(_libraryPane?.Visible==true)SetSimpleWorkspaceLibraryVisible(false);
-            _simpleWorkspaceToolbar.Enabled=false;
-            _bt3HiddenProjectToolbar=Controls.Find("fighterToolbar",true).OfType<ToolStrip>().FirstOrDefault();
-            if(_bt3HiddenProjectToolbar!=null)_bt3HiddenProjectToolbar.Enabled=false;
             _simpleWorkspaceFocused=true;_simpleWorkspaceDrawer=false;
             _bt3TargetHost.Visible=true;_bt3TargetHost.BringToFront();
             UpdateSimpleWorkspace();QueueBt3TargetLoad();
@@ -745,8 +777,7 @@ namespace BrawlCrate.UI
             }
             if(restore)
             {
-                _simpleWorkspaceToolbar.Enabled=true;
-                if(_bt3HiddenProjectToolbar!=null)_bt3HiddenProjectToolbar.Enabled=true;
+                SetBt3ProjectToolbarState(false);
                 _simpleWorkspaceFocused=true;_simpleWorkspaceDrawer=false;
                 UpdateSimpleWorkspace();modelEditControl1.ModelPanel.Focus();
             }

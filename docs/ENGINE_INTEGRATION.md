@@ -1,5 +1,15 @@
 # Native Next integration
 
+Preview.95 adds two native UI entry points around existing owners: top Import /
+Export menus remain active for BT3 targets, and `LeftPanel` native action rows
+carry exact IDs into the current export selector. Brawl/Melee CHR0 right-click
+export keeps the existing native callback. `PortableMayaAnimation` writes
+sampled BT3 action curves directly as Maya `.anim` 1.1 in a staged folder,
+freshly parses the serialized curves and compares local orientation and
+translation against the frozen action before publication. This is a portable
+copy only; BT3 source data and the native target editor are unchanged. See
+[bounded evidence](PORTABLE_ANIMATION_ACCESS_2026-11-03.md).
+
 Preview.94 adds a separate portable animation publication boundary for exact
 BT3 native action members. `PortableAnimationExport` freezes selected clips,
 stages verified GLB candidates and commits a new folder only after exact

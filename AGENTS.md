@@ -1,5 +1,17 @@
 # Fighterport
 
+3 November — preview.95-portable-animation-access keeps top-level Import and
+Export menus usable while a BT3 native target is open. Exact native action
+rows offer Export by right click. BT3 action export now offers separate Maya
+`.anim` files as well as the existing GLB choices; it writes directly from
+frozen native action data without creating a CHR0 target. The Melee CHR0-backed
+target exposes the existing `.anim` converter alongside native DAT and editable
+master export. Native project Save, full Model Previewer and original Next
+remain unchanged. Background tests and Maya 2022 imports passed for two local
+BT3 actions. FBX, portable import, Brawl/Melee GLB animation bundles and broad
+cross-game qualification remain open. See
+[bounded evidence](docs/PORTABLE_ANIMATION_ACCESS_2026-11-03.md).
+
 3 November — preview.93-rigged-portable-export adds game-neutral rigged
 glTF/GLB model output alongside COLLADA for saved Brawl and Melee targets. The
 BT3 native viewer exports a rigged costume, textures and all represented skin

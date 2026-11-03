@@ -135,7 +135,7 @@ namespace BrawlCrate.Studio
             public FighterProject PrepareTarget(LibrarySourceLease source,LibraryCatalogue catalogue,CancellationToken cancellation)=>MeleeTargetDocument.Prepare(source,catalogue,cancellation);
             public BrawlLib.Modeling.INativeModelEditingBackend AttachTarget(FighterProject project,BrawlLib.SSBB.ResourceNodes.MDL0Node model)=>MeleeTargetDocument.Attach(project,model);
             public void ValidateTarget(FighterProject project)=>MeleeTargetDocument.Validate(project);
-            public string AnimationExportFilter=>"Melee native action member (*.dat)|*.dat|Editable animation master (*.chr0)|*.chr0";
+            public string AnimationExportFilter=>"Melee native action member (*.dat)|*.dat|Editable animation master (*.chr0)|*.chr0|Portable Maya animation (*.anim)|*.anim";
             public NativeTargetExportReceipt ExportAnimation(FighterProject project,BrawlLib.SSBB.ResourceNodes.MDL0Node target,BrawlLib.SSBB.ResourceNodes.CHR0Node clip,string destination,CancellationToken cancellation,Action validateCurrent)
                 =>ExportAnimationToAction(project,target,clip,project.NativeTarget.Member(clip),destination,cancellation,validateCurrent);
             public NativeTargetExportReceipt ExportAnimationToAction(FighterProject project,BrawlLib.SSBB.ResourceNodes.MDL0Node target,BrawlLib.SSBB.ResourceNodes.CHR0Node clip,NativeAnimationMember action,string destination,CancellationToken cancellation,Action validateCurrent)

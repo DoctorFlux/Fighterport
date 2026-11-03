@@ -1,5 +1,19 @@
 # Current milestone M2 — simpler native workspace
 
+3 November: preview.95 places Import and Export in the top workspace toolbar
+even when an exact BT3 target is open, while project-only actions stay
+disabled. The BT3 native animation list has exact-action right-click Export.
+The export dialog can publish separate Maya `.anim` action curves or the
+preview.94 GLB grouping. The `.anim` writer adapts quaternion motion to
+linear XYZ Euler curves, then freshly reads every output curve and checks
+local orientation/translation samples before an atomic new-folder commit.
+Two local BT3 actions import in Maya 2022. Brawl and Melee CHR0-backed
+right-click `.anim` export remains the existing native route; the Melee
+filter now exposes it. No CHR0 document is synthesized for BT3.
+Direct in-app FBX, portable import, cross-game portable animation bundles and
+broad DCC/game acceptance remain open within this sole incomplete G1/M2.
+See [preview.95 acceptance](../PORTABLE_ANIMATION_ACCESS_2026-11-03.md).
+
 3 November: preview.94 adds a separate **Export animations...** command to the
 native BT3 target viewer. It selects exact actions for the current form and
 costume, exporting one GLB per action or selected actions in one GLB, either

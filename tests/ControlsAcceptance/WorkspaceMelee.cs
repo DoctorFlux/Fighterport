@@ -16,6 +16,9 @@ internal static partial class Program
     {
         if(!PrivateDesktop)throw new InvalidOperationException("Melee UI acceptance requires the private desktop.");
         MeleeMasterBridgeChecks(output);
+        Check(((INativeTargetExportAdapter)NativeGameAdapters.ForNative(MeleeGameSource.NativeProvider))
+            .AnimationExportFilter.Contains("*.anim"),
+            "Melee animation-list native export offers portable Maya .anim beside exact DAT and editable master");
         if(args.Contains("--melee-native-project"))
         {
             string path=args[Array.IndexOf(args,"--melee-native-project")+1];
