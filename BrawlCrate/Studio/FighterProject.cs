@@ -271,6 +271,12 @@ namespace BrawlCrate.Studio
         }
 
         public FighterAsset CreateLibraryRevision(LibrarySourceLease source, Retargeting.RetargetResult result)=>CreateLibraryRevision(source,result,null);
+        // Exact native copies can use an unreviewed head placeholder internally
+        // to retain every authored track. Never persist that placeholder as a
+        // reviewed anatomical binding for a later unequal-rig operation.
+        internal static List<RetargetBoneBinding> RetargetMappingForProvenance(Retargeting.RetargetResult result) =>
+            result.Plan.Mapping.Where(m=>!result.ProvisionalHeadForExactNativeCopy||m.Role!="head")
+                .Select(m=>new RetargetBoneBinding{Role=m.Role,Source=m.Source,Target=m.Target}).ToList();
         internal FighterAsset CreateBt3Revision(Bt3SourceLease source, Retargeting.RetargetResult result)
         {
             if(source==null||result==null)throw new ArgumentNullException(source==null?nameof(source):nameof(result));
@@ -313,7 +319,7 @@ namespace BrawlCrate.Studio
                 MaximumContactResidual=result.MaximumContactResidual,
                 MaximumPelvisCorrection=result.MaximumPelvisCorrection,
                 IgnoredSourceBones=result.IgnoredSourceBones,
-                Mapping=result.Plan.Mapping.Select(m=>new RetargetBoneBinding{Role=m.Role,Source=m.Source,Target=m.Target}).ToList(),
+                Mapping=RetargetMappingForProvenance(result),
                 Bt3=new Bt3SourceReference{Volume=source.Inventory.Volume,FormSlot=source.Form.Slot,
                     CostumeMember=source.Costume.Identity,Action=source.Action,MotionMember=source.ActionMember.Identity,
                     CostumeAssetId=costume.Id,MotionAssetId=motion.Id,CostumeSha256=source.CostumeSha256,
@@ -346,7 +352,7 @@ namespace BrawlCrate.Studio
                 throw new InvalidDataException("The source-bound bake does not match this source or target project.");
             string safe=new string(sourceName.Select(c=>Path.GetInvalidFileNameChars().Contains(c)?'_':c).ToArray());
             var generated=CreateAnimation(safe+" (library).chr0",result.Animation.ExportChecked);
-            var map=result.Plan.Mapping.Select(binding=>new RetargetBoneBinding{Role=binding.Role,Source=binding.Source,Target=binding.Target}).ToList();
+            var map=RetargetMappingForProvenance(result);
             var reference=source.Copy();
             reference.TargetRig=result.TargetRig;reference.TargetModelContentSha256=HashFile(Model.WorkingPath);
             using(var sha=SHA256.Create())reference.MappingSha256=BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(

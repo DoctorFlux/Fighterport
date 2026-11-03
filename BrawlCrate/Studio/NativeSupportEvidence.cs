@@ -45,6 +45,8 @@ namespace BrawlCrate.Studio
             var evidence=new NativeSupportEvidence{SourceRig=result.SourceRig,TargetRig=result.TargetRig,Frames=result.Animation.FrameCount,InitialResultHash=resultHash};
             try
             {
+                if(result.ProvisionalHeadForExactNativeCopy)
+                    throw new InvalidOperationException("An exact native copy used an unreviewed branching-head placeholder. No anatomical support timeline was certified.");
                 if(result.Contacts==null)throw new InvalidOperationException("Complete original Next support context is unavailable for this result.");
                 if(result.Plan.Source.NativeEvaluation!=null||result.Plan.Target.NativeEvaluation!=null)throw new InvalidOperationException("Native affine skin support requires its own versioned complete evidence writer. The finished animation is retained; legacy Brawl support points are not substituted for native geometry.");
                 evidence.Json=new JavaScriptSerializer{MaxJsonLength=8*1024*1024,RecursionLimit=100}.Serialize(result.Contacts.CaptureOriginalEvidence());

@@ -97,7 +97,8 @@ namespace BrawlCrate.Studio.Retargeting
             var plan = ExactRigPlan(source, target);
             string sourceContent = NativeAnimationOptimization.SourceContentKey(clip);
             CHR0Node copy = null;
-            var result = new RetargetResult { Plan = plan, SourceRig = source.Fingerprint, TargetRig = target.Fingerprint };
+            var result = new RetargetResult { Plan = plan, SourceRig = source.Fingerprint, TargetRig = target.Fingerprint,
+                ProvisionalHeadForExactNativeCopy = source.ProvisionalHeadForExactNativeCopy || target.ProvisionalHeadForExactNativeCopy };
             string folder = Path.Combine(Path.GetTempPath(), "Fighterport-exactrig-" + Guid.NewGuid().ToString("N"));
             try
             {
@@ -122,6 +123,7 @@ namespace BrawlCrate.Studio.Retargeting
                 result.OptimizationReport = "Exact native rig: all " + source.Bones.Length +
                     " structurally corresponding joints and every authored CHR0 track were retained in an independent master copy. " +
                     "No proportion, IK or contact correction was applied; native bytes were freshly reopened and semantic content verified. " +
+                    (result.ProvisionalHeadForExactNativeCopy ? "A branching-head placeholder was used solely for exact native correspondence; its anatomical role and support context remain unreviewed. " : "") +
                     (mode == RetargetKeyframeMode.Dense ? "The exported dense result retains that content." :
                         "The requested source-key result is a separately verified, error-bounded projection of that master.");
                 result.GeneratedPairRigKey = NativeGeneratedPairRegistry.TryRigKey(target.Bones[0].Model, cancellation);

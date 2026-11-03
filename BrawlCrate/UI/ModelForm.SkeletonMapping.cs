@@ -30,21 +30,38 @@ namespace BrawlCrate.UI
             var review=ReviewedFighterCoordinates(model);if(review==null)return "native-declared-up:+Y";
             return new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new{review.Fingerprint,review.Right,review.Up,review.Forward,review.NativeRoles,review.NativeBones});
         }
-        private BrawlRig CaptureFighterRig(MDL0Node model,bool review=false)
+        private static Dictionary<string,string> ReusableRetargetRoles(RetargetProvenance saved,bool source)
+        {
+            if(saved?.Mapping==null)return null;
+            // Exact-copy detail mappings are many-to-many storage evidence, not
+            // anatomical review. Never feed them to a role dictionary. Conflicts
+            // in historical semantic mappings require a new explicit review.
+            var groups=saved.Mapping.Where(m=>m!=null&&!string.IsNullOrEmpty(m.Role)&&!m.Role.StartsWith("detail.",StringComparison.Ordinal)&&
+                !m.Role.StartsWith("trajectory.",StringComparison.Ordinal)).GroupBy(m=>m.Role).ToArray();
+            if(groups.Any(group=>group.Select(m=>source?m.Source:m.Target).Distinct(StringComparer.Ordinal).Count()!=1))return null;
+            return groups.ToDictionary(group=>group.Key,group=>source?group.First().Source:group.First().Target);
+        }
+        private BrawlRig CaptureFighterRig(MDL0Node model,bool review=false,bool allowProvisionalExactCopy=false)
         {
             string identity=BrawlRetargeter.SkeletonFingerprint(model);
             var reviewed=ReviewedFighterCoordinates(model);
+            SkeletonCharacterization auto=BrawlRetargeter.Characterize(model);
             if(!_fighterRigMaps.TryGetValue(identity,out Dictionary<string,string> map))
             {
                 var asset=_fighterProject?.Animations.LastOrDefault(a=>a.Retarget!=null && string.IsNullOrEmpty(a.Retarget.EngineReceipt) && (a.Retarget.SourceRig==identity || a.RigIdentity==identity));
                 var saved=asset?.Retarget;
-                if(saved!=null)map=saved.Mapping.ToDictionary(m=>m.Role,m=>saved.SourceRig==identity?m.Source:m.Target);
+                if(saved!=null)map=ReusableRetargetRoles(saved,saved.SourceRig==identity);
             }
             if(reviewed?.NativeRoles!=null)map=reviewed.NativeRoles.Zip(reviewed.NativeBones,(r,b)=>new{r,b}).ToDictionary(p=>p.r,p=>p.b);
-            SkeletonCharacterization auto=BrawlRetargeter.Characterize(model);
-            if(review || (map==null && (auto.Missing.Length>0 || auto.Warnings.Count>0)))map=ReviewFighterSkeleton(model,map,auto);
+            if(map!=null&&(!map.TryGetValue("head",out string mappedHead)||
+                auto.ProvisionalHead.HasValue&&mappedHead==model.AllBones[auto.ProvisionalHead.Value].Name))map=null;
+            bool provisionalCopy=allowProvisionalExactCopy&&map==null&&auto.ProvisionalHead.HasValue&&
+                auto.Missing.Length==1&&auto.Missing[0]=="head";
+            if(review || (!provisionalCopy&&map==null && (auto.Missing.Length>0 || auto.Warnings.Count>0)))
+                map=ReviewFighterSkeleton(model,map,auto);
             BrawlRig captured=BrawlRetargeter.Capture(model,map,coordinateFrame:ReviewedFighterCoordinateFrame(model));
-            _fighterRigMaps[identity]=captured.Rig.Roles.ToDictionary(p=>p.Key,p=>captured.Bones[p.Value].Name);
+            if(!captured.ProvisionalHeadForExactNativeCopy)
+                _fighterRigMaps[identity]=captured.Rig.Roles.ToDictionary(p=>p.Key,p=>captured.Bones[p.Value].Name);
             return captured;
         }
         // Render-time capture never opens a dialog. Confirmed maps survive project
@@ -56,7 +73,9 @@ namespace BrawlCrate.UI
             if(reviewed?.NativeRoles!=null)return BrawlRetargeter.Capture(model,reviewed.NativeRoles.Zip(reviewed.NativeBones,(r,b)=>new{r,b}).ToDictionary(p=>p.r,p=>p.b),coordinateFrame:ReviewedFighterCoordinateFrame(model));
             if(_fighterRigMaps.TryGetValue(identity,out Dictionary<string,string> map))return BrawlRetargeter.Capture(model,map,coordinateFrame:ReviewedFighterCoordinateFrame(model));
             var saved=_fighterProject?.Animations.LastOrDefault(a=>a.Retarget!=null && string.IsNullOrEmpty(a.Retarget.EngineReceipt) && a.RigIdentity==identity)?.Retarget;
-            return BrawlRetargeter.Capture(model,saved?.Mapping.ToDictionary(m=>m.Role,m=>m.Target),coordinateFrame:ReviewedFighterCoordinateFrame(model));
+            var savedMap=ReusableRetargetRoles(saved,false);
+            if(savedMap!=null&&!savedMap.ContainsKey("head"))savedMap=null;
+            return BrawlRetargeter.Capture(model,savedMap,coordinateFrame:ReviewedFighterCoordinateFrame(model));
         }
         private Dictionary<string,string> ReviewFighterSkeleton(MDL0Node model,Dictionary<string,string> previous,SkeletonCharacterization auto)
         {

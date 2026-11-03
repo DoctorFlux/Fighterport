@@ -1,14 +1,174 @@
+using BrawlCrate.Studio;
 using BrawlCrate.Studio.Retargeting;
 using BrawlLib.SSBB.ResourceNodes;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Web.Script.Serialization;
+using NativeVector = BrawlLib.Internal.Vector3;
 
 internal static partial class Program
 {
+    // A diagnostic for rigs where several native branches descend from the
+    // neck. This deliberately does not nominate a head joint or change any
+    // mapping: every branch and the neck's direct skin influence is reported.
+    private static int CranialBranchWitnessCase(string sourcePath, string motionPath, string manifestPath, string output)
+    {
+        Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.BelowNormal;
+        if (Directory.Exists(output) && Directory.EnumerateFileSystemEntries(output).Any())
+            throw new InvalidDataException("Use a fresh cranial witness directory.");
+        if (new FileInfo(manifestPath).Length > 16384) throw new InvalidDataException("Unbounded fixture manifest.");
+        var json = new JavaScriptSerializer { MaxJsonLength = 8 * 1024 * 1024, RecursionLimit = 80 };
+        var fixture = json.Deserialize<TransferFixture>(File.ReadAllText(manifestPath));
+        string sourceHash = FighterProject.HashFile(sourcePath), motionHash = FighterProject.HashFile(motionPath);
+        if (fixture.Schema != "fighterport-authentic-export-fixture-1" ||
+            !Same(sourceHash, fixture.SourceModelSha256) || !Same(motionHash, fixture.SourceClipSha256))
+            throw new InvalidDataException("Exact cranial witness input hashes differ.");
+        Directory.CreateDirectory(output);
+        using (var sourceRoot = NodeFactory.FromFile(null, sourcePath))
+        using (var motionRoot = NodeFactory.FromFile(null, motionPath))
+        {
+            MDL0Node model = Walk(sourceRoot).OfType<MDL0Node>()
+                .Single(node => Same(BrawlRetargeter.SkeletonFingerprint(node), fixture.SourceRigFingerprint));
+            string Member(ResourceNode node) => node.Parent == null ? "root" : Member(node.Parent) + "/" + node.Index;
+            CHR0Node clip = Walk(motionRoot).OfType<CHR0Node>().Single(node =>
+                node.Name == fixture.SourceClipName && Member(node) == fixture.SourceNativeMember);
+            if (clip.FrameCount != fixture.SourceFrames || clip.Version != fixture.SourceVersion || clip.Loop != fixture.SourceLoop)
+                throw new InvalidDataException("Exact cranial witness member timing differs.");
+            string modelState = NativeOwnership(model), clipState = NativeAnimationOptimization.SourceContentKey(clip);
+            var characterization = BrawlRetargeter.Characterize(model);
+            if (!characterization.Roles.TryGetValue("neck", out int neck))
+                throw new InvalidDataException("A native neck joint is required for this branch diagnostic.");
+            MDL0BoneNode[] bones = model.AllBones.ToArray();
+            if (neck < 0 || neck >= bones.Length) throw new InvalidDataException("The neck role leaves the native skeleton.");
+            int[] children = Enumerable.Range(0, bones.Length)
+                .Where(index => bones[index].Parent == bones[neck]).ToArray();
+            if (children.Length > 64) throw new InvalidDataException("The neck exceeds the 64-branch diagnostic budget.");
+            int[] groups = new[] { neck }.Concat(children).ToArray();
+            int vertexCount = model.PolygonList.OfType<MDL0ObjectNode>().Sum(obj => obj.Vertices.Count);
+            if (vertexCount < 1 || vertexCount > 100000)
+                throw new InvalidDataException("The mesh leaves the 1–100,000-vertex cranial diagnostic budget.");
+            var boneIndices = bones.Select((bone, index) => new { bone.Name, Index = index })
+                .ToDictionary(pair => pair.Name, pair => pair.Index, StringComparer.Ordinal);
+            var memberships = groups.Select(_ => new float[vertexCount]).ToArray();
+            int[] branchForBone = Enumerable.Range(0, bones.Length).Select(index =>
+            {
+                if (index == neck) return 0;
+                int ancestor = index;
+                while (ancestor >= 0 && bones[ancestor].Parent != bones[neck])
+                    ancestor = bones[ancestor].Parent is MDL0BoneNode parent ? boneIndices[parent.Name] : -1;
+                return ancestor < 0 ? -1 : Array.IndexOf(groups, ancestor);
+            }).ToArray();
+            int vertex = 0;
+            foreach (var obj in model.PolygonList.OfType<MDL0ObjectNode>())
+            foreach (var point in obj.Vertices)
+            {
+                var weights = point.GetMatrixNode()?.Weights;
+                if (weights != null)
+                    foreach (var weight in weights)
+                    {
+                        if (!(weight.Bone is MDL0BoneNode bone) || weight.Weight <= 0) continue;
+                        if (!boneIndices.TryGetValue(bone.Name, out int joint))
+                            throw new InvalidDataException("A skin influence leaves the native skeleton.");
+                        int group = branchForBone[joint];
+                        if (group >= 0) memberships[group][vertex] += weight.Weight;
+                    }
+                vertex++;
+            }
+            if (vertex != vertexCount) throw new InvalidDataException("The native vertex inventory changed during cranial analysis.");
+            model.ApplyCHR(null, 0);
+            Vector3[] bindVertices = Vertices(model);
+            if (bindVertices.Length != vertexCount || bindVertices.Any(p => !RigMath.Finite(p)))
+                throw new InvalidDataException("The native bind mesh is incomplete or non-finite.");
+            Vector3 bindNeck = BrawlRetargeter.Vector(bones[neck].Matrix.GetPoint());
+            Vector3? NeckLocal(Vector3? point) => point.HasValue ? (Vector3?)BrawlRetargeter.Vector(
+                bones[neck].InverseMatrix * new NativeVector(point.Value.X, point.Value.Y, point.Value.Z)) : null;
+            Vector3? Centroid(float[] weights, Vector3[] points)
+            {
+                double total = 0, x = 0, y = 0, z = 0;
+                for (int i = 0; i < weights.Length; i++)
+                {
+                    double amount = weights[i];
+                    if (amount <= 0) continue;
+                    total += amount; x += amount * points[i].X; y += amount * points[i].Y; z += amount * points[i].Z;
+                }
+                return total <= 0 ? (Vector3?)null : new Vector3((float)(x / total), (float)(y / total), (float)(z / total));
+            }
+            var bindCenters = memberships.Select(weights => Centroid(weights, bindVertices)).ToArray();
+            var bindLocalCenters = bindCenters.Select(NeckLocal).ToArray();
+            var trajectories = groups.Select(_ => new List<object>()).ToArray();
+            float[] times = TransferWitnessTimes(clip);
+            try
+            {
+                foreach (float time in times)
+                {
+                    model.ApplyCHR(clip, time + 1);
+                    Vector3[] posed = Vertices(model);
+                    if (posed.Length != vertexCount || posed.Any(p => !RigMath.Finite(p)))
+                        throw new InvalidDataException("The native sampled mesh is incomplete or non-finite.");
+                    Vector3 neckPoint = BrawlRetargeter.Vector(bones[neck].Matrix.GetPoint());
+                    Vector3? leftHand = characterization.Roles.TryGetValue("left.hand", out int left) ?
+                        BrawlRetargeter.Vector(bones[left].Matrix.GetPoint()) : (Vector3?)null;
+                    Vector3? rightHand = characterization.Roles.TryGetValue("right.hand", out int right) ?
+                        BrawlRetargeter.Vector(bones[right].Matrix.GetPoint()) : (Vector3?)null;
+                    for (int group = 0; group < groups.Length; group++)
+                    {
+                        Vector3? center = Centroid(memberships[group], posed);
+                        trajectories[group].Add(new { Time = time, NeckWorld = neckPoint, CentroidWorld = center,
+                            CentroidRelativeToNeck = center.HasValue ? (Vector3?)(center.Value - neckPoint) : null,
+                            CentroidInNeckLocal = NeckLocal(center),
+                            LeftHandDistance = center.HasValue && leftHand.HasValue ? (float?)Vector3.Distance(center.Value, leftHand.Value) : null,
+                            RightHandDistance = center.HasValue && rightHand.HasValue ? (float?)Vector3.Distance(center.Value, rightHand.Value) : null });
+                    }
+                }
+            }
+            finally { model.ApplyCHR(null, 0); }
+            var branchReports = groups.Select((joint, group) =>
+            {
+                float[] weights = memberships[group]; Vector3? center = bindCenters[group];
+                double total = weights.Sum(w => (double)w), squared = 0, maximum = 0;
+                if (center.HasValue)
+                    for (int i = 0; i < weights.Length; i++)
+                    {
+                        if (weights[i] <= 0) continue;
+                        double radius = Vector3.Distance(bindVertices[i], center.Value);
+                        squared += weights[i] * radius * radius;
+                        if (weights[i] > .01f) maximum = Math.Max(maximum, radius);
+                    }
+                return new { JointIndex = joint, JointName = bones[joint].Name,
+                    Group = group == 0 ? "direct neck influence" : "immediate neck-child subtree",
+                    WeightedVertexCount = total, VerticesWithInfluence = weights.Count(w => w > .01f),
+                    VerticesWithMajorityInfluence = weights.Count(w => w > .5f),
+                    BindCentroid = center, BindCentroidRelativeToNeck = center.HasValue ? (Vector3?)(center.Value - bindNeck) : null,
+                    BindCentroidInNeckLocal = bindLocalCenters[group],
+                    BindRmsRadius = total > 0 ? (double?)Math.Sqrt(squared / total) : null,
+                    BindMaximumRadiusAboveOnePercentInfluence = weights.Any(w => w > .01f) ? (double?)maximum : null,
+                    NativeTrajectory = trajectories[group] };
+            }).ToArray();
+            if (NativeOwnership(model) != modelState || NativeAnimationOptimization.SourceContentKey(clip) != clipState ||
+                FighterProject.HashFile(sourcePath) != sourceHash || FighterProject.HashFile(motionPath) != motionHash)
+                throw new InvalidDataException("Read-only cranial analysis changed an original input or native ownership.");
+            int influenced = Enumerable.Range(0, vertexCount).Count(i => memberships.Any(group => group[i] > .01f));
+            File.WriteAllText(Path.Combine(output, "cranial-branch-witness.json"), json.Serialize(new
+            {
+                Schema = "fighterport-cranial-branch-witness-1", SourceModelSha256 = sourceHash, SourceMotionSha256 = motionHash,
+                SourceRig = fixture.SourceRigFingerprint, SourceMember = fixture.SourceNativeMember,
+                SourceClip = clip.Name, clip.FrameCount, clip.Version, clip.Loop,
+                AnalysisScope = "All immediate neck-child subtrees and direct neck skin influence; no anatomical head role inferred",
+                NativeVertexCount = vertexCount, NeckAssociatedVertexCount = influenced,
+                NeckJointIndex = neck, NeckJointName = bones[neck].Name, BindNeckWorld = bindNeck,
+                SampledTimes = times, FiniteSampledCoverageOnly = true, Branches = branchReports,
+                NativeOwnershipUnchanged = true, OriginalFilesUnchanged = true
+            }));
+            Console.WriteLine("Cranial branch witness: " + branchReports.Length + " groups, " +
+                influenced + "/" + vertexCount + " vertices with neck/descendant influence; no head role inferred.");
+        }
+        return 0;
+    }
+
     sealed class WitnessMesh
     {
         public SkinPoint[] Points;

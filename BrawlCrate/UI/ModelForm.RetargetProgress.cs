@@ -33,7 +33,13 @@ namespace BrawlCrate.UI
             modelEditControl1.StopAnim();
             // Keep Next's solver unchanged. The worker reads owned immutable
             // native snapshots, never the viewer's live resources.
-            var sourceReview=CaptureFighterRig(source);var targetReview=CaptureFighterRig(target);
+            // Identical transform rigs may take the guarded exact native-copy
+            // path without inventing a central head. Bake still checks every
+            // skin influence and rejects all other paths before a solve.
+            bool exactNativeCandidate=source.NativeEditingBackend==null&&target.NativeEditingBackend==null&&
+                BrawlRetargeter.SkeletonFingerprint(source)==BrawlRetargeter.SkeletonFingerprint(target);
+            var sourceReview=CaptureFighterRig(source,allowProvisionalExactCopy:exactNativeCandidate);
+            var targetReview=CaptureFighterRig(target,allowProvisionalExactCopy:exactNativeCandidate);
             string sourceCoordinates=ReviewedFighterCoordinateKey(source),targetCoordinates=ReviewedFighterCoordinateKey(target);
             Directory.CreateDirectory(_controlStage);
             string sourcePath=Path.Combine(_controlStage,Guid.NewGuid().ToString("N")+".mdl0"),targetPath=Path.Combine(_controlStage,Guid.NewGuid().ToString("N")+".mdl0"),clipPath=Path.Combine(_controlStage,Guid.NewGuid().ToString("N")+".chr0");

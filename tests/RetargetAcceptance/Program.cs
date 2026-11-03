@@ -18,6 +18,7 @@ internal static partial class Program
             if(args.Length==6&&args[0]=="--same-rig-keymode")return SameRigQualityCase(args[1],args[2],args[3],args[4],true,
                 (BrawlCrate.Studio.Retargeting.RetargetKeyframeMode)Enum.Parse(typeof(BrawlCrate.Studio.Retargeting.RetargetKeyframeMode),args[5],true));
             if(args.Length==6&&args[0]=="--retarget-case")return NativeTransferCase(args[1],args[2],args[3],args[4],args[5]);
+            if(args.Length==5&&args[0]=="--cranial-branch-witness")return CranialBranchWitnessCase(args[1],args[2],args[3],args[4]);
             if(args.Length==3&&args[0]=="--mapping-audit")return MappingAudit(args[1],args[2]);
             if(args.Length==2&&args[0]=="--branched-head-characterization")return BranchedHeadCharacterizationChecks(args[1]);
             if(args.Length==2&&args[0]=="--terminal-contacts")return TerminalContactChecks(args[1]);

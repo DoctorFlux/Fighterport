@@ -81,6 +81,19 @@ internal static partial class Program
                 {
                     using (var result = BrawlRetargeter.Bake(source, target, clip, keyframeMode: mode))
                     {
+                        if (source.ProvisionalHeadForExactNativeCopy || target.ProvisionalHeadForExactNativeCopy)
+                        {
+                            Check(result.ProvisionalHeadForExactNativeCopy &&
+                                result.Plan.Mapping.Length == source.Bones.Length,
+                                "Exact native copy retains every bone with an unreviewed head placeholder");
+                            var stored = FighterProject.RetargetMappingForProvenance(result);
+                            Check(!stored.Any(binding => binding.Role == "head") &&
+                                stored.Any(binding => binding.Role == "detail.exact"),
+                                "Exact-copy provenance never publishes the placeholder as reviewed head anatomy");
+                            var support = NativeSupportEvidence.Capture(result, new string('0', 64));
+                            Check(support.Json == null && support.UnavailableReason.Contains("unreviewed branching-head"),
+                                "Exact-copy-only anatomy does not create a reviewed support timeline");
+                        }
                         keyReport = result.KeyframeReport;
                         retainedMappings = result.Plan.Mapping.Length;
                         var retained = new HashSet<string>(result.Plan.Mapping.Select(pair => pair.Source), StringComparer.Ordinal);

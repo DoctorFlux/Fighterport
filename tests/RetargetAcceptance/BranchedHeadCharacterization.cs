@@ -24,12 +24,20 @@ internal static partial class Program
                 proposal.Warnings.Any(w => w.Contains("no appendage tip was assigned as the head")),
                 "Separate nonzero cranial branches require review instead of assigning the tallest appendage as head",
                 new { permuted, convention, proposal.Warnings });
+            Check(proposal.ProvisionalHead.HasValue && proposal.ProvisionalHead.Value != proposal.Roles["neck"] &&
+                proposal.ProvisionalHead.Value != ambiguous.Head,
+                "An exact-copy-only placeholder is distinct from the reviewed central head and neck");
+            var replayed = new Dictionary<string, int>(proposal.Roles) { { "head", proposal.ProvisionalHead.Value } };
+            Check(SkeletonCharacterizer.NeedsHeadReview(proposal, replayed),
+                "Snapshot/cache/provenance replay of a provisional head cannot authorize an unequal-rig solve");
             bool blocked = false;
             try { SkeletonCharacterizer.Validate(ambiguous.Joints, proposal.Roles); }
             catch (InvalidDataException error) { blocked = error.Message.Contains("head"); }
             Check(blocked, "Automatic retarget admission rejects an unresolved central head binding");
             var reviewed = new Dictionary<string, int>(proposal.Roles) { { "head", ambiguous.Head } };
             SkeletonCharacterizer.Validate(ambiguous.Joints, reviewed);
+            Check(!SkeletonCharacterizer.NeedsHeadReview(proposal, reviewed),
+                "A different explicitly reviewed central joint clears only the provisional-head guard");
             Check(reviewed["head"] != reviewed["neck"], "An explicit distinct reviewed head remains an available mapping path");
 
             var central = BranchedHeadFixture(true, false, permuted, convention);

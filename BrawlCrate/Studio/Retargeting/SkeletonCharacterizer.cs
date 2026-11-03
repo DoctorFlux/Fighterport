@@ -13,6 +13,9 @@ namespace BrawlCrate.Studio.Retargeting
         public Dictionary<string,string> Evidence { get; } = new Dictionary<string,string>();
         public List<string> Warnings { get; } = new List<string>();
         public Dictionary<string,string> Unavailable { get; } = new Dictionary<string,string>();
+        // A structural placeholder for the exact native-copy route only. It is
+        // deliberately absent from Roles so ordinary mapping still needs review.
+        internal int? ProvisionalHead { get; set; }
         public string[] Missing => SkeletonCharacterizer.CoreRoles.Where(r=>!Roles.ContainsKey(r)&&!Unavailable.ContainsKey(r)).ToArray();
     }
 
@@ -23,6 +26,9 @@ namespace BrawlCrate.Studio.Retargeting
     {
         public static readonly string[] CoreRoles = new[]{"pelvis","spine","chest","neck","head"}
             .Concat(new[]{"left","right"}.SelectMany(s=>new[]{"upperArm","lowerArm","hand","upperLeg","lowerLeg","foot"}.Select(p=>s+"."+p))).ToArray();
+        internal static bool NeedsHeadReview(SkeletonCharacterization proposal,IDictionary<string,int> roles) =>
+            proposal.ProvisionalHead.HasValue&&
+            (!roles.TryGetValue("head",out int mapped)||mapped==proposal.ProvisionalHead.Value);
         private static readonly Dictionary<string,string[]> Names = new Dictionary<string,string[]> {
             {"root",new[]{"root","topn","armature","skeleton"}},
             {"motion",new[]{"transn","motion","trajectory","global"}},
@@ -169,7 +175,15 @@ namespace BrawlCrate.Studio.Retargeting
                         // nonzero branch remains material until a map is reviewed.
                         int branches=children[neck].Count(child=>subtree(child).Any(i=>p[i]!=p[neck]));
                         if(branches>1 || neckPath.Length<2)
+                        {
+                            if (neckPath.Length>=2)
+                            {
+                                int[] provisionalHeads=neckPath.Skip(1).Where(i=>children[i].Length>=2).ToArray();
+                                int provisional=provisionalHeads.Length>0?provisionalHeads[0]:neckPath[Math.Max(1,neckPath.Length-2)];
+                                if (!result.Roles.Values.Contains(provisional)) result.ProvisionalHead=provisional;
+                            }
                             result.Warnings.Add("The head has several distinct branches below the neck or no unique neck-to-head path. Review the head mapping; no appendage tip was assigned as the head.");
+                        }
                         else
                         {
                             int[] heads=neckPath.Skip(1).Where(i=>children[i].Length>=2).ToArray();

@@ -17,6 +17,8 @@ namespace BrawlCrate.Studio.Retargeting
             CancellationToken cancellation=default,Action<int,string> progress=null)
         {
             if(lease==null||target?.Rig==null||target.Bones==null)throw new ArgumentNullException(lease==null?nameof(lease):nameof(target));
+            if(target.ProvisionalHeadForExactNativeCopy)
+                throw new InvalidDataException("A branching target head has no reviewed central mapping. Review Skeleton Mapping before porting this native source to that target.");
             lease.VerifyUnchanged(cancellation);
             var source=lease.Source;int last=source.Motion.Length;
             if(source.Motion.Tracks.Any(track=>track.Keys.Any(key=>key.Frame>last)))

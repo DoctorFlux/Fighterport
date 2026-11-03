@@ -19,6 +19,7 @@ namespace BrawlCrate.Studio.Retargeting
         public Rig Rig { get; internal set; }
         public MDL0BoneNode[] Bones { get; internal set; }
         public string Fingerprint { get; internal set; }
+        internal bool ProvisionalHeadForExactNativeCopy { get; set; }
     }
 
     public sealed class RetargetResult : IDisposable
@@ -38,6 +39,7 @@ namespace BrawlCrate.Studio.Retargeting
         public RetargetKeyframeMode KeyframeMode { get; internal set; }
         public RetargetKeyframeReport KeyframeReport { get; internal set; }
         public string OptimizationReport { get; internal set; }
+        internal bool ProvisionalHeadForExactNativeCopy { get; set; }
         // Session evidence for the output adapter, not a second bone mapping or
         // a project-format change. These native bones remain in the target model.
         public string[] OmittedTargetBones { get; internal set; } = new string[0];
@@ -233,7 +235,17 @@ namespace BrawlCrate.Studio.Retargeting
             RigJoint[] joints=NativeJoints(bones);
             var data=model.NativeEditingBackend?.CaptureEvaluation();
             var characterization=data==null?SkeletonCharacterizer.Analyze(joints):Characterize(model);
-            var roles=reviewedMap==null?characterization.Roles:reviewedMap.ToDictionary(p=>p.Key,p=>names.TryGetValue(p.Value,out int index)?index:throw new InvalidDataException("Mapped bone is missing: "+p.Value));
+            var roles=reviewedMap==null?new Dictionary<string,int>(characterization.Roles):reviewedMap.ToDictionary(p=>p.Key,p=>names.TryGetValue(p.Value,out int index)?index:throw new InvalidDataException("Mapped bone is missing: "+p.Value));
+            // This placeholder permits identical, fully verified native rigs to
+            // retain their authored tracks without asking for an anatomical map.
+            // It never authorizes a proportion or contact solve on another rig.
+            // Re-detect a provisional role even after snapshot capture, cache
+            // replay or historical project provenance supplies it as a map.
+            // Only a different, explicitly reviewed anatomical joint can
+            // clear this guard for a proportion/contact solve.
+            bool provisionalHead=data==null&&SkeletonCharacterizer.NeedsHeadReview(characterization,roles);
+            if (provisionalHead&&!roles.ContainsKey("head")&&reviewedMap==null)
+                roles.Add("head",characterization.ProvisionalHead.Value);
             SkeletonCharacterizer.Validate(joints,roles,data);
             float headRadius = model.BoxMax._y - bones[roles["head"]].BindMatrix.GetPoint()._y;
             if (headRadius < 0.1f) headRadius = (bones[roles["head"]].BindMatrix.GetPoint() - bones[roles["neck"]].BindMatrix.GetPoint()).TrueDistance(new NativeVector()) * 2;
@@ -247,7 +259,8 @@ namespace BrawlCrate.Studio.Retargeting
                 if (data==null&&Vector3.Distance(rig.Rest.Point(i), Vector(bones[i].BindMatrix.GetPoint())) > 0.01f)
                     throw new InvalidDataException("The native bind matrices disagree with this rig's local hierarchy at " + bones[i].Name + ".");
             string fingerprint=SkeletonFingerprint(model);
-            return new BrawlRig {Rig = rig, Bones = bones, Fingerprint = fingerprint};
+            return new BrawlRig {Rig = rig, Bones = bones, Fingerprint = fingerprint,
+                ProvisionalHeadForExactNativeCopy = provisionalHead};
         }
 
         public static string SkeletonFingerprint(MDL0Node model)
@@ -412,6 +425,8 @@ namespace BrawlCrate.Studio.Retargeting
             bool exactCopy = exactTransformRig &&
                 (!correction || groundMode == GroundContactMode.Auto || groundMode == GroundContactMode.Airborne) &&
                 ExactNativeSkin(source, target, cancellation);
+            if (!exactCopy && (source.ProvisionalHeadForExactNativeCopy || target.ProvisionalHeadForExactNativeCopy))
+                throw new InvalidDataException("A branching head has no reviewed central mapping. Review Skeleton Mapping before retargeting between different native rigs or support surfaces.");
             ValidateSource(source, clip, !exactCopy);
             if (exactCopy)
                 return BakeExactNativeRig(source, target, clip, keyframeMode, cancellation, progress);

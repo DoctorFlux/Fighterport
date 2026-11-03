@@ -104,7 +104,8 @@ namespace BrawlCrate.UI
             {
                 if (!(modelEditControl1.TargetModel is MDL0Node target) || !(modelEditControl1.TargetAnimation is CHR0Node))
                     throw new NotSupportedException("Open a Brawl target model and select a CHR0 body animation first.");
-                CaptureFighterRig(target); // Characterize/review the actual target before choosing its donor.
+                // Review after choosing the donor, when exact native-copy
+                // admission can be distinguished from a proportion transfer.
                 FighterAsset asset = SelectedFighterAsset();
                 if (asset == null || asset.Retarget != null) throw new InvalidOperationException("Select the original source animation to retarget.");
                 _fighterRetargetSources.TryGetValue(asset.Id, out string path);
@@ -158,7 +159,7 @@ namespace BrawlCrate.UI
                         PlantedBodySamples = result.Contacts.PlantedBodySamples,
                         MaximumContactResidual = result.MaximumContactResidual, MaximumPelvisCorrection = result.MaximumPelvisCorrection,
                         IgnoredSourceBones = result.IgnoredSourceBones,
-                        Mapping = result.Plan.Mapping.Select(m => new RetargetBoneBinding {Role = m.Role, Source = m.Source, Target = m.Target}).ToList()
+                        Mapping = FighterProject.RetargetMappingForProvenance(result)
                     };
                     generated.Retarget.RecordKeyframeEvidence(result);
                     generated.Retarget.OriginalSupport=NativeSupportEvidence.Capture(result,generated.ContentSha256);

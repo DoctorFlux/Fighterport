@@ -27,6 +27,12 @@ internal static partial class Program
             var targetModel = Model(targetFile);
             var source = BrawlRetargeter.Capture(sourceModel);
             var target = BrawlRetargeter.Capture(targetModel);
+            if (source.ProvisionalHeadForExactNativeCopy)
+            {
+                var replayed = source.Rig.Roles.ToDictionary(role => role.Key, role => source.Bones[role.Value].Name);
+                Check(BrawlRetargeter.Capture(sourceModel, replayed).ProvisionalHeadForExactNativeCopy,
+                    "Replayed snapshot or cached role maps cannot promote a provisional head to reviewed anatomy");
+            }
             var rolePlan = new HumanoidRetargeter(source.Rig, target.Rig);
             var mapped = rolePlan.Mapping.Select(pair => pair.SourceIndex).ToArray();
             var helpers = Enumerable.Range(0, source.Bones.Length)
@@ -73,6 +79,15 @@ internal static partial class Program
                 using (var result = BrawlRetargeter.Bake(source, target, clip, true,
                     groundMode: GroundContactMode.Auto, keyframeMode: RetargetKeyframeMode.Dense))
                 {
+                    if (source.ProvisionalHeadForExactNativeCopy || target.ProvisionalHeadForExactNativeCopy)
+                    {
+                        Check(result.ProvisionalHeadForExactNativeCopy &&
+                            !FighterProject.RetargetMappingForProvenance(result).Any(binding => binding.Role == "head"),
+                            "Exact copy retains native tracks without persisting the unreviewed head placeholder");
+                        var support = NativeSupportEvidence.Capture(result, new string('0', 64));
+                        Check(support.Json == null && support.UnavailableReason.Contains("unreviewed branching-head"),
+                            "Exact-copy-only anatomy has no fabricated reviewed support context");
+                    }
                     Check(result.Plan.Mapping.Length == source.Bones.Length && result.IgnoredSourceTracks == 0 &&
                         result.Animation.Children.Count == 2 && result.OptimizationReport.StartsWith("Exact native rig:", StringComparison.Ordinal),
                         "Auto mode retains both authored non-role tracks through the exact structural rig path");
@@ -110,11 +125,14 @@ internal static partial class Program
                             "Explicit Grounded mode must not silently use the uncorrected exact-copy path");
                     }
                 }
-                catch (InvalidDataException error) when (error.Message.Contains("no mapped skeletal channels"))
+                catch (InvalidDataException error) when (error.Message.Contains(source.ProvisionalHeadForExactNativeCopy?
+                    "branching head":"no mapped skeletal channels"))
                 {
                     groundedRejected = true;
                 }
-                Check(groundedRejected, "A helper-only clip requires a mapped body role for explicit Grounded correction");
+                Check(groundedRejected, source.ProvisionalHeadForExactNativeCopy?
+                    "A provisional head cannot authorize explicit Grounded correction":
+                    "A helper-only clip requires a mapped body role for explicit Grounded correction");
                 bool unchanged = NativeOwnership(sourceModel) == sourceOwner && NativeOwnership(targetModel) == targetOwner &&
                     NativeAnimationOptimization.ContentKey(clip) == sourceContent &&
                     NativeAnimationOptimization.SourceContentKey(clip) == sourceSnapshot && FighterProject.HashFile(modelPath) == inputHash;
