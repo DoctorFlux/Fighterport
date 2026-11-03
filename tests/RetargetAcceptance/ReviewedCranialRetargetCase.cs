@@ -180,6 +180,9 @@ internal static partial class Program
                         receipt["BakedToReopenedFiniteOnly"] = true;
                         receipt["WorstWholeMeshFloorVertex"] = ReviewedWorstFloorVertex(
                             source, sourceModel, sourceClip, target, targetModel, fresh);
+                        var earlyHandBody = ReviewedEarlyHandBodyWitness(
+                            source, target, sourceClip, result, fresh);
+                        receipt["EarlyHandBodyWitness"] = earlyHandBody;
                         var trajectory = ReviewedCranialTrajectory(target, targetModel,
                             sourceClip, fresh, result.Contacts, result.Plan);
                         receipt["TrajectoryQuality"] = trajectory;
@@ -257,6 +260,265 @@ internal static partial class Program
         public int NativeContactPatchVertexCount { get; set; }
         public bool FullSkinComparisonPerformed { get; set; }
         public bool FiniteSamplesOnly { get; set; }
+    }
+
+    private static Dictionary<string, object> ReviewedEarlyHandBodyWitness(BrawlRig source, BrawlRig target,
+        CHR0Node clip, RetargetResult result, CHR0Node reopened)
+    {
+        if (result.Plan == null || result.Contacts == null)
+            throw new InvalidDataException("The early support witness needs the original plan and contact tracks.");
+        string[] hands = {"left.hand", "right.hand"};
+        if (hands.Any(role => !source.Rig.Surfaces.ContainsKey(role) ||
+            !target.Rig.Surfaces.ContainsKey(role)))
+            throw new InvalidDataException("An authentic hand patch is missing from the early support witness.");
+        float ArmLength(Rig rig, string side) =>
+            Vector3.Distance(rig.Rest.Point(side + ".upperArm"), rig.Rest.Point(side + ".lowerArm")) +
+            Vector3.Distance(rig.Rest.Point(side + ".lowerArm"), rig.Rest.Point(side + ".hand"));
+        float LegLength(Rig rig, string side) =>
+            Vector3.Distance(rig.Rest.Point(side + ".upperLeg"), rig.Rest.Point(side + ".lowerLeg")) +
+            Vector3.Distance(rig.Rest.Point(side + ".lowerLeg"), rig.Rest.Point(side + ".foot"));
+        var armLengths = hands.ToDictionary(role => role, role => new
+        {
+            Source = ArmLength(source.Rig, role.Split('.')[0]),
+            Target = ArmLength(target.Rig, role.Split('.')[0])
+        });
+        if (armLengths.Values.Any(length => !RigMath.Finite(length.Source) ||
+            !RigMath.Finite(length.Target) || length.Source <= 0 || length.Target <= 0))
+            throw new InvalidDataException("The early support witness has no positive arm scale.");
+        float targetLegLength = (LegLength(target.Rig, "left") +
+            LegLength(target.Rig, "right")) * .5f;
+        if (!RigMath.Finite(targetLegLength) || targetLegLength <= 0)
+            throw new InvalidDataException("The early body witness has no positive target leg scale.");
+        float sourceRestPelvisClearance = source.Rig.Surfaces["pelvis"].Clearance(source.Rig.Rest);
+        float targetRestPelvisClearance = target.Rig.Surfaces["pelvis"].Clearance(target.Rig.Rest);
+
+        int last = clip.Loop ? clip.FrameCount : clip.FrameCount - 1;
+        int quarterIntervals = Math.Min(last * 4, 12 * 4);
+        int[] supported = new int[hands.Length];
+        int[] consecutive = new int[hands.Length];
+        int[] longest = new int[hands.Length];
+        double maxNativeHandPatchDelta = 0;
+        double maxNormalizedEarlyHandClearanceError = 0;
+        double maxNormalizedEarlyLowerArmClearanceError = 0;
+        double maxExtraPelvisDescent = 0;
+        bool inventedEarlyHandSupport = false;
+        bool inventedEarlyLowerArmSupport = false;
+        var rows = new List<object>();
+        for (int index = 0; index <= quarterIntervals; index++)
+        {
+            float time = index / 4f;
+            RigPose sourcePose = BrawlRetargeter.Sample(source, clip, time);
+            float before = Math.Max(0, time - .25f), after = Math.Min(last, time + .25f);
+            float deltaTime = Math.Max(.25f, after - before);
+            RigPose sourceBefore = BrawlRetargeter.Sample(source, clip, before);
+            RigPose sourceAfter = BrawlRetargeter.Sample(source, clip, after);
+            RetargetPose rawResult = result.Plan.Evaluate(sourcePose);
+            RigPose raw = rawResult.Pose;
+            RigPose solved = result.Contacts.Evaluate(time).Pose;
+            RigPose native = BrawlRetargeter.Sample(target, reopened, time);
+            var handRows = new List<object>();
+            for (int h = 0; h < hands.Length; h++)
+            {
+                string role = hands[h];
+                string side = role.Split('.')[0];
+                string upperRole = side + ".upperArm";
+                int sourceUpper = source.Rig.Roles[upperRole];
+                int targetUpper = target.Rig.Roles[upperRole];
+                int sourceUpperParent = source.Rig.Joints[sourceUpper].Parent;
+                int targetUpperParent = target.Rig.Joints[targetUpper].Parent;
+                Vector3 sourceUpperPoint = sourcePose.Point(upperRole);
+                Vector3 rawUpperPoint = raw.Point(upperRole);
+                Vector3 rawHandGoal = rawResult.Goals[role];
+                float rawUpperToGoal = Vector3.Distance(rawUpperPoint, rawHandGoal);
+                float rawArmLength = Vector3.Distance(raw.Point(upperRole),
+                    raw.Point(side + ".lowerArm")) +
+                    Vector3.Distance(raw.Point(side + ".lowerArm"), raw.Point(role));
+                float sourceHeadProximity = Vector3.Distance(sourcePose.Point(role),
+                    sourcePose.CranialPoint()) / armLengths[role].Source;
+                float headBlendWeight = RigMath.Clamp((.95f - sourceHeadProximity) / .4f, 0, 1);
+                var sourcePatch = source.Rig.Surfaces[role].Sample(sourcePose);
+                var rawPatch = target.Rig.Surfaces[role].Sample(raw);
+                var solvedPatch = target.Rig.Surfaces[role].Sample(solved);
+                var nativePatch = target.Rig.Surfaces[role].Sample(native);
+                SkinPoint sourceMarker = source.Rig.Surfaces[role].Marker(sourcePose);
+                Vector3 sourceVelocity = (sourceMarker.Evaluate(sourceAfter) -
+                    sourceMarker.Evaluate(sourceBefore)) / deltaTime;
+                float sourceVerticalSpeed = Math.Abs(Vector3.Dot(sourceVelocity,
+                    source.Rig.GroundNormal));
+                float sourcePlanarSpeed = (sourceVelocity -
+                    source.Rig.GroundNormal *
+                    Vector3.Dot(sourceVelocity, source.Rig.GroundNormal)).Length();
+                ContactGoal goal = result.Contacts.At(role, time);
+                if (time >= 5 && time <= 12)
+                {
+                    maxNormalizedEarlyHandClearanceError = Math.Max(
+                        maxNormalizedEarlyHandClearanceError,
+                        Math.Abs(sourcePatch.Clearance / armLengths[role].Source -
+                                 nativePatch.Clearance / armLengths[role].Target));
+                    inventedEarlyHandSupport |= goal.Support > .001f || goal.Lock > .001f;
+                }
+                if (goal.Support > .99f)
+                {
+                    supported[h]++;
+                    consecutive[h]++;
+                    longest[h] = Math.Max(longest[h], consecutive[h]);
+                }
+                else consecutive[h] = 0;
+                maxNativeHandPatchDelta = Math.Max(maxNativeHandPatchDelta,
+                    Vector3.Distance(solvedPatch.Point, nativePatch.Point));
+                handRows.Add(new
+                {
+                    Role = role,
+                    SourceClearance = sourcePatch.Clearance,
+                    SourceClearancePerArmLength = sourcePatch.Clearance / armLengths[role].Source,
+                    SourceFlatness = sourcePatch.Flatness,
+                    SourceTrackedPlanarSpeed = sourcePlanarSpeed,
+                    SourceTrackedVerticalSpeed = sourceVerticalSpeed,
+                    SourcePoint = sourcePatch.Point,
+                    SourceUpperArmJoint = sourceUpperPoint,
+                    SourceRestUpperArmJoint = source.Rig.Rest.Point(upperRole),
+                    SourceChestJoint = sourcePose.Point("chest"),
+                    SourceRestChestJoint = source.Rig.Rest.Point("chest"),
+                    SourceChestToUpperArm = sourceUpperPoint - sourcePose.Point("chest"),
+                    SourceHandJoint = sourcePose.Point(role),
+                    SourceRestHandJoint = source.Rig.Rest.Point(role),
+                    SourceUpperArmParent = sourceUpperParent < 0 ? null :
+                        source.Rig.Joints[sourceUpperParent].Name,
+                    SourceUpperArmParentJoint = sourceUpperParent < 0 ? Vector3.Zero :
+                        sourcePose.World[sourceUpperParent].Translation,
+                    SourceParentToUpperArm = sourceUpperParent < 0 ? Vector3.Zero :
+                        sourceUpperPoint - sourcePose.World[sourceUpperParent].Translation,
+                    RawTargetUpperArmJoint = rawUpperPoint,
+                    TargetRestUpperArmJoint = target.Rig.Rest.Point(upperRole),
+                    RawTargetChestJoint = raw.Point("chest"),
+                    TargetRestChestJoint = target.Rig.Rest.Point("chest"),
+                    RawTargetChestToUpperArm = rawUpperPoint - raw.Point("chest"),
+                    RawTargetHandJoint = raw.Point(role),
+                    TargetRestHandJoint = target.Rig.Rest.Point(role),
+                    SolvedTargetHandJoint = solved.Point(role),
+                    ReopenedTargetHandJoint = native.Point(role),
+                    RawTargetArmGoal = rawHandGoal,
+                    RawTargetShoulderToGoal = rawUpperToGoal,
+                    RawTargetPosedArmLength = rawArmLength,
+                    RawGoalBeyondArmReach = rawUpperToGoal > rawArmLength,
+                    SourceHandToCranialPerArm = sourceHeadProximity,
+                    HeadGoalBlendWeight = headBlendWeight,
+                    TargetUpperArmParent = targetUpperParent < 0 ? null :
+                        target.Rig.Joints[targetUpperParent].Name,
+                    TargetUpperArmParentMapped = result.Plan.Mapping.Any(map =>
+                        map.TargetIndex == targetUpperParent),
+                    RawTargetParentJoint = targetUpperParent < 0 ? Vector3.Zero :
+                        raw.World[targetUpperParent].Translation,
+                    RawTargetParentToUpperArm = targetUpperParent < 0 ? Vector3.Zero :
+                        rawUpperPoint - raw.World[targetUpperParent].Translation,
+                    RawTargetParentLocalRotation = targetUpperParent < 0 ? Quaternion.Identity :
+                        raw.Local[targetUpperParent].Rotation,
+                    TargetParentBindLocalRotation = targetUpperParent < 0 ? Quaternion.Identity :
+                        target.Rig.Joints[targetUpperParent].Bind.Rotation,
+                    goal.Support, goal.Lock,
+                    RawTargetClearance = rawPatch.Clearance,
+                    SolvedTargetClearance = solvedPatch.Clearance,
+                    ReopenedTargetClearance = nativePatch.Clearance,
+                    ReopenedClearancePerArmLength = nativePatch.Clearance / armLengths[role].Target,
+                    RawTargetPoint = rawPatch.Point,
+                    SolvedTargetPoint = solvedPatch.Point,
+                    ReopenedTargetPoint = nativePatch.Point
+                });
+            }
+            Vector3 sourceCranial = sourcePose.CranialPoint();
+            Vector3 rawCranial = raw.CranialPoint();
+            Vector3 solvedCranial = solved.CranialPoint();
+            Vector3 nativeCranial = native.CranialPoint();
+            float Height(Rig rig, Vector3 point) =>
+                Vector3.Dot(point, rig.GroundNormal) - rig.GroundHeight;
+            string[] body = {"pelvis", "left.lowerArm", "right.lowerArm"};
+            float sourcePelvisClearance = source.Rig.Surfaces["pelvis"].Clearance(sourcePose);
+            float nativePelvisClearance = target.Rig.Surfaces["pelvis"].Clearance(native);
+            float expectedPelvisLowerEnvelope = targetRestPelvisClearance +
+                (sourcePelvisClearance - sourceRestPelvisClearance) * result.Plan.LegScale;
+            if (time >= 5 && time <= 12)
+            {
+                maxExtraPelvisDescent = Math.Max(maxExtraPelvisDescent,
+                    expectedPelvisLowerEnvelope - nativePelvisClearance);
+                foreach (string side in new[] {"left", "right"})
+                {
+                    string role = side + ".lowerArm";
+                    var sourceArmPatch = source.Rig.Surfaces[role];
+                    var targetArmPatch = target.Rig.Surfaces[role];
+                    var scale = armLengths[side + ".hand"];
+                    maxNormalizedEarlyLowerArmClearanceError = Math.Max(
+                        maxNormalizedEarlyLowerArmClearanceError,
+                        Math.Abs(sourceArmPatch.Clearance(sourcePose) / scale.Source -
+                                 targetArmPatch.Clearance(native) / scale.Target));
+                    ContactGoal armGoal = result.Contacts.At(role, time);
+                    inventedEarlyLowerArmSupport |= armGoal.Support > .001f ||
+                        armGoal.Lock > .001f;
+                }
+            }
+            rows.Add(new
+            {
+                Time = time,
+                Hands = handRows,
+                SourceCranialHeight = Height(source.Rig, sourceCranial),
+                RawTargetCranialHeight = Height(target.Rig, rawCranial),
+                SolvedTargetCranialHeight = Height(target.Rig, solvedCranial),
+                ReopenedTargetCranialHeight = Height(target.Rig, nativeCranial),
+                SourcePelvisJointHeight = Height(source.Rig, sourcePose.Point("pelvis")),
+                RawTargetPelvisJointHeight = Height(target.Rig, raw.Point("pelvis")),
+                SolvedTargetPelvisJointHeight = Height(target.Rig, solved.Point("pelvis")),
+                ReopenedTargetPelvisJointHeight = Height(target.Rig, native.Point("pelvis")),
+                ExpectedPelvisLowerEnvelope = expectedPelvisLowerEnvelope,
+                Body = body.Where(role => source.Rig.Surfaces.ContainsKey(role) &&
+                    target.Rig.Surfaces.ContainsKey(role)).Select(role => new
+                {
+                    Role = role,
+                    SourceClearance = source.Rig.Surfaces[role].Clearance(sourcePose),
+                    RawTargetClearance = target.Rig.Surfaces[role].Clearance(raw),
+                    SolvedTargetClearance = target.Rig.Surfaces[role].Clearance(solved),
+                    ReopenedTargetClearance = target.Rig.Surfaces[role].Clearance(native)
+                }).ToArray()
+            });
+        }
+        return new Dictionary<string, object>(StringComparer.Ordinal)
+        {
+            {"Scope", "read-only source-relative early hand/body diagnostic; no floor or gameplay contact inferred"},
+            {"QuarterFrames", rows.Count},
+            {"LastTime", quarterIntervals / 4f},
+            {"SourceGroundHeight", source.Rig.GroundHeight},
+            {"TargetGroundHeight", target.Rig.GroundHeight},
+            {"SourceRestPelvisJointHeight", Vector3.Dot(source.Rig.Rest.Point("pelvis"),
+                source.Rig.GroundNormal) - source.Rig.GroundHeight},
+            {"TargetRestPelvisJointHeight", Vector3.Dot(target.Rig.Rest.Point("pelvis"),
+                target.Rig.GroundNormal) - target.Rig.GroundHeight},
+            {"SourceRestPelvisPatchClearance", sourceRestPelvisClearance},
+            {"TargetRestPelvisPatchClearance", targetRestPelvisClearance},
+            {"RestBodyJointPositions", new[] {"pelvis", "spine", "chest", "neck"}
+                .Where(role => source.Rig.Roles.ContainsKey(role) &&
+                    target.Rig.Roles.ContainsKey(role)).Select(role => new
+                {
+                    Role = role,
+                    Source = source.Rig.Rest.Point(role),
+                    Target = target.Rig.Rest.Point(role)
+                }).ToArray()},
+            {"TargetLegLength", targetLegLength},
+            {"LegScale", result.Plan.LegScale},
+            {"ArmScale", result.Plan.ArmScale},
+            {"FloorEnabled", result.Contacts.FloorEnabled},
+            {"SourceAndTargetArmLengths", armLengths},
+            {"ContactProposalPlantedHandSamples", result.Contacts.PlantedHandSamples},
+            {"ContactProposalFullSupportQuarterSamples", hands.Select((role, i) => new
+            {
+                Role = role, Count = supported[i], LongestRun = longest[i]
+            }).ToArray()},
+            {"MaximumSolvedToReopenedHandPatchPoint", maxNativeHandPatchDelta},
+            {"MaximumNormalizedEarlyHandClearanceError", maxNormalizedEarlyHandClearanceError},
+            {"InventedEarlyHandSupportOrLock", inventedEarlyHandSupport},
+            {"MaximumNormalizedEarlyLowerArmClearanceError", maxNormalizedEarlyLowerArmClearanceError},
+            {"InventedEarlyLowerArmSupportOrLock", inventedEarlyLowerArmSupport},
+            {"MaximumExtraPelvisDescent", maxExtraPelvisDescent},
+            {"Rows", rows},
+            {"FiniteSampledCoverageOnly", true}
+        };
     }
 
     private static object ReviewedWorstFloorVertex(BrawlRig source, MDL0Node sourceModel,

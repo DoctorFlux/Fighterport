@@ -798,6 +798,11 @@
           "path": "docs/RETARGET_CRANIAL_REVIEW_CHECKPOINT_2026-11-03.md",
           "revision": "dda9d2eff162016fb0d9456ed9299cd1dfade250",
           "coverage": "Reviewed one-joint cranial source mapping, exact skin-digest recheck, 33 procedural checks, Sonic AttackS3S to Mario native/contact witness and private-desktop UI. Side-view and whole-mesh evidence retain unresolved head/hat clearance; no general quality acceptance."
+        },
+        {
+          "path": "docs/RETARGET_EARLY_BODY_HAND_CHECKPOINT_2026-11-03.md",
+          "revision": "HEAD+diff:6deaebc74d934c064178b958cb3a26e060860fb9f199b00cfc1ad2a80e3792bf",
+          "coverage": "Production 9913e6d plus a read-only acceptance witness: authentic Sonic AttackS3S to Mario native bake/reopen and root/support checks pass; 49 quarter-frame samples expose pre-serialization palm, forearm and aggregate trunk/body-surface errors. Isolated temporal trials improved hands but failed combined torso/skin quality; production hooks were reverted."
         }
       ],
       "references": {
@@ -828,7 +833,8 @@
           "docs/MELEE_SHARED_BRIDGE_2026-11-02.md",
           "docs/RETARGET_NONIDENTICAL_CHECKPOINT_2026-11-03.md",
           "docs/RETARGET_HEAD_GUARD_CORRECTION_2026-11-03.md",
-          "docs/RETARGET_CRANIAL_REVIEW_CHECKPOINT_2026-11-03.md"
+          "docs/RETARGET_CRANIAL_REVIEW_CHECKPOINT_2026-11-03.md",
+          "docs/RETARGET_EARLY_BODY_HAND_CHECKPOINT_2026-11-03.md"
         ]
       },
       "verification": {
@@ -859,6 +865,11 @@
               "path": "docs/RETARGET_CRANIAL_REVIEW_CHECKPOINT_2026-11-03.md",
               "revision": "dda9d2eff162016fb0d9456ed9299cd1dfade250",
               "coverage": "33/33 procedural, 94/94 coordinate and 32/32 branched-head checks; exact Sonic-to-Mario 474 trajectory and 345 supported-contact samples pass, but full-mesh HatN floor crossing reaches -3.79684 at frame 5. Overall unequal-rig quality remains failed/unverified."
+            },
+            {
+              "path": "docs/RETARGET_EARLY_BODY_HAND_CHECKPOINT_2026-11-03.md",
+              "revision": "HEAD+diff:6deaebc74d934c064178b958cb3a26e060860fb9f199b00cfc1ad2a80e3792bf",
+              "coverage": "Fresh baseline 49-quarter-frame witness: palm/forearm errors 0.43206/0.26132 and extra aggregate trunk/body-surface descent 1.9493 target units. Isolated native temporal candidate reached palm/forearm 0.047087/0.084355 but left the same 1.9493 trunk deficit and moved skin vertices up to 2.810823 units; no combined quality correction accepted."
             }
           ]
         },
@@ -889,6 +900,11 @@
               "path": "docs/RETARGET_CRANIAL_REVIEW_CHECKPOINT_2026-11-03.md",
               "revision": "dda9d2eff162016fb0d9456ed9299cd1dfade250",
               "coverage": "Exact Sonic donor snapshot and reviewed Sonic-to-Mario full-quality CHR0 freshly reopen; target content, roots, all represented weights and source/model ownership retain their bounded checks. No game-runtime or external-editor qualification."
+            },
+            {
+              "path": "docs/RETARGET_EARLY_BODY_HAND_CHECKPOINT_2026-11-03.md",
+              "revision": "HEAD+diff:6deaebc74d934c064178b958cb3a26e060860fb9f199b00cfc1ad2a80e3792bf",
+              "coverage": "Fresh restored production baseline baked 283,752-byte Sonic-to-Mario CHR0 and reopened exact fixture hash, passing existing trajectory, supported-contact and protected-root checks; witness adds no new quality pass gate."
             }
           ]
         },
@@ -919,9 +935,10 @@
         "Peach/Fox and Link/Samus bounded trajectory checks do not establish arbitrary cross-proportion pose, skin or contact quality.",
         "Reviewed Sonic AttackS3S to Mario now maps one source neck and reopens a native result, but a HatN-weighted target vertex and visible head/hat/body cross the bind-plane guide around frames 5–12. Supported contacts do not validate that whole-mesh interval or gameplay collision.",
         "The exact Sonic donor snapshot with nonzero scaling rule now reopens; the earlier exact same-rig copy failure remains historical evidence for a different path. Private-desktop mapping UI passes, but full UI Use/import, human input and runtime remain unverified.",
-        "Single-cranial-joint review is source-side and session-only. Target-side merged head/neck and one-versus-two shoulder chain transfer still need reviewed topology composition and bidirectional tests."
+        "Single-cranial-joint review is source-side and session-only. Target-side merged head/neck and one-versus-two shoulder chain transfer still need reviewed topology composition and bidirectional tests.",
+        "Early passing hands are not reviewed planted contacts. A body lift helps target hat depth but makes hands hover; hand-only mapped-arm trials can meet palm/forearm bounds yet leave trunk and whole-skin quality unresolved. No shoulder-seam acceptance bound exists. All solver experiments were reverted; the retained HEAD+diff identity reproduces the read-only baseline, not transient trial candidates."
       ],
-      "next_step": "Trace frame-5 HatN/head/body source-relative geometry and reviewed floor context in the reopened Sonic-to-Mario result; correct the first general body-proportion cause without changing source roots, target binds/weights or contact bounds. Then qualify target-side single-joint and split/merged shoulder topology bidirectionally."
+      "next_step": "Develop a deterministic offline morphology-aware coupled skinned torso/shoulder/arm trajectory for the pinned Sonic-to-Mario case. Freeze shoulder-seam and attachment bounds; verify hand, trunk, full skin and native fractional/post-decode gates together, with exact source roots and supported contacts. Qualify split/merged anatomy separately."
     },
     {
       "id": "FP-ROOT-MOTION",
@@ -4575,6 +4592,11 @@
           "path": "docs/RETARGET_CRANIAL_REVIEW_CHECKPOINT_2026-11-03.md",
           "revision": "dda9d2eff162016fb0d9456ed9299cd1dfade250",
           "coverage": "Explicit reviewed neck-local cranial surface avoids quill-as-head mapping and duplicate neck FK. Sonic AttackS3S to Mario reopens and passes supported-contact checks; inspected side comparison and all-vertex witness show unresolved head/hat/body clearance."
+        },
+        {
+          "path": "docs/RETARGET_EARLY_BODY_HAND_CHECKPOINT_2026-11-03.md",
+          "revision": "HEAD+diff:6deaebc74d934c064178b958cb3a26e060860fb9f199b00cfc1ad2a80e3792bf",
+          "coverage": "Fresh restored baseline and read-only shoulder topology witness reopen unchanged. Experimental mapped-arm motion meets early hand bounds but fails trunk/full-skin quality, with up to 2.810823 same-target vertex shift and 1.182349 right shoulder-gap change; all production hooks were reverted."
         }
       ],
       "verification": {
@@ -4595,6 +4617,11 @@
               "path": "docs/RETARGET_CRANIAL_REVIEW_CHECKPOINT_2026-11-03.md",
               "revision": "dda9d2eff162016fb0d9456ed9299cd1dfade250",
               "coverage": "33 virtual-cranial, 94 coordinate and 32 branched-head checks pass. Exact Sonic-to-Mario result passes 474 trajectory and 345 supported-contact samples, but all-vertex HatN clearance reaches -3.79684 native units at frame 5 against its bind-plane guide; source is also below its own guide. Broad nonidentical-rig quality fails to qualify."
+            },
+            {
+              "path": "docs/RETARGET_EARLY_BODY_HAND_CHECKPOINT_2026-11-03.md",
+              "revision": "HEAD+diff:6deaebc74d934c064178b958cb3a26e060860fb9f199b00cfc1ad2a80e3792bf",
+              "coverage": "Read-only baseline palm/forearm errors 0.43206/0.26132. Isolated v16 mapped-arm result meets early hand bounds 0.047087/0.084355 but retains 1.949278 trunk descent and shifts target skin up to 2.810823 units; no reviewed shoulder-seam bound or whole-body pass."
             }
           ]
         },
@@ -4615,6 +4642,11 @@
               "path": "docs/RETARGET_CRANIAL_REVIEW_CHECKPOINT_2026-11-03.md",
               "revision": "dda9d2eff162016fb0d9456ed9299cd1dfade250",
               "coverage": "Reviewed Sonic-to-Mario 44-frame CHR0 freshly reopens with zero sampled world-bone, skin and supported-contact displacement from its same finished full-quality target; no external editor or game-runtime qualification."
+            },
+            {
+              "path": "docs/RETARGET_EARLY_BODY_HAND_CHECKPOINT_2026-11-03.md",
+              "revision": "HEAD+diff:6deaebc74d934c064178b958cb3a26e060860fb9f199b00cfc1ad2a80e3792bf",
+              "coverage": "Fresh restored baseline native bake and reopen produce the unchanged 283,752-byte output, with 474 trajectory and 345 supported-contact samples; this does not pass new hand/body quality."
             }
           ]
         },
@@ -4645,7 +4677,7 @@
         "The reviewed source-side Sonic one-joint cranial route produces a reopened target without mapping a quill as head, but full-mesh HatN/head/body clearance and actual floor/contact interpretation remain unresolved despite passing supported-contact samples.",
         "The review is session-only and requires exact source rig/skin evidence; target-side merged head/neck, one-versus-two shoulder chains, broad anatomy and game runtime remain unqualified."
       ],
-      "next_step": "Trace frame-5 HatN/head/body source-relative geometry and reviewed floor context in the reopened Sonic-to-Mario result. Correct a demonstrated general body-proportion cause without changing roots, binds, weights or gates; then test target-side one-joint cranial and split/merged shoulder chains bidirectionally."
+      "next_step": "Develop an offline morphology-aware coupled skinned torso/shoulder/arm solve for pinned Sonic-to-Mario. Freeze shoulder-seam/attachment bounds and pass hand, trunk, full-skin, native fractional/post-decode, root and support gates together; qualify split/merged anatomy separately."
     },
     {
       "id": "CAP-CONTACT-GROUND",
