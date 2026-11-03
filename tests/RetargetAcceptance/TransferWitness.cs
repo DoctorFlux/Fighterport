@@ -306,9 +306,10 @@ internal static partial class Program
         return message.Length <= 2048 ? message : message.Substring(0, 2048);
     }
 
-    static object CaptureTransferPreflight(BrawlRig source, BrawlRig target, MDL0Node sourceModel, MDL0Node targetModel, CHR0Node clip, float[] times)
+    static object CaptureTransferPreflight(BrawlRig source, BrawlRig target, MDL0Node sourceModel, MDL0Node targetModel, CHR0Node clip, float[] times,
+        CranialSurfaceMetric cranialTarget = null)
     {
-        var plan = new HumanoidRetargeter(source.Rig, target.Rig);
+        var plan = new HumanoidRetargeter(source.Rig, target.Rig,null,null,"detail.finger",cranialTarget);
         var samples = new List<object>();
         double maximumSourceNative = 0; float sourceNativeTime = 0; string sourceNativeBone = null;
         try

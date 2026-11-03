@@ -19,7 +19,9 @@ namespace BrawlCrate.Studio.Retargeting
         public Rig Rig { get; internal set; }
         public MDL0BoneNode[] Bones { get; internal set; }
         public string Fingerprint { get; internal set; }
+        internal MDL0Node NativeModel { get; set; }
         internal bool ProvisionalHeadForExactNativeCopy { get; set; }
+        public CranialAnchorReview CranialReview { get; internal set; }
     }
 
     public sealed class RetargetResult : IDisposable
@@ -224,7 +226,8 @@ namespace BrawlCrate.Studio.Retargeting
         }
         public static BrawlRig Capture(MDL0Node model,IDictionary<string,string> reviewedMap=null)
             => Capture(model,reviewedMap,null,null);
-        public static BrawlRig Capture(MDL0Node model,IDictionary<string,string> reviewedMap,Vector3? coordinateUp=null,Quaternion? coordinateFrame=null)
+        public static BrawlRig Capture(MDL0Node model,IDictionary<string,string> reviewedMap,Vector3? coordinateUp=null,Quaternion? coordinateFrame=null,
+            CranialAnchorReview cranialReview=null)
         {
             Interlocked.Increment(ref _diagnosticCaptures);
             if(model==null)throw new InvalidDataException("Choose a loaded native model before creating a contact rig.");
@@ -236,6 +239,21 @@ namespace BrawlCrate.Studio.Retargeting
             var data=model.NativeEditingBackend?.CaptureEvaluation();
             var characterization=data==null?SkeletonCharacterizer.Analyze(joints):Characterize(model);
             var roles=reviewedMap==null?new Dictionary<string,int>(characterization.Roles):reviewedMap.ToDictionary(p=>p.Key,p=>names.TryGetValue(p.Value,out int index)?index:throw new InvalidDataException("Mapped bone is missing: "+p.Value));
+            VirtualCranialAnchor cranialAnchor=null;
+            CranialAnchorProposal cranialProposal=null;
+            if(cranialReview!=null)
+            {
+                if(data!=null || roles.ContainsKey("head") || !roles.TryGetValue("neck",out int neck) ||
+                    bones[neck].Name!=cranialReview.NeckBoneName)
+                    throw new InvalidDataException("The cranial review does not match this native neck mapping.");
+                var proposedRoles=new SkeletonCharacterization();
+                proposedRoles.Roles.Add("neck",neck);
+                cranialProposal=ProposeCranialAnchor(model,proposedRoles);
+                if(!cranialProposal.Available || !string.Equals(cranialProposal.RigAndSkinDigest,cranialReview.RigAndSkinDigest,StringComparison.Ordinal))
+                    throw new InvalidDataException("The reviewed cranial skin or bind rig changed: "+(cranialProposal.RejectionReason??"exact skin digest mismatch"));
+                cranialAnchor=new VirtualCranialAnchor(neck,cranialProposal.BindLocalPoint,
+                    cranialProposal.Radius,cranialReview.Evidence+"; rig/skin SHA-256 "+cranialReview.RigAndSkinDigest);
+            }
             // This placeholder permits identical, fully verified native rigs to
             // retain their authored tracks without asking for an anatomical map.
             // It never authorizes a proportion or contact solve on another rig.
@@ -243,24 +261,24 @@ namespace BrawlCrate.Studio.Retargeting
             // replay or historical project provenance supplies it as a map.
             // Only a different, explicitly reviewed anatomical joint can
             // clear this guard for a proportion/contact solve.
-            bool provisionalHead=data==null&&SkeletonCharacterizer.NeedsHeadReview(characterization,roles);
+            bool provisionalHead=cranialAnchor==null&&data==null&&SkeletonCharacterizer.NeedsHeadReview(characterization,roles);
             if (provisionalHead&&!roles.ContainsKey("head")&&reviewedMap==null)
                 roles.Add("head",characterization.ProvisionalHead.Value);
-            SkeletonCharacterizer.Validate(joints,roles,data);
-            float headRadius = model.BoxMax._y - bones[roles["head"]].BindMatrix.GetPoint()._y;
-            if (headRadius < 0.1f) headRadius = (bones[roles["head"]].BindMatrix.GetPoint() - bones[roles["neck"]].BindMatrix.GetPoint()).TrueDistance(new NativeVector()) * 2;
+            SkeletonCharacterizer.Validate(joints,roles,data,cranialAnchor);
+            float headRadius = cranialAnchor?.Radius ?? model.BoxMax._y - bones[roles["head"]].BindMatrix.GetPoint()._y;
+            if (cranialAnchor==null && headRadius < 0.1f) headRadius = (bones[roles["head"]].BindMatrix.GetPoint() - bones[roles["neck"]].BindMatrix.GetPoint()).TrueDistance(new NativeVector()) * 2;
             // Native Brawl coordinates use +Y up for every model. Declare that
             // adapter evidence independently of head size, rest posture and the
             // later mutable ground/support plane; preserve all imported binds.
             var rig = new Rig(model.Name, model.Name, joints, roles, headRadius,
-                coordinateUp ?? (coordinateFrame.HasValue ? (Vector3?)null : Vector3.UnitY), coordinateFrame,data);
-            if(data==null)CaptureSurfaces(model, rig, bones, names);else CaptureNativeSurfaces(rig,data);
+                coordinateUp ?? (coordinateFrame.HasValue ? (Vector3?)null : Vector3.UnitY), coordinateFrame,data,cranialAnchor);
+            if(data==null)CaptureSurfaces(model, rig, bones, names,cranialProposal?.CandidateVertexIndices);else CaptureNativeSurfaces(rig,data);
             for (int i = 0; i < bones.Length; i++)
                 if (data==null&&Vector3.Distance(rig.Rest.Point(i), Vector(bones[i].BindMatrix.GetPoint())) > 0.01f)
                     throw new InvalidDataException("The native bind matrices disagree with this rig's local hierarchy at " + bones[i].Name + ".");
             string fingerprint=SkeletonFingerprint(model);
-            return new BrawlRig {Rig = rig, Bones = bones, Fingerprint = fingerprint,
-                ProvisionalHeadForExactNativeCopy = provisionalHead};
+            return new BrawlRig {Rig = rig, Bones = bones, Fingerprint = fingerprint,NativeModel=model,
+                ProvisionalHeadForExactNativeCopy = provisionalHead,CranialReview=cranialReview};
         }
 
         public static string SkeletonFingerprint(MDL0Node model)
@@ -274,7 +292,8 @@ namespace BrawlCrate.Studio.Retargeting
             return fingerprint;
         }
 
-        private static void CaptureSurfaces(MDL0Node model, Rig rig, MDL0BoneNode[] bones, Dictionary<string,int> names)
+        private static void CaptureSurfaces(MDL0Node model, Rig rig, MDL0BoneNode[] bones, Dictionary<string,int> names,
+            IReadOnlyCollection<int> reviewedCranialVertices=null)
         {
             var objects=model.PolygonList?.OfType<MDL0ObjectNode>().ToArray();
             if(objects==null||objects.Any(o=>o.Vertices==null&&o.FaceCount>0))
@@ -310,11 +329,13 @@ namespace BrawlCrate.Studio.Retargeting
                         ForwardLocal=Vector3.Transform(RigMath.Unit(forward),inverse)});
                 }
             rig.GroundHeight = new[] {"left.foot","right.foot"}.Min(role => rig.Surfaces[role].Sample(rig.Rest).Clearance);
-            CaptureBodySurfaces(vertices,rig,bones,names);
+            CaptureBodySurfaces(vertices,rig,bones,names,reviewedCranialVertices);
         }
 
-        private static void CaptureBodySurfaces(Vertex3[] vertices,Rig rig,MDL0BoneNode[] bones,Dictionary<string,int> names)
+        private static void CaptureBodySurfaces(Vertex3[] vertices,Rig rig,MDL0BoneNode[] bones,Dictionary<string,int> names,
+            IReadOnlyCollection<int> reviewedCranialVertices)
         {
+            var cranialVertexSet=reviewedCranialVertices==null?null:new HashSet<int>(reviewedCranialVertices);
             string[] regions={"pelvis","spine","chest","neck","head","left.shoulder","right.shoulder","left.upperArm","right.upperArm",
                 "left.lowerArm","right.lowerArm","left.upperLeg","right.upperLeg","left.lowerLeg","right.lowerLeg"};
             var groups=regions.ToDictionary(r=>r,r=>new List<SkinPoint>());
@@ -325,8 +346,14 @@ namespace BrawlCrate.Studio.Retargeting
                 while(joint>=0 && role==null){role=rig.Roles.Keys.FirstOrDefault(r=>rig.Roles[r]==joint);joint=rig.Joints[joint].Parent;}
                 nearest.Add(i,role??"");
             }
-            foreach(Vertex3 vertex in vertices)
+            for(int vertexIndex=0;vertexIndex<vertices.Length;vertexIndex++)
             {
+                // A shared neck/head physical joint is mapped once. Its
+                // reviewed cranial skin cannot also become a pelvis contact
+                // proxy just because it has no separate head joint. A head
+                // floor contact remains unavailable until independently reviewed.
+                if(cranialVertexSet!=null&&cranialVertexSet.Contains(vertexIndex))continue;
+                Vertex3 vertex=vertices[vertexIndex];
                 var matrix=vertex.GetMatrixNode();if(matrix?.Weights==null)continue;
                 // Long unmapped branches outside the head envelope are accessories,
                 // independently of character identity and attachment names.
@@ -357,8 +384,9 @@ namespace BrawlCrate.Studio.Retargeting
             int branch=joint,parent=rig.Joints[branch].Parent;
             while(parent>=0 && !rig.Roles.Values.Contains(parent)){branch=parent;parent=rig.Joints[parent].Parent;}
             if(parent<0 || !new[]{"head","neck"}.Any(r=>rig.Roles.TryGetValue(r,out int i)&&i==parent))return false;
-            float radius=Math.Max(rig.HeadRadius,Vector3.Distance(rig.Rest.Point("head"),rig.Rest.Point("neck")));
-            return Enumerable.Range(0,rig.Joints.Length).Where(i=>IsDescendant(rig,i,branch)).Any(i=>Vector3.Distance(rig.Rest.Point(i),rig.Rest.Point("head"))>radius*2.5f);
+            Vector3 cranialPoint=rig.Rest.CranialPoint();
+            float radius=Math.Max(rig.HeadRadius,Vector3.Distance(cranialPoint,rig.Rest.Point("neck")));
+            return Enumerable.Range(0,rig.Joints.Length).Where(i=>IsDescendant(rig,i,branch)).Any(i=>Vector3.Distance(rig.Rest.Point(i),cranialPoint)>radius*2.5f);
         }
         private static bool IsDescendant(Rig rig, int joint, int ancestor)
         { while (joint >= 0) { if (joint == ancestor) return true; joint=rig.Joints[joint].Parent; } return false; }
@@ -430,7 +458,8 @@ namespace BrawlCrate.Studio.Retargeting
             ValidateSource(source, clip, !exactCopy);
             if (exactCopy)
                 return BakeExactNativeRig(source, target, clip, keyframeMode, cancellation, progress);
-            var plan = new HumanoidRetargeter(source.Rig, target.Rig);
+            CranialSurfaceMetric cranialTarget=PrepareCranialPair(source,target);
+            var plan = new HumanoidRetargeter(source.Rig, target.Rig,null,null,"detail.finger",cranialTarget);
             var output = new CHR0Node {Name = clip.Name, FrameCount = clip.FrameCount, Loop = clip.Loop};
             var result = new RetargetResult {Animation = output, Plan = plan, SourceRig = source.Fingerprint, TargetRig = target.Fingerprint,
                 IgnoredSourceTracks = clip.Children.Count(c => !plan.Mapping.Any(m => m.Source == c.Name)),

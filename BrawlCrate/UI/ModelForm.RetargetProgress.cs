@@ -68,7 +68,7 @@ namespace BrawlCrate.UI
             {
             if(source.NativeEditingBackend!=null)sourceCopy.NativeEditingBackend=source.NativeEditingBackend.CreateSnapshotBackend(sourceCopy);
             if(target.NativeEditingBackend!=null)targetCopy.NativeEditingBackend=target.NativeEditingBackend.CreateSnapshotBackend(targetCopy);
-            BrawlRig sourceRig=BrawlRetargeter.Capture(sourceCopy,sourceReview.Rig.Roles.ToDictionary(p=>p.Key,p=>sourceReview.Bones[p.Value].Name),sourceReview.Rig.CoordinateUp,sourceReview.Rig.CoordinateFrame),targetRig=BrawlRetargeter.Capture(targetCopy,targetReview.Rig.Roles.ToDictionary(p=>p.Key,p=>targetReview.Bones[p.Value].Name),targetReview.Rig.CoordinateUp,targetReview.Rig.CoordinateFrame);
+            BrawlRig sourceRig=BrawlRetargeter.Capture(sourceCopy,sourceReview.Rig.Roles.ToDictionary(p=>p.Key,p=>sourceReview.Bones[p.Value].Name),sourceReview.Rig.CoordinateUp,sourceReview.Rig.CoordinateFrame,sourceReview.CranialReview),targetRig=BrawlRetargeter.Capture(targetCopy,targetReview.Rig.Roles.ToDictionary(p=>p.Key,p=>targetReview.Bones[p.Value].Name),targetReview.Rig.CoordinateUp,targetReview.Rig.CoordinateFrame,targetReview.CranialReview);
             foreach(var entry in clipCopy.Children.OfType<CHR0EntryNode>())
                 for(int channel=0;channel<9;channel++){int populated=entry.Keyframes[channel].KeyCount;}
             RetargetResult result=null;Exception failure=null;bool completed=false;

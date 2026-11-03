@@ -21,6 +21,9 @@ internal static partial class Program
             if(args.Length==5&&args[0]=="--cranial-branch-witness")return CranialBranchWitnessCase(args[1],args[2],args[3],args[4]);
             if(args.Length==3&&args[0]=="--mapping-audit")return MappingAudit(args[1],args[2]);
             if(args.Length==2&&args[0]=="--branched-head-characterization")return BranchedHeadCharacterizationChecks(args[1]);
+            if(args.Length==2&&args[0]=="--virtual-cranial-anchor")return VirtualCranialAnchorChecks(args[1]);
+            if(args.Length==3&&args[0]=="--cranial-anchor-proposal")return CranialAnchorProposalCase(args[1],args[2]);
+            if(args.Length==7&&args[0]=="--reviewed-cranial-retarget")return ReviewedCranialRetargetCase(args[1],args[2],args[3],args[4],args[5],args[6]);
             if(args.Length==2&&args[0]=="--terminal-contacts")return TerminalContactChecks(args[1]);
             if(args.Length==6&&args[0]=="--native-pair-fixture")return NativePairFixture(args[1],args[2],args[3],args[4],args[5]);
             if(args.Length==2&&args[0]=="--adaptive-budget")return AdaptiveBudgetChecks(args[1]);

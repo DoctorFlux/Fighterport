@@ -230,10 +230,11 @@ namespace BrawlCrate.Studio.Retargeting
             return Enumerable.Range(0,rig.Joints.Length).Where(i=>i!=lower&&rig.Ancestors[i][lower])
                 .All(i=>rig.Joints[i].Bind.Translation==Vector3.Zero);
         }
-        public static void Validate(RigJoint[] joints,IDictionary<string,int> roles,FighterPort.NativeEvaluation.NativeRigData nativeEvaluation=null)
+        public static void Validate(RigJoint[] joints,IDictionary<string,int> roles,FighterPort.NativeEvaluation.NativeRigData nativeEvaluation=null,VirtualCranialAnchor cranialAnchor=null)
         {
-            var rig=new Rig("Validation","Humanoid",joints,roles,1,nativeEvaluation:nativeEvaluation);
-            var missing=CoreRoles.Where(r=>!roles.ContainsKey(r)&&!(r.EndsWith(".hand",StringComparison.Ordinal)&&HasTerminalArm(rig,roles,r.Split('.')[0]))).ToArray();
+            var rig=new Rig("Validation","Humanoid",joints,roles,1,nativeEvaluation:nativeEvaluation,cranialAnchor:cranialAnchor);
+            var missing=CoreRoles.Where(r=>!roles.ContainsKey(r)&&!(r=="head"&&cranialAnchor!=null)&&
+                !(r.EndsWith(".hand",StringComparison.Ordinal)&&HasTerminalArm(rig,roles,r.Split('.')[0]))).ToArray();
             if(missing.Length>0)throw new InvalidDataException("Skeleton mapping needs: "+string.Join(", ",missing)+". Use Review Skeleton Mapping.");
             foreach(string side in new[]{"left","right"})foreach(string[] chain in new[]{new[]{"upperArm","lowerArm","hand"},new[]{"upperLeg","lowerLeg","foot"}})
                 for(int i=1;i<chain.Length;i++)
@@ -244,7 +245,11 @@ namespace BrawlCrate.Studio.Retargeting
                     if(node!=ancestor || distance<0.00001f)throw new InvalidDataException("Invalid mapped limb hierarchy or zero-length segment: "+side+"."+chain[i]);
                 }
             foreach(var pair in new[]{new[]{"pelvis","spine"},new[]{"spine","chest"},new[]{"chest","neck"},new[]{"neck","head"}})
-            {int node=roles[pair[1]];while(node>=0&&node!=roles[pair[0]])node=joints[node].Parent;if(node<0)throw new InvalidDataException("Invalid torso hierarchy at "+pair[1]);}
+            {
+                if(pair[1]=="head"&&cranialAnchor!=null)continue; // reviewed skin point follows neck; there is no second native joint
+                int node=roles[pair[1]];while(node>=0&&node!=roles[pair[0]])node=joints[node].Parent;
+                if(node<0)throw new InvalidDataException("Invalid torso hierarchy at "+pair[1]);
+            }
         }
         internal static bool HasSharedTorso(RigJoint[] joints,IDictionary<string,int> roles)
         {

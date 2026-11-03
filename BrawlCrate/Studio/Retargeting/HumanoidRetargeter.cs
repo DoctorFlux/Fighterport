@@ -49,6 +49,7 @@ namespace BrawlCrate.Studio.Retargeting
         private readonly RetargetMap trajectory;
         private readonly bool sharedTorso;
         private readonly bool bridgeExtraLimbSegments;
+        private readonly CranialSurfaceMetric targetCranialSurface;
         public string[] TopologyAdaptations {get;}
         private readonly Dictionary<int,Tuple<Quaternion,Quaternion>> localFrames=new Dictionary<int,Tuple<Quaternion,Quaternion>>();
 
@@ -61,20 +62,30 @@ namespace BrawlCrate.Studio.Retargeting
             :this(source,target,trajectoryBindings,null){}
 
         public HumanoidRetargeter(Rig source, Rig target, IReadOnlyDictionary<int,int> trajectoryBindings,
-            IReadOnlyDictionary<int,int> detailBindings, string detailRole = "detail.finger")
+            IReadOnlyDictionary<int,int> detailBindings, string detailRole = "detail.finger",
+            CranialSurfaceMetric targetCranialSurface = null)
         {
             if(detailRole!="detail.finger"&&detailRole!="detail.exact")throw new ArgumentOutOfRangeException(nameof(detailRole));
             Source = source; Target = target;
+            if(targetCranialSurface!=null && (source.CranialAnchor==null ||
+                !target.Roles.TryGetValue("head",out int realHead) || realHead!=targetCranialSurface.Joint))
+                throw new InvalidDataException("A measured target cranial surface requires a virtual source and this target's real head joint.");
+            this.targetCranialSurface=targetCranialSurface;
             bridgeExtraLimbSegments=trajectoryBindings!=null;
             sharedTorso=SkeletonCharacterizer.HasSharedTorso(source.Joints,source.Roles)||SkeletonCharacterizer.HasSharedTorso(target.Joints,target.Roles);
-            TopologyAdaptations=sharedTorso?new[]{"An existing native torso junction serves spine and chest; one target joint is written once. No bone or bind is added."}:new string[0];
+            var topologyAdaptations = new List<string>();
+            if (sharedTorso) topologyAdaptations.Add("An existing native torso junction serves spine and chest; one target joint is written once. No bone or bind is added.");
+            if (source.CranialAnchor != null)
+                topologyAdaptations.Add("A reviewed source cranial surface follows its existing neck; no source head joint is invented, and the target head stays at its local bind pose while inheriting neck motion.");
+            TopologyAdaptations = topologyAdaptations.ToArray();
             // Native adapters may map motion pivots, toes, fingers and props,
             // but the solver must not require a Brawl-specific helper chain.
             var required = new List<string> {"pelvis", "spine", "chest", "neck", "head"};
             foreach (string side in new[] {"left", "right"})
                 required.AddRange(new[] {"upperArm", "lowerArm", "hand", "upperLeg", "lowerLeg", "foot"}.Select(n => side + "." + n));
             bool Unavailable(Rig rig,string role)=>role.EndsWith(".hand",StringComparison.Ordinal)&&SkeletonCharacterizer.HasTerminalArm(rig,rig.Roles,role.Split('.')[0]);
-            if (required.Any(r => !source.Roles.ContainsKey(r)&&!Unavailable(source,r) || !target.Roles.ContainsKey(r)&&!Unavailable(target,r)))
+            if (required.Any(r => !source.Roles.ContainsKey(r)&&!(r=="head"&&source.CranialAnchor!=null)&&!Unavailable(source,r) ||
+                !target.Roles.ContainsKey(r)&&!Unavailable(target,r)))
                 throw new InvalidDataException("This rig is missing a required humanoid role. No motion was generated.");
             UnavailableEndEffectors=required.Where(r=>Unavailable(source,r)||Unavailable(target,r)).ToArray();
             Mapping = source.Roles.Keys.Intersect(target.Roles.Keys)
@@ -118,6 +129,9 @@ namespace BrawlCrate.Studio.Retargeting
             }
             if(detailBindings!=null)
             {
+                if(source.CranialAnchor!=null && target.Roles.TryGetValue("head",out int targetHead) &&
+                    detailBindings.Values.Contains(targetHead))
+                    throw new InvalidDataException("A virtual cranial anchor cannot authorize an appendage or detail joint to drive the target's real head.");
                 if(detailBindings.Values.Distinct().Count()!=detailBindings.Count||
                     detailBindings.Any(pair=>pair.Key<0||pair.Key>=source.Joints.Length||
                         pair.Value<0||pair.Value>=target.Joints.Length||
@@ -132,7 +146,11 @@ namespace BrawlCrate.Studio.Retargeting
             trajectory=Mapping.LastOrDefault(IsTrajectory);
             LegScale = (ChainRatio("left", false) + ChainRatio("right", false)) / 2;
             ArmScale = (ChainRatio("left", true) + ChainRatio("right", true)) / 2;
-            HeadScale = target.HeadRadius / source.HeadRadius;
+            // A virtual source point is measured from skin, so a real target
+            // must use the same skinned RMS metric for close-hand/head goals.
+            // Both real-head rigs retain the established native rule.
+            HeadScale = targetCranialSurface==null ? target.HeadRadius / source.HeadRadius :
+                targetCranialSurface.Radius / source.CranialAnchor.Radius;
             if (!RigMath.Finite(LegScale) || !RigMath.Finite(ArmScale) || !RigMath.Finite(HeadScale) || LegScale<=0 || ArmScale<=0 || HeadScale<=0)
                 throw new InvalidDataException("The rig needs finite positive measured proportions.");
             Calibration = Quaternion.Normalize(RigMath.BodyFrame(target) * Quaternion.Inverse(RigMath.BodyFrame(source)));
@@ -300,9 +318,12 @@ namespace BrawlCrate.Studio.Retargeting
             else
             {
                 // Close hand/head gestures use the head's proportions rather than long target arms.
-                float near = Vector3.Distance(source.Point(endRole), source.Point("head")) / ChainLength(Source, side, true);
+                Vector3 sourceHead = source.CranialPoint();
+                float near = Vector3.Distance(source.Point(endRole), sourceHead) / ChainLength(Source, side, true);
                 float weight = RigMath.Clamp((0.95f - near) / 0.4f, 0, 1);
-                Vector3 headGoal = target.Point("head") + Convert(source.Point(endRole) - source.Point("head")) * HeadScale;
+                Vector3 targetHead = targetCranialSurface==null ? target.CranialPoint() :
+                    Vector3.Transform(targetCranialSurface.BindLocalPoint,target.World[targetCranialSurface.Joint]);
+                Vector3 headGoal = targetHead + Convert(source.Point(endRole) - sourceHead) * HeadScale;
                 goal = Vector3.Lerp(goal, headGoal, weight);
             }
             report.Goals[endRole] = goal;

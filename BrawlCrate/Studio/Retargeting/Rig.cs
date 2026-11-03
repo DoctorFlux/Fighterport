@@ -25,6 +25,46 @@ namespace BrawlCrate.Studio.Retargeting
         public RigJoint(string name, int parent, JointTransform bind) { Name = name; Parent = parent; Bind = bind; }
     }
 
+    // A reviewed skin-backed point can represent a cranial surface when the
+    // existing skeleton has no separate central head joint. This is geometry
+    // evidence, never an additional joint or a role eligible for FK transfer.
+    // The native adapter must independently verify the skin and mesh revision
+    // identified by ReviewedEvidence before supplying this contract.
+    public sealed class VirtualCranialAnchor
+    {
+        public int ParentJoint { get; }
+        public Vector3 BindLocalPoint { get; }
+        public float Radius { get; }
+        public string ReviewedEvidence { get; }
+        public VirtualCranialAnchor(int parentJoint, Vector3 bindLocalPoint, float radius, string reviewedEvidence)
+        {
+            if (parentJoint < 0 || !RigMath.Finite(bindLocalPoint) || !RigMath.Finite(radius) || radius <= 0 ||
+                string.IsNullOrWhiteSpace(reviewedEvidence) || reviewedEvidence.Length > 32768)
+                throw new InvalidDataException("A virtual cranial anchor needs a finite neck-local point, positive radius and bounded reviewed skin evidence.");
+            ParentJoint = parentJoint;
+            BindLocalPoint = bindLocalPoint;
+            Radius = radius;
+            ReviewedEvidence = reviewedEvidence;
+        }
+    }
+
+    // Pair-specific, reviewed skin metric for a real target head. It belongs
+    // to a retarget plan, not the reusable target rig or editable document.
+    public sealed class CranialSurfaceMetric
+    {
+        public int Joint { get; }
+        public Vector3 BindLocalPoint { get; }
+        public float Radius { get; }
+        public string Evidence { get; }
+        public CranialSurfaceMetric(int joint, Vector3 bindLocalPoint, float radius, string evidence)
+        {
+            if (joint < 0 || !RigMath.Finite(bindLocalPoint) || !RigMath.Finite(radius) || radius <= 0 ||
+                string.IsNullOrWhiteSpace(evidence) || evidence.Length > 4096)
+                throw new InvalidDataException("A target cranial surface needs a finite joint-local point, positive radius and reviewed skin evidence.");
+            Joint = joint; BindLocalPoint = bindLocalPoint; Radius = radius; Evidence = evidence;
+        }
+    }
+
     public sealed class Rig
     {
         public string Name { get; }
@@ -38,6 +78,7 @@ namespace BrawlCrate.Studio.Retargeting
         internal int[][] Branches { get; }
         internal bool[][] Ancestors { get; }
         public float HeadRadius { get; }
+        public VirtualCranialAnchor CranialAnchor { get; }
         // Immutable adapter/review evidence for coordinate-up. It is separate
         // from the mutable contact/support plane and never changes native binds.
         // Null retains the labelled legacy anatomical-rest fallback.
@@ -51,7 +92,7 @@ namespace BrawlCrate.Studio.Retargeting
         public float GroundHeight { get; set; }
         public Rig(string name, string profile, IEnumerable<RigJoint> joints, IDictionary<string, int> roles, float headRadius)
             : this(name, profile, joints, roles, headRadius, null, null) { }
-        public Rig(string name, string profile, IEnumerable<RigJoint> joints, IDictionary<string, int> roles, float headRadius, Vector3? coordinateUp = null, Quaternion? coordinateFrame = null,FighterPort.NativeEvaluation.NativeRigData nativeEvaluation=null)
+        public Rig(string name, string profile, IEnumerable<RigJoint> joints, IDictionary<string, int> roles, float headRadius, Vector3? coordinateUp = null, Quaternion? coordinateFrame = null,FighterPort.NativeEvaluation.NativeRigData nativeEvaluation=null,VirtualCranialAnchor cranialAnchor=null)
         {
             Name = name; Profile = profile; Joints = joints.ToArray(); Roles = new Dictionary<string, int>(roles);NativeEvaluation=nativeEvaluation;
             Parents=Joints.Select(j=>j.Parent).ToArray();
@@ -88,6 +129,10 @@ namespace BrawlCrate.Studio.Retargeting
                     throw new InvalidDataException("The retarget rig has an invalid hierarchy or nonpositive bind scale.");
             if (Roles.Values.Any(i => i < 0 || i >= Joints.Length) || Roles.GroupBy(r=>r.Value).Any(g=>g.Count()>1&&!(g.Select(p=>p.Key).OrderBy(k=>k,StringComparer.Ordinal).SequenceEqual(new[]{"chest","spine"})&&SkeletonCharacterizer.HasSharedTorso(Joints,Roles))))
                 throw new InvalidDataException("Humanoid roles must identify distinct existing joints.");
+            if (cranialAnchor != null && (!Roles.TryGetValue("neck", out int neck) ||
+                cranialAnchor.ParentJoint != neck || Roles.ContainsKey("head")))
+                throw new InvalidDataException("A virtual cranial anchor must use the mapped neck and must not duplicate a real head role.");
+            CranialAnchor = cranialAnchor;
             // A world-space edit only changes this joint and its descendants.
             // Cache the topologically ordered branches once, rather than
             // recomputing every unrelated joint for each IK control update.
@@ -98,7 +143,7 @@ namespace BrawlCrate.Studio.Retargeting
                 Ancestors[i][i]=true;
             }
             Branches = Enumerable.Range(0,Joints.Length).Select(root => Enumerable.Range(root,Joints.Length-root).Where(i => Ancestors[i][root]).ToArray()).ToArray();
-            HeadRadius = Math.Max(0.01f, headRadius);
+            HeadRadius = cranialAnchor?.Radius ?? Math.Max(0.01f, headRadius);
             Rest = new RigPose(this);
         }
     }
@@ -137,6 +182,8 @@ namespace BrawlCrate.Studio.Retargeting
             }
         }
         public Vector3 Point(string role) => Point(Rig.Roles[role]);
+        public Vector3 CranialPoint() => Rig.CranialAnchor == null ? Point("head") :
+            Vector3.Transform(Rig.CranialAnchor.BindLocalPoint, World[Rig.CranialAnchor.ParentJoint]);
         public void Update()
         {
             for (int i = 0; i < Local.Length; i++) UpdateJoint(i);
@@ -239,7 +286,7 @@ namespace BrawlCrate.Studio.Retargeting
             }
             else
             {
-                up = rig.Rest.Point("head") - rig.Rest.Point("pelvis");
+                up = rig.Rest.CranialPoint() - rig.Rest.Point("pelvis");
                 up = Unit(up - right * Vector3.Dot(up, right));
             }
             Vector3 forward = Unit(Vector3.Cross(right, up));
