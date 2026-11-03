@@ -4,61 +4,50 @@ Task ID: TASK-RETARGET-NONIDENTICAL-001
 
 Parent: incomplete G1/M2
 
-Starting verified application revision: `041ec87a6f7d4d6b42f311cc91fe48fee5f4191b` (preview.96)
-
-Latest tested code checkpoint: `601466c600d4ab868ebe9331842670ad74a3617f`, following clean `main` at `7eefe96cdfaa9069db5aae5592ea99062c48ead1`. This correction is not another accepted preview.
+Starting accepted application revision: `041ec87a6f7d4d6b42f311cc91fe48fee5f4191b` (preview.96). Current increment began from clean `b0044905d0302a5af1e082566fc674c0b9a37000`; latest tested code checkpoint is `dda9d2eff162016fb0d9456ed9299cd1dfade250`. This is not another accepted preview.
 
 Linked requirements: `REQ04`, `REQ05`, `REQ08`, `REQ10`, `REQ13`, `REQ14`
+
 Linked feature: `FP-RETARGET-QUALITY`
 
-The repository memory setup is a documentation/tooling checkpoint. It does not itself qualify another animation result. The latest accepted product increment is the guarded exact-rig preservation route in [preview.96](../RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md). That fix must not be repeated as a substitute for the task below.
+Preview.96's guarded identical-rig preservation is the last accepted product increment. The [reviewed cranial checkpoint](../RETARGET_CRANIAL_REVIEW_CHECKPOINT_2026-11-03.md) pins the current source, fixture hashes, commands and limitations; older receipts retain their own tested revisions.
 
 ## Objective and acceptance boundary
 
-Find one **reproducible real non-identical-rig** retarget-quality failure, then fix its first demonstrated general cause if the evidence identifies one. Trace native source interpretation → authentic rig/bind data → reviewed role/joint mapping → solver/body/contact goals → generated local curves → serialized/freshly reopened native result → skinned/contact motion. Preserve original Next, target hierarchy/rest/inverse binds/weights, source-owned root motion, all represented skin influences and existing frozen quality gates. No character/action hardcodes or accuracy relaxation.
+Find a real non-identical-rig retarget-quality failure and correct its first demonstrated general cause. Trace native source interpretation → authentic rig/bind data → reviewed role/joint mapping → solver/body/contact goals → generated local curves → serialized/freshly reopened native result → skinned/contact motion. Preserve original Next, target hierarchy/rest/inverse binds/weights, source-owned root motion, all skin influences and frozen quality gates. No character/action hardcodes or accuracy relaxation.
 
-Completion of this one task requires a pinned fixture and before/after witness showing the original failure, the cause, a general code change, independent numeric checks, fresh native reopen/re-save, unaffected-regression coverage and actual inspected background captures where visual behavior is claimed. A measured solution may instead prove missing context or unsupported anatomy; record that honestly and leave the task open or narrow the next action. A partial pass cannot qualify all cross-proportion motion, contacts or game runtime.
+Task completion requires a pinned before/after fixture showing the cause, general correction, independent numerical checks, fresh native reopen/re-save, unaffected regressions and inspected background captures wherever visual behavior is claimed. A measured result may instead prove missing context or unsupported anatomy; record it honestly. A partial pass does not qualify broad motion, contacts or game runtime.
 
-## Scope and method
+## Progress and remaining failure
 
-1. Inspect current HEAD/status/diff and the linked feature record. Verify exact private native members and hashes without copying commercial bytes to Git. Start with a non-idle unequal-rig pair in the ignored `artifacts/Fighterport-attacks655-20261101/corpus.json`; Link→Samus and Samus→Link `AttackS3S` are present and have not been accepted by preview.96's paired quality receipt. Use another exact pair if these pass without a failure. Keep fixture names out of numerical dispatch.
-2. Reproduce the result with the current native harness and record local/source/mapping/solver/final-native/skin/contact values at integer, existing quarter-frame, boundary and withheld fractional times. Compare against the **same full-quality finished target** for serialization fidelity; compare absolute action/contact gates separately. Preserve complete original/target rig and weight invariants. Explain whether failure begins in source interpretation, mapping, solving, generated curves, writer, or viewer presentation. Do not blame the codec when the pre-encode result already differs.
-3. Make the smallest general correction at the first proven failing boundary. Add a permanent procedural/renamed/storage-permuted regression and the authentic case with frozen expectations. Do not alter unrelated app, optimizer or donor adapters.
-4. Run relevant native/engine tests, fresh export→reopen→re-save and background offscreen UI capture. Inspect images and retain failed/untested cases. Update dated acceptance, `FEATURE_STATUS.json`, `PROJECT_STATE.md` and this task at checkpoints, then publish source only after its own qualification.
+1. **Corrected mapping cause:** Sonic's animated quill was a false automatic `head`. `dda9d2e` adds a reviewed direct-neck skin anchor with an exact rig/skin digest. Source neck maps once; Mario's actual head remains under its native hierarchy. Close-hand goals use matching skin measurements. The UI requires explicit review and rejects stale evidence. Ordinary physical-head Next behavior remains unchanged.
+2. **Scoped pass:** 33/33 virtual-cranial, 94/94 coordinate-frame and 32/32 branched-head checks; authentic Sonic `AttackS3S`→Mario native serialize/reopen; 474/474 trajectory and 345 supported-contact samples; zero protected root-local error; 10/10 private-desktop UI review; inspected 87 half-frame orthographic side comparison. Exact donor member copy/reopen preserved 68 entries and nonzero scaling metadata.
+3. **Open quality failure:** a `HatN` vertex reaches -3.79684 native units against Mario's target bind-plane guide at frame 5, while the source whole-mesh minimum is -1.52706 against its own guide. Inspected frames show target head/hat/body crossing around frames 5–12. No reviewed hat/floor contact applies. Supported-foot results do not qualify whole-body clearance.
+4. **Anatomy boundary:** the single-joint cranial route is source-side and reviewed. Target-side merged head/neck and one-versus-two shoulder chain composition remain unimplemented or unqualified. Never duplicate one physical joint's motion across semantic roles or treat a quill as a head.
 
-## Relevant code, tests and contracts
+## Exact next executable action
 
-- `BrawlCrate/Studio/Retargeting/BrawlRetargeter.cs`, `BrawlRetargeter.SharedBones.cs`, `BrawlRetargeter.ExactRig.cs`, `Rig.cs`, `RetargetKeyframes*.cs` and contact/trajectory files.
-- `tests/RetargetAcceptance/Program.cs`, `CorrectionTrajectoryChecks.cs`, `MappingContactChecks.cs`, `BranchedHeadCharacterization.cs`, `TransferWitness.cs`, `SameRigHelperOnly.cs`, `SameRigQualityCase.cs`; `tests/ControlsAcceptance/WorkspaceSameRigRetarget.cs` for native workflow protection.
-- `scripts/Test-RetargetQualityPairs.ps1`, `scripts/Test-BackgroundCapture.ps1`, `scripts/Build.ps1`.
-- [Automatic retargeting contract](../engine/AUTOMATIC_RETARGETING.md), [engine boundary](../ENGINE_INTEGRATION.md), [preview.96 evidence](../RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md), [first unequal-rig checkpoint](../RETARGET_NONIDENTICAL_CHECKPOINT_2026-11-03.md), [head-guard correction receipt](../RETARGET_HEAD_GUARD_CORRECTION_2026-11-03.md).
+Measure frame-5 source and target head, hat and body skin points against each rig's geometry, reviewed floor context and baked pre-encode versus reopened motion. Determine whether extra target crossing comes from reviewed mapping, solver/body-proportion goals or source action intent. Freeze source-relative expected values before a general correction. If demonstrated, implement without character/action dispatch or changes to roots, binds, hierarchy, weights or gates; rerun the same exact fixture plus renamed/storage-permuted, unrelated real-head and support-contact regressions. Inspect fresh background side captures and record either acceptance or precise refusal. Follow with a separate reviewed split/merged cranial and shoulder chain-composition increment, with bidirectional unequal-rig tests where authentic assets exist.
 
-### Actual command pattern and local evidence
+Keep preparation, user review, native Apply and output dependency checks distinct. Do not mark this task or G1/M2 complete from this cranial subcase. Preserve historical receipts and private assets in ignored locations.
 
-From the checkout, the current native build and exact-member tests use the ignored fixture manifest and a **fresh** ignored output directory. The authentic input hashes, member identity, actual runs and findings are in [the 3 November unequal-rig checkpoint](../RETARGET_NONIDENTICAL_CHECKPOINT_2026-11-03.md). Do not publish the manifest's private paths or generated CHR0s.
+## Relevant files and scoped commands
+
+Code: `BrawlCrate/Studio/Retargeting/Rig.cs`, `SkeletonCharacterizer.cs`, `BrawlRetargeter.Cranial.cs`, `BrawlRetargeter.CranialReview.cs`, `BrawlRetargeter.cs`, `HumanoidRetargeter.cs`, `BrawlCrate/UI/ModelForm.SkeletonMapping.cs`. Tests: `tests/RetargetAcceptance/VirtualCranialAnchorChecks.cs`, `ReviewedCranialRetargetCase.cs`, `BranchedHeadCharacterization.cs`, `TransferWitness.cs` and ControlsAcceptance cranial review. Contracts: [automatic retargeting](../engine/AUTOMATIC_RETARGETING.md), [engine integration](../ENGINE_INTEGRATION.md), [current receipt](../RETARGET_CRANIAL_REVIEW_CHECKPOINT_2026-11-03.md).
+
+Run from the checkout, resolving exact private fixture paths only from the ignored manifest and using fresh ignored outputs:
 
 ```powershell
-$workspace = (Resolve-Path ../..).Path
-$native = Join-Path $workspace 'artifacts/Fighterport-quality-headguard-build/native'
-& scripts/Build.ps1 -NativeOnly -NativeDirectory $native
-& <VS2022-MSBuild> tests/RetargetAcceptance/RetargetAcceptance.csproj /restore /t:Build /p:Configuration=Release /p:Platform=x86 /p:BuildProjectReferences=false "/p:OutDir=$native\" /nologo /v:minimal
-& (Join-Path $native 'RetargetAcceptance.exe') --branched-head-characterization <fresh-ignored-output>
-& (Join-Path $native 'RetargetAcceptance.exe') --same-rig-helper-only <exact-source-model> <fresh-ignored-output>
-& (Join-Path $native 'RetargetAcceptance.exe') --cranial-branch-witness <source-model> <motion> <exact-fixture> <fresh-ignored-output>
-& (Join-Path $native 'RetargetAcceptance.exe') --retarget-case <source-model> <target-model> <motion> <exact-fixture> <fresh-ignored-output>
-& (Join-Path $native 'RetargetAcceptance.exe') --verify-trajectory <source-model> <target-model> <motion> AttackS3S <saved-chr0> <fresh-ignored-output> <exact-fixture>
-& scripts/Test-BackgroundCapture.ps1 -Model <exact-Mario-model> -Motion <exact-Mario-motion> -Clip AttackAirHi -WorkspaceSameRigRetarget -NativeDirectory $native -OutputDirectory <fresh-ignored-output>
+& scripts/Build.ps1 -NativeOnly -NativeDirectory ../../artifacts/Fighterport-cranial-next-build/native
+& <VS2022-MSBuild> tests/RetargetAcceptance/RetargetAcceptance.csproj /restore /t:Build /p:Configuration=Release /p:Platform=x86 /p:BuildProjectReferences=false /p:OutDir=<ignored-native-build> /nologo /v:minimal
+& <ignored-native-build>/RetargetAcceptance.exe --virtual-cranial-anchor <ignored-output>
+& <ignored-native-build>/RetargetAcceptance.exe --coordinate-frames <ignored-output>
+& <ignored-native-build>/RetargetAcceptance.exe --branched-head-characterization <ignored-output>
+& <ignored-native-build>/RetargetAcceptance.exe --reviewed-cranial-retarget <Sonic-model> <Mario-model> <Sonic-motion> <pinned-ignored-fixture> <ignored-output> <review-evidence>
+& <ignored-native-build>/ControlsAcceptance.exe <Sonic-model> <Sonic-motion> <ignored-output> --workspace-cranial-review --target-model <Mario-model> --clip AttackS3S --private-desktop
+python tests/test_project_memory.py
+python scripts/Check-ProjectMemory.py --generate-support
+python scripts/Check-ProjectMemory.py
 ```
 
-The historical Sonic→Mario master/default outputs were generated **before** the mapping guard and retained for stage comparison. The current exact Sonic→Mario run must refuse ambiguous automatic head mapping before output. Link↔Samus post-guard runs qualify only their named-head and existing contact/native cases. Do not treat a refused Sonic clip or a reopened CHR0 as accepted motion. The latest correction's fixture hashes, successful and failed commands, native-host limitation and ignored receipt locations are pinned in its dated receipt.
-
-## Progress and exact next step
-
-- **Accepted historical baseline:** preview.96 guarded identical-rig native track retention; Peach `AttackS3S`, Mario `AttackAirHi`, Peach `AttackAirN` and the recorded Peach/Fox pairs passed their bounded checks. These were **not rerun** by the memory setup.
-- **Current task progress:** Link↔Samus `AttackS3S` passed fresh exact-member native/contact checks in both directions on `601466c`. The exact Sonic→Mario `AttackS3S` case reproduced an early whole-body floor crossing **before** CHR0 writing; its source already crosses its floor and the target crossing is larger. The first stage harness distinguished source, mapping, raw/corrected solver, finished master and reopened native skin values. Sonic's automatic `head` role was demonstrably an animated quill branch; the general guard refuses an unequal-rig solve. The latest correction retains provisional anatomy only for complete exact-rig admission and prevents cached/replayed maps from treating it as reviewed. A new read-only eight-group/12-time native skin witness shows direct neck skin dominates the quill branches; it does not itself select an anatomical head.
-- **Repository-memory checkpoint:** 12 documentation validator tests and 21/31/66 ledger coverage checks passed; a fresh-context read-only recovery simulation found the task and exposed two links that were corrected. These checks do not advance the retarget-quality acceptance gate.
-- **Checks passed on `601466c`:** fresh native application and scoped retarget/ControlsAcceptance builds; 28/28 renamed/permuted branched-head assertions; synthetic Sonic helper-only exact-copy/reopen with zero maximum world error, unchanged sources/models and unavailable rather than invented contact evidence; exact Sonic→Mario refusal without output; Link↔Samus full-quality/default native reopen and 430-sample support/trajectory oracles in both directions, protected root-local error zero; native cranial witness across 6,844 vertices at 12 times. Private-desktop Mario `AttackAirHi` Use on This Model/native edit/Undo/Redo/Save/reopen passed 15/15, and its capture was inspected. Earlier 94 coordinate-frame checks, six Brawl captures and wrong-direction manifest rejection belong to the preceding checkpoint and were not rerun on `601466c`. All private fixtures/outputs remain ignored.
-- **Failed/limited observations:** authentic Sonic same-rig `AttackS3S` and `Wait1` reach copy but fail the preexisting nonzero CHR0 scaling-rule preservation gate; no output/reopen pass. The historical Sonic target reaches -2.874385 native units below its reviewed floor after reopen, versus -2.095862 in source floor coordinates. Source penetration prevents treating this alone as a universal absolute floor failure. The quill-as-head mapping is wrong and refused. The fresh UI capture is overhead and supplies no contact/side-view claim. A fresh engine build failed because .NET 10 SDK is unavailable locally; the passing UI test used an unchanged existing engine host. Finite samples do not prove continuous motion or game acceptance.
-- **Dependency:** `Rig`, `HumanoidRetargeter`, body-surface capture and UI review assume a real distinct `head` joint. Sonic lacks an automatically established one. Assigning `head=neck` can duplicate local motion and misclassify skin. The next policy needs an explicit reviewed virtual cranial anchor, not a duplicate joint role. Whole-body clearance/source intent and authentic Sonic scaling-rule copying remain separate unresolved gates.
-- **Repository-memory checks:** 12/12 documentation tests passed; the generator and checker passed 21 requirements, 31 features and 66 capabilities with one active task. `git diff --check` passed after removing accidental Markdown trailing spaces. These checks do not test animation quality.
-- **Next unfinished action:** add the virtual cranial anchor contract using reviewed neck-local skin geometry; keep `head` absent from FK mapping, transfer neck once, and use the anchor for head/hand goals and skin-patch classification. Freeze positive/negative renamed/permuted fixtures and Sonic source-to-target head/hand expectations. Rerun authentic Sonic→Mario, native reopen/re-save, full skin/contact/root checks and inspected private-desktop side view. Then address source-relative body clearance without inventing floor contact or weakening gates. Keep this task open until a corrected non-identical-rig output qualifies.
+Use `scripts/Test-BackgroundCapture.ps1` and the shared offscreen renderer for new captures; serialize paced private-desktop work. Command placeholders protect private paths; actual command forms and ignored output identities are pinned in the receipt. Native reopen and visual-guide alignment do not establish game acceptance.

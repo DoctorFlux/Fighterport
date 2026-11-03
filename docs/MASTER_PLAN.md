@@ -21,6 +21,7 @@ The working priority is correct motion and usable workflows before aggressive fi
 | Melee, Brawl, Ultimate and Rivals 2 are the only destinations; other named games are donors. | 3 November 2026 explicit scope; supersedes broader destination suggestions in older references. |
 | Use target-owned native formats, a shared format-neutral rig/motion bridge and modular adapters. | Cross-game authoring direction; each writer still needs its own qualification. |
 | Retarget correctness precedes further aggressive CHR0/Melee size work. | 3 November 2026 quality-first instruction; retain optimizer evidence. |
+| A semantic head may use a reviewed skin-backed point when a distinct head joint is absent. Map each physical joint once; verify split/merged neck and shoulder chains in both directions before claiming them. | 3 November 2026 anatomy clarification; quills and similar appendages cannot become head joints by proximity or naming alone. |
 | Keep background tests separate from human and game-runtime acceptance. | Repeated user choice; no desktop input injection or focus stealing. |
 | Asset authoring is the product; gameplay/moveset logic is deferred. | Original specification and later narrowing; preserve native data without claiming authoring. |
 
@@ -72,7 +73,7 @@ Carry normals/tangents, UVs/colors/palettes, native visibility, attachment and s
 
 ### REQ10 — meaningful bones and mappings
 
-Cover root/pelvis/waist, variable spine, head/face, clavicle/arm/twist/hand/fingers, legs/heels/toes, helper/corrective/attachment, tail/ear/wing/extra limbs as present. Distinguish a missing joint, an unanimated channel and an authored rest-valued channel. Structural hierarchy, authentic bind/rest, axes, geometry, skinning and symmetry are binding evidence; names suggest but cannot solely authorize a mapping. Reviewed profiles store identities, axes and limits, not hidden numerical overrides. Unmatched content uses explicit retain/rest/follow/manual policies; unknown semantics preserve data and surface losses.
+Cover root/pelvis/waist, variable spine, head/face, clavicle/arm/twist/hand/fingers, legs/heels/toes, helper/corrective/attachment, tail/ear/wing/extra limbs as present. Distinguish a missing joint, an unanimated channel and an authored rest-valued channel. Structural hierarchy, authentic bind/rest, axes, geometry, skinning and symmetry are binding evidence; names suggest but cannot solely authorize a mapping. Reviewed skin-backed semantic points may represent anatomy without a separate joint, while each physical joint receives motion once. Split and merged shoulder or cranial chains require reviewed composition, not duplicated transforms. Reviewed profiles store identities, axes and limits, not hidden numerical overrides. Unmatched content uses explicit retain/rest/follow/manual policies; unknown semantics preserve data and surface losses.
 
 ### REQ11 — independent FK posing
 
