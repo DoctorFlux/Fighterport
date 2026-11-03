@@ -225,8 +225,29 @@ namespace BrawlCrate.UI
             _bt3EditExport.Click+=(s,e)=>SaveBt3NativeMotion();panel.Controls.Add(_bt3EditExport);
             _bt3EditImport=new Button{Name="bt3ImportNativeMotion",Text="Load native motion...",Width=204,Height=32};
             _bt3EditImport.Click+=(s,e)=>ImportBt3NativeMotion();panel.Controls.Add(_bt3EditImport);
+            var portable=new Button{Name="bt3ExportPortableModel",Text="Export pose + textures...",Width=204,Height=32};
+            portable.AccessibleDescription="Export this BT3 costume's current posed mesh as static COLLADA and GLB with PNG textures. Native joints and animation are not included.";
+            portable.Click+=(s,e)=>ChooseBt3PortableModelExport();panel.Controls.Add(portable);
             panel.Controls.Add(new Label{Text="Original disc remains unchanged.",Width=204,Height=30,ForeColor=Color.White});
             return panel;
+        }
+        private void ChooseBt3PortableModelExport()
+        {
+            if(_bt3TargetHost?.Visible!=true||_bt3TargetRenderer==null||_bt3TargetChoice==null)
+                throw new InvalidOperationException("Open an exact BT3 costume in the native viewer first.");
+            StopBt3TargetPlayback();
+            var renderer=_bt3TargetRenderer;var choice=_bt3TargetChoice;
+            var meshes=renderer.SnapshotPosedMeshes();
+            using(var folder=new FolderBrowserDialog{Description="Choose a parent folder for a new static COLLADA/GLB pose and PNG textures. Rig and animation export are not qualified yet."})
+            {
+                if(folder.ShowDialog(this)!=DialogResult.OK)return;
+                string destination=Path.Combine(folder.SelectedPath,"Fighterport-BT3-pose-"+DateTime.Now.ToString("yyyyMMdd-HHmmss")+"-"+Guid.NewGuid().ToString("N").Substring(0,8));
+                ProtectCharacterWorkspaceOutput(destination);_library?.ProtectOutputPath(destination);
+                PortableModelExport.Publish(destination,stage=>PortableModelExport.WriteBt3Snapshot(renderer.Scene,meshes,stage),
+                    ()=>{if(!ReferenceEquals(renderer,_bt3TargetRenderer)||!ReferenceEquals(choice,_bt3TargetChoice))
+                        throw new InvalidOperationException("The BT3 costume or action changed during export.");},CancellationToken.None);
+                _bt3TargetCaption.Text="Exported static pose and textures to "+destination;
+            }
         }
         private static NumericUpDown Bt3EditNumber(string name,int range,int decimals)
             =>new NumericUpDown{Name=name,Width=72,Minimum=-range,Maximum=range,DecimalPlaces=decimals,

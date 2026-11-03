@@ -49,6 +49,12 @@ internal static partial class Program
             Application.EnableVisualStyles();SynchronizationContext.SetSynchronizationContext(new WindowsFormsSynchronizationContext());
             string output=Path.GetFullPath(args[2]);Directory.CreateDirectory(output);
             Console.WriteLine("TRACE acceptance dispatch");
+            if(args.Contains("--portable-model-export"))
+            {
+                PortableModelExportChecks(args,output);
+                File.WriteAllText(Path.Combine(output,"receipt.json"),new JavaScriptSerializer().Serialize(new{Passed=true,Checks,ActiveDesktopWindows=false,PrivateDesktop,OSInputInjected=false,ScreenCopied=false}));
+                Console.WriteLine("PASS "+Checks.Count+" portable model checks");return 0;
+            }
             if(args.Contains("--bt3-direct-library"))
             {
                 var direct=Bt3DirectLibraryChecks(args,output);

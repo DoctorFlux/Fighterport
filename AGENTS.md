@@ -1,5 +1,14 @@
 # Fighterport
 
+3 November — preview.92-portable-model-export adds bounded Blender-ready
+model/texture bundles through the existing Model Previewer. Brawl and Melee
+targets export rigged COLLADA plus available PNGs; BT3 exports a static posed
+COLLADA/glTF/GLB plus PNGs. The original Next retargeter, native document and
+game sources remain unchanged. FBX, portable animation/import/batch, rigged
+BT3/glTF, Maya/3ds Max validation and game-native model writers remain OPEN.
+See [bounded evidence](docs/PORTABLE_MODEL_EXPORT_2026-11-03.md). Keep one
+incomplete G1/M2 and background-only testing.
+
 3 November — preview.91-bt3-action-labels adds decomp-backed common motion
 roles and library-local, form-specific labels for exact BT3 fighter action IDs.
 The 414 fighter-action slots remain separate from later partner/auxiliary

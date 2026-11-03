@@ -1,5 +1,17 @@
 # Fighterport master plan
 
+Preview.92 starts portable model interchange in the existing native workspace:
+saved Brawl/Melee targets can export rigged COLLADA and available decoded PNGs;
+BT3 can export its current static posed mesh as COLLADA, glTF/GLB and PNGs.
+The bounds, independent Blender import checks and unresolved image/rig/format
+gates are in [the acceptance record](PORTABLE_MODEL_EXPORT_2026-11-03.md).
+Next, one immutable scene bridge must preserve authentic hierarchy, bind,
+inverse bind, all weights, coordinate and timebase data so rigged glTF/GLB,
+animation interchange, portable import and bounded batch conversion can be
+qualified per adapter. FBX needs an audited direct reader/writer and actual
+Blender/Maya/3ds Max tests. Game-native cross-format model output remains a
+separate writer and runtime-compatibility gate. Keep one incomplete G1/M2.
+
 Preview.91 improves exact BT3 animation identification within the existing
 G1/M2 workspace. Common runtime roles from pinned Tenkaichi3Decomp code
 appear on fighter action 000–413; remaining roles can receive reviewed,

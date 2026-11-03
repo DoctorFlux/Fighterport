@@ -1,5 +1,15 @@
 # Current milestone M2 — simpler native workspace
 
+3 November: preview.92 adds a bounded portable model export from the existing
+Model Previewer. Brawl and Melee saved targets publish independent rigged
+COLLADA plus decoded PNG bundles; BT3 publishes its currently posed static
+mesh in COLLADA, glTF and GLB with PNGs. All bundles use a new-folder commit,
+scope receipt and unchanged native source/document. Local Brawl, Melee and BT3
+cases passed private-desktop checks and Blender 2.79 COLLADA imports. Rigged
+BT3/glTF, animation interchange, FBX, portable import/batch conversion,
+Maya/3ds Max validation and game-native model writers remain OPEN within the
+same incomplete G1/M2. See [bounded evidence](../PORTABLE_MODEL_EXPORT_2026-11-03.md).
+
 3 November: preview.91 adds verified shared BT3 motion roles from the pinned
 decomp and lets users label each exact saved-source/form/action in separate
 library preferences. Labels are searchable, appear in the library and native

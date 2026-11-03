@@ -36,6 +36,48 @@ namespace BrawlCrate.UI
                 _fighterStatus.Text="Exported original native model and embedded textures to "+destination+". Target animation unchanged.";
             }
         }
+        private void ChoosePortableModelExport()
+        {
+            if(SimpleWorkspaceBusy)throw new InvalidOperationException("Finish or cancel the current operation first.");
+            var target=modelEditControl1.TargetModel as BrawlLib.SSBB.ResourceNodes.MDL0Node;
+            if(target==null||!OwnsFighterRoot(target)||_fighterProject?.Model==null)
+                throw new InvalidOperationException("Open a project-owned Brawl or Melee target model first.");
+            if(target.IsDirty)throw new InvalidOperationException("Save model edits before portable export. Animation edits may remain unsaved.");
+            using(var folder=new FolderBrowserDialog{Description="Choose a parent folder for a new Blender-compatible COLLADA model and PNG textures."})
+            {
+                if(folder.ShowDialog(this)!=DialogResult.OK)return;
+                string destination=Path.Combine(folder.SelectedPath,"Fighterport-model-"+DateTime.Now.ToString("yyyyMMdd-HHmmss")+"-"+Guid.NewGuid().ToString("N").Substring(0,8));
+                ExportPortableModelBundle(destination);
+                _fighterStatus.Text="Exported Blender-compatible model and textures to "+destination+". Target unchanged.";
+            }
+        }
+        internal void ExportPortableModelBundle(string destination)
+        {
+            if(SimpleWorkspaceBusy||_pinGesture!=null||modelEditControl1.AwaitingRedoSave)
+                throw new InvalidOperationException("Finish the current native operation before exporting.");
+            var project=_fighterProject;
+            var target=modelEditControl1.TargetModel as BrawlLib.SSBB.ResourceNodes.MDL0Node;
+            if(project?.Model==null||target==null||!OwnsFighterRoot(target)||target.IsDirty)
+                throw new InvalidOperationException("Open a saved project-owned target model before exporting.");
+            string treePath=target.TreePath,modelHash=project.Model.ContentSha256;
+            string workingHash=FighterProject.HashFile(project.Model.WorkingPath);
+            string dependency=project.NativeTarget==null?null:NativeTargetBinding.DependencyKey(project);
+            void Current()
+            {
+                if(!ReferenceEquals(project,_fighterProject)||!ReferenceEquals(target,modelEditControl1.TargetModel)||
+                    target.IsDirty||project.Model.ContentSha256!=modelHash||
+                    FighterProject.HashFile(project.Model.WorkingPath)!=workingHash||target.TreePath!=treePath||
+                    (dependency!=null&&NativeTargetBinding.DependencyKey(project)!=dependency))
+                    throw new InvalidOperationException("The target model or native source changed during export.");
+            }
+            ProtectCharacterWorkspaceOutput(destination);_library?.ProtectOutputPath(destination);project.ProtectOutputPath(destination);
+            PortableModelExport.Publish(destination,stage=>
+            {
+                if(dependency==null)PortableModelExport.WriteBrawl(project,treePath,stage);
+                else if(project.NativeTarget.Provider==MeleeGameSource.NativeProvider)PortableModelExport.WriteMelee(project,stage);
+                else throw new NotSupportedException("This native target has no qualified portable model projection.");
+            },Current,System.Threading.CancellationToken.None);
+        }
         internal void ExportOriginalNativeModelBundle(string destination)
         {
             if(SimpleWorkspaceBusy||_pinGesture!=null||modelEditControl1.AwaitingRedoSave)throw new InvalidOperationException("Finish the current native operation before exporting.");

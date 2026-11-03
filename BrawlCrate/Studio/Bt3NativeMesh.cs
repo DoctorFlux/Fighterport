@@ -275,6 +275,12 @@ namespace BrawlCrate.Studio
 
     internal sealed class Bt3NativeRender:IRenderedObject,IDisposable
     {
+        internal sealed class PosedMesh
+        {
+            internal int Texture;
+            internal Vector3[] Positions,Normals;
+            internal System.Numerics.Vector2[] Uvs;
+        }
         private sealed class SkinInput
         {
             internal Bt3NativeMesh.Batch Batch;
@@ -370,6 +376,12 @@ namespace BrawlCrate.Studio
         public void PreRender(ModelPanelViewport view){}
         public Box GetBox()
         {var box=Box.ExpandableVolume;foreach(var d in draws)foreach(var p in d.Positions)box.ExpandVolume(new BrawlLib.Internal.Vector3(p.X,p.Y,p.Z));return box;}
+        // Copy the already evaluated viewport pose. Export never decodes the
+        // disc, changes the live skeleton, or asks the playback clock to seek.
+        internal PosedMesh[] SnapshotPosedMeshes()
+            =>draws.Select(d=>new PosedMesh{Texture=d.Texture,
+                Positions=d.Positions.ToArray(),Normals=d.Normals.ToArray(),
+                Uvs=d.Inputs.Select(input=>new System.Numerics.Vector2(input.Vertex.U,input.Vertex.V)).ToArray()}).ToArray();
         internal void Apply(Bt3NativeAssetReader.Motion motion,float frame)
         {
             var rig=Scene.Skeleton;var pose=motion==null?null:Bt3NativeAssetReader.Sample(rig,motion,Math.Max(0,Math.Min(frame,motion.Length)));

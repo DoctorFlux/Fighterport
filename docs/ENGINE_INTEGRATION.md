@@ -1,5 +1,17 @@
 # Native Next integration
 
+Preview.92 adds a portable export boundary beside, not inside, the native
+game writers. It clones saved Brawl model resources for BrawlLib's rigged
+COLLADA export, projects verified normal-detail Melee HSD source data to
+rigged COLLADA, and snapshots already evaluated BT3 viewport triangles for
+static COLLADA/glTF/GLB. A sibling staged folder, relative image links and
+per-file hashes keep source/document ownership intact. The BT3 GLB writer
+stores float attributes and embedded PNGs with checked chunk/offset sizes;
+it does not claim BT3 skin/animation conversion. See
+[bounded evidence](PORTABLE_MODEL_EXPORT_2026-11-03.md). Portable import,
+rigged GLB for every adapter, FBX, batch conversion and native model writers
+remain separate gates.
+
 Preview.90 keeps source and target skinned support geometry inside the
 format-neutral `Rig`/`ContactSurface` boundary. The BT3 adapter supplies
 two-pivot hand/body patches, screens source palm proximity offline, and
