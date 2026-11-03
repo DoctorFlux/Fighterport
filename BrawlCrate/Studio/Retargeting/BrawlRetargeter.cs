@@ -408,8 +408,14 @@ namespace BrawlCrate.Studio.Retargeting
             if(!Enum.IsDefined(typeof(GroundContactMode),groundMode))throw new ArgumentOutOfRangeException(nameof(groundMode));
             if(!Enum.IsDefined(typeof(RetargetKeyframeMode),keyframeMode))throw new ArgumentOutOfRangeException(nameof(keyframeMode));
             if (clip == null || clip.FrameCount < 1 || clip.FrameCount > 4096) throw new NotSupportedException("Select a CHR0 body animation with 1–4096 frames.");
+            bool exactTransformRig = ExactNativeTransformRig(source, target, clip);
+            bool exactCopy = exactTransformRig &&
+                (!correction || groundMode == GroundContactMode.Auto || groundMode == GroundContactMode.Airborne) &&
+                ExactNativeSkin(source, target, cancellation);
+            ValidateSource(source, clip, !exactCopy);
+            if (exactCopy)
+                return BakeExactNativeRig(source, target, clip, keyframeMode, cancellation, progress);
             var plan = new HumanoidRetargeter(source.Rig, target.Rig);
-            ValidateSource(source, clip);
             var output = new CHR0Node {Name = clip.Name, FrameCount = clip.FrameCount, Loop = clip.Loop};
             var result = new RetargetResult {Animation = output, Plan = plan, SourceRig = source.Fingerprint, TargetRig = target.Fingerprint,
                 IgnoredSourceTracks = clip.Children.Count(c => !plan.Mapping.Any(m => m.Source == c.Name)),
@@ -538,9 +544,9 @@ namespace BrawlCrate.Studio.Retargeting
             return result;
         }
 
-        private static void ValidateSource(BrawlRig source, CHR0Node clip)
+        private static void ValidateSource(BrawlRig source, CHR0Node clip, bool requireMappedRole = true)
         {
-            if (!clip.Children.Any(c => source.Rig.Roles.Values.Any(i=>source.Bones[i].Name==c.Name)))
+            if (requireMappedRole && !clip.Children.Any(c => source.Rig.Roles.Values.Any(i=>source.Bones[i].Name==c.Name)))
                 throw new InvalidDataException("The selected clip has no mapped skeletal channels for this source model.");
             var errors = new List<float>();
             foreach (CHR0EntryNode track in clip.Children.OfType<CHR0EntryNode>())

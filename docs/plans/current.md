@@ -1,5 +1,46 @@
 # Current milestone M2 — simpler native workspace
 
+3 November: preview.96 is the sole current quality-first retargeting increment
+inside incomplete G1/M2, starting from public `Fighterport/main` commit
+`85e9873446a27dcd545a0dccf68521506a111b84`. The first demonstrated
+general defect was on an authentic identical Brawl rig, before CHR0 encoding:
+the role-only plan omitted 51 authored Peach `AttackS3S` entries with keys and the
+reopened output differed by 15.436804 world bone, 17.053335 skinned vertex
+and 14.237677 contact-patch native units over 411 samples. The bounded fix
+checks corresponding native bone transforms/flags, mesh vertex positions and
+all represented skin influences. It keeps every authored native track on an
+independent exact-rig master copy, then serializes and freshly reopens it.
+Explicit Grounded/SourceContacts requests keep the original Next route;
+helper-only exact-rig clips retain source bind checks, and admission obeys the
+4,096-joint/two-million-key limits. Optional source-key timing is a separately
+verified error-bounded projection.
+
+The same-rig Peach/Mario non-idle tests and Peach↔Fox forward-tilt directions
+retain exact roots and all represented weights under the existing bounds. A
+15-check private-desktop Use on This Model regression covers native selection,
+timeline, body editing, Undo/Redo and project reopen on the current guard build;
+their measured receipts and limitations are in the
+[preview.96 record](../RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md). Different
+body proportions continue through the original Next solver. No character or
+animation identity selects the algorithm. Full native editor, Undo/Redo,
+fitting, source provenance and CHR0 optimizer remain. Background-only numeric
+checks do not qualify arbitrary rigs, human usability or game runtime. The
+post-guard paired corpus, direct Peach/Mario, UI and helper-only guard checks
+pass. Complete same-rig explicit-contact quality remains a separate gate.
+
+The destination scope is **Melee, Brawl, Ultimate and Rivals of Aether 2**;
+each is also a source after its own adapter qualifies. Brawl and Melee have
+bounded native routes. Ultimate and Rivals 2 native source/destination routes
+remain unimplemented or unqualified. BT3, FighterZ, Sparking ZERO, Zenkai,
+Battle Stadium D.O.N, Xenoverse, Naruto, Jump Force, One Piece and future
+donor games are source-only. BT3's native viewer and portable export are
+source-side facilities, not a supported game-native destination. Next bounded
+work is continued retarget-quality evidence and fixes on non-identical rigs;
+then outer UI simplification, portable GLB import/direct FBX, Brawl/Melee
+native output gaps, Ultimate, Rivals 2, source-only adapters and later
+geometry-aware filesize reduction. Preserve one incomplete G1/M2 and the
+historical preview.95 evidence below.
+
 3 November: preview.95 places Import and Export in the top workspace toolbar
 even when an exact BT3 target is open, while project-only actions stay
 disabled. The BT3 native animation list has exact-action right-click Export.

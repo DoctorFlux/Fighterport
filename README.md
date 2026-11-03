@@ -1,13 +1,12 @@
 # Fighterport
 
 This is the public unified source repository at https://github.com/DoctorFlux/Fighterport.
-It imports the BrawlCrate-based Next preview.14 source and integrated owned engine;
-the current implementation is **preview.65-reviewed-ground-contacts**.
-See the [CHR0 format map](docs/CHR0_BINARY_FORMAT.md) and
-[current bounded qualification](docs/REVIEWED_GROUND_CONTACT_ACCEPTANCE_2026-10-30.md).
-Independent and native decoders agree under the recorded arithmetic profile.
-The large authentic size gap remains unresolved; this increment does not claim
-a compression fix or game acceptance.
+It imports the BrawlCrate-based Next preview.14 source and integrated owned engine.
+The current bounded implementation is **preview.96 exact-rig retarget quality**;
+see the [current acceptance record](docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md),
+[one current M2 task](docs/plans/current.md), and
+[CHR0 format map](docs/CHR0_BINARY_FORMAT.md). Broader retarget quality,
+native game acceptance and the authentic animation size gap remain open.
 See the [current-animation fitting acceptance](docs/APPLY_CURRENT_FIT_ACCEPTANCE_2026-10-27.md),
 [recovery setup acceptance](docs/RECOVERY_SETUP_ACCEPTANCE_2026-10-26.md),
 [fitting reference acceptance](docs/FITTING_REFERENCES_ACCEPTANCE_2026-10-26.md),

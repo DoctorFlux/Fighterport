@@ -1,5 +1,52 @@
 # Fighterport master plan
 
+## Current product boundary and retarget-quality increment
+
+Fighterport is one streamlined source → target → preview → Use on Target →
+native edit → export workflow within the existing BrawlCrate-based application.
+The full Model Previewer and original Next retargeter remain the editing and
+motion base. **Only Super Smash Bros. Melee, Super Smash Bros. Brawl, Super
+Smash Bros. Ultimate and Rivals of Aether 2 are destination games.** All four
+also belong on the source side. The other requested games, including BT3,
+FighterZ, Sparking ZERO, Zenkai Battle, Battle Stadium D.O.N, Xenoverse,
+Naruto, Jump Force and One Piece games, are source-only. BT3's existing native
+viewer/editing and portable exports do not establish a BT3 game-native
+destination. Capability claims still require separate reader, retarget,
+writer, reopen and game tests for each format and build.
+
+| Destination | Source status in this checkout | Native destination status in this checkout |
+| --- | --- | --- |
+| Brawl | Registered Brawl/Project M/Project+ reader, library preview and retarget source; supported inputs remain build-specific | Bounded MDL0/CHR0 editing and native motion export; container/game acceptance remains separate |
+| Melee | Registered native HSD DAT source, model/motion preview and retarget bridge | Bounded target editing and verified DAT action writing; fractional-time FOBJ and wider native output remain open |
+| Ultimate | Planned; no registered native source adapter | Planned; no qualified native writer or game test |
+| Rivals of Aether 2 | Planned; no registered native source adapter | Planned; no qualified Modkit/FBX target workflow or game test |
+
+Preview.96 is the one current quality-first increment in incomplete G1/M2.
+An authentic Brawl Peach `AttackS3S` on an identical Peach rig exposed a loss
+in the semantic mapping and solver before native encoding: 51 authored entries with keys
+were omitted, with large skinned and contact-patch differences. The bounded
+fix requires matching native bone transforms/flags, corresponding vertex
+positions and represented skin influences, retains every authored
+track on an independent master copy, and freshly serializes and reopens it.
+Explicit contact modes keep the original Next route; source-key timing remains
+an independently checked error-bounded projection. Joint/key work limits apply.
+The post-guard paired corpus passed a Peach non-idle same-rig case and both
+Peach↔Fox forward-tilt directions. Direct Peach/Mario non-idle cases, the
+15-check private-desktop UI rerun and a helper-only guard case also passed.
+Exact measurements
+and open gates are in
+[the preview.96 record](RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md). This does
+not establish universal retarget quality or in-game acceptance.
+
+After retargeting quality, work proceeds in bounded increments: simplify the
+outer workflow without losing native editor tools; add portable rigged model
+and animation import starting with GLB and later direct in-app FBX writing;
+finish Brawl/Melee native outputs including Melee HSD FOBJ fractional time;
+qualify Ultimate native model/motion, then Rivals 2 Modkit/FBX integration;
+expand BT3 and other source-only adapters; then revisit native filesize with
+geometry-aware key reduction and verified codecs. The existing CHR0 optimizer
+and historical acceptance records remain intact. Keep one incomplete G1/M2.
+
 Preview.95 makes format-aware Import and Export accessible from the top native
 workspace and exact BT3 animation rows. A direct in-app Maya `.anim` writer
 publishes independent, verified action curves for checked BT3 members, with

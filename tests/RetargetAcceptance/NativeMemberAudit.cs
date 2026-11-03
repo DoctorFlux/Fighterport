@@ -15,6 +15,7 @@ internal static partial class Program
         using(var root=NodeFactory.FromFile(null,motion))
         {
             var clip=Walk(root).OfType<CHR0Node>().Single(c=>c.Name==name);
+            string Member(ResourceNode node)=>node.Parent==null?"root":Member(node.Parent)+"/"+node.Index;
             var source=clip.WorkingUncompressed;
             if(source.Length<0x28||source.Length>16*1024*1024)throw new InvalidDataException("Unbounded diagnostic resource.");
             var bytes=new byte[source.Length];Marshal.Copy((IntPtr)source.Address,bytes,0,bytes.Length);
@@ -25,7 +26,7 @@ internal static partial class Program
                     capture.Accepted,capture.Diagnostic,Keys=entry.KeyArrays.Select(a=>a.KeyCount).ToArray()};
             }).ToArray();
             File.WriteAllText(Path.Combine(output,"native-member-audit.json"),new JavaScriptSerializer{MaxJsonLength=16*1024*1024}.Serialize(new{
-                clip.Name,clip.FrameCount,clip.Version,clip.Loop,Bytes=bytes.Length,OriginalContainerSha256=original,Rows=rows}));
+                clip.Name,clip.FrameCount,clip.Version,clip.Loop,NativeMember=Member(clip),Bytes=bytes.Length,OriginalContainerSha256=original,Rows=rows}));
             string content=NativeAnimationOptimization.SourceContentKey(clip);
             using(var snapshot=NativeAnimationOptimization.CopySource(clip))
             {

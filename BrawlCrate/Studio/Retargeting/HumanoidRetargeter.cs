@@ -61,8 +61,9 @@ namespace BrawlCrate.Studio.Retargeting
             :this(source,target,trajectoryBindings,null){}
 
         public HumanoidRetargeter(Rig source, Rig target, IReadOnlyDictionary<int,int> trajectoryBindings,
-            IReadOnlyDictionary<int,int> detailBindings)
+            IReadOnlyDictionary<int,int> detailBindings, string detailRole = "detail.finger")
         {
+            if(detailRole!="detail.finger"&&detailRole!="detail.exact")throw new ArgumentOutOfRangeException(nameof(detailRole));
             Source = source; Target = target;
             bridgeExtraLimbSegments=trajectoryBindings!=null;
             sharedTorso=SkeletonCharacterizer.HasSharedTorso(source.Joints,source.Roles)||SkeletonCharacterizer.HasSharedTorso(target.Joints,target.Roles);
@@ -123,7 +124,7 @@ namespace BrawlCrate.Studio.Retargeting
                         mapping.Any(m=>m.SourceIndex==pair.Key||m.TargetIndex==pair.Value)))
                     throw new InvalidDataException("The detailed source/target bindings overlap or leave the reviewed rigs.");
                 foreach(var pair in detailBindings)
-                    mapping.Add(new RetargetMap{Role="detail.finger",SourceIndex=pair.Key,TargetIndex=pair.Value,
+                    mapping.Add(new RetargetMap{Role=detailRole,SourceIndex=pair.Key,TargetIndex=pair.Value,
                         Source=source.Joints[pair.Key].Name,Target=target.Joints[pair.Value].Name});
             }
             Mapping=mapping.OrderBy(m=>m.TargetIndex).ToArray();
