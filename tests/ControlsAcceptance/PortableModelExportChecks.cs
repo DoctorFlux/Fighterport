@@ -14,6 +14,25 @@ using System.Windows.Forms;
 
 internal static partial class Program
 {
+    static void VerifyPortableRiggedGltf(string bundle,int controllers)
+    {
+        var raw=File.ReadAllBytes(Path.Combine(bundle,"Model.glb"));
+        int jsonLength=BitConverter.ToInt32(raw,12);
+        var json=(System.Collections.Generic.Dictionary<string,object>)new JavaScriptSerializer{MaxJsonLength=64*1024*1024}
+            .DeserializeObject(Encoding.UTF8.GetString(raw,20,jsonLength).TrimEnd());
+        var skins=(object[])json["skins"];
+        var meshes=(object[])json["meshes"];
+        var nodes=(object[])json["nodes"];
+        Check(!json.ContainsKey("animations")&&skins.Length==controllers&&meshes.Length>=controllers&&nodes.Length>skins.Length&&
+            meshes.Cast<System.Collections.Generic.Dictionary<string,object>>().All(mesh=>
+            {
+                var primitive=(System.Collections.Generic.Dictionary<string,object>)((object[])mesh["primitives"])[0];
+                var attributes=(System.Collections.Generic.Dictionary<string,object>)primitive["attributes"];
+                return attributes.ContainsKey("POSITION")&&attributes.ContainsKey("JOINTS_0")&&
+                    attributes.ContainsKey("WEIGHTS_0");
+            })&&File.Exists(Path.Combine(bundle,"Model.gltf"))&&File.Exists(Path.Combine(bundle,"Model.bin")),
+            "Model-only glTF/GLB preserves every controller and skin without animation clips");
+    }
     static void PortableModelExportChecks(string[] args,string output)
     {
         if(!PrivateDesktop)throw new InvalidOperationException("Portable model acceptance requires the private desktop.");
@@ -78,22 +97,120 @@ internal static partial class Program
             var item=menu.DropDownItems.Cast<ToolStripItem>().Single(command=>command.Name=="nextExportPortableModel");
             Check(item.Text.Contains("model + textures")&&item.AccessibleDescription.Contains("COLLADA"),
                 "The existing Model Previewer menu exposes one discoverable portable model export action");
+            var bt3Panel=(Control)Call(form,"BuildBt3NativeEditPanel");
+            var bt3Button=bt3Panel.Controls.Cast<Control>().Single(control=>control.Name=="bt3ExportPortableModel");
+            Check(bt3Button.Text.Contains("model + textures")&&
+                bt3Button.AccessibleDescription.Contains("without animation clips"),
+                "BT3 model export is visibly separate from animation clips");
+        }
+        int riggedArgument=Array.IndexOf(args,"--portable-rigged-input");
+        if(riggedArgument>=0)
+        {
+            string input=args[riggedArgument+1],roundtrip=Path.Combine(output,"rigged-portable-roundtrip");
+            if(!File.Exists(Path.Combine(input,"Model.dae")))throw new FileNotFoundException("The exact staged rigged fixture is unavailable.");
+            Directory.CreateDirectory(roundtrip);
+            foreach(var source in Directory.GetFiles(input,"*.png"))
+                File.Copy(source,Path.Combine(roundtrip,Path.GetFileName(source)));
+            File.Copy(Path.Combine(input,"Model.dae"),Path.Combine(roundtrip,"Model.dae"));
+            PortableRiggedGltf.Write(roundtrip);
+            PortableGlbExport.Verify(roundtrip);
+            var xml=XDocument.Load(Path.Combine(roundtrip,"Model.dae"));
+            VerifyPortableRiggedGltf(roundtrip,xml.Descendants().Count(element=>element.Name.LocalName=="controller"));
         }
         if(File.Exists(args[0]))
         {
             var inventory=Bt3DiscInventory.Inspect(args[0],CancellationToken.None);
-            var costume=inventory.Fighters.Single(form=>form.Slot==1).Costumes[0];
+            int slotArgument=Array.IndexOf(args,"--portable-bt3-slot");
+            int actionArgument=Array.IndexOf(args,"--portable-bt3-action");
+            int slot=slotArgument<0?1:int.Parse(args[slotArgument+1]);
+            int actionId=actionArgument<0?0:int.Parse(args[actionArgument+1]);
+            var form=inventory.Fighters.Single(fighter=>fighter.Slot==slot);
+            var costume=form.Costumes[0];
             var real=Bt3NativeMesh.Read(inventory.ReadOwned(costume,4*1024*1024));
+            var restWorld=new System.Collections.Generic.Dictionary<int,Matrix4x4>();
+            foreach(var bone in real.Skeleton.Bones)
+            {
+                var local=Matrix4x4.CreateTranslation(bone.Rest);
+                restWorld.Add(bone.Id,bone.Parent<0?local:local*restWorld[bone.Parent]);
+            }
+            double maxBindDifference=0,maxWeightedDifference=0;int blended=0;
+            foreach(var batch in real.Batches)foreach(var vertex in batch.Triangles)
+            {
+                int id=vertex.Bone<0?batch.Bone:vertex.Bone;
+                var bone=real.Skeleton.Bones.Single(b=>b.Id==id);
+                if(bone.Parent<0||vertex.Weight<=0||vertex.Weight>=1)continue;
+                var first=vertex.Bone<0?batch.PivotA:real.Pivots[id].A;
+                var second=vertex.Bone<0?batch.PivotB:real.Pivots[id].B;
+                var a=Vector3.Transform(vertex.Position-first,restWorld[id]);
+                var b=Vector3.Transform(vertex.Position-second,restWorld[bone.Parent]);
+                double difference=Vector3.Distance(a,b);
+                maxBindDifference=Math.Max(maxBindDifference,difference);
+                maxWeightedDifference=Math.Max(maxWeightedDifference,difference*Math.Min(vertex.Weight,1-vertex.Weight));
+                blended++;
+            }
+            Console.WriteLine("TRACE BT3 glTF skin preflight blended="+blended+
+                " maximum per-influence bind-point gap="+maxBindDifference+
+                " weighted gap="+maxWeightedDifference);
+            var action=form.MotionMembers[0].First(member=>member.PackIndex==actionId);
+            var clip=Bt3NativeAssetReader.ReadMotion(inventory.ReadOwned(action,4*1024*1024),actionId);
+            int full=clip.Tracks.Count(track=>track.Keys.Length>1&&track.Keys[0].Frame==0&&
+                track.Keys[track.Keys.Length-1].Frame==clip.Length);
+            int clipped=clip.Tracks.Count(track=>track.Keys.Length>1&&
+                (track.Keys[0].Frame>0||track.Keys[track.Keys.Length-1].Frame<clip.Length));
+            Console.WriteLine("TRACE BT3 glTF action preflight frames="+clip.Length+
+                " tracks="+clip.Tracks.Length+" full-range="+full+" clipped-range="+clipped+
+                " single-key="+clip.Tracks.Count(track=>track.Keys.Length==1));
+            var shortened=new Bt3NativeAssetReader.Motion{Action=clip.Action,Length=clip.Length,
+                Tracks=clip.Tracks.Select((track,index)=>index==0?
+                    new Bt3NativeAssetReader.Track{Bone=track.Bone,RotationOnly=track.RotationOnly,
+                        Keys=new[]{new Bt3NativeAssetReader.Key{Frame=1,
+                            Translation=track.Keys[0].Translation,Rotation=track.Keys[0].Rotation},
+                            track.Keys[track.Keys.Length-1]}}:track).ToArray()};
+            Check(!PortableBt3Rigged.TryWrite(real,shortened,output,out string limit)&&
+                limit.Contains("out-of-range fallback"),
+                "Clipped native BT3 tracks cannot be advertised as equivalent glTF animation");
             using(var renderer=new Bt3NativeRender(real))
             {
                 var native=renderer.SnapshotPosedMeshes();
                 string bundle=Path.Combine(output,"local-bt3-costume-portable");
-                PortableModelExport.Publish(bundle,stage=>PortableModelExport.WriteBt3Snapshot(real,native,stage),null,CancellationToken.None);
+                bool rigged=false;
+                PortableModelExport.Publish(bundle,stage=>rigged=PortableModelExport.WriteBt3WithRig(real,native,clip,stage),null,CancellationToken.None);
                 var xml=XDocument.Load(Path.Combine(bundle,"Model.dae"));
                 int triangles=xml.Descendants(ns+"triangles").Sum(element=>int.Parse(element.Attribute("count").Value));
                 Check(triangles==real.TriangleCount&&xml.Descendants(ns+"image").Count()==real.Textures.Length&&
                     Directory.GetFiles(bundle,"*.png").Length==real.Textures.Length,
                     "Exact local BT3 costume exports every decoded triangle and texture without a disc write");
+                Check(rigged&&xml.Descendants(ns+"controller").Count()==real.Batches.Length,
+                    "Representable BT3 bind and full-range action publish every native skin batch");
+                var glbReal=File.ReadAllBytes(Path.Combine(bundle,"Model.glb"));
+                int glbJsonLength=BitConverter.ToInt32(glbReal,12);
+                var glbJson=(System.Collections.Generic.Dictionary<string,object>)new JavaScriptSerializer()
+                    .DeserializeObject(Encoding.UTF8.GetString(glbReal,20,glbJsonLength).TrimEnd());
+                Check(((object[])glbJson["animations"]).Length==1&&
+                    ((object[])glbJson["skins"]).Length==real.Batches.Length,
+                    "BT3 action encoding can preserve the selected native action and complete rigged mesh");
+                string modelOnly=Path.Combine(output,"local-bt3-model-only");
+                PortableModelExport.Publish(modelOnly,stage=>
+                    PortableModelExport.WriteBt3WithRig(real,native,null,stage),null,CancellationToken.None);
+                var modelBytes=File.ReadAllBytes(Path.Combine(modelOnly,"Model.glb"));
+                int modelJsonLength=BitConverter.ToInt32(modelBytes,12);
+                var modelJson=(System.Collections.Generic.Dictionary<string,object>)new JavaScriptSerializer()
+                    .DeserializeObject(Encoding.UTF8.GetString(modelBytes,20,modelJsonLength).TrimEnd());
+                Check(!modelJson.ContainsKey("animations")&&
+                    ((object[])modelJson["skins"]).Length==real.Batches.Length&&
+                    File.ReadAllText(Path.Combine(modelOnly,"Export-info.txt")).Contains("without animation clips"),
+                    "BT3 model export keeps native skin and textures but contains no animation clips");
+                float[] probeFrames={0,.25f,Math.Min(clip.Length,clip.Length/2f+.5f),clip.Length};
+                using(var samples=new BinaryWriter(File.Create(Path.Combine(output,"bt3-native-pose-probes.bin"))))
+                    foreach(float probe in probeFrames)
+                    {
+                        renderer.Apply(clip,probe);
+                        foreach(var draw in renderer.SnapshotPosedMeshes())
+                            foreach(var position in draw.Positions)
+                            {samples.Write(position.X);samples.Write(position.Y);samples.Write(position.Z);}
+                    }
+                File.WriteAllText(Path.Combine(output,"bt3-native-pose-probes.json"),
+                    new JavaScriptSerializer().Serialize(new{Frames=probeFrames,Vertices=real.Batches.Sum(b=>b.Triangles.Length)}));
                 Console.WriteLine("TRACE local BT3 portable triangles="+triangles+" textures="+real.Textures.Length+
                     " DAE bytes="+new FileInfo(Path.Combine(bundle,"Model.dae")).Length);
             }
@@ -121,6 +238,7 @@ internal static partial class Program
                         xml.Descendants().Any(element=>element.Name.LocalName=="controller")&&
                         decoded+missing==referenced,
                         "Saved Brawl model exports rigged COLLADA geometry and accounts for every referenced texture");
+                    VerifyPortableRiggedGltf(bundle,xml.Descendants().Count(element=>element.Name.LocalName=="controller"));
                     Console.WriteLine("TRACE local Brawl portable model="+target.Name+" decoded="+decoded+" unresolved="+missing+
                         " DAE bytes="+new FileInfo(Path.Combine(bundle,"Model.dae")).Length);
                 }
@@ -143,6 +261,7 @@ internal static partial class Program
                     xml.Descendants().Any(element=>element.Name.LocalName=="controller")&&
                     images>0&&relativeImages&&Directory.GetFiles(bundle,"*.png").Length==images&&project.Model.ContentSha256==before,
                     "Owned Melee costume exports rigged normal-detail COLLADA and diffuse PNGs without changing the model");
+                VerifyPortableRiggedGltf(bundle,xml.Descendants().Count(element=>element.Name.LocalName=="controller"));
                 Console.WriteLine("TRACE local Melee portable images="+images+
                     " DAE bytes="+new FileInfo(Path.Combine(bundle,"Model.dae")).Length);
             }

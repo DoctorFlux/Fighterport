@@ -59,7 +59,7 @@ namespace BrawlCrate.UI
             nativeModelExport.ToolTipText="Export the unchanged, project-owned native costume DAT with its embedded textures and fighter context. Edited model writing is separate.";
             nativeModelExport.AccessibleDescription=nativeModelExport.ToolTipText;
             var portableModelExport=NextCommand(_nextAnimationMenu,"nextExportPortableModel","Export model + textures for Blender...",ChoosePortableModelExport);
-            portableModelExport.ToolTipText="Export a rigged COLLADA (.dae) model and available PNG textures. Unresolved image references are listed. Game-native model writing is separate.";
+            portableModelExport.ToolTipText="Export a rigged COLLADA, glTF and GLB model with available PNG textures. Unresolved image references are listed.";
             portableModelExport.AccessibleDescription=portableModelExport.ToolTipText;
             NextCommand(_nextAnimationMenu, "nextExportReviewedSet", "Export reviewed set...", ChooseWorkspaceSetExport);
             NextCommand(_nextViewMenu, "nextLibrary", "Animation library", ToggleAnimationLibrary);

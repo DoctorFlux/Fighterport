@@ -43,7 +43,7 @@ namespace BrawlCrate.UI
             if(target==null||!OwnsFighterRoot(target)||_fighterProject?.Model==null)
                 throw new InvalidOperationException("Open a project-owned Brawl or Melee target model first.");
             if(target.IsDirty)throw new InvalidOperationException("Save model edits before portable export. Animation edits may remain unsaved.");
-            using(var folder=new FolderBrowserDialog{Description="Choose a parent folder for a new Blender-compatible COLLADA model and PNG textures."})
+            using(var folder=new FolderBrowserDialog{Description="Choose a parent folder for a new rigged COLLADA/glTF/GLB model and PNG textures."})
             {
                 if(folder.ShowDialog(this)!=DialogResult.OK)return;
                 string destination=Path.Combine(folder.SelectedPath,"Fighterport-model-"+DateTime.Now.ToString("yyyyMMdd-HHmmss")+"-"+Guid.NewGuid().ToString("N").Substring(0,8));

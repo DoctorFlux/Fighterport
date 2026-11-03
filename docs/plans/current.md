@@ -1,5 +1,19 @@
 # Current milestone M2 — simpler native workspace
 
+3 November: preview.93 extends the portable model export seam used by future
+game adapters. Saved Brawl and Melee targets now also publish model-only rigged
+glTF/GLB with all represented skin influence sets, textures and COLLADA. The
+BT3 native target exports its costume without animation clips when the native
+pivot bind check passes. The full-range BT3 action encoding path is independently
+tested but not exposed through the model command. Local Goku Mid and GT Goku
+cases passed independent glTF validation and sampled native-vertex comparison.
+The next separate animation-export workflow must select one or several exact
+clips, choose one file per clip or one file containing all selected clips, and
+optionally include the model. FBX needs its own verified writer. Portable import,
+Brawl/Melee motion interchange, other BT3 action timing and native model writers
+stay OPEN within the same incomplete G1/M2. See
+[bounded acceptance](../PORTABLE_RIGGED_INTERCHANGE_2026-11-03.md).
+
 3 November: preview.92 adds a bounded portable model export from the existing
 Model Previewer. Brawl and Melee saved targets publish independent rigged
 COLLADA plus decoded PNG bundles; BT3 publishes its currently posed static

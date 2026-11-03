@@ -1,5 +1,17 @@
 # Fighterport
 
+3 November — preview.93-rigged-portable-export adds game-neutral rigged
+glTF/GLB model output alongside COLLADA for saved Brawl and Melee targets. The
+BT3 native viewer exports a rigged costume, textures and all represented skin
+influences when its bind check passes. Model bundles contain no animation
+clips. A separately tested BT3 action encoder is not yet exposed as an
+animation-export workflow. Independent glTF validation and sampled native-skin
+comparisons passed for recorded local fixtures. Portable import, separate
+FBX/glTF animation export, Brawl/Melee animation interchange, broad BT3 action
+qualification and game-native model writing remain OPEN. See
+[bounded evidence](docs/PORTABLE_RIGGED_INTERCHANGE_2026-11-03.md). Keep one
+incomplete G1/M2 and background-only testing.
+
 3 November — preview.92-portable-model-export adds bounded Blender-ready
 model/texture bundles through the existing Model Previewer. Brawl and Melee
 targets export rigged COLLADA plus available PNGs; BT3 exports a static posed

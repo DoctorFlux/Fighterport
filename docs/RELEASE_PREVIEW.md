@@ -1,4 +1,12 @@
-# FighterPort Studio V2 — 2.0.0-preview.4
+# FighterPort Studio V2 — 2.0.0-preview.93
+
+Preview.93 adds rigged glTF/GLB beside COLLADA/PNG for the currently saved
+Brawl and Melee target models. The BT3 native target's **Export model +
+textures...** also carries its checked rig and skin. Model bundles contain no
+animation clips. These portable bundles are independent copies. Separate
+animation export, FBX, portable import and game-native model conversion are
+not yet qualified. See
+`docs/PORTABLE_RIGGED_INTERCHANGE_2026-11-03.md` in the source.
 
 Preview.67 adds native Melee ISO/GCM/folder source browsing, costumes, original
 source preview and explicit unchanged source-file export. Parts reviews native

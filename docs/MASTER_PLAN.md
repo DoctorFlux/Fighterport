@@ -1,5 +1,18 @@
 # Fighterport master plan
 
+Preview.93 adds a format-neutral, model-only rigged glTF/GLB conversion from
+verified COLLADA projections. BT3 uses a native two-pivot bind preflight;
+separate action encoding has sampled numeric evidence but no exposed model
+animation bundle. The independent validation and bounded fixture results are in
+[the acceptance record](PORTABLE_RIGGED_INTERCHANGE_2026-11-03.md). This does
+not establish portable import, FBX, every BT3 action, Brawl/Melee animation
+interchange or game-native model writing. The next executable interchange step
+is a separate animation export workflow with selected clips, one-per-file or
+combined output and optional model inclusion. Then add a bounded portable
+reader into a separate editable scene document and target-specific conversion.
+Keep one
+incomplete G1/M2.
+
 Preview.92 starts portable model interchange in the existing native workspace:
 saved Brawl/Melee targets can export rigged COLLADA and available decoded PNGs;
 BT3 can export its current static posed mesh as COLLADA, glTF/GLB and PNGs.

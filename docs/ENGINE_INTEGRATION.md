@@ -1,5 +1,17 @@
 # Native Next integration
 
+Preview.93 adds `PortableRiggedGltf` as a game-neutral COLLADA rigged-scene
+conversion boundary. It retains each exported joint and every declared skin
+influence through glTF `JOINTS_n`/`WEIGHTS_n`, including embedded PNGs in GLB.
+The BT3 model command passes no animation clip. `PortableBt3Rigged` also has a
+separately tested selected-action encoding path at a declared 60-frame timebase
+for representable native timing; this is reserved for a separate animation
+export command and does not alter the model-only default. The existing native
+model/animation document remains the owner; portable output is staged
+independently and never becomes an implicit game-native writer. A static BT3
+pose remains a labeled fallback when native pivot binds cannot be represented.
+See [bounded acceptance](PORTABLE_RIGGED_INTERCHANGE_2026-11-03.md).
+
 Preview.92 adds a portable export boundary beside, not inside, the native
 game writers. It clones saved Brawl model resources for BrawlLib's rigged
 COLLADA export, projects verified normal-detail Melee HSD source data to

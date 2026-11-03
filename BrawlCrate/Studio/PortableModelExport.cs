@@ -109,7 +109,8 @@ namespace BrawlCrate.Studio
                     }
                 }
                 if(missing.Count>0)File.WriteAllLines(Path.Combine(stage,"Missing-textures.txt"),missing.Select(name=>name+".png (referenced by MDL0; no image decoded from the current owned resource)"));
-                WriteReceipt(stage,"Brawl",model.Name,"Rigged COLLADA model with "+decoded+"/"+names.Count+
+                PortableRiggedGltf.Write(stage);
+                WriteReceipt(stage,"Brawl",model.Name,"Rigged COLLADA/glTF/GLB model with "+decoded+"/"+names.Count+
                     " referenced PNG textures decoded. See Missing-textures.txt when present. Native materials and shaders may differ in other tools.");
             }
         }
@@ -141,7 +142,8 @@ namespace BrawlCrate.Studio
             }
             document.Save(Path.Combine(stage,"Model.dae"));
             File.Delete(result.ColladaPath);
-            WriteReceipt(stage,"Melee",model.Symbol,"Rigged normal-detail HSD projection with diffuse PNG textures. Native material, visibility and shape animation remain in the source DAT.");
+            PortableRiggedGltf.Write(stage);
+            WriteReceipt(stage,"Melee",model.Symbol,"Rigged normal-detail HSD projection in COLLADA/glTF/GLB with diffuse PNG textures. Native material, visibility and shape animation remain in the source DAT.");
         }
         private static XElement FloatSource(string id,float[] values,int stride,params string[] names)
             =>E("source",A("id",id),E("float_array",A("id",id+"-array"),A("count",values.Length),Numbers(values)),
@@ -215,7 +217,18 @@ namespace BrawlCrate.Studio
             PortableGlbExport.Write(scene,meshes,stage);
             WriteReceipt(stage,"BT3","costume mesh","Current posed viewport mesh and PNG textures in COLLADA, glTF 2.0 and GLB. These are static snapshots: native joints, weights and action curves are not included.");
         }
-        private static void WriteReceipt(string stage,string game,string model,string scope)
+        internal static bool WriteBt3WithRig(Bt3NativeMesh.Scene scene,Bt3NativeRender.PosedMesh[] meshes,
+            Bt3NativeAssetReader.Motion motion,string stage)
+        {
+            WriteBt3Snapshot(scene,meshes,stage);
+            bool rigged=PortableBt3Rigged.TryWrite(scene,motion,stage,out string scope);
+            if(!rigged)File.WriteAllText(Path.Combine(stage,"Interchange-limitations.txt"),scope);
+            File.Delete(Path.Combine(stage,"Export-info.txt"));
+            WriteReceipt(stage,"BT3","costume mesh",rigged?scope:
+                "Current posed static mesh and textures only. "+scope);
+            return rigged;
+        }
+        internal static void WriteReceipt(string stage,string game,string model,string scope)
         {
             var files=Directory.GetFiles(stage,"*",SearchOption.TopDirectoryOnly).OrderBy(Path.GetFileName,StringComparer.Ordinal).ToArray();
             File.WriteAllLines(Path.Combine(stage,"Export-info.txt"),new[]{"Fighterport portable model export", "Game: "+game,"Model: "+model,
