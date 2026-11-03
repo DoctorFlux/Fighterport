@@ -788,22 +788,33 @@
           "path": "docs/RETARGET_NONIDENTICAL_CHECKPOINT_2026-11-03.md",
           "revision": "HEAD+diff:5654c133ab368d41e3f57201d28c109924e6b835",
           "coverage": "Fresh exact Sonic/Mario stage and whole-mesh witness identifies a quill-as-head automatic mapping defect before CHR0 writing; the changed code refuses that mapping. Link/Samus bidirectional native/contact regressions pass. Shared cranial mapping and whole-body clearance remain open."
+        },
+        {
+          "path": "docs/RETARGET_HEAD_GUARD_CORRECTION_2026-11-03.md",
+          "revision": "601466c600d4ab868ebe9331842670ad74a3617f",
+          "coverage": "Provisional head cannot leak through saved-map replay to unequal-rig solving; exact-rig admission remains reachable. Read-only skin-backed cranial witness, synthetic exact-copy, authentic refusal, Link/Samus native/contact regressions and private-desktop Mario UI are bounded; shared cranial transfer is not implemented."
         }
       ],
       "references": {
         "code": [
           "BrawlCrate/Studio/Retargeting/BrawlRetargeter.cs",
-          "BrawlCrate/Studio/Retargeting/SkeletonCharacterizer.cs"
+          "BrawlCrate/Studio/Retargeting/SkeletonCharacterizer.cs",
+          "BrawlCrate/Studio/Retargeting/BrawlRetargeter.ExactRig.cs",
+          "BrawlCrate/UI/ModelForm.SkeletonMapping.cs"
         ],
         "tests": [
           "scripts/Test-RetargetQualityPairs.ps1",
+          "scripts/Test-BackgroundCapture.ps1",
           "tests/RetargetAcceptance/BranchedHeadCharacterization.cs",
-          "tests/RetargetAcceptance/TransferWitness.cs"
+          "tests/RetargetAcceptance/TransferWitness.cs",
+          "tests/RetargetAcceptance/SameRigHelperOnly.cs",
+          "tests/ControlsAcceptance/WorkspaceSameRigRetarget.cs"
         ],
         "receipts": [
           "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md",
           "docs/MELEE_SHARED_BRIDGE_2026-11-02.md",
-          "docs/RETARGET_NONIDENTICAL_CHECKPOINT_2026-11-03.md"
+          "docs/RETARGET_NONIDENTICAL_CHECKPOINT_2026-11-03.md",
+          "docs/RETARGET_HEAD_GUARD_CORRECTION_2026-11-03.md"
         ]
       },
       "verification": {
@@ -824,6 +835,11 @@
               "path": "docs/RETARGET_NONIDENTICAL_CHECKPOINT_2026-11-03.md",
               "revision": "HEAD+diff:5654c133ab368d41e3f57201d28c109924e6b835",
               "coverage": "20 procedural head-mapping checks, exact Sonic ambiguity refusal and Link/Samus bidirectional 430-sample contact oracles; Sonic whole-body clearance remains unresolved."
+            },
+            {
+              "path": "docs/RETARGET_HEAD_GUARD_CORRECTION_2026-11-03.md",
+              "revision": "601466c600d4ab868ebe9331842670ad74a3617f",
+              "coverage": "28 procedural checks; 8-group, 12-time authentic cranial skin witness; synthetic Sonic exact-copy error zero; authentic Sonic-to-Mario safely refused; Link/Samus 430-sample support trajectory checks pass. No accepted Sonic-to-Mario output."
             }
           ]
         },
@@ -844,6 +860,11 @@
               "path": "docs/RETARGET_NONIDENTICAL_CHECKPOINT_2026-11-03.md",
               "revision": "HEAD+diff:5654c133ab368d41e3f57201d28c109924e6b835",
               "coverage": "Post-guard Link/Samus AttackS3S in both directions: exact-member full-quality/default CHR0 reopened, source/target ownership and protected roots unchanged; Sonic refusal writes no CHR0."
+            },
+            {
+              "path": "docs/RETARGET_HEAD_GUARD_CORRECTION_2026-11-03.md",
+              "revision": "601466c600d4ab868ebe9331842670ad74a3617f",
+              "coverage": "Synthetic Sonic helper exact-copy and Link/Samus authentic full-quality/default outputs freshly reopened; authentic Sonic exact-copy blocked by nonzero scaling rule, and Sonic-to-Mario writes no output."
             }
           ]
         },
@@ -866,9 +887,10 @@
       },
       "limitations": [
         "Peach/Fox and Link/Samus bounded trajectory checks do not establish arbitrary cross-proportion pose, skin or contact quality.",
-        "Sonic AttackS3S to Mario is now explicitly blocked by ambiguous cranial mapping; prior target whole-body floor crossing predates serialization and remains unresolved."
+        "Sonic AttackS3S to Mario is now explicitly blocked by ambiguous cranial mapping; prior target whole-body floor crossing predates serialization and remains unresolved.",
+        "Authentic Sonic same-rig AttackS3S and Wait1 reach exact copy but fail the preexisting nonzero CHR0 scaling-rule preservation gate; synthetic Sonic helper-only exact copy passes. Fresh UI coverage is Mario exact-rig only."
       ],
-      "next_step": "Qualify a structural/skin-backed shared cranial-parent or reviewed head mapping, rerun exact Sonic-to-Mario head/hand motion and native checks, then address source-relative whole-body clearance without weakening contact gates."
+      "next_step": "Implement an explicit reviewed structural/skin-backed virtual cranial anchor, transfer source neck once, rerun exact Sonic-to-Mario head/hand/skin/native checks, then address source-relative whole-body clearance without weakening contact gates."
     },
     {
       "id": "FP-ROOT-MOTION",
@@ -4440,6 +4462,11 @@
           "path": "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md",
           "revision": "041ec87a6f7d4d6b42f311cc91fe48fee5f4191b",
           "coverage": "Preview.96 exact-rig and changed-proportion named Brawl cases."
+        },
+        {
+          "path": "docs/RETARGET_HEAD_GUARD_CORRECTION_2026-11-03.md",
+          "revision": "601466c600d4ab868ebe9331842670ad74a3617f",
+          "coverage": "Provisional head reaches exact-rig admission; synthetic Sonic helper copy/reopen and Mario private-desktop 15/15 workflow pass. Authentic Sonic AttackS3S/Wait1 copy is blocked by scaling-rule policy."
         }
       ],
       "verification": {
@@ -4501,8 +4528,13 @@
       "operation": "retargeting",
       "status": "IN_PROGRESS",
       "required": true,
-      "summary": "Changed-proportion results have bounded trajectory checks; broad pose/skin/contact quality open.",
+      "summary": "Changed-proportion results have bounded trajectory checks; ambiguous cranial anatomy and broad pose/skin/contact quality remain open.",
       "evidence": [
+        {
+          "path": "docs/RETARGET_HEAD_GUARD_CORRECTION_2026-11-03.md",
+          "revision": "601466c600d4ab868ebe9331842670ad74a3617f",
+          "coverage": "Read-only authentic cranial branch witness, provisional mapping guard and Link/Samus bidirectional native/support regressions; exact Sonic-to-Mario remains refused."
+        },
         {
           "path": "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md",
           "revision": "041ec87a6f7d4d6b42f311cc91fe48fee5f4191b",
@@ -4511,22 +4543,32 @@
       ],
       "verification": {
         "numerical": {
-          "state": "PASS_HISTORICAL",
+          "state": "PASS_CURRENT",
           "evidence": [
             {
               "path": "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md",
               "revision": "041ec87a6f7d4d6b42f311cc91fe48fee5f4191b",
               "coverage": "Preview.96 exact-rig and changed-proportion named Brawl cases."
+            },
+            {
+              "path": "docs/RETARGET_HEAD_GUARD_CORRECTION_2026-11-03.md",
+              "revision": "601466c600d4ab868ebe9331842670ad74a3617f",
+              "coverage": "28 procedural checks, exact Sonic cranial branch witness at 12 times, safe unequal-rig refusal, and Link/Samus 430-sample trajectory oracles. No Sonic head/hand transfer pass."
             }
           ]
         },
         "native_reopen": {
-          "state": "PASS_HISTORICAL",
+          "state": "PASS_CURRENT",
           "evidence": [
             {
               "path": "docs/RETARGET_QUALITY_ACCEPTANCE_2026-11-03.md",
               "revision": "041ec87a6f7d4d6b42f311cc91fe48fee5f4191b",
               "coverage": "Preview.96 exact-rig and changed-proportion named Brawl cases."
+            },
+            {
+              "path": "docs/RETARGET_HEAD_GUARD_CORRECTION_2026-11-03.md",
+              "revision": "601466c600d4ab868ebe9331842670ad74a3617f",
+              "coverage": "Authentic Link/Samus full-quality/default CHR0 results freshly reopened in both directions; Sonic-to-Mario has no output."
             }
           ]
         },
@@ -4547,8 +4589,11 @@
           "evidence": []
         }
       },
-      "limitations": [],
-      "next_step": "Reproduce complete non-identical-rig failure."
+      "limitations": [
+        "Sonic AttackS3S to Mario has a demonstrated quill-as-head mapping failure and pre-encode whole-body floor crossing; current guard safely refuses output, so head/hand and contact quality remain unverified.",
+        "Finite 12-time source cranial skin witness supports virtual-anchor investigation but does not qualify a shared-neck transfer policy."
+      ],
+      "next_step": "Add reviewed virtual cranial anchor contract and source-to-target head/hand witness; keep neck motion single-mapped and rerun exact Sonic-to-Mario before any acceptance."
     },
     {
       "id": "CAP-CONTACT-GROUND",
