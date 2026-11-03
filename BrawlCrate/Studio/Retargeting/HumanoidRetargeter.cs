@@ -48,6 +48,7 @@ namespace BrawlCrate.Studio.Retargeting
         private readonly Dictionary<int, RetargetMap> _byTarget;
         private readonly RetargetMap trajectory;
         private readonly bool sharedTorso;
+        private readonly bool bridgeExtraLimbSegments;
         public string[] TopologyAdaptations {get;}
         private readonly Dictionary<int,Tuple<Quaternion,Quaternion>> localFrames=new Dictionary<int,Tuple<Quaternion,Quaternion>>();
 
@@ -57,8 +58,13 @@ namespace BrawlCrate.Studio.Retargeting
         // when the games use different control-chain lengths. Null retains the
         // original Next equal-depth behavior for every existing caller.
         public HumanoidRetargeter(Rig source, Rig target, IReadOnlyDictionary<int,int> trajectoryBindings)
+            :this(source,target,trajectoryBindings,null){}
+
+        public HumanoidRetargeter(Rig source, Rig target, IReadOnlyDictionary<int,int> trajectoryBindings,
+            IReadOnlyDictionary<int,int> detailBindings)
         {
             Source = source; Target = target;
+            bridgeExtraLimbSegments=trajectoryBindings!=null;
             sharedTorso=SkeletonCharacterizer.HasSharedTorso(source.Joints,source.Roles)||SkeletonCharacterizer.HasSharedTorso(target.Joints,target.Roles);
             TopologyAdaptations=sharedTorso?new[]{"An existing native torso junction serves spine and chest; one target joint is written once. No bone or bind is added."}:new string[0];
             // Native adapters may map motion pivots, toes, fingers and props,
@@ -70,7 +76,9 @@ namespace BrawlCrate.Studio.Retargeting
             if (required.Any(r => !source.Roles.ContainsKey(r)&&!Unavailable(source,r) || !target.Roles.ContainsKey(r)&&!Unavailable(target,r)))
                 throw new InvalidDataException("This rig is missing a required humanoid role. No motion was generated.");
             UnavailableEndEffectors=required.Where(r=>Unavailable(source,r)||Unavailable(target,r)).ToArray();
-            Mapping = source.Roles.Keys.Intersect(target.Roles.Keys).Select(role => new RetargetMap {
+            Mapping = source.Roles.Keys.Intersect(target.Roles.Keys)
+                .Where(role=>trajectoryBindings==null||!new[]{"root","motion","pivot","turn"}.Contains(role))
+                .Select(role => new RetargetMap {
                 Role = role, SourceIndex = source.Roles[role], TargetIndex = target.Roles[role],
                 Source = source.Joints[source.Roles[role]].Name, Target = target.Joints[target.Roles[role]].Name
             }).GroupBy(m=>m.TargetIndex).Select(group=>group.OrderByDescending(m=>Depth(source,m.SourceIndex)).ThenByDescending(m=>m.Role=="chest").First()).OrderBy(m => m.TargetIndex).ToArray();
@@ -106,6 +114,17 @@ namespace BrawlCrate.Studio.Retargeting
                     if(!mapping.Any(m=>m.SourceIndex==pair.Key&&m.TargetIndex==pair.Value))
                         mapping.Add(new RetargetMap{Role="trajectory."+pair.SourceOrder,SourceIndex=pair.Key,TargetIndex=pair.Value,
                             Source=source.Joints[pair.Key].Name,Target=target.Joints[pair.Value].Name});
+            }
+            if(detailBindings!=null)
+            {
+                if(detailBindings.Values.Distinct().Count()!=detailBindings.Count||
+                    detailBindings.Any(pair=>pair.Key<0||pair.Key>=source.Joints.Length||
+                        pair.Value<0||pair.Value>=target.Joints.Length||
+                        mapping.Any(m=>m.SourceIndex==pair.Key||m.TargetIndex==pair.Value)))
+                    throw new InvalidDataException("The detailed source/target bindings overlap or leave the reviewed rigs.");
+                foreach(var pair in detailBindings)
+                    mapping.Add(new RetargetMap{Role="detail.finger",SourceIndex=pair.Key,TargetIndex=pair.Value,
+                        Source=source.Joints[pair.Key].Name,Target=target.Joints[pair.Value].Name});
             }
             Mapping=mapping.OrderBy(m=>m.TargetIndex).ToArray();
             _byTarget = Mapping.ToDictionary(m => m.TargetIndex);
@@ -286,7 +305,28 @@ namespace BrawlCrate.Studio.Retargeting
                 goal = Vector3.Lerp(goal, headGoal, weight);
             }
             report.Goals[endRole] = goal;
-            SolveLimb(target, report, side, arm, goal);
+            Vector3? sourceBend=null;
+            if(bridgeExtraLimbSegments&&!arm)
+            {
+                // A source may have more than one skinned thigh joint before
+                // its knee. The target keeps its own two-joint leg: carry the
+                // source knee's actual bend plane through the IK solve rather
+                // than copying only the proximal thigh's local rotation.
+                int sourceMiddle=Source.Roles[middleRole];
+                int between=Source.Joints[sourceMiddle].Parent;
+                if(between>=0&&between!=s&&Source.Ancestors[between][s])
+                {
+                    Vector3 axis=source.Point(endRole)-source.Point(rootRole);
+                    Vector3 pole=source.Point(middleRole)-source.Point(rootRole);
+                    if(axis.LengthSquared()>1e-10f)
+                    {
+                        axis=Vector3.Normalize(axis);
+                        pole-=axis*Vector3.Dot(pole,axis);
+                        if(pole.LengthSquared()>1e-8f)sourceBend=Convert(pole);
+                    }
+                }
+            }
+            SolveLimb(target, report, side, arm, goal, sourceBend);
         }
 
         internal void SolveLimb(RigPose target, RetargetPose report, string side, bool arm, Vector3 goal, Vector3? bendDirection=null)

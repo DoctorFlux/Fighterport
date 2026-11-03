@@ -1,5 +1,15 @@
 # Fighterport
 
+3 November — preview.89-bt3-rig-bridge keeps BT3 J00/J01/J02 local actor,
+pitch and facing motion separate, carries extra source thigh joints through
+target leg IK, maps unambiguous skinned fingers, and verifies a bounded
+weighted static stance on reopened Brawl Mario/Snake drafts. The 161-form
+binding sweep admits 153 structural humanoid rigs and leaves eight
+unavailable. Dynamic contact, broad action quality, native non-Brawl output
+and game acceptance remain OPEN. See
+[bounded evidence](docs/BT3_RIG_BRIDGE_2026-11-03.md). Keep one incomplete
+G1/M2 and background-only testing.
+
 2 November — preview.88-bt3-brawl-draft enables native BT3 form/costume/action
 selection as a reviewed Brawl CHR0 draft through the original Next solver and
 Model Previewer. Exact source member snapshots and hashes survive project

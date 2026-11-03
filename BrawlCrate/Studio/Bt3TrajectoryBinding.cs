@@ -7,12 +7,12 @@ using System.Numerics;
 
 namespace BrawlCrate.Studio
 {
-    // Native BT3 owns its ancestor transforms. An unequal target control
-    // chain may receive them only when their authored ownership and order are
-    // unambiguous. This policy never infers a BT3 joint role from its name.
+    // BT3's three native controls precede the deforming pelvis. They match
+    // the actor, pitch and facing controls, not the outer TopN container.
+    // Check that exact native chain before transferring any local animation.
     internal static class Bt3TrajectoryBinding
     {
-        internal const string Policy="bt3-native-ordered-source-controls-v1";
+        internal const string Policy="bt3-native-actor-pitch-facing-controls-v2";
 
         internal static IReadOnlyDictionary<int,int> Prepare(Bt3SourceRig source,Rig target)
         {
@@ -20,42 +20,43 @@ namespace BrawlCrate.Studio
             int[] Ancestors(Rig rig)
             {
                 var list=new List<int>();
-                for(int i=rig.Joints[rig.Roles["pelvis"]].Parent;i>=0;i=rig.Joints[i].Parent)list.Add(i);
+                if(!rig.Roles.TryGetValue("pelvis",out int pelvis))
+                    throw new InvalidDataException("The exact rig has no reviewed pelvis control.");
+                for(int i=rig.Joints[pelvis].Parent;i>=0;i=rig.Joints[i].Parent)list.Add(i);
                 list.Reverse();return list.ToArray();
             }
             var sourcePath=Ancestors(source.Rig);var targetPath=Ancestors(target);
             var bones=source.Scene.Skeleton.Bones;
-            var tracks=source.Motion.Tracks.ToDictionary(t=>t.Bone);
-            var active=sourcePath.Where(i=>tracks.ContainsKey(bones[i].Id)).ToArray();
-            if(active.Length>targetPath.Length)
-                throw new InvalidDataException("BT3 authors more independent motion controls than this target's root chain can preserve.");
-            bool MovingTranslation(int index)
+            if(sourcePath.Length!=3||bones[sourcePath[0]].Id!=0||bones[sourcePath[1]].Id!=1||bones[sourcePath[2]].Id!=2)
+                throw new InvalidDataException("The BT3 actor/pitch/facing control chain differs from the reviewed native layout.");
+            var roles=new[]{"motion","pivot","turn"};
+            var targets=new int[roles.Length];
+            for(int i=0;i<roles.Length;i++)
+                if(!target.Roles.TryGetValue(roles[i],out targets[i])||Array.IndexOf(targetPath,targets[i])<0)
+                    throw new InvalidDataException("The Brawl target lacks a reviewed "+roles[i]+" control in its root chain.");
+            if(targets.Distinct().Count()!=3||Array.IndexOf(targetPath,targets[0])>=Array.IndexOf(targetPath,targets[1])||
+                Array.IndexOf(targetPath,targets[1])>=Array.IndexOf(targetPath,targets[2]))
+                throw new InvalidDataException("The target actor/pitch/facing controls are not a distinct ordered chain.");
+            bool Authored(int index)
             {
-                var track=tracks[bones[index].Id];if(track.RotationOnly)return false;
-                Vector3 bind=bones[index].Rest;
-                return track.Keys.Any(k=>k.Translation!=bind)||
-                    (track.Keys[0].Frame>0||track.Keys[track.Keys.Length-1].Frame<source.Motion.Length)&&bind!=Vector3.Zero;
+                var bone=bones[index];
+                var track=source.Motion.Tracks.SingleOrDefault(t=>t.Bone==bone.Id);
+                if(track==null)return false;
+                // A packed identity quaternion can decode a fraction of a
+                // millidegree off identity. That is codec noise, not actor
+                // motion. Real translations and rotations still bind locally.
+                return track.Keys.Any(key=>(!track.RotationOnly&&
+                        Vector3.DistanceSquared(key.Translation,bone.Rest)>1e-10f)||
+                    QuaternionAngle(key.Rotation)>0.001);
             }
-            int[] moving=active.Where(MovingTranslation).ToArray();
-            if(moving.Length>1)
-                throw new InvalidDataException("Multiple BT3 source controls author actor translation; review their separate target bindings before transfer.");
-            var result=new Dictionary<int,int>();
-            if(moving.Length==0)
-            {
-                for(int i=0;i<active.Length;i++)result.Add(active[i],targetPath[i]);
-            }
-            else
-            {
-                if(!target.Roles.TryGetValue("motion",out int targetMotion))
-                    throw new InvalidDataException("The target rig has no reviewed actor-translation control for BT3 root motion.");
-                int slot=Array.IndexOf(targetPath,targetMotion),pivot=Array.IndexOf(active,moving[0]);
-                if(slot<0||pivot>slot||active.Length-pivot-1>targetPath.Length-slot-1)
-                    throw new InvalidDataException("The BT3 root-control order cannot fit the target's actor-translation control without reordering authored motion.");
-                for(int i=0;i<pivot;i++)result.Add(active[i],targetPath[i]);
-                result.Add(moving[0],targetMotion);
-                for(int i=pivot+1;i<active.Length;i++)result.Add(active[i],targetPath[slot+i-pivot]);
-            }
-            return result;
+            return Enumerable.Range(0,3).Where(i=>Authored(sourcePath[i]))
+                .ToDictionary(i=>sourcePath[i],i=>targets[i]);
+        }
+
+        private static double QuaternionAngle(Quaternion value)
+        {
+            var normalized=Quaternion.Normalize(value);
+            return 2*Math.Acos(Math.Min(1,Math.Abs(normalized.W)))*180/Math.PI;
         }
     }
 }

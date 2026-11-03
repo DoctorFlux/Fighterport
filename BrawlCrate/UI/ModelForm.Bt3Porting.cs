@@ -75,10 +75,13 @@ namespace BrawlCrate.UI
                                 TabStop=false,Bounds=new Rectangle(14,14,662,225),Text=
                                 "Source: "+source.Identity+Environment.NewLine+"Target: "+target.Name+Environment.NewLine+
                                 result.Animation.FrameCount+" native frames · "+result.Plan.Mapping.Length+" mapped joints"+Environment.NewLine+
+                                result.Plan.Mapping.Count(m=>m.Role=="detail.finger")+" skinned finger joints matched by hand structure; extra thigh segments are carried through leg-chain motion."+Environment.NewLine+
                                 result.IgnoredSourceTracks+" animated source joints have no target binding. "+
                                 source.Source.Motion.EventCount+" gameplay events are outside this skeletal animation."+Environment.NewLine+
                                 "Body mapping: "+sourceRoles+Environment.NewLine+
-                                "Root controls: "+Bt3TrajectoryBinding.Policy+Environment.NewLine+Environment.NewLine+
+                                "Animated controls: "+string.Join(", ",result.Plan.Mapping.Where(m=>m.Role.StartsWith("trajectory.",StringComparison.Ordinal))
+                                    .Select(m=>m.Source+" → "+m.Target))+". TransN stays at bind when its native source control is unanimated."+
+                                Environment.NewLine+Environment.NewLine+
                                 "The native Brawl animation reopened and passed sampled fractional pose checks. This is a review draft: contact quality, loop behavior and in-game playback remain unverified. Review and edit it in the Model Previewer before final use."};
                             var add=new Button{Name="bt3TransferAdd",Text="Add review draft",DialogResult=DialogResult.OK,
                                 Bounds=new Rectangle(384,256,158,29)};

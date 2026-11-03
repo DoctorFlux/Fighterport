@@ -79,6 +79,31 @@ namespace BrawlCrate.Studio
             Rig=new Rig("BT3 pmdl "+scene.Skeleton.SourceSha256,"BT3 native",joints,RoleProposal.Roles,headRadius,
                 coordinateUp:Vector3.UnitY);
             Vertices=vertices.ToArray();MaximumBindSplit=split;
+            // Contact evidence uses the original two-pivot skin points. It
+            // does not replace a native bind, normalize weights or infer a
+            // floor from a joint origin.
+            foreach(string side in new[]{"left","right"})
+            {
+                string role=side+".foot";
+                if(!Rig.Roles.TryGetValue(role,out int foot))continue;
+                var points=new List<SkinPoint>();
+                foreach(var vertex in Vertices)
+                {
+                    if(vertex.Parent<0)continue;
+                    float membership=(Rig.Ancestors[vertex.Owner][foot]?vertex.OwnerWeight:0)+
+                        (Rig.Ancestors[vertex.Parent][foot]?1-vertex.OwnerWeight:0);
+                    if(membership<.8f)continue;
+                    points.Add(new SkinPoint{Weights=new[]{
+                        new SkinWeight{Joint=vertex.Owner,Local=vertex.OwnerLocal,Weight=vertex.OwnerWeight},
+                        new SkinWeight{Joint=vertex.Parent,Local=vertex.ParentLocal,Weight=1-vertex.OwnerWeight}}});
+                }
+                if(points.Count<4)continue;
+                Rig.Surfaces.Add(role,new ContactSurface{Role=role,Points=points.ToArray(),
+                    NormalLocal=Vector3.UnitY,ForwardLocal=Vector3.UnitZ});
+            }
+            if(new[]{"left.foot","right.foot"}.All(Rig.Surfaces.ContainsKey))
+                Rig.GroundHeight=new[]{"left.foot","right.foot"}
+                    .Min(role=>Rig.Surfaces[role].Sample(Rig.Rest).Clearance);
         }
 
         internal RigPose Sample(float frame)

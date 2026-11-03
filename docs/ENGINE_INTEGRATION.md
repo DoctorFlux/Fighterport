@@ -1,5 +1,16 @@
 # Native Next integration
 
+Preview.89 keeps the original Next call path intact while the BT3 adapter
+supplies checked native J00/J01/J02 → target actor/pitch/facing bindings and
+structurally matched skinned finger branches. The shared solver's optional
+split-leg pole uses the source knee's posed bend plane when an extra thigh
+joint lies between mapped source thigh and knee. It changes no MDL0 bind or
+weight. A separate geometry-gated static stance correction uses weighted
+source/target foot surfaces; a callback on freshly reopened CHR0 evaluation
+enforces the same plantar bounds after serialization. Dynamic contacts and
+non-Brawl native target writing remain adapter gates. See
+[bounded acceptance](BT3_RIG_BRIDGE_2026-11-03.md).
+
 Preview.88 adds an adapter-side BT3 source bridge to the existing
 `HumanoidRetargeter` and `WindowedNativeCurveBaker`. Only a Brawl MDL0 target
 currently produces a CHR0 review draft. A native BT3 sampler remains the

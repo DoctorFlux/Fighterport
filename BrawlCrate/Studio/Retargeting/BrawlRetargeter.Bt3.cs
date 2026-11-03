@@ -24,16 +24,28 @@ namespace BrawlCrate.Studio.Retargeting
             if(last<0||last>=4096||9L*(last+1)*target.Bones.Length>2000000)
                 throw new InvalidDataException("This BT3 action exceeds the qualified native target bake bounds.");
             var bindings=Bt3TrajectoryBinding.Prepare(source,target.Rig);
-            var plan=new HumanoidRetargeter(source.Rig,target.Rig,bindings);
+            var details=Bt3DetailBinding.Prepare(source,target.Rig);
+            var plan=new HumanoidRetargeter(source.Rig,target.Rig,bindings,details);
             var mapped=new HashSet<int>(plan.Mapping.Select(m=>m.TargetIndex));
+            var carriedLegJoints=new HashSet<int>();
+            foreach(string side in new[]{"left","right"})
+            {
+                if(!source.Rig.Roles.TryGetValue(side+".upperLeg",out int thigh)||
+                    !source.Rig.Roles.TryGetValue(side+".lowerLeg",out int knee))continue;
+                for(int joint=source.Rig.Joints[knee].Parent;joint>=0&&joint!=thigh;
+                    joint=source.Rig.Joints[joint].Parent)
+                    if(source.Rig.Ancestors[joint][thigh])carriedLegJoints.Add(joint);
+            }
             var output=new CHR0Node{Name="BT3 Action "+lease.Action.ToString("D3"),FrameCount=last+1,Loop=false};
             var result=new RetargetResult{Animation=output,Plan=plan,SourceRig=source.Scene.Skeleton.SourceSha256,
                 TargetRig=target.Fingerprint,KeyframeMode=RetargetKeyframeMode.Dense,
                 IgnoredSourceBones=source.Rig.Joints.Where((joint,index)=>source.Motion.Tracks.Any(t=>t.Bone==source.Scene.Skeleton.Bones[index].Id)&&
-                    !plan.Mapping.Any(m=>m.SourceIndex==index)).Select(joint=>joint.Name).ToArray()};
+                    !plan.Mapping.Any(m=>m.SourceIndex==index)&&!carriedLegJoints.Contains(index)).Select(joint=>joint.Name).ToArray()};
             result.IgnoredSourceTracks=result.IgnoredSourceBones.Length;
             try
             {
+                bool floorReady=Bt3StaticStance(source,target.Rig,last,cancellation);
+                var standing=floorReady?new Bt3StandingCorrection(plan,source.Sample(0)):null;
                 result.Contacts=new ContactMotion(plan,source.Sample,last,false,cancellation);
                 var parents=target.Rig.Joints.Select(j=>j.Parent).ToArray();
                 var editable=Enumerable.Range(0,parents.Length).Select(mapped.Contains).ToArray();
@@ -45,6 +57,7 @@ namespace BrawlCrate.Studio.Retargeting
                 {
                     cancellation.ThrowIfCancellationRequested();
                     var posed=plan.Evaluate(source.Sample(time),true);
+                    standing?.Apply(posed);
                     result.MaximumLimbResidual=Math.Max(result.MaximumLimbResidual,posed.MaximumLimbResidual);
                     if(countedTimes.Add(BitConverter.ToInt32(BitConverter.GetBytes(time),0)))
                         result.ClampedLimbSamples+=posed.ClampedLimbs;
@@ -93,16 +106,122 @@ namespace BrawlCrate.Studio.Retargeting
                 }
                 PreciseCHR0EntryNode.Promote(output);
                 progress?.Invoke(92,"Reopening and comparing the target animation...");
-                WindowedNativeCurveBaker.VerifyDecoded(target,output,bake,Master,cancellation);
+                WindowedNativeCurveBaker.VerifyDecoded(target,output,bake,Master,cancellation,
+                    (actual,time)=>standing?.VerifyDecoded(actual,time));
                 lease.VerifyUnchanged(cancellation);
                 result.OptimizationReport="BT3 native source sampled directly; "+bake.ValidationTimes.Length+
                     " decoded target witnesses; maximum sampled world orientation "+bake.MaximumOrientationDegrees+
                     " degrees. Source-local actor controls: "+Bt3TrajectoryBinding.Policy+
-                    ". Contact and game acceptance remain unreviewed.";
+                    ". Static weighted-foot correction "+(standing!=null?
+                        "verified; maximum master/decoded patch error "+standing.MaximumError+"/"+
+                        standing.MaximumDecodedError:"unavailable")+
+                    "; game acceptance remains unreviewed.";
                 progress?.Invoke(100,"Verified target animation ready for review");
                 return result;
             }
             catch{result.Dispose();throw;}
+        }
+
+        // A static bilateral stance is the only BT3 floor case admitted here.
+        // Full action contact timelines and game floor state need separate
+        // review; a transient crossing of the bind plane is not support.
+        private static bool Bt3StaticStance(Bt3SourceRig source,Rig target,int last,CancellationToken cancel)
+        {
+            var roles=new[]{"left.foot","right.foot"};
+            if(roles.Any(role=>!source.Rig.Surfaces.ContainsKey(role)||!target.Surfaces.ContainsKey(role)))return false;
+            var first=source.Sample(0);
+            var anchors=roles.ToDictionary(role=>role,role=>source.Rig.Surfaces[role].Sample(first).Point);
+            for(int quarter=0;quarter<=last*4;quarter++)
+            {
+                cancel.ThrowIfCancellationRequested();
+                var pose=source.Sample(quarter*.25f);
+                foreach(string role in roles)
+                {
+                    string side=role.Split('.')[0];
+                    float length=Vector3.Distance(source.Rig.Rest.Point(side+".upperLeg"),source.Rig.Rest.Point(side+".lowerLeg"))+
+                        Vector3.Distance(source.Rig.Rest.Point(side+".lowerLeg"),source.Rig.Rest.Point(role));
+                    var patch=source.Rig.Surfaces[role].Sample(pose);
+                    Vector3 drift=patch.Point-anchors[role];
+                    drift-=source.Rig.GroundNormal*Vector3.Dot(drift,source.Rig.GroundNormal);
+                    float hipHeight=Vector3.Dot(pose.Point("pelvis"),source.Rig.GroundNormal)-source.Rig.GroundHeight;
+                    if(!RigMath.Finite(patch.Clearance)||patch.Clearance<-.015f*length||
+                        patch.Clearance>.015f*length||drift.Length()>.01f*length||
+                        hipHeight<.6f*length)return false;
+                }
+            }
+            return true;
+        }
+
+        private sealed class Bt3StandingCorrection
+        {
+            private readonly HumanoidRetargeter plan;
+            private readonly Vector3 up;
+            private readonly Dictionary<string,Vector3> anchors=new Dictionary<string,Vector3>();
+            private readonly Dictionary<string,SkinPoint> markers=new Dictionary<string,SkinPoint>();
+            internal float MaximumError {get;private set;}
+            internal float MaximumDecodedError {get;private set;}
+            internal Bt3StandingCorrection(HumanoidRetargeter plan,RigPose first)
+            {
+                this.plan=plan;up=plan.Target.GroundNormal;
+                var posed=plan.Evaluate(first,true).Pose;
+                string[] roles={"left.foot","right.foot"};
+                float shift=-roles.Average(role=>plan.Target.Surfaces[role].Sample(posed).Clearance);
+                posed.SetWorldPoint(plan.Target.Roles["pelvis"],posed.Point("pelvis")+up*shift);
+                foreach(string role in roles)
+                {
+                    var marker=plan.Target.Surfaces[role].Marker(posed);
+                    markers.Add(role,marker);
+                    Vector3 point=marker.Evaluate(posed);
+                    anchors.Add(role,point+up*(plan.Target.GroundHeight-Vector3.Dot(point,up)));
+                }
+            }
+            internal void Apply(RetargetPose result)
+            {
+                var pose=result.Pose;
+                string[] roles={"left.foot","right.foot"};
+                float shift=-roles.Average(role=>plan.Target.Surfaces[role].Sample(pose).Clearance);
+                pose.SetWorldPoint(plan.Target.Roles["pelvis"],pose.Point("pelvis")+up*shift);
+                foreach(string role in new[]{"left.foot","right.foot"})
+                {
+                    string side=role.Split('.')[0];
+                    float length=Vector3.Distance(plan.Target.Rest.Point(side+".upperLeg"),plan.Target.Rest.Point(side+".lowerLeg"))+
+                        Vector3.Distance(plan.Target.Rest.Point(side+".lowerLeg"),plan.Target.Rest.Point(role));
+                    for(int pass=0;pass<5;pass++)
+                    {
+                        var surface=plan.Target.Surfaces[role].Sample(pose);
+                        Vector3 planar=anchors[role]-markers[role].Evaluate(pose);
+                        planar-=up*Vector3.Dot(planar,up);
+                        Vector3 delta=planar-up*surface.Clearance;
+                        if(delta.Length()>length*.02f)
+                            throw new InvalidDataException("The static BT3 foot would need an unreviewed target-limb stretch.");
+                        pose.SetWorldPoint(plan.Target.Roles[role],pose.Point(role)+delta);
+                    }
+                    var final=plan.Target.Surfaces[role].Sample(pose);
+                    Vector3 remaining=anchors[role]-markers[role].Evaluate(pose);
+                    remaining-=up*Vector3.Dot(remaining,up);
+                    float error=Math.Max(Math.Abs(final.Clearance),remaining.Length());
+                    MaximumError=Math.Max(MaximumError,error);
+                    result.MaximumContactResidual=Math.Max(result.MaximumContactResidual,error);
+                    if(error>length*.001f)
+                        throw new InvalidDataException("The static BT3 foot anchor did not meet the reviewed target contact bound.");
+                    result.Goals[role]=pose.Point(role);
+                }
+            }
+            internal void VerifyDecoded(RigPose pose,float time)
+            {
+                foreach(string role in new[]{"left.foot","right.foot"})
+                {
+                    string side=role.Split('.')[0];
+                    float length=Vector3.Distance(plan.Target.Rest.Point(side+".upperLeg"),plan.Target.Rest.Point(side+".lowerLeg"))+
+                        Vector3.Distance(plan.Target.Rest.Point(side+".lowerLeg"),plan.Target.Rest.Point(role));
+                    Vector3 planar=anchors[role]-markers[role].Evaluate(pose);
+                    planar-=up*Vector3.Dot(planar,up);
+                    float error=Math.Max(Math.Abs(plan.Target.Surfaces[role].Sample(pose).Clearance),planar.Length());
+                    MaximumDecodedError=Math.Max(MaximumDecodedError,error);
+                    if(error>length*.001f)
+                        throw new InvalidDataException("Decoded BT3 target lost its static foot contact at frame "+time+", "+role+"; error "+error+".");
+                }
+            }
         }
     }
 }

@@ -95,7 +95,8 @@ namespace BrawlCrate.Studio.Retargeting
         // acceptance witnesses survive joining, including either side of each
         // integer window boundary. No partial result escapes a failed check.
         internal static void VerifyDecoded(BrawlRig target, BrawlLib.SSBB.ResourceNodes.CHR0Node candidate,
-            AdaptiveRotationBake bake,Func<float,AdaptiveRotationPose> master,CancellationToken token)
+            AdaptiveRotationBake bake,Func<float,AdaptiveRotationPose> master,CancellationToken token,
+            Action<RigPose,float> decodedValidator=null)
         {
             string folder=Path.Combine(Path.GetTempPath(),"Fighterport-native-master-"+Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(folder);string file=Path.Combine(folder,"candidate.chr0");
@@ -130,6 +131,7 @@ namespace BrawlCrate.Studio.Retargeting
                                     "; scale "+(expected.Scales==null?0:Maximum(actual.Local[bone].Scale-expected.Scales[bone]))+". No result was imported.");
                             }
                         }
+                        decodedValidator?.Invoke(actual,time);
                     }
                 }
             }

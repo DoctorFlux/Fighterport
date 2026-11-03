@@ -1,5 +1,16 @@
 # Fighterport master plan
 
+Preview.89 refines the native BT3 → Brawl draft rig bridge: source-authored
+actor/pitch/facing controls stay separate, additional source thigh segments
+inform the target knee bend and foot goal, and structurally identified skinned
+fingers map to existing target digits. A weighted static bilateral stance
+gate verifies target foot placement after native CHR0 serialization and
+reopen. The checked Goku Mid action 000 passes on Mario and Snake; the
+161-form structural sweep leaves eight unsupported rigs. Dynamic contacts,
+broad action quality, in-game acceptance and other native outputs remain
+separate gates in the one incomplete G1/M2. See
+[bounded evidence](BT3_RIG_BRIDGE_2026-11-03.md).
+
 Preview.88 opens the first BT3 source-to-target porting path: an exact native
 BT3 action can enter the existing Next solver and become an independent,
 reviewed Brawl CHR0 draft in the original Model Previewer. Project Save keeps

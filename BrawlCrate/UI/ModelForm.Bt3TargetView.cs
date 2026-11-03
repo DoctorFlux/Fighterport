@@ -248,6 +248,7 @@ namespace BrawlCrate.UI
         private void ApplyBt3NativeKey()
         {
             if(_bt3TargetEditor==null||_bt3SelectedBoneId<0)return;
+            if(_bt3SelectedBoneId>=71)return;
             StopBt3TargetPlayback();
             try
             {
@@ -433,6 +434,7 @@ namespace BrawlCrate.UI
             modelEditControl1.rightPanel.pnlBones.NativeBoneSelected=id=>{
                 _bt3SelectedBoneId=id;
                 if(_bt3SelectedBoneLabel!=null)_bt3SelectedBoneLabel.Text="Joint "+id.ToString("D2");
+                if(_bt3EditApply!=null)_bt3EditApply.Enabled=id<71;
                 if(_bt3TargetRenderer!=null){_bt3TargetRenderer.SelectedBoneId=id;_bt3TargetViewport.Invalidate();}
                 RefreshBt3NativePoseControls();
             };
@@ -642,7 +644,8 @@ namespace BrawlCrate.UI
                     var clip=editor.Motion;
                     if(!clip.Tracks.All(t=>scene.Skeleton.Bones.Any(b=>b.Id==t.Bone)))
                         throw new InvalidDataException("The action does not match this native costume skeleton.");
-                    return Tuple.Create(scene,editor);
+                    var suggestions=priorScene==null?Bt3JointLabels.SuggestedRoles(scene,clip):null;
+                    return Tuple.Create(scene,editor,suggestions);
                 },cancel.Token);
                 if(cancel.IsCancellationRequested||epoch!=_bt3TargetEpoch||_bt3TargetHost?.Visible!=true||
                     !ReferenceEquals(_bt3TargetForm.SelectedItem,form)||
@@ -661,8 +664,8 @@ namespace BrawlCrate.UI
                     var box=_bt3TargetRenderer.GetBox();var center=(box.Min+box.Max)*0.5f;
                     var half=(box.Max-box.Min)*0.75f;
                     _bt3TargetViewport.SetCamWithBox(center-half,center+half);
-                    var suggestions=Bt3JointLabels.SuggestedRoles(result.Item1.Skeleton);
-                    var nativeBones=result.Item1.Skeleton.Bones.Where(b=>b.Id>=0&&b.Id<71)
+                    var suggestions=result.Item3;
+                    var nativeBones=result.Item1.Skeleton.Bones.Where(b=>b.Id>=0)
                         .Select(b=>{
                             string native=Bt3JointLabels.Describe(b.Id,b.Parent);
                             if(suggestions.TryGetValue(b.Id,out string role))

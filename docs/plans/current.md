@@ -1,5 +1,21 @@
 # Current milestone M2 — simpler native workspace
 
+3 November: preview.89 corrects the checked BT3 → Brawl rig bridge without
+replacing the original Next solver or Model Previewer. Native J00/J01/J02
+actor, pitch and facing controls now follow only their own authored local
+motion; the checked Goku action creates no TransN travel. The extra source
+thigh segments feed the target knee bend plane and endpoint solve without
+adding bones or changing any skin weights. Unambiguous skinned finger
+branches map to existing target digits. A bounded, decoded-verified static
+bilateral foot correction qualifies the checked Goku Mid action 000 on
+Brawl Mario and Snake. The 69-check private-desktop native/Next suite,
+44-check viewer suite, 13-check port UI case and 28-check additional-action
+case pass. Of 161 form action-000 rigs, 153 admit the structural binding and
+eight remain unavailable; this is not broad animation acceptance. Dynamic
+contacts, other actions, game acceptance and target-native non-Brawl writing
+remain OPEN in the one incomplete G1/M2. See
+[bounded acceptance](../BT3_RIG_BRIDGE_2026-11-03.md).
+
 2 November: preview.88 enables an explicitly reviewed **BT3 → Brawl CHR0
 draft** from the exact selected disc form, costume and action through the
 existing Next solver and native Model Previewer. Unequal root-control chains

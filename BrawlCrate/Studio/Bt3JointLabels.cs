@@ -33,6 +33,31 @@ namespace BrawlCrate.Studio
             return roles.Where(p=>p.Key!="root").GroupBy(p=>skeleton.Bones[p.Value].Id)
                 .ToDictionary(g=>g.Key,g=>string.Join(" / ",g.Select(p=>ShortRole(p.Key))));
         }
+        internal static Dictionary<int,string> SuggestedRoles(Bt3NativeMesh.Scene scene,Bt3NativeAssetReader.Motion motion)
+        {
+            var labels=SuggestedRoles(scene.Skeleton);
+            try
+            {
+                var source=new Bt3SourceRig(scene,motion);
+                foreach(var pair in Bt3DetailBinding.SuggestedSourceDigits(source))
+                    labels[pair.Key]=pair.Value;
+                foreach(string side in new[]{"left","right"})
+                {
+                    if(!source.Rig.Roles.TryGetValue(side+".upperLeg",out int upper)||
+                        !source.Rig.Roles.TryGetValue(side+".lowerLeg",out int lower))continue;
+                    for(int joint=source.Rig.Joints[lower].Parent;joint>=0&&joint!=upper;joint=source.Rig.Joints[joint].Parent)
+                    {
+                        int id=scene.Skeleton.Bones[joint].Id;
+                        if(!labels.ContainsKey(id))labels[id]=side+" upper-leg segment";
+                    }
+                }
+            }
+            catch(System.IO.InvalidDataException)
+            {
+                // Advisory labels never gate viewing an otherwise valid model.
+            }
+            return labels;
+        }
         private static string ShortRole(string role)
         {
             string name=role.Replace("left.","L ").Replace("right.","R ");

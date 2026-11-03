@@ -192,10 +192,59 @@ internal static partial class Program
                                 }
                                 var rig=BrawlCrate.Studio.Retargeting.BrawlRetargeter.Capture(target);
                                 var binding=Bt3TrajectoryBinding.Prepare(source,rig.Rig);
+                                var detailBinding=Bt3DetailBinding.Prepare(source,rig.Rig);
                                 var defaultPlan=new BrawlCrate.Studio.Retargeting.HumanoidRetargeter(source.Rig,rig.Rig);
                                 Console.WriteLine("TRACE default root mappings="+string.Join(",",defaultPlan.Mapping.Where(m=>defaultPlan.SourceMotionControls.Contains(m.SourceIndex)||defaultPlan.TargetMotionControls.Contains(m.TargetIndex)).Select(m=>m.Role+":"+m.Source+"->"+m.Target))+
-                                    " proposed="+string.Join(",",binding.Select(p=>source.Rig.Joints[p.Key].Name+"->"+rig.Rig.Joints[p.Value].Name)));
-                                var plan=new BrawlCrate.Studio.Retargeting.HumanoidRetargeter(source.Rig,rig.Rig,binding);
+                                    " proposed="+string.Join(",",binding.Select(p=>source.Rig.Joints[p.Key].Name+"->"+rig.Rig.Joints[p.Value].Name))+
+                                    " details="+detailBinding.Count);
+                                var plan=new BrawlCrate.Studio.Retargeting.HumanoidRetargeter(source.Rig,rig.Rig,binding,detailBinding);
+                                Check(detailBinding.Count==18&&plan.Mapping.Count(m=>m.Role=="detail.finger")==18,
+                                    "Goku's skinned thumb and four paired finger branches bind to actual target digit bones without naming the native joints");
+                                if(args.Contains("--bt3-rig-diagnostic"))
+                                {
+                                    foreach(float time in new[]{0f,motion.Length*.5f,(float)motion.Length})
+                                    {
+                                        var sourcePose=source.Sample(time);
+                                        var targetPose=plan.Evaluate(sourcePose,true).Pose;
+                                        Console.WriteLine("TRACE BT3 stance "+character+" frame="+time+" source="+
+                                            string.Join(";",new[]{"pelvis","left.foot","right.foot","left.hand","right.hand"}
+                                                .Select(role=>role+":"+sourcePose.Point(role)))+" target="+
+                                            string.Join(";",new[]{"pelvis","left.foot","right.foot","left.hand","right.hand"}
+                                                .Select(role=>role+":"+targetPose.Point(role)))+" target floor="+rig.Rig.GroundHeight+
+                                            " foot clearance="+string.Join(";",new[]{"left.foot","right.foot"}
+                                                .Select(role=>role+":"+rig.Rig.Surfaces[role].Sample(targetPose).Clearance))+
+                                            " source clearance="+string.Join(";",new[]{"left.foot","right.foot"}
+                                                .Select(role=>role+":"+(source.Rig.Surfaces.ContainsKey(role)?source.Rig.Surfaces[role].Sample(sourcePose).Clearance:float.NaN))));
+                                    }
+                                    Console.WriteLine("TRACE BT3 role pairs="+string.Join(",",plan.Mapping.Where(m=>!m.Role.StartsWith("trajectory.",StringComparison.Ordinal))
+                                        .Select(m=>m.Role+":"+m.Source+"->"+m.Target)));
+                                    foreach(int control in plan.SourceMotionControls)
+                                    {
+                                        var nativeId=scene.Skeleton.Bones[control].Id;
+                                        var track=motion.Tracks.SingleOrDefault(t=>t.Bone==nativeId);
+                                        Console.WriteLine("TRACE BT3 authored control "+nativeId+" rest="+scene.Skeleton.Bones[control].Rest+
+                                            " keys="+(track==null?"absent":string.Join(";",track.Keys.Select(k=>k.Frame+":"+k.Translation).Take(6)))+
+                                            " sample="+string.Join(";",new[]{0f,motion.Length*.5f,(float)motion.Length}.Select(t=>t+":"+source.Sample(t).Local[control].Translation)));
+                                    }
+                                    if(character=="mario")
+                                    {
+                                        foreach(string side in new[]{"left","right"})
+                                        {
+                                            int hand=source.Rig.Roles[side+".hand"];
+                                            Console.WriteLine("TRACE BT3 "+side+" hand="+hand+"/"+source.Rig.Joints[hand].Name+
+                                                " children="+string.Join(";",source.Rig.Joints.Select((j,i)=>new{j,i})
+                                                    .Where(p=>p.j.Parent==hand).Select(p=>p.i+"/"+p.j.Name+"/"+
+                                                        (source.Rig.Rest.Point(p.i)-source.Rig.Rest.Point(hand))+"/"+
+                                                        source.Rig.Joints.Count(j=>j.Parent==p.i)+"/skin="+
+                                                        source.Vertices.Count(v=>v.Owner==p.i))));
+                                        }
+                                        Console.WriteLine("TRACE BT3 source joints="+string.Join(";",source.Rig.Joints.Select((joint,index)=>
+                                            index+"/"+joint.Name+"/"+joint.Parent+"/"+source.Rig.Rest.Point(index)+"/"+
+                                            (motion.Tracks.Any(t=>t.Bone==scene.Skeleton.Bones[index].Id)?"keyed":"rest"))));
+                                        Console.WriteLine("TRACE Brawl target joints="+string.Join(";",rig.Rig.Joints.Select((joint,index)=>
+                                            index+"/"+joint.Parent+"/"+joint.Name+"/"+rig.Rig.Rest.Point(index))));
+                                    }
+                                }
                                 Console.WriteLine("TRACE BT3 source control path="+string.Join(",",plan.SourceMotionControls.Select(i=>source.Rig.Joints[i].Name+
                                     ":"+motion.Tracks.Any(t=>t.Bone==scene.Skeleton.Bones[i].Id)))+
                                     " target control path="+string.Join(",",plan.TargetMotionControls.Select(i=>rig.Rig.Joints[i].Name))+
@@ -212,25 +261,77 @@ internal static partial class Program
                                     }
                                     Console.WriteLine("TRACE BT3 control "+source.Rig.Joints[index].Name+" max translation="+position+" max rotation="+angle);
                                 }
-                                int samples=0;float maximumTravelError=0;
+                                int samples=0;float maximumTravelError=0,maximumUnexpectedActorMotion=0;
                                 for(int quarter=0;quarter<=motion.Length*4;quarter++)
                                 {
                                     var sourcePose=source.Sample(quarter*.25f);
                                     var pose=plan.Evaluate(sourcePose,false);
                                     if(pose.Pose.Local.Length!=rig.Bones.Length)
                                         throw new InvalidDataException("Native BT3 source sample changed the target rig's joint count.");
-                                    int sourceRoot=plan.SourceMotionControls.Last(),targetRoot=rig.Rig.Roles["motion"];
-                                    var sourceTravel=sourcePose.Point(sourceRoot)-source.Rig.Rest.Point(sourceRoot);
-                                    var targetTravel=pose.Pose.Point(targetRoot)-rig.Rig.Rest.Point(targetRoot);
+                                    int sourceRoot=plan.SourceMotionControls[0],targetRoot=rig.Rig.Roles["motion"];
+                                    var sourceTravel=sourcePose.Local[sourceRoot].Translation-source.Rig.Joints[sourceRoot].Bind.Translation;
+                                    var targetTravel=pose.Pose.Local[targetRoot].Translation-rig.Rig.Joints[targetRoot].Bind.Translation;
                                     maximumTravelError=Math.Max(maximumTravelError,System.Numerics.Vector3.Distance(sourceTravel,targetTravel));
+                                    maximumUnexpectedActorMotion=Math.Max(maximumUnexpectedActorMotion,targetTravel.Length());
                                     samples++;
                                 }
                                 Console.WriteLine("TRACE BT3 to "+character+" plan mappings="+plan.Mapping.Length+
                                     " quarter-frame samples="+samples+" max actor travel error="+maximumTravelError+
+                                    " unexpected actor motion="+maximumUnexpectedActorMotion+
                                     " root bindings="+string.Join(",",binding.Select(p=>source.Rig.Joints[p.Key].Name+"->"+rig.Rig.Joints[p.Value].Name))+
                                     " target joints="+rig.Bones.Length+" unavailable="+
                                     string.Join(",",plan.UnavailableEndEffectors));
-                                if(maximumTravelError>.005f)throw new InvalidDataException("BT3 actor travel differs after source-local root transfer.");
+                                if(maximumTravelError>.005f||maximumUnexpectedActorMotion>.00001f)
+                                    throw new InvalidDataException("BT3 actor travel differs from its own source control.");
+                                if(character=="mario")
+                                {
+                                    var actorTrack=new Bt3NativeAssetReader.Track{Bone=0,RotationOnly=false,Keys=new[]{
+                                        new Bt3NativeAssetReader.Key{Frame=0,Translation=System.Numerics.Vector3.Zero,Rotation=System.Numerics.Quaternion.Identity},
+                                        new Bt3NativeAssetReader.Key{Frame=motion.Length,Translation=new System.Numerics.Vector3(2,0,0),Rotation=System.Numerics.Quaternion.Identity}}};
+                                    var pitchTrack=new Bt3NativeAssetReader.Track{Bone=1,RotationOnly=true,Keys=new[]{
+                                        new Bt3NativeAssetReader.Key{Frame=0,Rotation=System.Numerics.Quaternion.Identity},
+                                        new Bt3NativeAssetReader.Key{Frame=motion.Length,Rotation=System.Numerics.Quaternion.CreateFromAxisAngle(
+                                            System.Numerics.Vector3.UnitX,(float)Math.PI/9)}}};
+                                    var authored=new Bt3NativeAssetReader.Motion{Action=motion.Action,Length=motion.Length,
+                                        EventCount=motion.EventCount,SourceSha256=motion.SourceSha256,
+                                        Tracks=motion.Tracks.Where(t=>t.Bone!=0&&t.Bone!=1).Concat(new[]{actorTrack,pitchTrack}).ToArray()};
+                                    var synthetic=new Bt3SourceRig(scene,authored);
+                                    var checkedControls=Bt3TrajectoryBinding.Prepare(synthetic,rig.Rig);
+                                    var checkedPlan=new BrawlCrate.Studio.Retargeting.HumanoidRetargeter(synthetic.Rig,rig.Rig,checkedControls,
+                                        Bt3DetailBinding.Prepare(synthetic,rig.Rig));
+                                    var checkedPose=checkedPlan.Evaluate(synthetic.Sample(motion.Length*.5f),false).Pose;
+                                    int actor=rig.Rig.Roles["motion"],pitch=rig.Rig.Roles["pivot"];
+                                    Check(checkedControls.Count==3&&
+                                        Math.Abs(checkedPose.Local[actor].Translation.X-rig.Rig.Joints[actor].Bind.Translation.X+1)<.0001f&&
+                                        BrawlCrate.Studio.Retargeting.ContactMotion.EndOrientationDegrees(
+                                            checkedPose.Local[pitch].Rotation,rig.Rig.Joints[pitch].Bind.Rotation)>5,
+                                        "Procedural BT3 actor travel and pitch animate only their corresponding Brawl controls");
+                                    foreach(var leg in new[]{new{Side="left",Intermediate=9},new{Side="right",Intermediate=13}})
+                                    {
+                                        var extraTrack=new Bt3NativeAssetReader.Track{Bone=leg.Intermediate,RotationOnly=true,Keys=new[]{
+                                            new Bt3NativeAssetReader.Key{Frame=0,Rotation=System.Numerics.Quaternion.Identity},
+                                            new Bt3NativeAssetReader.Key{Frame=motion.Length/2,Rotation=System.Numerics.Quaternion.CreateFromAxisAngle(
+                                                System.Numerics.Vector3.UnitX,.4f)},
+                                            new Bt3NativeAssetReader.Key{Frame=motion.Length,Rotation=System.Numerics.Quaternion.Identity}}};
+                                        var legMotion=new Bt3NativeAssetReader.Motion{Action=motion.Action,Length=motion.Length,
+                                            EventCount=motion.EventCount,SourceSha256=motion.SourceSha256,
+                                            Tracks=motion.Tracks.Where(t=>t.Bone!=leg.Intermediate).Concat(new[]{extraTrack}).ToArray()};
+                                        var legSource=new Bt3SourceRig(scene,legMotion);
+                                        var legPlan=new BrawlCrate.Studio.Retargeting.HumanoidRetargeter(legSource.Rig,rig.Rig,
+                                            Bt3TrajectoryBinding.Prepare(legSource,rig.Rig),Bt3DetailBinding.Prepare(legSource,rig.Rig));
+                                        float middle=motion.Length/2;
+                                        var unchanged=plan.Evaluate(source.Sample(middle),true).Pose;
+                                        var changed=legPlan.Evaluate(legSource.Sample(middle),true).Pose;
+                                        float knee=System.Numerics.Vector3.Distance(unchanged.Point(leg.Side+".lowerLeg"),
+                                            changed.Point(leg.Side+".lowerLeg"));
+                                        float foot=System.Numerics.Vector3.Distance(unchanged.Point(leg.Side+".foot"),
+                                            changed.Point(leg.Side+".foot"));
+                                        float root=System.Numerics.Vector3.Distance(unchanged.Local[actor].Translation,
+                                            changed.Local[actor].Translation);
+                                        Check(knee>.001f&&foot>.001f&&root<.00001f,
+                                            "Extra source thigh joint changes "+leg.Side+" target knee/foot without inventing actor travel");
+                                    }
+                                }
                                 if(args.Contains("--bt3-bake-probe"))
                                 {
                                     using(var cancelled=new CancellationTokenSource())
@@ -242,12 +343,36 @@ internal static partial class Program
                                     }
                                     using(var result=BrawlCrate.Studio.Retargeting.BrawlRetargeter.BakeBt3(lease,rig))
                                     {
+                                        Check(!result.IgnoredSourceBones.Contains("BT3_J09")&&
+                                            !result.IgnoredSourceBones.Contains("BT3_J13"),
+                                            "Source thigh segments used by target leg IK are not reported as discarded tracks");
                                         string candidate=Path.Combine(output,"bt3-to-brawl-"+character+"-action000.chr0");
                                         result.Animation.ExportChecked(candidate);
                                         using(var reopened=NodeFactory.FromFile(null,candidate) as CHR0Node)
+                                        {
+                                            var actor=reopened?.Children.OfType<CHR0EntryNode>().SingleOrDefault(e=>e.Name=="TransN");
+                                            Console.WriteLine("TRACE BT3 decoded actor="+(actor==null?"absent":string.Join(",",Enumerable.Range(0,9).Select(channel=>channel+":"+actor.KeyArrays[channel].KeyCount+"/"+actor.GetFrameValue(channel,0)+"/"+actor.GetFrameValue(channel,motion.Length)))));
                                             Check(reopened!=null&&reopened.FrameCount==motion.Length+1&&
-                                                reopened.Children.OfType<CHR0EntryNode>().Any(e=>e.Name=="TransN"),
-                                                "BT3 native source creates an independently reopened Brawl target animation with actor motion");
+                                                !reopened.Children.OfType<CHR0EntryNode>().Any(e=>e.Name=="TransN"&&
+                                                    Enumerable.Range(0,9).Any(channel=>e.KeyArrays[channel].KeyCount>1)),
+                                                "BT3 native source reopens without inventing Brawl actor motion");
+                                            Check(reopened.Children.OfType<CHR0EntryNode>().Count(e=>
+                                                rig.Rig.Roles.Any(role=>role.Key.Contains("finger")&&rig.Bones[role.Value].Name==e.Name))>=16&&
+                                                result.OptimizationReport.Contains("Static weighted-foot correction verified"),
+                                                "Native draft retains supported finger motion and qualified static weighted-foot correction");
+                                            foreach(float time in new[]{0f,18f,36f,54f,72f})
+                                            {
+                                                var pose=BrawlCrate.Studio.Retargeting.BrawlRetargeter.Sample(rig,reopened,time);
+                                                foreach(string role in new[]{"left.foot","right.foot"})
+                                                {
+                                                    string side=role.Split('.')[0];
+                                                    float length=System.Numerics.Vector3.Distance(rig.Rig.Rest.Point(side+".upperLeg"),rig.Rig.Rest.Point(side+".lowerLeg"))+
+                                                        System.Numerics.Vector3.Distance(rig.Rig.Rest.Point(side+".lowerLeg"),rig.Rig.Rest.Point(role));
+                                                    Check(Math.Abs(rig.Rig.Surfaces[role].Sample(pose).Clearance)<=length*.001f,
+                                                        "Decoded BT3 stance keeps "+character+" "+role+" on its weighted target floor at frame "+time);
+                                                }
+                                            }
+                                        }
                                         Console.WriteLine("TRACE BT3 native target bytes="+new FileInfo(candidate).Length+
                                             " SHA256="+FighterProject.HashFile(candidate)+" "+result.OptimizationReport);
                                         using(var project=FighterProject.Create("BT3 transfer draft"))
@@ -270,7 +395,8 @@ internal static partial class Program
                             }
                         }
                         catch(Exception error)when(error is InvalidDataException||error is NotSupportedException)
-                        {Console.WriteLine("TRACE BT3 to "+character+" plan unavailable="+error.Message);}
+                        {Console.WriteLine("TRACE BT3 to "+character+" plan unavailable="+
+                            (args.Contains("--bt3-rig-diagnostic")?error.ToString():error.Message));}
                     }
                     if(available>0)Check(qualified==available,
                         "Native BT3 source samples enter the existing format-neutral Next pose solver at every quarter frame for available Brawl target rigs");
@@ -281,11 +407,20 @@ internal static partial class Program
             catch(InvalidDataException){rejectedCrossForm=true;}
             Check(rejectedCrossForm,"BT3 source lease rejects a different form's action even when its action index matches");
         }
-        if(args.Contains("--bt3-source-rig-sweep")||args.Contains("--bt3-source-costume-sweep"))
+        if(args.Contains("--bt3-source-rig-sweep")||args.Contains("--bt3-source-costume-sweep")||args.Contains("--bt3-binding-sweep"))
         {
             bool everyCostume=args.Contains("--bt3-source-costume-sweep");
-            int checkedForms=0,checkedCostumes=0;float worst=0,worstBind=0;
-            foreach(var form in inventory.Fighters)
+            int checkedForms=0,checkedCostumes=0,boundForms=0,fingerBones=0;float worst=0,worstBind=0;
+            MDL0Node auditModel=null;
+            BrawlCrate.Studio.Retargeting.BrawlRig auditTarget=null;
+            if(args.Contains("--bt3-binding-sweep"))
+            {
+                string fixture=Path.Combine(".local","optimization-next-bake-draft","mario","next-target-before.mdl0");
+                auditModel=NodeFactory.FromFile(null,fixture) as MDL0Node;
+                if(auditModel==null)throw new FileNotFoundException("BT3 binding sweep target is unavailable.",fixture);
+                auditTarget=BrawlCrate.Studio.Retargeting.BrawlRetargeter.Capture(auditModel);
+            }
+            try{foreach(var form in inventory.Fighters)
             {
                 var action=form.MotionMembers[0].FirstOrDefault(m=>m.PackIndex==0&&m.Bytes>=10);
                 if(form.Costumes.Length==0||action==null)throw new InvalidDataException("A BT3 form lacks a model or action-zero source.");
@@ -296,13 +431,25 @@ internal static partial class Program
                     var source=new Bt3SourceRig(scene,motion);
                     float error=Math.Max(source.MaximumPositionDifference(0),source.MaximumPositionDifference(motion.Length*.5f));
                     if(error>=.00001f)throw new InvalidDataException("BT3 source skin bridge exceeds its position bound for form "+form.Slot+" costume "+costume.Identity+": "+error);
+                    if(auditTarget!=null)
+                    {
+                        try
+                        {
+                            var controls=Bt3TrajectoryBinding.Prepare(source,auditTarget.Rig);
+                            var digits=Bt3DetailBinding.Prepare(source,auditTarget.Rig);
+                            var plan=new BrawlCrate.Studio.Retargeting.HumanoidRetargeter(source.Rig,auditTarget.Rig,controls,digits);
+                            boundForms++;fingerBones+=digits.Count;
+                        }
+                        catch(Exception unavailable)when(unavailable is InvalidDataException||unavailable is NotSupportedException)
+                        {Console.WriteLine("OPEN BT3 binding form "+form.Slot+": "+unavailable.Message);}
+                    }
                     checkedCostumes++;worst=Math.Max(worst,error);worstBind=Math.Max(worstBind,source.MaximumBindSplit);
                 }
                 checkedForms++;
-            }
+            }}finally{auditModel?.Dispose();}
             Console.WriteLine("TRACE BT3 source rig sweep forms="+checkedForms+" costumes="+checkedCostumes+
                 " maximum pose difference="+worst+
-                " maximum bind split="+worstBind);
+                " maximum bind split="+worstBind+" bound forms="+boundForms+" mapped finger bones="+fingerBones);
             Check(checkedForms==inventory.Fighters.Length&&
                 (!everyCostume||checkedCostumes==inventory.Fighters.Sum(f=>f.Costumes.Length)),
                 "Every inspected BT3 form and costume retains all source skin influences in its native rig bridge");
@@ -649,6 +796,10 @@ internal static partial class Program
                         displayedBones.Any(b=>b.Label.Contains("?")&&b.Detail.Contains("not a native name"))&&
                         displayedBones.All(b=>b.Detail.Contains("Joint")||b.Detail.Contains("Native joint ID")),
                         "Compact native lists show verified action explanations and clearly provisional body labels");
+                    Check(displayedBones.Any(b=>b.Label.Contains("finger 1 base?"))&&
+                        displayedBones.Any(b=>b.Label.Contains("upper-leg segment?"))&&
+                        displayedBones.Any(b=>b.Id>=71),
+                        "Native viewer shows structural finger and extra thigh labels alongside all model helper joints");
                     var viewerTools=SimpleControl<ToolStrip>(form,"toolStrip1");
                     var bonesToggle=(ToolStripButton)viewerTools.Items.Find("chkBones",true).Single();
                     var polygonsToggle=(ToolStripButton)viewerTools.Items.Find("chkPolygons",true).Single();
