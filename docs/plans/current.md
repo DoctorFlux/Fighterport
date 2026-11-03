@@ -1,5 +1,18 @@
 # Current milestone M2 — simpler native workspace
 
+3 November: preview.94 adds a separate **Export animations...** command to the
+native BT3 target viewer. It selects exact actions for the current form and
+costume, exporting one GLB per action or selected actions in one GLB, either
+animation-only or with the rigged model and textures. The current native edited
+action is included when selected. Model-only export stays clip-free. Staged
+publication, source checks, stale edit checks, native timing preflight and
+independent glTF validation passed local Goku Mid/GT checks. This is a bounded
+BT3 GLB export increment; direct in-app FBX writing, COLLADA animation,
+Brawl/Melee portable animation export, portable import and broad BT3 action
+qualification remain OPEN in the same incomplete G1/M2. The user requires FBX
+to be written inside Fighterport without an installed converter. See
+[preview.94 acceptance](../PORTABLE_ANIMATION_BUNDLES_2026-11-03.md).
+
 3 November: preview.93 extends the portable model export seam used by future
 game adapters. Saved Brawl and Melee targets now also publish model-only rigged
 glTF/GLB with all represented skin influence sets, textures and COLLADA. The

@@ -228,8 +228,111 @@ namespace BrawlCrate.UI
             var portable=new Button{Name="bt3ExportPortableModel",Text="Export model + textures...",Width=204,Height=32};
             portable.AccessibleDescription="Export this BT3 costume without animation clips as rigged COLLADA, glTF and GLB when its native skin passes portable validation.";
             portable.Click+=(s,e)=>ChooseBt3PortableModelExport();panel.Controls.Add(portable);
+            var animations=new Button{Name="bt3ExportPortableAnimations",Text="Export animations...",Width=204,Height=32};
+            animations.AccessibleDescription="Choose exact native actions. Export one GLB per action or all selected actions in one GLB, with an optional model.";
+            animations.Click+=(s,e)=>ChooseBt3PortableAnimationExport();panel.Controls.Add(animations);
             panel.Controls.Add(new Label{Text="Original disc remains unchanged.",Width=204,Height=30,ForeColor=Color.White});
             return panel;
+        }
+        private void ChooseBt3PortableAnimationExport()
+        {
+            if(_bt3TargetHost?.Visible!=true||_bt3TargetRenderer==null||_bt3TargetChoice==null)
+                throw new InvalidOperationException("Open an exact BT3 costume in the native viewer first.");
+            StopBt3TargetPlayback();
+            var renderer=_bt3TargetRenderer;var choice=_bt3TargetChoice;
+            var options=_bt3TargetAction.Items.Cast<Bt3ActionOption>().ToArray();
+            using(var dialog=new Form{Text="Export animations",ClientSize=new Size(460,510),
+                FormBorderStyle=FormBorderStyle.Sizable,MinimumSize=new Size(400,420),
+                StartPosition=FormStartPosition.CenterParent,ShowInTaskbar=false})
+            {
+                var layout=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=1,RowCount=5,Padding=new Padding(10)};
+                layout.RowStyles.Add(new RowStyle(SizeType.Absolute,36));
+                layout.RowStyles.Add(new RowStyle(SizeType.Percent,100));
+                layout.RowStyles.Add(new RowStyle(SizeType.Absolute,32));
+                layout.RowStyles.Add(new RowStyle(SizeType.Absolute,32));
+                layout.RowStyles.Add(new RowStyle(SizeType.Absolute,44));
+                layout.Controls.Add(new Label{Text="Choose actions for this exact form and costume",Dock=DockStyle.Fill,
+                    TextAlign=ContentAlignment.MiddleLeft},0,0);
+                var list=new CheckedListBox{Name="bt3PortableClipSelection",Dock=DockStyle.Fill,
+                    CheckOnClick=true,IntegralHeight=false};
+                foreach(var option in options)list.Items.Add(option,option.Action==choice.Action);
+                layout.Controls.Add(list,0,1);
+                var grouping=new CheckBox{Name="bt3PortableOnePerClip",Text="One file per animation",Checked=true,
+                    Dock=DockStyle.Fill};layout.Controls.Add(grouping,0,2);
+                var model=new CheckBox{Name="bt3PortableIncludeModel",Text="Include model and textures",Checked=false,
+                    Dock=DockStyle.Fill};layout.Controls.Add(model,0,3);
+                var actions=new FlowLayoutPanel{Dock=DockStyle.Fill,FlowDirection=FlowDirection.RightToLeft};
+                var export=new Button{Text="Export GLB...",Width=120,DialogResult=DialogResult.OK};
+                var cancel=new Button{Text="Cancel",Width=90,DialogResult=DialogResult.Cancel};
+                actions.Controls.Add(export);actions.Controls.Add(cancel);layout.Controls.Add(actions,0,4);
+                dialog.Controls.Add(layout);dialog.AcceptButton=export;dialog.CancelButton=cancel;
+                if(dialog.ShowDialog(this)!=DialogResult.OK)return;
+                var selected=list.CheckedItems.Cast<Bt3ActionOption>().OrderBy(a=>a.Action).ToArray();
+                bool onePerFile=grouping.Checked,includeModel=model.Checked;
+                if(selected.Length==0)
+                {MessageBox.Show(this,"Select at least one animation.","Export animations",MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);return;}
+                using(var folder=new FolderBrowserDialog{Description="Choose a parent folder for a new portable animation bundle."})
+                {
+                    if(folder.ShowDialog(this)!=DialogResult.OK)return;
+                    string destination=Path.Combine(folder.SelectedPath,"Fighterport-BT3-animations-"+
+                        DateTime.Now.ToString("yyyyMMdd-HHmmss")+"-"+Guid.NewGuid().ToString("N").Substring(0,8));
+                    try
+                    {
+                        ProtectCharacterWorkspaceOutput(destination);_library?.ProtectOutputPath(destination);
+                        var scene=renderer.Scene;var meshes=renderer.SnapshotPosedMeshes();
+                        var requests=selected.Select(option=>{
+                            var member=choice.Form.MotionMembers[0].Single(m=>m.PackIndex==option.Action&&m.Bytes>=10);
+                            _bt3TargetEdits.TryGetValue(choice.Costume.Identity+"|"+member.Identity,out var editor);
+                            return new{Option=option,Member=member,Editor=editor,
+                                Version=editor?.Motion,EditedBytes=editor?.Export()};
+                        }).ToArray();
+                        var files=LibraryWork.Run(this,"Exporting portable animations",(token,progress)=>
+                        {
+                            progress.Report("Reading selected exact BT3 actions...");
+                            byte[] costumeBytes=choice.Inventory.ReadOwned(choice.Costume,4*1024*1024);
+                            var nativeBytes=requests.Select(request=>{
+                                token.ThrowIfCancellationRequested();
+                                return request.EditedBytes??choice.Inventory.ReadOwned(request.Member,4*1024*1024);
+                            }).ToArray();
+                            var clips=requests.Select((request,index)=>{
+                                token.ThrowIfCancellationRequested();
+                                var motion=Bt3NativeAssetReader.ReadMotion(nativeBytes[index],request.Option.Action);
+                                var clip=PortableBt3Rigged.ToClip(motion);
+                                clip.Name=request.Option.ToString();
+                                clip.Identity=choice.SourceId+"|"+choice.Form.Slot+"|"+choice.Costume.Identity+
+                                    "|"+request.Member.Identity+"|"+clip.Identity;
+                                return clip;
+                            }).ToArray();
+                            void Validate()
+                            {
+                                token.ThrowIfCancellationRequested();
+                                bool same=false;
+                                if(!IsDisposed&&IsHandleCreated)Invoke((Action)(()=>same=
+                                    _bt3TargetHost?.Visible==true&&ReferenceEquals(renderer,_bt3TargetRenderer)&&
+                                    ReferenceEquals(choice,_bt3TargetChoice)&&requests.All(request=>
+                                        request.Editor==null||ReferenceEquals(request.Version,request.Editor.Motion))));
+                                if(!same)throw new InvalidOperationException("The target costume or an edited action changed during export.");
+                                if(!costumeBytes.SequenceEqual(choice.Inventory.ReadOwned(choice.Costume,4*1024*1024)))
+                                    throw new InvalidOperationException("A native costume or action member changed during export.");
+                                for(int i=0;i<requests.Length;i++)
+                                    if(requests[i].EditedBytes==null&&!nativeBytes[i]
+                                        .SequenceEqual(choice.Inventory.ReadOwned(requests[i].Member,4*1024*1024)))
+                                        throw new InvalidOperationException("A native action member changed during export.");
+                            }
+                            progress.Report("Validating portable animation bundle...");
+                            return PortableAnimationExport.Publish(destination,stage=>{
+                                if(!PortableModelExport.WriteBt3WithRig(scene,meshes,null,stage))
+                                    throw new InvalidDataException("The current native skin cannot be represented as a rigged portable model.");
+                            },clips,onePerFile,includeModel,Validate,token);
+                        });
+                        if(files!=null)_bt3TargetCaption.Text="Exported "+selected.Length+" exact animation(s) to "+destination;
+                    }
+                    catch(Exception error)when(error is IOException||error is InvalidDataException||
+                        error is UnauthorizedAccessException||error is InvalidOperationException)
+                    {MessageBox.Show(this,error.Message,"Export animations",MessageBoxButtons.OK,MessageBoxIcon.Warning);}
+                }
+            }
         }
         private void ChooseBt3PortableModelExport()
         {

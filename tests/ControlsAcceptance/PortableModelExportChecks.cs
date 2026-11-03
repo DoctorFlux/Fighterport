@@ -102,6 +102,9 @@ internal static partial class Program
             Check(bt3Button.Text.Contains("model + textures")&&
                 bt3Button.AccessibleDescription.Contains("without animation clips"),
                 "BT3 model export is visibly separate from animation clips");
+            var motionButton=bt3Panel.Controls.Cast<Control>().Single(control=>control.Name=="bt3ExportPortableAnimations");
+            Check(motionButton.Text.Contains("animations")&&motionButton.AccessibleDescription.Contains("one GLB per action"),
+                "BT3 viewer exposes a separate, discoverable animation export action");
         }
         int riggedArgument=Array.IndexOf(args,"--portable-rigged-input");
         if(riggedArgument>=0)
@@ -200,6 +203,96 @@ internal static partial class Program
                     ((object[])modelJson["skins"]).Length==real.Batches.Length&&
                     File.ReadAllText(Path.Combine(modelOnly,"Export-info.txt")).Contains("without animation clips"),
                     "BT3 model export keeps native skin and textures but contains no animation clips");
+                string animationOnly=Path.Combine(output,"bt3-animation-only-draft");
+                Directory.CreateDirectory(animationOnly);
+                File.Copy(Path.Combine(bundle,"Model.dae"),Path.Combine(animationOnly,"Model.dae"));
+                var first=PortableBt3Rigged.ToClip(clip);
+                var second=new PortableRiggedGltf.Clip{Name=first.Name+"-second",
+                    Identity=first.Identity+"-second",FramesPerSecond=first.FramesPerSecond,Tracks=first.Tracks};
+                PortableRiggedGltf.WriteClips(animationOnly,new[]{first,second},false);
+                PortableGlbExport.Verify(animationOnly);
+                var motionBytes=File.ReadAllBytes(Path.Combine(animationOnly,"Model.glb"));
+                int motionJsonLength=BitConverter.ToInt32(motionBytes,12);
+                var motionJson=(System.Collections.Generic.Dictionary<string,object>)new JavaScriptSerializer()
+                    .DeserializeObject(Encoding.UTF8.GetString(motionBytes,20,motionJsonLength).TrimEnd());
+                Check(((object[])motionJson["animations"]).Length==2&&
+                    !motionJson.ContainsKey("meshes")&&!motionJson.ContainsKey("skins"),
+                    "Independent animation GLB can hold multiple clips without model geometry");
+                void PrepareAnimationScene(string stage)
+                {
+                    File.Copy(Path.Combine(modelOnly,"Model.dae"),Path.Combine(stage,"Model.dae"));
+                    foreach(string png in Directory.GetFiles(modelOnly,"*.png"))
+                        File.Copy(png,Path.Combine(stage,Path.GetFileName(png)));
+                }
+                string grouped=Path.Combine(output,"bt3-grouped-animation-export");
+                var groupedFiles=PortableAnimationExport.Publish(grouped,PrepareAnimationScene,
+                    new[]{first,second},false,false,null,CancellationToken.None);
+                Check(groupedFiles.Length==1&&Directory.GetFiles(grouped,"*.glb").Length==1&&
+                    !File.Exists(Path.Combine(grouped,"Model.dae"))&&
+                    File.ReadAllText(Path.Combine(grouped,"Export-info.txt")).Contains("Clip count: 2"),
+                    "Combined animation export publishes one model-free GLB for selected clips");
+                string separate=Path.Combine(output,"bt3-separate-animation-export");
+                var separateFiles=PortableAnimationExport.Publish(separate,PrepareAnimationScene,
+                    new[]{first,second},true,true,null,CancellationToken.None);
+                Check(separateFiles.Length==2&&Directory.GetFiles(separate,"*.glb").Length==2&&
+                    separateFiles.All(file=>File.Exists(Path.Combine(separate,file)))&&
+                    File.ReadAllText(Path.Combine(separate,"Export-info.txt")).Contains("Model included: True"),
+                    "One-per-clip export publishes distinct GLBs with rigged model included");
+                int otherAction=actionId==10?0:10;
+                var otherMember=form.MotionMembers[0].Single(member=>member.PackIndex==otherAction);
+                var otherMotion=Bt3NativeAssetReader.ReadMotion(inventory.ReadOwned(otherMember,4*1024*1024),otherAction);
+                var otherClip=PortableBt3Rigged.ToClip(otherMotion);
+                string realPair=Path.Combine(output,"bt3-distinct-native-action-pair");
+                var pairFiles=PortableAnimationExport.Publish(realPair,PrepareAnimationScene,
+                    new[]{first,otherClip},false,false,null,CancellationToken.None);
+                var pairBytes=File.ReadAllBytes(Path.Combine(realPair,pairFiles.Single()));
+                int pairJsonLength=BitConverter.ToInt32(pairBytes,12);
+                var pairJson=(System.Collections.Generic.Dictionary<string,object>)new JavaScriptSerializer()
+                    .DeserializeObject(Encoding.UTF8.GetString(pairBytes,20,pairJsonLength).TrimEnd());
+                var pairAnimations=((object[])pairJson["animations"])
+                    .Cast<System.Collections.Generic.Dictionary<string,object>>().ToArray();
+                Check(pairAnimations.Length==2&&otherMotion.Action!=clip.Action&&
+                    (string)pairAnimations[0]["name"]!=(string)pairAnimations[1]["name"],
+                    "Distinct exact native actions share one model-free GLB without substituting the current action");
+                bool existingRejected=false;
+                try{PortableAnimationExport.Publish(realPair,PrepareAnimationScene,
+                    new[]{first},true,false,null,CancellationToken.None);}
+                catch(IOException){existingRejected=true;}
+                Check(existingRejected&&File.Exists(Path.Combine(realPair,pairFiles.Single())),
+                    "Existing animation bundle is never overwritten");
+                string cancelledPair=Path.Combine(output,"bt3-cancelled-action-pair");
+                using(var stopped=new CancellationTokenSource())
+                {
+                    stopped.Cancel();bool cancelledExport=false;
+                    try{PortableAnimationExport.Publish(cancelledPair,PrepareAnimationScene,
+                        new[]{first},true,false,null,stopped.Token);}
+                    catch(OperationCanceledException){cancelledExport=true;}
+                    Check(cancelledExport&&!Directory.Exists(cancelledPair),
+                        "Cancelled portable animation export publishes no partial folder");
+                }
+                string stalePair=Path.Combine(output,"bt3-stale-action-pair");
+                bool staleRejected=false;
+                try{PortableAnimationExport.Publish(stalePair,PrepareAnimationScene,
+                    new[]{first},true,false,()=>throw new InvalidOperationException("Stale exact action."),CancellationToken.None);}
+                catch(InvalidOperationException){staleRejected=true;}
+                Check(staleRejected&&!Directory.Exists(stalePair),
+                    "Changed target or action dependencies block animation publication");
+                byte[] originalMotionBytes=inventory.ReadOwned(action,4*1024*1024);
+                var editor=new Bt3NativeMotionEditor(originalMotionBytes,real.Skeleton,actionId);
+                var editable=clip.Tracks.First(track=>track.Bone<71&&!track.RotationOnly);
+                var firstKey=editable.Keys.First();
+                editor.SetKey(editable.Bone,firstKey.Frame,
+                    firstKey.Translation+new Vector3(0.01f,0,0),firstKey.Rotation);
+                var editedMotion=Bt3NativeAssetReader.ReadMotion(editor.Export(),actionId);
+                var editedClip=PortableBt3Rigged.ToClip(editedMotion);
+                string editedFolder=Path.Combine(output,"bt3-current-edited-action-export");
+                PortableAnimationExport.Publish(editedFolder,PrepareAnimationScene,
+                    new[]{editedClip},true,false,null,CancellationToken.None);
+                Check(editedMotion.SourceSha256!=clip.SourceSha256&&
+                    editedClip.Tracks.Single(track=>track.Bone=="BT3_J"+editable.Bone.ToString("D4"))
+                        .Translation[0]!=first.Tracks.Single(track=>track.Bone=="BT3_J"+editable.Bone.ToString("D4"))
+                        .Translation[0]&&originalMotionBytes.SequenceEqual(inventory.ReadOwned(action,4*1024*1024)),
+                    "Current edited native action exports an independent clip without changing the disc member");
                 float[] probeFrames={0,.25f,Math.Min(clip.Length,clip.Length/2f+.5f),clip.Length};
                 using(var samples=new BinaryWriter(File.Create(Path.Combine(output,"bt3-native-pose-probes.bin"))))
                     foreach(float probe in probeFrames)

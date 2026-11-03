@@ -32,6 +32,42 @@ namespace BrawlCrate.Studio
                     A("count",values.Length/stride),A("stride",stride),
                     names.Select(name=>E("param",A("name",name),A("type",stride==16?"float4x4":"float"))))));
         private static Vector3 Invert(Vector3 value)=>new Vector3(-value.X,-value.Y,-value.Z);
+        internal static bool CanEncodeAction(Bt3NativeAssetReader.Motion motion,out string reason)
+        {
+            reason=null;
+            if(motion?.Tracks==null||motion.Tracks.Length==0||motion.Length<0)
+            {reason="The selected BT3 action is unavailable.";return false;}
+            if(motion.Tracks.Select(track=>track.Bone).Distinct().Count()!=motion.Tracks.Length||
+                motion.Tracks.Any(track=>track.Keys==null||track.Keys.Length==0||
+                    track.Keys.Any(key=>key.Frame<0||key.Frame>motion.Length||
+                        float.IsNaN(key.Translation.X)||float.IsNaN(key.Translation.Y)||float.IsNaN(key.Translation.Z)||
+                        float.IsNaN(key.Rotation.X)||float.IsNaN(key.Rotation.Y)||float.IsNaN(key.Rotation.Z)||
+                        float.IsNaN(key.Rotation.W)||float.IsInfinity(key.Translation.X)||
+                        float.IsInfinity(key.Translation.Y)||float.IsInfinity(key.Translation.Z)||
+                        float.IsInfinity(key.Rotation.X)||float.IsInfinity(key.Rotation.Y)||
+                        float.IsInfinity(key.Rotation.Z)||float.IsInfinity(key.Rotation.W))||
+                    track.Keys.Zip(track.Keys.Skip(1),(left,right)=>right.Frame>left.Frame).Any(ok=>!ok)))
+            {reason="The BT3 action has duplicate joints, invalid values or non-increasing native key times.";return false;}
+            if(motion.Tracks.Any(track=>track.Keys==null||track.Keys.Length==0||
+                track.Keys.Length>1&&(track.Keys[0].Frame!=0||
+                track.Keys[track.Keys.Length-1].Frame!=motion.Length)))
+            {
+                reason="One or more BT3 tracks use a native out-of-range fallback that glTF LINEAR channels cannot reproduce exactly.";
+                return false;
+            }
+            return true;
+        }
+        internal static PortableRiggedGltf.Clip ToClip(Bt3NativeAssetReader.Motion motion)
+        {
+            if(!CanEncodeAction(motion,out string reason))throw new InvalidDataException(reason);
+            return new PortableRiggedGltf.Clip{Name="Action-"+motion.Action.ToString("D3",CultureInfo.InvariantCulture),
+                Identity="BT3-action-"+motion.Action.ToString("D3",CultureInfo.InvariantCulture)+"-"+motion.SourceSha256,
+                FramesPerSecond=60,
+                Tracks=motion.Tracks.Select(track=>new PortableRiggedGltf.Track{
+                    Bone=Name(track.Bone),Frames=track.Keys.Select(key=>(float)key.Frame).ToArray(),
+                    Translation=track.RotationOnly?null:track.Keys.Select(key=>Invert(key.Translation)).ToArray(),
+                    Rotation=track.Keys.Select(key=>key.Rotation).ToArray()}).ToArray()};
+        }
         internal static bool TryWrite(Bt3NativeMesh.Scene model,Bt3NativeAssetReader.Motion motion,string stage,out string reason)
         {
             reason=null;
@@ -50,11 +86,8 @@ namespace BrawlCrate.Studio
                 var displayed=Matrix4x4.CreateTranslation(Invert(bone.Rest));
                 displayWorld.Add(bone.Id,bone.Parent<0?displayed:displayed*displayWorld[bone.Parent]);
             }
-            if(motion!=null&&(motion.Tracks==null||motion.Tracks.ToDictionary(t=>t.Bone).Values.Any(track=>
-                track.Keys==null||track.Keys.Length==0||track.Keys.Length>1&&
-                (track.Keys[0].Frame!=0||track.Keys[track.Keys.Length-1].Frame!=motion.Length))))
+            if(motion!=null&&!CanEncodeAction(motion,out reason))
             {
-                reason="One or more BT3 tracks use a native out-of-range fallback that glTF LINEAR channels cannot reproduce exactly.";
                 return false;
             }
             var bindPositions=new Dictionary<Bt3NativeMesh.Vertex,Vector3>();
@@ -181,13 +214,7 @@ namespace BrawlCrate.Studio
             root.Add(images,effects,materials,geometries,controllers,
                 E("library_visual_scenes",visual),E("scene",E("instance_visual_scene",A("url","#Scene"))));
             document.Save(Path.Combine(stage,"Model.dae"));
-            PortableRiggedGltf.Clip clip=null;
-            if(motion!=null)clip=new PortableRiggedGltf.Clip{Name="Action-"+motion.Action.ToString("D3",CultureInfo.InvariantCulture),
-                FramesPerSecond=60,
-                Tracks=motion.Tracks.Select(track=>new PortableRiggedGltf.Track{
-                    Bone=Name(track.Bone),Frames=track.Keys.Select(key=>(float)key.Frame).ToArray(),
-                    Translation=track.RotationOnly?null:track.Keys.Select(key=>Invert(key.Translation)).ToArray(),
-                    Rotation=track.Keys.Select(key=>key.Rotation).ToArray()}).ToArray()};
+            PortableRiggedGltf.Clip clip=motion==null?null:ToClip(motion);
             PortableRiggedGltf.Write(stage,clip);
             reason=clip==null?"Rigged model and all native skin influences exported without animation clips.":
                 "Rigged model, all native skin influences and "+clip.Tracks.Length+

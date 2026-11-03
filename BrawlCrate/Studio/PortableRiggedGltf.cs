@@ -17,6 +17,7 @@ namespace BrawlCrate.Studio
         internal sealed class Clip
         {
             internal string Name;
+            internal string Identity;
             internal float FramesPerSecond;
             internal Track[] Tracks;
         }
@@ -173,14 +174,20 @@ namespace BrawlCrate.Studio
             return path==null?null:Path.GetFileName(path);
         }
         internal static void Write(string stage,Clip clip=null)
+            =>WriteClips(stage,clip==null?Array.Empty<Clip>():new[]{clip},true);
+        internal static void WriteClips(string stage,IReadOnlyList<Clip> clips,bool includeModel)
         {
+            if(clips==null||clips.Any(clip=>clip==null||clip.Tracks==null))
+                throw new InvalidDataException("Portable animation selection is incomplete.");
+            if(!includeModel&&clips.Count==0)
+                throw new InvalidDataException("Animation-only interchange needs at least one selected clip.");
             string dae=Path.Combine(stage,"Model.dae");
             var document=XDocument.Load(dae);
             var scene=document.Descendants().Single(e=>e.Name.LocalName=="visual_scene");
             var nodes=new List<Dictionary<string,object>>();
             var bones=new Dictionary<string,int>(StringComparer.Ordinal);
-            var animated=clip==null?new HashSet<string>(StringComparer.Ordinal):
-                new HashSet<string>(clip.Tracks.Select(track=>track.Bone),StringComparer.Ordinal);
+            var animated=new HashSet<string>(clips.SelectMany(clip=>clip.Tracks.Select(track=>track.Bone)),
+                StringComparer.Ordinal);
             int AddBone(XElement element)
             {
                 int index=nodes.Count;string name=Id(element);
@@ -213,7 +220,8 @@ namespace BrawlCrate.Studio
             var meshes=new List<object>();var skins=new List<object>();
             var materials=new List<object>();var images=new List<object>();var textures=new List<object>();
             var imageIds=new Dictionary<string,int>(StringComparer.OrdinalIgnoreCase);
-            foreach(var instance in scene.Descendants().Where(e=>e.Name.LocalName=="instance_controller"))
+            foreach(var instance in includeModel?scene.Descendants().Where(e=>e.Name.LocalName=="instance_controller"):
+                Enumerable.Empty<XElement>())
             {
                 string controllerId=Ref(Attr(instance,"url"));
                 var controller=document.Descendants().Single(e=>e.Name.LocalName=="controller"&&Id(e)==controllerId);
@@ -346,49 +354,62 @@ namespace BrawlCrate.Studio
                     roots.Add(nodeIndex);
                 }
             }
-            if(meshes.Count==0)throw new InvalidDataException("No rigged portable mesh was found.");
+            if(includeModel&&meshes.Count==0)throw new InvalidDataException("No rigged portable mesh was found.");
             object[] animations=null;
-            if(clip!=null)
+            if(clips.Count>0)
             {
-                if(clip.FramesPerSecond<=0||float.IsNaN(clip.FramesPerSecond)||float.IsInfinity(clip.FramesPerSecond))
-                    throw new InvalidDataException("Portable animation has no valid timebase.");
-                var samplers=new List<object>();var channels=new List<object>();
-                foreach(var track in clip.Tracks)
+                var clipAnimations=new List<object>();
+                foreach(var clip in clips)
                 {
-                    if(!bones.TryGetValue(track.Bone,out int node)||track.Frames==null||track.Frames.Length==0||
-                        track.Rotation?.Length!=track.Frames.Length||
-                        track.Translation!=null&&track.Translation.Length!=track.Frames.Length)
-                        throw new InvalidDataException("A portable animation track does not match the owned rig.");
-                    for(int i=0;i<track.Frames.Length;i++)
-                        if(track.Frames[i]<0||float.IsNaN(track.Frames[i])||float.IsInfinity(track.Frames[i])||
-                            i>0&&track.Frames[i]<=track.Frames[i-1])
-                            throw new InvalidDataException("Portable animation key times are not strictly increasing.");
-                    int time=plan.Floats(track.Frames.Select(f=>f/clip.FramesPerSecond).ToArray(),
-                        "SCALAR",track.Frames.Length,0,true);
-                    void Channel(string path,float[] values,string type)
+                    if(clip.FramesPerSecond<=0||float.IsNaN(clip.FramesPerSecond)||
+                        float.IsInfinity(clip.FramesPerSecond)||clip.Tracks.Length==0)
+                        throw new InvalidDataException("Portable animation has no valid timebase or tracks.");
+                    var samplers=new List<object>();var channels=new List<object>();
+                    foreach(var track in clip.Tracks)
                     {
-                        int output=plan.Floats(values,type,track.Frames.Length);
-                        int sampler=samplers.Count;
-                        samplers.Add(D("input",time,"output",output,"interpolation","LINEAR"));
-                        channels.Add(D("sampler",sampler,"target",D("node",node,"path",path)));
+                        if(!bones.TryGetValue(track.Bone,out int node)||track.Frames==null||track.Frames.Length==0||
+                            track.Rotation?.Length!=track.Frames.Length||
+                            track.Translation!=null&&track.Translation.Length!=track.Frames.Length)
+                            throw new InvalidDataException("A portable animation track does not match the owned rig.");
+                        for(int i=0;i<track.Frames.Length;i++)
+                            if(track.Frames[i]<0||float.IsNaN(track.Frames[i])||float.IsInfinity(track.Frames[i])||
+                                i>0&&track.Frames[i]<=track.Frames[i-1])
+                                throw new InvalidDataException("Portable animation key times are not strictly increasing.");
+                        int time=plan.Floats(track.Frames.Select(f=>f/clip.FramesPerSecond).ToArray(),
+                            "SCALAR",track.Frames.Length,0,true);
+                        void Channel(string path,float[] values,string type)
+                        {
+                            int output=plan.Floats(values,type,track.Frames.Length);
+                            int sampler=samplers.Count;
+                            samplers.Add(D("input",time,"output",output,"interpolation","LINEAR"));
+                            channels.Add(D("sampler",sampler,"target",D("node",node,"path",path)));
+                        }
+                        if(track.Translation!=null)
+                            Channel("translation",track.Translation.SelectMany(v=>new[]{v.X,v.Y,v.Z}).ToArray(),"VEC3");
+                        Channel("rotation",track.Rotation.SelectMany(q=>
+                        {
+                            if(q.LengthSquared()<1e-12f)throw new InvalidDataException("A portable animation has a zero quaternion.");
+                            q=Quaternion.Normalize(q);return new[]{q.X,q.Y,q.Z,q.W};
+                        }).ToArray(),"VEC4");
                     }
-                    if(track.Translation!=null)
-                        Channel("translation",track.Translation.SelectMany(v=>new[]{v.X,v.Y,v.Z}).ToArray(),"VEC3");
-                    Channel("rotation",track.Rotation.SelectMany(q=>
-                    {
-                        if(q.LengthSquared()<1e-12f)throw new InvalidDataException("A portable animation has a zero quaternion.");
-                        q=Quaternion.Normalize(q);return new[]{q.X,q.Y,q.Z,q.W};
-                    }).ToArray(),"VEC4");
+                    clipAnimations.Add(D("name",clip.Name??"Animation","samplers",samplers,"channels",channels));
                 }
-                animations=new[]{D("name",clip.Name??"Animation","samplers",samplers,"channels",channels)};
+                animations=clipAnimations.ToArray();
             }
             int binaryLength=checked((int)plan.Stream.Position);plan.Align();byte[] bytes=plan.Stream.ToArray();
             var gltf=D("asset",D("version","2.0","generator","Fighterport portable rigged scene"),
                 "scene",0,"scenes",new[]{D("nodes",roots.ToArray())},"nodes",nodes,
-                "meshes",meshes,"skins",skins,"buffers",new[]{D("byteLength",binaryLength)},
-                "bufferViews",plan.Views,"accessors",plan.Accessors,"materials",materials,
-                "images",images,"textures",textures,
-                "samplers",new[]{D("magFilter",9729,"minFilter",9729,"wrapS",33071,"wrapT",10497)});
+                "buffers",new[]{D("byteLength",binaryLength)},
+                "bufferViews",plan.Views,"accessors",plan.Accessors);
+            if(includeModel)
+            {
+                gltf.Add("meshes",meshes);gltf.Add("skins",skins);gltf.Add("materials",materials);
+                if(images.Count>0)
+                {
+                    gltf.Add("images",images);gltf.Add("textures",textures);
+                    gltf.Add("samplers",new[]{D("magFilter",9729,"minFilter",9729,"wrapS",33071,"wrapT",10497)});
+                }
+            }
             if(animations!=null)gltf.Add("animations",animations);
             var json=new JavaScriptSerializer{MaxJsonLength=64*1024*1024};
             string content=json.Serialize(gltf);

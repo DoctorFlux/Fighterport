@@ -41,7 +41,8 @@ namespace BrawlCrate.Studio
                 if(Int(view,"buffer")!=0||offset<0||length<1||(long)offset+length>declared)
                     throw new InvalidDataException("A GLB buffer view exceeds the encoded binary data.");
             }
-            foreach(var image in ((object[])gltf["images"]).Cast<Dictionary<string,object>>())
+            foreach(var image in (gltf.ContainsKey("images")?(object[])gltf["images"]:Array.Empty<object>())
+                .Cast<Dictionary<string,object>>())
             {
                 int viewIndex=Int(image,"bufferView");
                 if(viewIndex<0||viewIndex>=views.Length||!string.Equals((string)image["mimeType"],"image/png",StringComparison.Ordinal))
@@ -50,8 +51,10 @@ namespace BrawlCrate.Studio
                 if(length<8||!glb.Skip(offset).Take(8).SequenceEqual(new byte[]{137,80,78,71,13,10,26,10}))
                     throw new InvalidDataException("A GLB image does not contain a PNG signature.");
             }
-            if(((object[])gltf["meshes"]).Length==0||((object[])gltf["accessors"]).Length==0)
-                throw new InvalidDataException("The GLB has no model geometry.");
+            bool hasMesh=gltf.ContainsKey("meshes")&&((object[])gltf["meshes"]).Length>0;
+            bool hasMotion=gltf.ContainsKey("animations")&&((object[])gltf["animations"]).Length>0;
+            if((!hasMesh&&!hasMotion)||((object[])gltf["accessors"]).Length==0)
+                throw new InvalidDataException("The GLB has no model geometry or animation.");
             var separated=(Dictionary<string,object>)serializer.DeserializeObject(File.ReadAllText(Path.Combine(stage,"Model.gltf")));
             var sideBuffer=(Dictionary<string,object>)((object[])separated["buffers"])[0];
             if((string)sideBuffer["uri"]!="Model.bin"||Int(sideBuffer,"byteLength")!=declared||
