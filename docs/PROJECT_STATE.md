@@ -6,7 +6,7 @@ Parent milestone: G1/M2, incomplete
 
 Last accepted **product** revision: `041ec87a6f7d4d6b42f311cc91fe48fee5f4191b` (preview.96)
 
-Latest committed and tested **code/test** checkpoint: `16708faaa3e077d49843100bc10d40165d190338` (Sonic→Mario hand-pose review; not another accepted preview). This read-only feasibility continuation started from clean `57c41c1c1f9336f0c223ca6202f261726811d6e2`; experimental code was reverted. The prior hand-contact checkpoint is `24c92ca4052696cea1ef17605a5b9e58d96e176d`.
+Latest tested **code/test** identity: `2b7ba9878837132c7b03c0634796f1dfdaaacc82` plus read-only hand-witness diff SHA-256 `6a2ee34081c64bbe9e66db3f3926b3766178c9404d13f5a946fafbf45e77f6e4`. The product solver trials were reverted. Earlier accepted hand-contact code checkpoint: `24c92ca4052696cea1ef17605a5b9e58d96e176d`.
 
 Recheck HEAD/status/diff when resuming. Read [AGENTS.md](../AGENTS.md), the [current task](plans/current.md), relevant [feature records](FEATURE_STATUS.json), [approved requirements](MASTER_PLAN.md) and linked task receipts. The [repository-memory setup](PROJECT_MEMORY_ACCEPTANCE_2026-11-03.md) is documentation evidence, not animation acceptance.
 
@@ -36,9 +36,11 @@ The user requires review of target-only accessory and floor clearance when sourc
 
 **Shoulder-chain follow-up from `e57ddd9`:** admitted split-shoulder outputs reopened but failed hand and provisional seam checks. The native baker and target-only track guard need explicit generated-joint provenance; generated scale still hits its preservation guard. All trial code was reverted and the [receipt](RETARGET_COUPLED_HAND_TRIALS_2026-11-04.md) pins the ignored patch.
 
-**Latest read-only feasibility result:** 13 quarter-frame pose samples showed that matching hand *height* alone can meet palm `0.048218` and forearm `0.067401` arm bounds with a diagnostic shoulder gap change `0.213611`, but the 3D palm position still misses by up to `0.66` arm lengths and same-target skin vertices move up to `6.725218` native units. A stronger 3D objective failed the hand gates. No candidate was serialized or accepted, and all experimental code was reverted. See the [pose feasibility receipt](RETARGET_ANATOMICAL_POSE_FEASIBILITY_2026-11-04.md).
+**Prior pose feasibility:** hand-height gates alone passed in a read-only trial, but 3D palm position missed by `0.66` arm lengths and target skin moved `6.725218` units. No candidate was accepted; see the [receipt](RETARGET_ANATOMICAL_POSE_FEASIBILITY_2026-11-04.md).
 
-**Next executable action:** formulate a source-relative **3D skinned region** target with shoulder attachment and temporal continuity, then prove one bounded unequal-rig candidate before native integration. Start with the pinned Sonic→Mario case and reject incompatible constraints explicitly. Carry generated-joint or scale provenance through solver, native baker and target-track guard only after it passes complete skin, protected-root, contact, fractional/native-reopen and qualified attachment checks. The versioned Hand.* range remains a separate dependency-ready task when a local .NET 10 SDK is available; preserve legacy foot-only reads.
+**Hand-only continuation from `2b7ba98`:** frame-7 Sonic left-hand lowest-patch rest-relative Z is `-6.973378`, versus stable whole-hand centroid `-2.379826`. A generic centroid wrist-goal candidate reopened but failed palm/forearm/trunk gates and grew to `310,476` bytes. An extra-shoulder trial also failed and moved skin up to `16.948761` units. Both were reverted. Restored production reopened at `283,752` bytes with the original failing gate; 33/33 virtual-cranial checks passed. **No hand correction or preview is accepted.** See the [receipt](RETARGET_ANATOMICAL_POSE_FEASIBILITY_2026-11-04.md).
+
+**Next executable action:** build a coupled, temporally continuous 3D skin-region correction using stable hand motion, torso and qualified shoulder attachment constraints. First prove Sonic→Mario under unchanged palm/forearm/trunk gates; then validate roots, all skin, contacts and fractional native output. Reject incompatible constraints instead of inventing floor context. Hand.* persistence remains separate pending a local .NET 10 SDK.
 
 ## Files, fixtures and checks
 

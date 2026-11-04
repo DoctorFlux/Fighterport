@@ -828,6 +828,11 @@
           "path": "docs/RETARGET_ANATOMICAL_POSE_FEASIBILITY_2026-11-04.md",
           "revision": "57c41c1c1f9336f0c223ca6202f261726811d6e2",
           "coverage": "Read-only 13-quarter-frame pose trials on the same pinned Sonic-to-Mario result: hand height can pass while 3D palm placement, complete skin displacement and temporal behavior fail. Trials were reverted and no corrected CHR0 was serialized."
+      },
+      {
+        "path": "docs/RETARGET_ANATOMICAL_POSE_FEASIBILITY_2026-11-04.md",
+        "revision": "HEAD+diff:6a2ee34081c64bbe9e66db3f3926b3766178c9404d13f5a946fafbf45e77f6e4",
+        "coverage": "Hand-only continuation from 2b7ba98: stable whole-hand centroid and lowest-patch motion witness on the exact Sonic-to-Mario native fixture; centroid wrist-goal and extra-shoulder trials failed unchanged hand/body or skin gates and were reverted. No corrected motion accepted."
         }
       ],
       "references": {
@@ -1013,9 +1018,9 @@
         "Reviewed Sonic AttackS3S to Mario now maps one source neck and reopens a native result, but a HatN-weighted target vertex and visible head/hat/body cross the bind-plane guide around frames 5–12. Supported contacts do not validate that whole-mesh interval or gameplay collision.",
         "The exact Sonic donor snapshot with nonzero scaling rule now reopens; the earlier exact same-rig copy failure remains historical evidence for a different path. Private-desktop review and Use/import/Undo pass on the named fixture; physical human input and runtime remain unverified.",
         "Single-cranial-joint review is source-side and session-only. Target-side merged head/neck and one-versus-two shoulder chain transfer still need reviewed topology composition and bidirectional tests.",
-        "Source-derived hand support is a proposal, not a reviewed planted contact. The accepted own-limb reserve fixes one measured hand-depth residual; the Sonic forward-tilt hand/body gate still fails. Six scalar-height/upper-arm trials and five follow-up split-shoulder/native-guard trials were rejected and reverted. Generated target-only joints need explicit solver/baker/track-membership provenance; admitting them alone worsened hand quality. No independently qualified shoulder-seam acceptance bound exists."
+    "Source-derived hand support is a proposal, not a reviewed planted contact. The accepted own-limb reserve fixes one measured hand-depth residual; the Sonic forward-tilt hand/body gate still fails. Six scalar-height/upper-arm trials, five split-shoulder/native-guard trials, a centroid wrist-goal trial and a parent-shoulder trial were rejected and reverted. The lowest skinned hand patch changes vertex/shape relative to the stable whole-hand centroid and cannot be copied as a 3D wrist goal. Generated target-only joints need explicit solver/baker/track-membership provenance; admitting them alone worsened hand quality. No independently qualified shoulder-seam acceptance bound exists."
       ],
-      "next_step": "Build a bounded temporally continuous 3D skinned-region and shoulder-attachment correction candidate from reviewed geometry/motion; first prove the pinned unequal-rig case under unchanged root, hand, trunk and full-skin constraints. Qualify seam bounds before generated-joint/scale native integration; serialize/reopen and reject incompatible constraints explicitly."
+  "next_step": "Build a bounded temporally continuous 3D skinned-region and torso/shoulder-attachment correction candidate from stable whole-hand motion and reviewed geometry; first prove the pinned unequal-rig case under unchanged root, hand, trunk and full-skin constraints. Qualify seam bounds before generated-joint/scale native integration; serialize/reopen and reject incompatible constraints explicitly."
     },
     {
       "id": "FP-ROOT-MOTION",

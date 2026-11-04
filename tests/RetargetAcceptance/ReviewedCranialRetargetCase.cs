@@ -303,6 +303,17 @@ internal static partial class Program
         if (armLengths.Values.Any(length => !RigMath.Finite(length.Source) ||
             !RigMath.Finite(length.Target) || length.Source <= 0 || length.Target <= 0))
             throw new InvalidDataException("The early support witness has no positive arm scale.");
+        var sourceRestHandOffsets = hands.ToDictionary(role => role, role =>
+            source.Rig.Surfaces[role].Sample(source.Rig.Rest).Point - source.Rig.Rest.Point(role));
+        var targetRestHandOffsets = hands.ToDictionary(role => role, role =>
+            target.Rig.Surfaces[role].Sample(target.Rig.Rest).Point - target.Rig.Rest.Point(role));
+        Vector3 SkinCentroid(ContactSurface surface, RigPose pose) =>
+            surface.Points.Aggregate(Vector3.Zero, (sum, point) => sum + point.Evaluate(pose)) /
+            surface.Points.Length;
+        var sourceRestCentroids = hands.ToDictionary(role => role, role =>
+            SkinCentroid(source.Rig.Surfaces[role], source.Rig.Rest) - source.Rig.Rest.Point(role));
+        var targetRestCentroids = hands.ToDictionary(role => role, role =>
+            SkinCentroid(target.Rig.Surfaces[role], target.Rig.Rest) - target.Rig.Rest.Point(role));
         float targetLegLength = (LegLength(target.Rig, "left") +
             LegLength(target.Rig, "right")) * .5f;
         if (!RigMath.Finite(targetLegLength) || targetLegLength <= 0)
@@ -393,6 +404,11 @@ internal static partial class Program
                     SourceTrackedPlanarSpeed = sourcePlanarSpeed,
                     SourceTrackedVerticalSpeed = sourceVerticalSpeed,
                     SourcePoint = sourcePatch.Point,
+                    SourcePatchFromHandJoint = sourcePatch.Point - sourcePose.Point(role),
+                    SourcePatchOffsetChangeFromRest = sourcePatch.Point - sourcePose.Point(role) -
+                        sourceRestHandOffsets[role],
+                    SourceCentroidOffsetChangeFromRest = SkinCentroid(source.Rig.Surfaces[role], sourcePose) -
+                        sourcePose.Point(role) - sourceRestCentroids[role],
                     SourceUpperArmJoint = sourceUpperPoint,
                     SourceRestUpperArmJoint = source.Rig.Rest.Point(upperRole),
                     SourceChestJoint = sourcePose.Point("chest"),
@@ -440,7 +456,12 @@ internal static partial class Program
                     ReopenedClearancePerArmLength = nativePatch.Clearance / armLengths[role].Target,
                     RawTargetPoint = rawPatch.Point,
                     SolvedTargetPoint = solvedPatch.Point,
-                    ReopenedTargetPoint = nativePatch.Point
+                    ReopenedTargetPoint = nativePatch.Point,
+                    TargetPatchFromHandJoint = nativePatch.Point - native.Point(role),
+                    TargetPatchOffsetChangeFromRest = nativePatch.Point - native.Point(role) -
+                        targetRestHandOffsets[role],
+                    TargetCentroidOffsetChangeFromRest = SkinCentroid(target.Rig.Surfaces[role], native) -
+                        native.Point(role) - targetRestCentroids[role]
                 });
             }
             Vector3 sourceCranial = sourcePose.CranialPoint();
