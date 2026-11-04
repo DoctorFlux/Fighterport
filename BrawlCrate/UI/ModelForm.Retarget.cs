@@ -225,13 +225,13 @@ namespace BrawlCrate.UI
             if(p.KeyframeMode==RetargetKeyframeMode.Dense)
             {
             text.AppendLine("Reach clamps: " + p.ClampedLimbSamples + " sampled limbs · Largest residual: " + p.MaximumLimbResidual.ToString("0.000") + " units");
-            text.AppendLine(p.FloorContactsEnabled ? "Ground contact samples: " + p.PlantedFootSamples + " feet · " + p.PlantedHandSamples + " hands · " + p.PlantedBodySamples + " body · " + p.LockedContactSamples + " stationary locks" : "Floor correction disabled for this motion.");
+            text.AppendLine(p.FloorContactsEnabled ? "Source-derived support proposals: " + p.PlantedFootSamples + " foot samples · " + p.PlantedHandSamples + " hand samples · " + p.PlantedBodySamples + " body samples · " + p.LockedContactSamples + " stationary lock samples. Hand proposals are not approved planted contacts." : "Floor correction disabled for this motion.");
             text.AppendLine("Solver contact residual: " + p.MaximumContactResidual.ToString("0.000") + " · Pelvis adjustment: " + p.MaximumPelvisCorrection.ToString("0.000") + " units");
             }
             else text.AppendLine("Changed key-layout curves have no qualified contact paths. Original dense reference contact residual: "+p.DenseReferenceStatistics.MaximumContactResidual.ToString("0.000")+" (historical only).");
             text.AppendLine("Target-only helpers keep their own bind transforms. Root motion is baked and follows in preview.");
             text.AppendLine("Body/skeletal channels only. Facial, material and visibility motions are not transferred.");
-            text.AppendLine("Inspect the generated motion and contacts before use; native saving does not establish game or general motion-quality acceptance.");
+            text.AppendLine("Inspect the generated motion and contacts before use. The model bind-sole guide is not a verified game floor; head, attachment and costume clearance require separate review. Native saving does not establish game or general motion-quality acceptance.");
             foreach(string bone in p.IgnoredSourceBones??new string[0])text.AppendLine("Untransferred source track: "+bone);
             }
             text.AppendLine();

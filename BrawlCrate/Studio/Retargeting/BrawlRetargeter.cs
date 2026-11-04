@@ -41,6 +41,10 @@ namespace BrawlCrate.Studio.Retargeting
         public RetargetKeyframeMode KeyframeMode { get; internal set; }
         public RetargetKeyframeReport KeyframeReport { get; internal set; }
         public string OptimizationReport { get; internal set; }
+        // Session-only, read-only native skin/contact review cue. It does not
+        // approve a floor, alter the editable clip, or change project data.
+        public string ReviewCue { get; internal set; }
+        internal long ReviewDiagnosticMilliseconds { get; set; }
         internal bool ProvisionalHeadForExactNativeCopy { get; set; }
         // Session evidence for the output adapter, not a second bone mapping or
         // a project-format change. These native bones remain in the target model.

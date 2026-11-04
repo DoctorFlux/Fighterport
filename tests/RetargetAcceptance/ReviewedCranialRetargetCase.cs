@@ -183,6 +183,11 @@ internal static partial class Program
                         var earlyHandBody = ReviewedEarlyHandBodyWitness(
                             source, target, sourceClip, result, fresh);
                         receipt["EarlyHandBodyWitness"] = earlyHandBody;
+                        receipt["ShoulderSeamWitness"] = ReviewedShoulderSeamWitness(
+                            source, sourceModel, sourceClip, target, targetModel, fresh);
+                        receipt["AnatomicalSkinRegionWitness"] = NativeSkinRegionWitness(
+                            source, sourceModel, sourceClip, proposal.CandidateVertexIndices,
+                            target, targetModel, fresh, result.Plan);
                         var trajectory = ReviewedCranialTrajectory(target, targetModel,
                             sourceClip, fresh, result.Contacts, result.Plan);
                         receipt["TrajectoryQuality"] = trajectory;

@@ -94,6 +94,55 @@ internal static partial class Program
             Check(rotations.All(r=>SpanAngle(r.Value,pose.Orientation[rig.Roles[r.Key]])<=.25)&&pose.Local[0].Equals(before[0]),"Simultaneous body locking retains end orientation and exact protected root locals");
             Check(weights.SequenceEqual(rig.Surfaces.Values.SelectMany(s=>s.Points).SelectMany(p=>p.Weights).Select(w=>w.Weight))&&pose.Local.Select(t=>t.Scale).SequenceEqual(before.Select(t=>t.Scale)),"Full five-influence contact solving preserves every influence coefficient and scale");
         }
+        // With a much shorter arm than leg, general pose precision is looser
+        // than the hand's native contact reserve. A satisfied general residual
+        // must not stop the coupled solve before the hand meets its own bound.
+        foreach(bool permuted in new[]{false,true})foreach(string side in new[]{"left","right"})
+        {
+            var fixture=CoordinateFixture("opaque-short-arm-",1,.2f,0,Quaternion.Identity,true,permuted);
+            Rig original=fixture.Rig;
+            int lower=original.Roles[side+".lowerArm"],hand=original.Roles[side+".hand"];
+            RigJoint[] joints=original.Joints.Select((joint,i)=>i==lower||i==hand?
+                new RigJoint(joint.Name,joint.Parent,new JointTransform(joint.Bind.Translation*.05f,joint.Bind.Rotation,joint.Bind.Scale)):joint).ToArray();
+            var rig=new Rig("Unequal procedural support","Reviewed synthetic proportions",joints,original.Roles,1,Vector3.UnitY);
+            string role=side+".hand";
+            rig.GroundHeight=rig.Rest.Point(role).Y;
+            int[] influences={rig.Roles["pelvis"],rig.Roles["spine"],rig.Roles["chest"],rig.Roles[side+".upperArm"],rig.Roles[role]};
+            float[] fractions={.15f,.15f,.2f,.25f,.25f};
+            Vector3 patch=rig.Rest.Point(role);
+            rig.Surfaces[role]=new ContactSurface{Role=role,Points=new[]{new SkinPoint{Weights=influences.Select((bone,i)=>{
+                Matrix4x4.Invert(rig.Rest.World[bone],out Matrix4x4 inverse);
+                return new SkinWeight{Joint=bone,Weight=fractions[i],Local=Vector3.Transform(patch,inverse)};
+            }).ToArray()}},NormalLocal=Vector3.UnitY,ForwardLocal=Vector3.UnitZ};
+            float leg=Vector3.Distance(rig.Rest.Point(side+".upperLeg"),rig.Rest.Point(side+".lowerLeg"))+
+                Vector3.Distance(rig.Rest.Point(side+".lowerLeg"),rig.Rest.Point(side+".foot"));
+            float arm=Vector3.Distance(rig.Rest.Point(side+".upperArm"),rig.Rest.Point(side+".lowerArm"))+
+                Vector3.Distance(rig.Rest.Point(side+".lowerArm"),rig.Rest.Point(role));
+            float reserve=Math.Min(leg,arm)*.0005f;
+            var pose=new RigPose(rig);
+            pose.SetWorldPoint(rig.Roles["pelvis"],pose.Point("pelvis")+Vector3.UnitY*leg*.000075f);
+            var before=(JointTransform[])pose.Local.Clone();
+            float initial=Math.Abs(rig.Surfaces[role].Clearance(pose));
+            Check(initial>reserve && initial<leg*.0001f,"Unequal-rig fixture isolates the general-precision versus short-hand reserve gap",new{permuted,side,initial,reserve,leg,arm});
+            var goal=new Dictionary<string,ContactGoal>{{role,new ContactGoal{Support=1}}};
+            var plan=new HumanoidRetargeter(rig,rig);
+            var contact=new ContactMotion(plan,t=>new RigPose(rig),1,false);
+            typeof(ContactMotion).GetMethod("FitBodyContacts",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(contact,new object[]{pose,goal,null,true});
+            float final=Math.Abs(rig.Surfaces[role].Clearance(pose));
+            Check(final<=reserve && contact.BodySolveIterations>1,"Coupled solve reaches the short hand's unchanged native reserve before accepting the pose",new{permuted,side,initial,final,reserve,contact.BodySolveIterations});
+            Check(pose.Local[0].Equals(before[0]) && pose.Local.Select(t=>t.Scale).SequenceEqual(before.Select(t=>t.Scale)) &&
+                fractions.SequenceEqual(rig.Surfaces[role].Points.Single().Weights.Select(w=>w.Weight)),
+                "Short-arm support keeps source-owned root, all scale and all represented skin weights");
+            using(var cancel=new CancellationTokenSource())
+            {
+                var pending=new ContactMotion(plan,t=>new RigPose(rig),1,false,cancel.Token);
+                var interrupted=new RigPose(rig);JointTransform[] unchanged=(JointTransform[])interrupted.Local.Clone();
+                cancel.Cancel();bool stopped=false;
+                try{typeof(ContactMotion).GetMethod("FitBodyContacts",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(pending,new object[]{interrupted,goal,null,true});}
+                catch(TargetInvocationException error) when(error.InnerException is OperationCanceledException){stopped=true;}
+                Check(stopped && interrupted.Local.SequenceEqual(unchanged),"A cancelled contact solve stops before changing an independent pose");
+            }
+        }
         File.WriteAllText(Path.Combine(output,"terminal-contact-checks.json"),new JavaScriptSerializer().Serialize(new{Passed=true,Checks}));return 0;
     }
     static int NativePairFixture(string sourcePath,string targetPath,string motionPath,string name,string output)

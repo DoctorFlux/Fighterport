@@ -20,6 +20,7 @@ namespace BrawlCrate.Studio.Retargeting
     {
         private readonly HumanoidRetargeter plan;
         private readonly Func<float,RigPose> sample;
+        private readonly CancellationToken cancellation;
         private readonly Dictionary<string,ContactGoal[]> tracks=new Dictionary<string,ContactGoal[]>();
         private readonly Dictionary<string,float[]> floorTracks=new Dictionary<string,float[]>();
         private readonly int last;
@@ -35,7 +36,7 @@ namespace BrawlCrate.Studio.Retargeting
         public long BodySolveIterations { get; private set; }
         public ContactMotion(HumanoidRetargeter retargeter,Func<float,RigPose> sampler,int lastFrame,bool floorEnabled,CancellationToken cancellation=default,bool requireFloorEvidence=false,bool stabilizeStanding=true,Action<int,string> progress=null,bool detectSuspended=true,bool loop=false)
         {
-            plan=retargeter; sample=sampler; last=lastFrame; FloorEnabled=floorEnabled;
+            plan=retargeter; sample=sampler; this.cancellation=cancellation; last=lastFrame; FloorEnabled=floorEnabled;
             if(!floorEnabled || !new[]{"left.foot","right.foot"}.All(r=>plan.Source.Surfaces.ContainsKey(r)&&plan.Target.Surfaces.ContainsKey(r))) return;
             RigPose[] poses=Enumerable.Range(0,last*4+1).Select(i=>{cancellation.ThrowIfCancellationRequested();if(i%4==0)progress?.Invoke(i*3/Math.Max(1,last*4),"Reading source motion...");return sample(i/4f);}).ToArray();
             Suspended=detectSuspended?SuspendedSupport.Detect(plan,poses):null;

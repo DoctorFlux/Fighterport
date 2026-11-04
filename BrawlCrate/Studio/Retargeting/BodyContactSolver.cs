@@ -20,6 +20,7 @@ namespace BrawlCrate.Studio.Retargeting
         // rotations vary, so limb lengths and authored root channels are retained.
         private void FitBodyContacts(RigPose pose,Dictionary<string,ContactGoal> controls,Dictionary<string,Tuple<float,float>> nearFeet=null,bool allowEndOnly=false)
         {
+            cancellation.ThrowIfCancellationRequested();
             if(!allowEndOnly && !controls.Any(c=>!IsEndContact(c.Key) && c.Value.Support>0.001f))return;
             var active=controls.Select(c=>new KeyValuePair<string,ContactGoal>(c.Key,new ContactGoal{
                 Support=nearFeet!=null && nearFeet.ContainsKey(c.Key)?Math.Max(c.Value.Support,nearFeet[c.Key].Item1):c.Value.Support,
@@ -41,6 +42,12 @@ namespace BrawlCrate.Studio.Retargeting
             var controlForBone=Enumerable.Repeat(-1,pose.Rig.Joints.Length).ToArray();
             for(int i=0;i<joints.Length;i++)controlForBone[joints[i]]=i;
             float length=Length(pose.Rig.Rest,"left",false);
+            // A hand and a foot have different native lengths. The established
+            // end-contact position reserve belongs to that end's own chain,
+            // rather than the target leg used for the general body solve.
+            var endPositionBounds=active.Where(c=>IsEndContact(c.Key)).ToDictionary(c=>c.Key,c=>
+                Math.Min(length*.0005f,
+                    Length(pose.Rig.Rest,c.Key.Split('.')[0],c.Key.EndsWith(".hand",StringComparison.Ordinal))*.0005f));
             var reference=pose.World.Select(m=>m.Translation).ToArray();
             var desiredHeights=active.ToDictionary(c=>c.Key,c=>pose.Rig.Surfaces[c.Key].Clearance(pose)*HeightRemainder(c.Value.Support));
             if(nearFeet!=null)foreach(var foot in nearFeet.Where(f=>f.Value.Item1>0.001f))
@@ -60,6 +67,7 @@ namespace BrawlCrate.Studio.Retargeting
             int stalled=0;
             for(int iteration=0;iteration<180;iteration++)
             {
+                cancellation.ThrowIfCancellationRequested();
                 BodySolveIterations++;
                 var rows=new List<ContactRow>();
                 bool contactsSatisfied=true;
@@ -75,7 +83,7 @@ namespace BrawlCrate.Studio.Retargeting
                     float error=clearance-desiredHeights[contact.Key],weight=goal.Support*(IsEndContact(contact.Key)?20:10);
                     contactsSatisfied&=Math.Abs(error)*goal.Support<=precision;
                     if(goal.Support>0.99f && !IsEndContact(contact.Key))supportedContactsSatisfied&=Math.Abs(error)<=length*0.005f;
-                    if(goal.Support>0.99f && IsEndContact(contact.Key) && Math.Abs(error)>length*0.005f)unresolvedEnds=true;
+                    if(goal.Support>0.99f && IsEndContact(contact.Key) && Math.Abs(error)>endPositionBounds[contact.Key])unresolvedEnds=true;
                     if(!IsEndContact(contact.Key))bodyFeasible&=Math.Abs(error)*goal.Support<=length*(0.001f+0.015f*(1-goal.Support));
                     rows.Add(new ContactRow{Point=lowest,Axis=pose.Rig.GroundNormal,Error=error,Weight=weight*PenetrationWeight(clearance,length),
                         DerivativeWeight=weight*(PenetrationWeight(clearance,length)+error*PenetrationDerivative(clearance,length))});
@@ -87,7 +95,7 @@ namespace BrawlCrate.Studio.Retargeting
                         Vector3 planar=delta-pose.Rig.GroundNormal*Vector3.Dot(delta,pose.Rig.GroundNormal);
                         contactsSatisfied&=planar.Length()*goal.Lock<=precision*2;
                         if(goal.Lock>0.99f && !IsEndContact(contact.Key))supportedContactsSatisfied&=planar.Length()<=length*0.0005f;
-                        if(goal.Lock>0.99f && IsEndContact(contact.Key) && planar.Length()>length*0.0005f)unresolvedEnds=true;
+                        if(goal.Lock>0.99f && IsEndContact(contact.Key) && planar.Length()>endPositionBounds[contact.Key])unresolvedEnds=true;
                         if(!IsEndContact(contact.Key))bodyFeasible&=planar.Length()*goal.Lock<=length*(goal.Lock>0.99f?0.0005f:0.01f);
                         float lockWeight=ContactLockWeight(contact.Key,goal);
                         rows.Add(new ContactRow{Point=goal.Marker,Axis=x,Error=Vector3.Dot(delta,x),Weight=lockWeight,DerivativeWeight=lockWeight});
@@ -107,7 +115,9 @@ namespace BrawlCrate.Studio.Retargeting
                 // Stop when the measured contacts have converged. Continuing
                 // to spend the full iteration budget on the small pose penalty
                 // needlessly moves an already-supported body and slows baking.
-                if(contactsSatisfied)break;
+                // The general pose precision can exceed the smaller end's
+                // reserved contact bound on an unequal-proportion rig.
+                if(contactsSatisfied && !unresolvedEnds)break;
                 Vector3[] positions=pose.World.Select(m=>m.Translation).ToArray();
                 RigPose[] nativePlus=null,nativeMinus=null;float[] nativeStep=null;
                 if(pose.Rig.NativeEvaluation!=null&&(!pose.Rig.StaticNativeSkin||pose.Local.Any(t=>t.Scale.X<=0||Math.Abs(t.Scale.X-t.Scale.Y)>1e-6f||Math.Abs(t.Scale.X-t.Scale.Z)>1e-6f)))
@@ -115,6 +125,7 @@ namespace BrawlCrate.Studio.Retargeting
                     nativePlus=new RigPose[count];nativeMinus=new RigPose[count];nativeStep=new float[count];
                     for(int column=0;column<count;column++)
                     {
+                        cancellation.ThrowIfCancellationRequested();
                         float epsilon=column<3?Math.Max(.00001f,length*.0001f):.001f;nativeStep[column]=epsilon;
                         var translation=Vector3.Zero;var rotations=new Vector3[joints.Length];
                         if(column<3){if(column==0)translation.X=epsilon;else if(column==1)translation.Y=epsilon;else translation.Z=epsilon;}
@@ -153,6 +164,7 @@ namespace BrawlCrate.Studio.Retargeting
                 var columns=new Vector3[count];var indices=new int[count];
                 for(int bone=0;bone<pose.Rig.Joints.Length;bone++)
                 {
+                    cancellation.ThrowIfCancellationRequested();
                     Vector3 error=positions[bone]-reference[bone];
                     int used=0;
                     if(nativePlus!=null)
@@ -193,6 +205,7 @@ namespace BrawlCrate.Studio.Retargeting
                 var previous=(JointTransform[])pose.Local.Clone();double loss=BodyContactLoss(pose,active,reference,poseWeight,desiredHeights,length),acceptedLoss=loss;bool improved=false,converged=false;
                 for(int direction=0;direction<2 && !improved;direction++)
                 {
+                cancellation.ThrowIfCancellationRequested();
                 if(direction==1)step=descent;
                 Vector3 translation=new Vector3((float)step[0],(float)step[1],(float)step[2]);
                 var rotations=new Vector3[joints.Length];float maximumAngle=0;
@@ -206,6 +219,7 @@ namespace BrawlCrate.Studio.Retargeting
                 // can miss descent. A diagonal gradient step crosses that corner.
                 for(int attempt=0;attempt<12;attempt++)
                 {
+                    cancellation.ThrowIfCancellationRequested();
                     ApplyBodyStep(pose,previous,pelvis,controlForBone,translation,rotations,scale,endOrientations);
                     double candidateLoss=BodyContactLoss(pose,active,reference,poseWeight,desiredHeights,length);
                     if(candidateLoss<loss){acceptedLoss=candidateLoss;improved=true;break;}
@@ -218,8 +232,8 @@ namespace BrawlCrate.Studio.Retargeting
                 // goals. Stop after sustained negligible objective improvement
                 // instead of spending the entire budget on that compromise.
                 stalled=loss-acceptedLoss<=Math.Max(1e-10,loss*0.0005)?stalled+1:0;
-                if(stalled>=3 && supportedContactsSatisfied)break;
-                if(converged)break;
+                if(stalled>=3 && supportedContactsSatisfied && !unresolvedEnds)break;
+                if(converged && !unresolvedEnds)break;
             }
             // Finish the coupled body solve with exact two-bone end constraints.
             // This preserves palm/sole orientation and segment lengths while
@@ -228,6 +242,7 @@ namespace BrawlCrate.Studio.Retargeting
             var supportedBody=active.Where(c=>!IsEndContact(c.Key) && c.Value.Support>0.99f).ToArray();
             for(int pass=0;pass<4 && supportedBody.Length>0;pass++)
             {
+                cancellation.ThrowIfCancellationRequested();
                 float maximum=0,shift=0,total=0;
                 foreach(var contact in supportedBody)
                 {
@@ -241,6 +256,7 @@ namespace BrawlCrate.Studio.Retargeting
                 double loss=BodyContactLoss(pose,active,reference,poseWeight,desiredHeights,length);bool improved=false;
                 for(int attempt=0;attempt<6;attempt++)
                 {
+                    cancellation.ThrowIfCancellationRequested();
                     Array.Copy(original,pose.Local,original.Length);pose.Update();
                     pose.SetWorldPoint(pelvis,pose.Point(pelvis)+pose.Rig.GroundNormal*shift);
                     ProjectBodyEnds(pose,active,desiredHeights,endOrientations);
@@ -257,6 +273,7 @@ namespace BrawlCrate.Studio.Retargeting
             for(int pass=0;pass<6 && active.Any(c=>!IsEndContact(c.Key) && c.Value.Support>0.99f &&
                 Math.Abs(pose.Rig.Surfaces[c.Key].Clearance(pose)-desiredHeights[c.Key])>length*0.005f);pass++)
             {
+                cancellation.ThrowIfCancellationRequested();
                 bool improved=false;
                 foreach(int joint in allJoints.Where(j=>!digits.Contains(j)))foreach(Vector3 axis in new[]{Vector3.UnitX,Vector3.UnitY,Vector3.UnitZ})
                 {

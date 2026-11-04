@@ -32,6 +32,7 @@ internal static partial class Program
             if(args.Length==7&&args[0]=="--verify-trajectory")return VerifyRetargetTrajectory(args[1],args[2],args[3],args[4],args[5],args[6]);
             if(args.Length==8&&args[0]=="--verify-trajectory")return VerifyRetargetTrajectory(args[1],args[2],args[3],args[4],args[5],args[6],args[7]);
             if(args.Length==4&&args[0]=="--native-member-audit")return NativeMemberAudit(args[1],args[2],args[3]);
+            if(args.Length==7&&args[0]=="--hand-ground-witness")return HandGroundWitness(args[1],args[2],args[3],args[4],args[5],args[6]);
             if(args.Length==6&&args[0]=="--compare-contact-proposal")return CompareContactProposal(args[1],args[2],args[3],args[4],args[5]);
             if(args.Length==4 && args[0]=="--motion-controls")return MotionControls(args[1],args[2],args[3]);
             if(args.Length==2 && args[0]=="--local-precision")return LocalPrecisionChecks(args[1]);

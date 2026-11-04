@@ -191,6 +191,32 @@ internal static partial class Program
                         }
                     }
                     Check(skinAgreement<0.01,name+": contact geometry agrees with independent native skinned vertices",new{MaximumError=skinAgreement});
+                    // The quarter-frame sweep can miss a planted hand between
+                    // native keys. Compare withheld eighth frames after fresh
+                    // decode with each target arm's established position bound.
+                    int withheldHands=0;double maximumHandError=0,maximumHandRatio=0,maximumHandSkinAgreement=0;
+                    float worstHandTime=0;string worstHandRole=null;
+                    for(int tick=1;tick<(clip.FrameCount-1)*8;tick+=2)
+                    {
+                        float time=tick/8f;
+                        foreach(string side in new[]{"left","right"})
+                        {
+                            string role=side+".hand";
+                            if(!target.Rig.Surfaces.ContainsKey(role)||result.Contacts.At(role,time).Support<=0.99f)continue;
+                            RigPose decoded=BrawlRetargeter.Sample(target,saved,time);
+                            nativeTarget.ApplyCHR(saved,time+1);
+                            double surface=target.Rig.Surfaces[role].Clearance(decoded);
+                            double skin=nativeSurfaces[role].Min(v=>Vector3.Dot(new Vector3(v.WeightedPosition._x,v.WeightedPosition._y,v.WeightedPosition._z),target.Rig.GroundNormal))-target.Rig.GroundHeight;
+                            double arm=Vector3.Distance(target.Rig.Rest.Point(side+".upperArm"),target.Rig.Rest.Point(side+".lowerArm"))+
+                                Vector3.Distance(target.Rig.Rest.Point(side+".lowerArm"),target.Rig.Rest.Point(role));
+                            double bound=arm*.001;double error=Math.Max(Math.Abs(surface),Math.Abs(skin));
+                            withheldHands++;maximumHandSkinAgreement=Math.Max(maximumHandSkinAgreement,Math.Abs(surface-skin));
+                            if(error/bound>maximumHandRatio){maximumHandRatio=error/bound;maximumHandError=error;worstHandTime=time;worstHandRole=role;}
+                        }
+                    }
+                    Check(maximumHandRatio<=1 && maximumHandSkinAgreement<0.01,
+                        name+": reopened withheld planted-hand samples meet their own limb bound and agree with independent native skin",
+                        new{withheldHands,maximumHandError,maximumHandRatio,maximumHandSkinAgreement,worstHandTime,worstHandRole});
                     contactsPass&=foot<0.2 && hand<0.2 && body<0.2 && lockError<0.2 && endInteger<0.03 && endIntegerLock<0.03 && bodyIntegerLock<0.2 && endSolved<0.02 && bodyInteger<0.1 && bodySolved<0.1;
                     if(name=="Wait1")Check(feet>0 && locks>0,"Real idle detects planted foot contacts and locks",measurement);
                     if(name=="LandingAirN"||name=="DownStandU")Check(hands>0,"Real "+name+" detects palm/finger ground contacts",measurement);

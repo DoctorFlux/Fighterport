@@ -4,6 +4,7 @@ using BrawlCrate.UI;
 using BrawlLib.SSBB.ResourceNodes;
 using System;
 using System.Drawing;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Numerics;
@@ -29,6 +30,10 @@ internal static partial class Program
         string sourceHash = FighterProject.HashFile(sourcePath);
         string motionHash = FighterProject.HashFile(motionPath);
         string targetHash = FighterProject.HashFile(targetPath);
+        string libraryBefore=Environment.GetEnvironmentVariable("FIGHTERPORT_LIBRARY_ROOT");
+        string exportBefore=Environment.GetEnvironmentVariable("FIGHTERPORT_EXPORT_PREFERENCES_ROOT");
+        Environment.SetEnvironmentVariable("FIGHTERPORT_LIBRARY_ROOT",Path.Combine(output,"isolated-library"));
+        Environment.SetEnvironmentVariable("FIGHTERPORT_EXPORT_PREFERENCES_ROOT",Path.Combine(output,"isolated-export-preferences"));
         var project = FighterProject.Create("Private cranial mapping review");
         ModelForm form = null;
         try
@@ -117,6 +122,20 @@ internal static partial class Program
                 var targetRig = BrawlRetargeter.Capture(target);
                 BrawlRetargeter.PrepareCranialPair(reviewed, targetRig);
                 var plan = new HumanoidRetargeter(reviewed.Rig, targetRig.Rig);
+                int directHead = targetRig.Rig.Roles["head"];
+                var mappedTarget = new System.Collections.Generic.HashSet<int>(plan.Mapping.Select(map => map.TargetIndex));
+                bool CranialDescendant(int joint)
+                {
+                    for (int parent = joint; parent >= 0; parent = targetRig.Rig.Joints[parent].Parent)
+                        if (parent == directHead) return true;
+                    return false;
+                }
+                var headGroups = targetRig.Rig.Surfaces["head"].Points
+                    .GroupBy(point => RetargetReviewDiagnostics.ClassifyCranialSkinPoint(
+                        point, directHead, mappedTarget, CranialDescendant))
+                    .ToDictionary(group => group.Key, group => group.Count());
+                Check(headGroups.ContainsKey(0) && headGroups.ContainsKey(1),
+                    "Authentic target head-joint skin stays distinct from target-only cranial accessory skin");
                 int sourceNeck = reviewed.Rig.Roles["neck"];
                 Check(plan.Mapping.Count(map => map.SourceIndex == sourceNeck) == 1 &&
                     !plan.Mapping.Any(map => map.Role == "head") &&
@@ -135,6 +154,108 @@ internal static partial class Program
                     FighterProject.HashFile(motionPath) == motionHash &&
                     FighterProject.HashFile(targetPath) == targetHash,
                     "Modal review and source sampling preserve all original assets and target binds/weights");
+                // The prepared native result is reviewed before import in both
+                // dense and sparse modes. These are private-desktop modal
+                // events, with no OS input injection and no document Apply.
+                var reviewModes = new System.Collections.Generic.List<object>();
+                int undoBefore=form.FighterEditor._saveIndex;
+                int frameBefore=form.FighterEditor.CurrentFrame;
+                var animationBefore=form.FighterEditor.TargetAnimation;
+                foreach(var mode in new[]{RetargetKeyframeMode.Dense,RetargetKeyframeMode.SourceChannelTimes})
+                {
+                    await CaptureCheckpoint();
+                    typeof(ModelForm).GetField("_retargetKeyframeMode",Private).SetValue(form,mode);
+                    bool seen=false,directHeadCue=false,accessoryCue=false;
+                    long diagnosticMilliseconds=-1;Exception reviewFailure=null;
+                    form.RetargetKeyframeReviewReady=window=>
+                    {
+                        try
+                        {
+                            seen=true;
+                            diagnosticMilliseconds=((RetargetKeyframeReviewDialog)window).ReviewDiagnosticMilliseconds;
+                            var cue=SimpleControl<Label>(window,"sourceKeysReviewCue");
+                            var report=SimpleControl<TextBox>(window,"sourceKeysReport");
+                            var useResult=SimpleControl<Button>(window,"sourceKeysUse");
+                            Check(cue.Visible && cue.Text.Contains("unverified") &&
+                                report.Text.Contains("bind-sole guide") && report.Text.Contains("No automatic lift") && !useResult.Enabled,
+                                mode+": actual native review distinguishes the bind-sole guide from a verified floor and requires explicit review");
+                            directHeadCue=report.Text.Contains("Direct head-joint skin");
+                            accessoryCue=report.Text.Contains("Head-area skin with target-only descendant influence");
+                            Check(directHeadCue && accessoryCue,
+                                mode+": clearance report separates direct target head skin from target-only accessory skin");
+                            Check((mode!=RetargetKeyframeMode.Dense || ((RetargetKeyframeReviewDialog)window).DenseView==null) &&
+                                ((RetargetKeyframeReviewDialog)window).ResultView.Viewport.Visible,
+                                mode+": review retains the native target viewport without a competing Dense comparison pane");
+                            CaptureRetargetReview((RetargetKeyframeReviewDialog)window,
+                                Path.Combine(output,"retarget-clearance-"+mode+".png"));
+                            SimpleControl<Button>(window,"sourceKeysCancel").PerformClick();
+                        }
+                        catch(Exception error){reviewFailure=error;window.Close();}
+                    };
+                    var bakeTimer=Stopwatch.StartNew();
+                    var cancelled=(RetargetResult)Call(form,"BakeWithProgress",source,target,clip);
+                    bakeTimer.Stop();
+                    form.RetargetKeyframeReviewReady=null;
+                    if(reviewFailure!=null)throw reviewFailure;
+                    Check(seen && cancelled==null && ReferenceEquals(form.FighterEditor.TargetModel,target) &&
+                        ReferenceEquals(form.FighterEditor.TargetAnimation,animationBefore) &&
+                        form.FighterEditor._saveIndex==undoBefore && form.FighterEditor.CurrentFrame==frameBefore &&
+                        (string)Call(form,"NativeControlHash",target,".mdl0")==targetBefore &&
+                        FighterProject.HashFile(sourcePath)==sourceHash && FighterProject.HashFile(motionPath)==motionHash,
+                        mode+": cancelling reviewed retarget leaves the native target, frame, Undo and source bytes unchanged");
+                    reviewModes.Add(new{Mode=mode.ToString(),CueShown=seen,CancelledWithoutImport=true,
+                        DirectHeadCue=directHeadCue,TargetOnlyAccessoryCue=accessoryCue,
+                        ReviewDiagnosticMilliseconds=diagnosticMilliseconds,
+                        FullPreparationMilliseconds=bakeTimer.ElapsedMilliseconds});
+                }
+                // A separate positive path presses the actual library Use
+                // command. It must import through the existing project Undo
+                // transaction after the same reviewed native result returns.
+                typeof(ModelForm).GetField("_retargetKeyframeMode",Private).SetValue(form,RetargetKeyframeMode.SourceChannelTimes);
+                var registration=UseModelRegistration(sourcePath,motionPath,"reviewed native source");
+                typeof(ModelForm).GetMethod("LoadSessionSource",Private,null,
+                    new[]{typeof(LibraryRegistration)},null).Invoke(form,new object[]{registration});
+                await LibraryQuerySettled(form);
+                var item=await UseModelSelectSource(form,(AnimationLibrary)Field(form,"_library"),clipName);
+                bool useSeen=false;Exception useFailure=null;
+                form.RetargetKeyframeReviewReady=window=>
+                {
+                    try
+                    {
+                        useSeen=true;
+                        var cue=SimpleControl<Label>(window,"sourceKeysReviewCue");
+                        var reviewedCheck=SimpleControl<CheckBox>(window,"sourceKeysReviewed");
+                        var use=SimpleControl<Button>(window,"sourceKeysUse");
+                        Check(cue.Visible && !use.Enabled,
+                            "Use on This Model requires the same unverified clearance review before import");
+                        reviewedCheck.Checked=true;
+                        Check(use.Enabled,"Explicit review enables the prepared native result");
+                        use.PerformClick();
+                    }
+                    catch(Exception error){useFailure=error;window.Close();}
+                };
+                var useTimer=Stopwatch.StartNew();
+                SimpleControl<Button>(form,"libraryUseOnTarget").PerformClick();
+                useTimer.Stop();
+                form.RetargetKeyframeReviewReady=null;
+                if(useFailure!=null)throw useFailure;
+                await SimpleControlsReady(form);
+                var imported=form.FighterEditor.SelectedCHR0;
+                var asset=project.Animations.Single();
+                Check(useSeen && imported!=null && asset.Retarget.Library.ClipId==item.Clip.Id &&
+                    ReferenceEquals(form.FighterEditor.TargetModel,target) && imported.FrameCount==clip.FrameCount,
+                    "Reviewed Use imports the exact non-idle target revision into the original native editor");
+                string content=NativeAnimationOptimization.ContentKey(imported);
+                using(var reopened=NodeFactory.FromFile(null,asset.WorkingPath) as CHR0Node)
+                    Check(reopened!=null && NativeAnimationOptimization.ContentKey(reopened)==content &&
+                        asset.Retarget.ReadKeyframeReport().ProtectedControls.Length>0 &&
+                        (string)Call(form,"NativeControlHash",target,".mdl0")==targetBefore,
+                        "Imported target reopens with exact native content, protected root evidence and unchanged target binds/weights");
+                Call(form,"UndoFighterImport");await SimpleControlsReady(form);
+                Check(project.Animations.Count==0 &&
+                    (string)Call(form,"NativeControlHash",form.FighterEditor.TargetModel,".mdl0")==targetBefore &&
+                    FighterProject.HashFile(sourcePath)==sourceHash && FighterProject.HashFile(motionPath)==motionHash,
+                    "One existing project Undo removes the reviewed import without changing original assets or target model");
                 File.WriteAllText(Path.Combine(output, "cranial-workspace.json"),
                     new JavaScriptSerializer().Serialize(new
                     {
@@ -146,7 +267,10 @@ internal static partial class Program
                         ModalSeen = modalSeen, EvidenceSeen = evidenceSeen,
                         ExplicitReviewChecked = checkedReview, SourceSampleTime = sampleTime,
                         PrivateDesktop, OSInputInjected = false, ScreenCopied = false,
-                        RetargetBakePerformed = false, HumanUsabilityVerified = false
+                        RetargetBakePerformed = true, RetargetReviewModes=reviewModes,
+                        RetargetImportedAndUndone=true,ImportedContentKey=content,
+                        UseElapsedMilliseconds=useTimer.ElapsedMilliseconds,
+                        OffscreenReviewCapture=true, HumanUsabilityVerified = false
                     }));
             }
         }
@@ -154,6 +278,32 @@ internal static partial class Program
         {
             if (form != null && !form.IsDisposed) SimpleDisposeForm(form);
             project.Dispose();
+            Environment.SetEnvironmentVariable("FIGHTERPORT_LIBRARY_ROOT",libraryBefore);
+            Environment.SetEnvironmentVariable("FIGHTERPORT_EXPORT_PREFERENCES_ROOT",exportBefore);
+        }
+    }
+
+    // WinForms DrawToBitmap leaves GL viewports blank. Overlay each native
+    // ModelPanel's offscreen framebuffer as in the existing source-key review.
+    static void CaptureRetargetReview(RetargetKeyframeReviewDialog window,string path)
+    {
+        using(var bitmap=new Bitmap(window.Width,window.Height))
+        {
+            window.DrawToBitmap(bitmap,new Rectangle(Point.Empty,window.Size));
+            foreach(var view in new[]{window.DenseView,window.ResultView}.Where(view=>view!=null))
+            {
+                var panel=view.Viewport;
+                panel.Capture();panel.Invalidate();panel.Update();
+                using(var screenshot=panel.GetScreenshot(panel.ClientRectangle,false))
+                using(var graphics=Graphics.FromImage(bitmap))
+                {
+                    var point=window.PointToClient(panel.PointToScreen(Point.Empty));
+                    int border=(window.Width-window.ClientSize.Width)/2;
+                    graphics.DrawImageUnscaled(screenshot,point.X+border,
+                        point.Y+window.Height-window.ClientSize.Height-border);
+                }
+            }
+            bitmap.Save(path);
         }
     }
 }

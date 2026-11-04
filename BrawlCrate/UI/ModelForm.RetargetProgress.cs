@@ -108,6 +108,15 @@ namespace BrawlCrate.UI
                             // are alive. Import later binds the final target hash
                             // without sampling disposed donor resources.
                             cancellation.Token.ThrowIfCancellationRequested();NativeSupportEvidence.Freeze(generated);cancellation.Token.ThrowIfCancellationRequested();
+                            var reviewTimer=System.Diagnostics.Stopwatch.StartNew();
+                            try{generated.ReviewCue=RetargetReviewDiagnostics.Analyze(sourceRig,targetRig,clipCopy,generated,cancellation.Token);}
+                            catch(OperationCanceledException){throw;}
+                            catch(Exception error)
+                            {
+                                generated.ReviewCue="Native skin/contact review is unavailable ("+error.GetType().Name+
+                                    "). The model bind-sole guide is not a verified game floor; no clearance repair was applied.";
+                            }
+                            finally{generated.ReviewDiagnosticMilliseconds=reviewTimer.ElapsedMilliseconds;}
                         }
                         catch{generated.Dispose();throw;}
                         // Keep the full-quality editable target master. Size
@@ -138,10 +147,21 @@ namespace BrawlCrate.UI
                         throw new InvalidOperationException("Retarget inputs or key options changed. The stale result was discarded; retarget the current source and target again.");
                 }
                 Current();
-                if(keyMode!=RetargetKeyframeMode.Dense)
+                if(keyMode!=RetargetKeyframeMode.Dense || !string.IsNullOrEmpty(result.ReviewCue))
                 {
-                    using(var beforeRoot=NodeFactory.FromFile(null,previewPath))
-                    using(var afterRoot=NodeFactory.FromFile(null,previewPath))
+                    if(previewPath==null)
+                    {
+                        // Dense results normally skip review. When an offline
+                        // clearance cue needs it, retain the original target
+                        // container so the native review shows its textures.
+                        string extension=Path.GetExtension(target.RootNode.FilePath);
+                        if(string.IsNullOrEmpty(extension))extension=".brres";
+                        previewPath=Path.Combine(_controlStage,Guid.NewGuid().ToString("N")+extension);
+                        target.RootNode.Export(previewPath);
+                    }
+                    string reviewPath=previewPath??targetPath;
+                    using(var beforeRoot=NodeFactory.FromFile(null,reviewPath))
+                    using(var afterRoot=NodeFactory.FromFile(null,reviewPath))
                     using(var review=new RetargetKeyframeReviewDialog(beforeRoot,RetargetPreviewModel(beforeRoot,targetHash),afterRoot,RetargetPreviewModel(afterRoot,targetHash),
                         result,modelEditControl1.ModelPanel.CurrentViewport,modelEditControl1.CurrentFrame,project.Name))
                     {
