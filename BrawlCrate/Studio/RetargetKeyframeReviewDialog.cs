@@ -55,18 +55,19 @@ namespace BrawlCrate.Studio
             frame=new TrackBar{Name="sourceKeysFrame",Dock=DockStyle.Fill,Minimum=1,Maximum=dense.FrameCount,Value=Math.Max(1,Math.Min(dense.FrameCount,initialFrame)),TickStyle=TickStyle.None,AccessibleName="Retarget review frame"};
             transport=new TableLayoutPanel{Dock=DockStyle.Fill,AutoSize=true,ColumnCount=3};transport.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));transport.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));transport.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));transport.Controls.Add(play,0,0);transport.Controls.Add(frame,1,0);transport.Controls.Add(position,2,0);
             cue=new Label{Name="sourceKeysReviewCue",Text=string.IsNullOrEmpty(prepared.ReviewCue)?"":
-                "Review needed: target guide clearance or source-derived hand support is unverified. Details below.",
+                "Review needed: hand pose, source-derived support or guide clearance is unverified. Details below.",
                 Visible=!string.IsNullOrEmpty(prepared.ReviewCue),AutoSize=true,
                 AccessibleName="Retarget guide and contact review cue",AccessibleDescription=prepared.ReviewCue};
-            report=new TextBox{Name="sourceKeysReport",ReadOnly=true,Multiline=true,ScrollBars=ScrollBars.Both,WordWrap=false,Dock=DockStyle.Fill,
-                Text=(prepared.KeyframeReport?.Describe()??"Full-quality native Next result; no reduced-key comparison.")+"\r\n"+
-                    (string.IsNullOrEmpty(prepared.ReviewCue)?"":"REVIEW NEEDED\r\n"+prepared.ReviewCue+"\r\n")+prepared.OptimizationReport,
+            report=new TextBox{Name="sourceKeysReport",ReadOnly=true,Multiline=true,ScrollBars=ScrollBars.Vertical,WordWrap=true,Dock=DockStyle.Fill,
+                Text=(string.IsNullOrEmpty(prepared.ReviewCue)?"":"REVIEW NEEDED\r\n"+prepared.ReviewCue+"\r\n")+
+                    (prepared.KeyframeReport?.Describe()??"Full-quality native Next result; no reduced-key comparison.")+"\r\n"+
+                    prepared.OptimizationReport,
                 AccessibleName="Measured native retarget and review details"};
             var review=new CheckBox{Name="sourceKeysReviewed",Text=string.IsNullOrEmpty(prepared.ReviewCue)?
-                "I reviewed the motion differences":"I reviewed the native motion and unverified guide/contact notes",AutoSize=true};
+                "I reviewed the motion differences":"I reviewed the native motion, hand pose and unverified guide/contact notes",AutoSize=true};
             var use=new Button{Name="sourceKeysUse",Text="Use this result",AutoSize=true,Enabled=false,DialogResult=DialogResult.OK};
             var cancel=new Button{Name="sourceKeysCancel",Text="Cancel",AutoSize=true,DialogResult=DialogResult.Cancel};
-            use.AccessibleDescription=denseMode?"Add this reviewed full-quality native target result. Guide clearance and proposed hand support are not verified contacts.":
+            use.AccessibleDescription=denseMode?"Add this reviewed full-quality native target result. Hand pose and guide clearance are not qualified contacts.":
                 "Add this independently measured retarget key layout. Dense contact statistics do not validate its changed curves. Save the project afterward.";
             review.CheckedChanged+=(s,e)=>use.Enabled=review.Checked;
             actions=new FlowLayoutPanel{Dock=DockStyle.Fill,AutoSize=true,WrapContents=true};actions.Controls.AddRange(new Control[]{review,use,cancel});

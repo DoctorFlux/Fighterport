@@ -52,6 +52,7 @@ namespace BrawlCrate.Studio.Retargeting
                 if(full[side]>0)cues.Add("Proposed "+roles[side]+" support: "+full[side]+" full quarter-frame samples, longest run "+longest[side]+
                     ", frames "+Number(first[side])+"–"+Number(lastSupported[side])+", source patch flatness "+Number(minFlat[side])+"–"+Number(maxFlat[side])+
                     ". This is not an approved planted-hand contact; review the actual surface and floor context.");
+            if(result.Plan!=null)AppendHandPoseReview(source,target,sourceClip,result,last,cues,cancellation);
             var mapped=result.Plan==null?new HashSet<int>():new HashSet<int>(result.Plan.Mapping.Select(m=>m.TargetIndex));
             var cranialRoots=new[]{"head","neck"}.Where(role=>target.Rig.Roles.ContainsKey(role))
                 .Select(role=>target.Rig.Roles[role]).Distinct().ToArray();
@@ -127,6 +128,73 @@ namespace BrawlCrate.Studio.Retargeting
             bool targetOnly=point.Weights.Any(w=>w.Weight>.01f&&w.Joint!=directHead&&
                 !mapped.Contains(w.Joint)&&cranialDescendant(w.Joint));
             return targetOnly?1:direct?0:2;
+        }
+
+        // This observes the finished target animation, including its native
+        // curve representation. A hand with no established contact can miss
+        // the source pose even when the joint IK goal and supported-foot
+        // checks pass. The bind-sole guides are only common measurement axes;
+        // crossing one does not approve a floor, a pin, or a corrective lift.
+        private static void AppendHandPoseReview(BrawlRig source,BrawlRig target,CHR0Node sourceClip,
+            RetargetResult result,int last,List<string> cues,CancellationToken cancellation)
+        {
+            var pairs=new List<Tuple<string,ContactSurface,ContactSurface,float,float>>();
+            foreach(string side in new[]{"left","right"})
+            {
+                string role=side+".hand";
+                if(!source.Rig.Surfaces.TryGetValue(role,out var from)||
+                    !target.Rig.Surfaces.TryGetValue(role,out var to)||
+                    !new[]{side+".upperArm",side+".lowerArm",role}.All(name=>
+                        source.Rig.Roles.ContainsKey(name)&&target.Rig.Roles.ContainsKey(name)))continue;
+                float Length(Rig rig)=>Vector3.Distance(rig.Rest.Point(side+".upperArm"),rig.Rest.Point(side+".lowerArm"))+
+                    Vector3.Distance(rig.Rest.Point(side+".lowerArm"),rig.Rest.Point(role));
+                float sourceLength=Length(source.Rig),targetLength=Length(target.Rig);
+                if(!RigMath.Finite(sourceLength)||!RigMath.Finite(targetLength)||sourceLength<=0||targetLength<=0)continue;
+                pairs.Add(Tuple.Create(role,from,to,sourceLength,targetLength));
+            }
+            if(pairs.Count==0)return;
+            long work=(last*4L+1)*pairs.Sum(pair=>(long)pair.Item2.Points.Length+pair.Item3.Points.Length);
+            if(work>MaximumSkinSamples)
+            {
+                cues.Add("Hand-pose skin comparison exceeded its "+MaximumSkinSamples.ToString(CultureInfo.InvariantCulture)+
+                    "-point review budget. Hand motion remains unverified; no pose was changed.");
+                return;
+            }
+            var worst=pairs.Select(pair=>new{Pair=pair,Error=0f,Time=-1f,Source=0f,Target=0f,
+                DeepestSource=0f,DeepestTime=-1f}).ToArray();
+            for(int i=0;i<=last*4;i++)
+            {
+                cancellation.ThrowIfCancellationRequested();
+                float time=i/4f;
+                var from=BrawlRetargeter.Sample(source,sourceClip,time);
+                var to=BrawlRetargeter.Sample(target,result.Animation,time);
+                for(int side=0;side<pairs.Count;side++)
+                {
+                    var pair=pairs[side];
+                    // Established source-derived support has its own contact
+                    // checks; this cue is for the unreviewed hand-pose gap.
+                    if(result.Contacts?.At(pair.Item1,time).Support>.99f)continue;
+                    float sourceHeight=pair.Item2.Clearance(from)/pair.Item4;
+                    float targetHeight=pair.Item3.Clearance(to)/pair.Item5;
+                    if(!RigMath.Finite(sourceHeight)||!RigMath.Finite(targetHeight))
+                        throw new InvalidDataException("A sampled hand-pose skin clearance is non-finite.");
+                    float error=Math.Abs(sourceHeight-targetHeight);
+                    var prior=worst[side];
+                    worst[side]=new{Pair=pair,Error=error>prior.Error?error:prior.Error,
+                        Time=error>prior.Error?time:prior.Time,
+                        Source=error>prior.Error?sourceHeight:prior.Source,
+                        Target=error>prior.Error?targetHeight:prior.Target,
+                        DeepestSource=sourceHeight<prior.DeepestSource?sourceHeight:prior.DeepestSource,
+                        DeepestTime=sourceHeight<prior.DeepestSource?time:prior.DeepestTime};
+                }
+            }
+            foreach(var row in worst.Where(row=>row.Time>=0&&row.Error>.05f))
+                cues.Add("Unreviewed "+row.Pair.Item1+" skin pose differs by "+Number(row.Error)+
+                    " arm lengths at native frame "+Number(row.Time)+" (source "+Number(row.Source)+
+                    ", target "+Number(row.Target)+" relative to their own bind-sole guides). "+
+                    (row.DeepestTime>=0?"The source hand itself reaches "+Number(row.DeepestSource)+
+                        " arm lengths below its guide at native frame "+Number(row.DeepestTime)+". ":"")+
+                    "The pose gap exceeds the 0.05-arm review threshold; this is not a reviewed floor or planted contact. Review hand, forearm and shoulder motion; no automatic lift was applied.");
         }
 
         private static string Number(float value)=>value.ToString("0.####",CultureInfo.InvariantCulture);

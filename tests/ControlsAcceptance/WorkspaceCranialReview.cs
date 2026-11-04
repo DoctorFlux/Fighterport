@@ -165,7 +165,7 @@ internal static partial class Program
                 {
                     await CaptureCheckpoint();
                     typeof(ModelForm).GetField("_retargetKeyframeMode",Private).SetValue(form,mode);
-                    bool seen=false,directHeadCue=false,accessoryCue=false;
+                    bool seen=false,directHeadCue=false,accessoryCue=false,handPoseCue=false;
                     long diagnosticMilliseconds=-1;Exception reviewFailure=null;
                     form.RetargetKeyframeReviewReady=window=>
                     {
@@ -179,10 +179,19 @@ internal static partial class Program
                             Check(cue.Visible && cue.Text.Contains("unverified") &&
                                 report.Text.Contains("bind-sole guide") && report.Text.Contains("No automatic lift") && !useResult.Enabled,
                                 mode+": actual native review distinguishes the bind-sole guide from a verified floor and requires explicit review");
+                            Check(report.Text.StartsWith("REVIEW NEEDED",StringComparison.Ordinal) &&
+                                report.WordWrap && report.ScrollBars==ScrollBars.Vertical,
+                                mode+": hand and clearance warnings appear first and wrap within the review report");
                             directHeadCue=report.Text.Contains("Direct head-joint skin");
                             accessoryCue=report.Text.Contains("Head-area skin with target-only descendant influence");
                             Check(directHeadCue && accessoryCue,
                                 mode+": clearance report separates direct target head skin from target-only accessory skin");
+                            handPoseCue=report.Text.Contains("Unreviewed left.hand skin pose differs") &&
+                                report.Text.Contains("Unreviewed right.hand skin pose differs") &&
+                                report.Text.Contains("source hand itself reaches") &&
+                                report.Text.Contains("not a reviewed floor or planted contact");
+                            Check(handPoseCue,
+                                mode+": the exact Sonic forward tilt reports both unreviewed hand-pose gaps and source guide crossing");
                             Check((mode!=RetargetKeyframeMode.Dense || ((RetargetKeyframeReviewDialog)window).DenseView==null) &&
                                 ((RetargetKeyframeReviewDialog)window).ResultView.Viewport.Visible,
                                 mode+": review retains the native target viewport without a competing Dense comparison pane");
@@ -205,6 +214,7 @@ internal static partial class Program
                         mode+": cancelling reviewed retarget leaves the native target, frame, Undo and source bytes unchanged");
                     reviewModes.Add(new{Mode=mode.ToString(),CueShown=seen,CancelledWithoutImport=true,
                         DirectHeadCue=directHeadCue,TargetOnlyAccessoryCue=accessoryCue,
+                        UnreviewedHandPoseCue=handPoseCue,
                         ReviewDiagnosticMilliseconds=diagnosticMilliseconds,
                         FullPreparationMilliseconds=bakeTimer.ElapsedMilliseconds});
                 }

@@ -183,6 +183,19 @@ internal static partial class Program
                         var earlyHandBody = ReviewedEarlyHandBodyWitness(
                             source, target, sourceClip, result, fresh);
                         receipt["EarlyHandBodyWitness"] = earlyHandBody;
+                        double palm=Convert.ToDouble(earlyHandBody["MaximumNormalizedEarlyHandClearanceError"]);
+                        double forearm=Convert.ToDouble(earlyHandBody["MaximumNormalizedEarlyLowerArmClearanceError"]);
+                        double trunk=Convert.ToDouble(earlyHandBody["MaximumExtraPelvisDescent"]);
+                        double leg=Convert.ToDouble(earlyHandBody["TargetLegLength"]);
+                        receipt["EarlyHandBodySampleGate"] = new {
+                            Scope="existing proposed early hand/forearm/trunk bounds at sampled native times; guide is not a verified game floor",
+                            PalmArmFractionBound=.05, ForearmArmFractionBound=.10,
+                            TrunkLegFractionBound=.01,
+                            MaximumPalmArmFraction=palm, MaximumForearmArmFraction=forearm,
+                            MaximumExtraTrunkNativeUnits=trunk, TargetLegNativeUnits=leg,
+                            Passed=palm<=.05&&forearm<=.10&&trunk<=.01*leg,
+                            SourceGuideOrContactReviewed=false
+                        };
                         receipt["ShoulderSeamWitness"] = ReviewedShoulderSeamWitness(
                             source, sourceModel, sourceClip, target, targetModel, fresh);
                         receipt["AnatomicalSkinRegionWitness"] = NativeSkinRegionWitness(
