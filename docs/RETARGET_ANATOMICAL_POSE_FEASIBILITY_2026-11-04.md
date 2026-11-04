@@ -1,0 +1,28 @@
+# Anatomical pose feasibility checkpoint — 4 November 2026
+
+Status: **rejected diagnostic trials; hand/body correction remains open.** Product code and quality gates were not changed. Starting clean code revision: `57c41c1c1f9336f0c223ca6202f261726811d6e2`. This is not a product preview or accepted motion result.
+
+## Exact fixture and baseline
+
+The pinned Sonic `AttackS3S` CHR0 v4 (44 frames) was retargeted to the pinned Mario MDL0 with the existing reviewed cranial mapping. Source PAC SHA-256: `51e9a8b4f51911dc378ab612934f547339b1e557f04d82290c76fcba1350bad1`; target PAC: `d4937cac8986f60440afdca14ed90c212a68d20a7bfe092d97a87b8dc20a82963`; source clip: `9815094dcbed35a6ce671b65562e4a271e5dc647224cbce2efa55e27bc630943`; ignored fixture manifest: `d1a0a22596c96d727fa9a3c5abaff3ded9256e7b8bc09b050ee5a7258e3be70a`. Original game assets and generated output stay ignored.
+
+The unchanged 283,752-byte target CHR0 freshly reopens and passes the existing trajectory, supported-contact and protected-root checks. It still fails the early hand/body gate: palm `0.432063 > 0.05` target-arm lengths, forearm `0.261322 > 0.10`, and extra source-relative trunk descent `1.949278 > 0.039408` target units. The floor guide is not a reviewed gameplay floor.
+
+## Offline read-only trials
+
+An isolated x86 acceptance-harness experiment evaluated the original native target pose and source pose at 13 quarter-frame times, frames 5–8. It varied existing target torso/shoulder/arm rotations, animated upper-arm or lower-arm scale, and body height; it never edited the app document, target bind, hierarchy, weights, source resources or protected motion controls. The trial implementation and harness hook were saved in the ignored `artifacts/Fighterport-anatomical-pose-feasibility` directory and then reverted from the checkout. The numerical weights and scale seed were experimental, not a universal policy.
+
+| Trial | Max palm / arm | Max forearm / arm | Max shoulder bind-neighbor gap change / arm | Max same-target skinned vertex displacement | Outcome |
+|---|---:|---:|---:|---:|---|
+| Warm-started upper-arm scale, no seam penalty | 0.045585 | 0.057336 | 0.660509 | 4.908567 native units | Hand-height only; seam distortion fails diagnostic allowance. |
+| All-pair seam penalty, upper-arm scale | 0.048218 | 0.067401 | 0.213611 | 6.725218 native units | Height and diagnostic seam pass sampled points, but 3D palm position misses by up to 0.66 arm lengths. Large skin motion is unqualified. |
+| All-pair seam penalty, lower-arm scale | 0.645644 | 0.304326 | 0.242749 | 6.035115 native units | Hand gate fails; temporal solution switches branches near frame 7. |
+| Coupled 3D objective, upper-arm scale | 0.287238 | 0.169660 | 0.263572 | 13.547832 native units | Both hand gates fail and 3D palm error reaches 1.036203 arm lengths. |
+
+The provisional shoulder limits from the previous native witness are about `0.259/0.301` arm lengths left/right. They are **diagnostic, not qualified acceptance bounds**. The trial's `0.2` seam penalty was likewise only an experiment. Its low hand-clearance error is not a correction to the full pose. No trial was serialized as a corrected CHR0, so none has native reopen, withheld-fraction, contact, visual or game-runtime acceptance. Repeated retarget harness runs reopened the **unchanged baseline**, not the trial poses.
+
+The tests used the existing native-only build plus VS2022 MSBuild of `tests/RetargetAcceptance/RetargetAcceptance.csproj`, then `RetargetAcceptance.exe --reviewed-cranial-retarget` with the exact ignored fixture and environment-gated read-only trial. All builds passed; the baseline retarget case exited nonzero on its already-known early hand/body gate. No active-desktop input or capture was used. The independent pose metrics were computed from the complete target skin where available. Their finite sample coverage does not prove continuous motion.
+
+## Next executable action
+
+Stop optimizing hand height against an unreviewed floor guide. Add a source-relative **3D skin-region pose target**, native shoulder attachment constraints and temporal continuity to a bounded, format-neutral offline correction candidate. Derive region targets from reviewed source/target geometry and motion rather than names or fixed character measurements. First prove the candidate on the pinned unequal-rig fixture with exact root controls, all skin weights and unchanged hand/trunk bounds; include *all* relevant body regions and qualified attachment evidence. Then carry only verified generated-joint/scale provenance through the correction trajectory and native baker, serialize/reopen, and check quarter plus withheld fractions, complete skin/contact and side-view output. If mutually incompatible, report the specific conflict and require review instead of publishing an invented floor contact. Do not promote the rejected pose trial or relax acceptance limits.

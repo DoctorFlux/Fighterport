@@ -823,6 +823,11 @@
           "path": "docs/RETARGET_COUPLED_HAND_TRIALS_2026-11-04.md",
           "revision": "HEAD+diff:cbfc0edb2e66a8658128881ef4a3f93e934f717001fe19bcb6d54130af53d99b",
           "coverage": "Follow-up shoulder-chain trials from e57ddd9: native baker and target-only guard require explicit generated-joint provenance. Shoulder-only and combined CHR0s reopen but fail palm, forearm and provisional seam checks; scale-based reach attempt stops at existing preservation guard. All trial code reverted."
+        },
+        {
+          "path": "docs/RETARGET_ANATOMICAL_POSE_FEASIBILITY_2026-11-04.md",
+          "revision": "57c41c1c1f9336f0c223ca6202f261726811d6e2",
+          "coverage": "Read-only 13-quarter-frame pose trials on the same pinned Sonic-to-Mario result: hand height can pass while 3D palm placement, complete skin displacement and temporal behavior fail. Trials were reverted and no corrected CHR0 was serialized."
         }
       ],
       "references": {
@@ -865,7 +870,8 @@
           "docs/RETARGET_EARLY_BODY_HAND_CHECKPOINT_2026-11-03.md",
           "docs/RETARGET_HAND_CONTACT_CHECKPOINT_2026-11-03.md",
           "docs/RETARGET_HAND_POSE_REVIEW_CHECKPOINT_2026-11-04.md",
-          "docs/RETARGET_COUPLED_HAND_TRIALS_2026-11-04.md"
+          "docs/RETARGET_COUPLED_HAND_TRIALS_2026-11-04.md",
+          "docs/RETARGET_ANATOMICAL_POSE_FEASIBILITY_2026-11-04.md"
         ]
       },
       "verification": {
@@ -1009,7 +1015,7 @@
         "Single-cranial-joint review is source-side and session-only. Target-side merged head/neck and one-versus-two shoulder chain transfer still need reviewed topology composition and bidirectional tests.",
         "Source-derived hand support is a proposal, not a reviewed planted contact. The accepted own-limb reserve fixes one measured hand-depth residual; the Sonic forward-tilt hand/body gate still fails. Six scalar-height/upper-arm trials and five follow-up split-shoulder/native-guard trials were rejected and reverted. Generated target-only joints need explicit solver/baker/track-membership provenance; admitting them alone worsened hand quality. No independently qualified shoulder-seam acceptance bound exists."
       ],
-      "next_step": "Test pose-level feasibility of a three-dimensional skinned palm/forearm and shoulder-attachment target under fixed root/bind/weight/scale contracts. Qualify seam bounds, then introduce explicit generated-joint provenance through solver, native baker and track guard only for a passing candidate. Verify full skin, contacts and native fractional reopen; report incompatible constraints."
+      "next_step": "Build a bounded temporally continuous 3D skinned-region and shoulder-attachment correction candidate from reviewed geometry/motion; first prove the pinned unequal-rig case under unchanged root, hand, trunk and full-skin constraints. Qualify seam bounds before generated-joint/scale native integration; serialize/reopen and reject incompatible constraints explicitly."
     },
     {
       "id": "FP-ROOT-MOTION",
