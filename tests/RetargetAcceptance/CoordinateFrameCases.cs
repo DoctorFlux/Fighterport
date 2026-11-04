@@ -136,7 +136,40 @@ internal static partial class Program
         Check(rejected,"Nonorthogonal reviewed coordinate axes cannot prepare a retarget");
         rejected=false;try{var invalid=new Rig("contradictory","reviewed",unknownSource.Rig.Joints,unknownSource.Rig.Roles,1,Vector3.UnitY,Quaternion.CreateFromAxisAngle(Vector3.UnitZ,1));}catch(InvalidDataException){rejected=true;}
         Check(rejected,"Conflicting declared up and complete reviewed frame require review instead of one silently overriding the other");
+        ProximalDigitAxisChecks();
         File.WriteAllText(Path.Combine(output,"coordinate-frames.json"),new JavaScriptSerializer{MaxJsonLength=16000000}.Serialize(new{Passed=true,Checks,Evidence=evidence,Expectation="independent analytic actor/body world rotations;0.01degree existing orientation tolerance"}));
         Console.WriteLine("PASS "+Checks.Count+" coordinate-frame checks");return 0;
+    }
+
+    private static void ProximalDigitAxisChecks()
+    {
+        Rig DigitRig(string name,Vector3 distal)
+        {
+            var core=CoordinateFixture(name,1,1,0,Quaternion.Identity);
+            var joints=core.Rig.Joints.ToList();
+            joints.Add(new RigJoint(name+"_proximal",8,new JointTransform(new Vector3(0,0,.3f),Quaternion.Identity,Vector3.One)));
+            joints.Add(new RigJoint(name+"_distal",20,new JointTransform(distal,Quaternion.Identity,Vector3.One)));
+            var roles=new Dictionary<string,int>(core.Rig.Roles) {
+                {"left.finger2.a",20},{"left.finger2.b",21}
+            };
+            return new Rig(name,"analytic digit axes",joints,roles,1,Vector3.UnitY);
+        }
+        var source=DigitRig("source",Vector3.UnitZ);
+        var target=DigitRig("target",Vector3.UnitY);
+        var sourcePose=new RigPose(source);
+        Quaternion authored=Quaternion.CreateFromAxisAngle(Vector3.UnitX,.65f);
+        sourcePose.SetWorldRotation(source.Roles["left.finger2.a"],authored);
+        var transfer=new HumanoidRetargeter(source,target).Evaluate(sourcePose,false).Pose;
+        Quaternion axis=RigMath.FromTo(Vector3.UnitZ,Vector3.UnitY);
+        Vector3 expected=target.Rest.Point("left.finger2.a")+
+            Vector3.Transform(Vector3.UnitY,axis*authored*Quaternion.Inverse(axis));
+        Check(Vector3.Distance(transfer.Point("left.finger2.b"),expected)<.0002f,
+            "Proximal digit follows independently derived anatomical segment rotation across unequal bind axes");
+        var same=new HumanoidRetargeter(source,source).Evaluate(sourcePose,false).Pose;
+        Check(Vector3.Distance(same.Point("left.finger2.b"),sourcePose.Point("left.finger2.b"))<.0002f,
+            "Identical digit axes retain the exact authored finger pose");
+        var rest=new HumanoidRetargeter(source,target).Evaluate(source.Rest,false).Pose;
+        Check(Vector3.Distance(rest.Point("left.finger2.b"),target.Rest.Point("left.finger2.b"))<.0002f,
+            "Anatomical digit calibration leaves the target bind pose unchanged");
     }
 }

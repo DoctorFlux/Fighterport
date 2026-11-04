@@ -314,6 +314,25 @@ internal static partial class Program
             SkinCentroid(source.Rig.Surfaces[role], source.Rig.Rest) - source.Rig.Rest.Point(role));
         var targetRestCentroids = hands.ToDictionary(role => role, role =>
             SkinCentroid(target.Rig.Surfaces[role], target.Rig.Rest) - target.Rig.Rest.Point(role));
+        string HandRegion(Rig rig, string hand, SkinPoint point)
+        {
+            int joint = point.Weights.OrderByDescending(weight => weight.Weight).First().Joint;
+            if (joint == rig.Roles[hand]) return "palm";
+            for (int current = joint; current >= 0; current = rig.Joints[current].Parent)
+            {
+                string digit = rig.Roles.FirstOrDefault(pair => pair.Value == current &&
+                    pair.Key.StartsWith(hand.Split('.')[0] + ".finger", StringComparison.Ordinal)).Key;
+                if (digit != null) return digit.Substring(0, digit.LastIndexOf('.'));
+                if (current == rig.Roles[hand]) break;
+            }
+            return "unmapped-detail";
+        }
+        var sourceHandRegions = hands.ToDictionary(role => role, role =>
+            source.Rig.Surfaces[role].Points.GroupBy(point => HandRegion(source.Rig, role, point))
+                .ToDictionary(group => group.Key, group => group.ToArray()));
+        var targetHandRegions = hands.ToDictionary(role => role, role =>
+            target.Rig.Surfaces[role].Points.GroupBy(point => HandRegion(target.Rig, role, point))
+                .ToDictionary(group => group.Key, group => group.ToArray()));
         float targetLegLength = (LegLength(target.Rig, "left") +
             LegLength(target.Rig, "right")) * .5f;
         if (!RigMath.Finite(targetLegLength) || targetLegLength <= 0)
@@ -366,6 +385,16 @@ internal static partial class Program
                     sourcePose.CranialPoint()) / armLengths[role].Source;
                 float headBlendWeight = RigMath.Clamp((.95f - sourceHeadProximity) / .4f, 0, 1);
                 var sourcePatch = source.Rig.Surfaces[role].Sample(sourcePose);
+                SkinPoint sourceLowestHandPoint = source.Rig.Surfaces[role].Points
+                    .OrderBy(point => Vector3.Dot(point.Evaluate(sourcePose), source.Rig.GroundNormal))
+                    .First();
+                SkinPoint targetLowestHandPoint = target.Rig.Surfaces[role].Points
+                    .OrderBy(point => Vector3.Dot(point.Evaluate(native), target.Rig.GroundNormal))
+                    .First();
+                int sourceLowestJoint = sourceLowestHandPoint.Weights
+                    .OrderByDescending(weight => weight.Weight).First().Joint;
+                RetargetMap lowestMapping = result.Plan.Mapping.FirstOrDefault(map =>
+                    map.SourceIndex == sourceLowestJoint);
                 var rawPatch = target.Rig.Surfaces[role].Sample(raw);
                 var solvedPatch = target.Rig.Surfaces[role].Sample(solved);
                 var nativePatch = target.Rig.Surfaces[role].Sample(native);
@@ -404,6 +433,59 @@ internal static partial class Program
                     SourceTrackedPlanarSpeed = sourcePlanarSpeed,
                     SourceTrackedVerticalSpeed = sourceVerticalSpeed,
                     SourcePoint = sourcePatch.Point,
+                    SourceLowestPointWeights = sourceLowestHandPoint.Weights
+                        .OrderByDescending(weight => weight.Weight)
+                        .Select(weight => new {Bone = source.Rig.Joints[weight.Joint].Name, weight.Weight})
+                        .ToArray(),
+                    TargetLowestPointWeights = targetLowestHandPoint.Weights
+                        .OrderByDescending(weight => weight.Weight)
+                        .Select(weight => new {Bone = target.Rig.Joints[weight.Joint].Name, weight.Weight})
+                        .ToArray(),
+                    MatchingHandRegions = sourceHandRegions[role].Keys
+                        .Intersect(targetHandRegions[role].Keys).OrderBy(key => key)
+                        .Select(key => new
+                        {
+                            Region = key,
+                            SourcePoints = sourceHandRegions[role][key].Length,
+                            TargetPoints = targetHandRegions[role][key].Length,
+                            SourceMinimum = sourceHandRegions[role][key]
+                                .Min(point => Vector3.Dot(point.Evaluate(sourcePose), source.Rig.GroundNormal)) -
+                                source.Rig.GroundHeight,
+                            SourceRestMinimum = sourceHandRegions[role][key]
+                                .Min(point => Vector3.Dot(point.Evaluate(source.Rig.Rest), source.Rig.GroundNormal)) -
+                                source.Rig.GroundHeight,
+                            TargetMinimum = targetHandRegions[role][key]
+                                .Min(point => Vector3.Dot(point.Evaluate(native), target.Rig.GroundNormal)) -
+                                target.Rig.GroundHeight,
+                            TargetRestMinimum = targetHandRegions[role][key]
+                                .Min(point => Vector3.Dot(point.Evaluate(target.Rig.Rest), target.Rig.GroundNormal)) -
+                                target.Rig.GroundHeight,
+                            SourceLocalCentroidMotion = Vector3.Transform(
+                                sourceHandRegions[role][key].Aggregate(Vector3.Zero,
+                                    (sum, point) => sum + point.Evaluate(sourcePose)) /
+                                    sourceHandRegions[role][key].Length - sourcePose.Point(role),
+                                Quaternion.Inverse(sourcePose.Orientation[source.Rig.Roles[role]])) -
+                                Vector3.Transform(sourceHandRegions[role][key].Aggregate(Vector3.Zero,
+                                    (sum, point) => sum + point.Evaluate(source.Rig.Rest)) /
+                                    sourceHandRegions[role][key].Length - source.Rig.Rest.Point(role),
+                                    Quaternion.Inverse(source.Rig.Rest.Orientation[source.Rig.Roles[role]])),
+                            TargetLocalCentroidMotion = Vector3.Transform(
+                                targetHandRegions[role][key].Aggregate(Vector3.Zero,
+                                    (sum, point) => sum + point.Evaluate(native)) /
+                                    targetHandRegions[role][key].Length - native.Point(role),
+                                Quaternion.Inverse(native.Orientation[target.Rig.Roles[role]])) -
+                                Vector3.Transform(targetHandRegions[role][key].Aggregate(Vector3.Zero,
+                                    (sum, point) => sum + point.Evaluate(target.Rig.Rest)) /
+                                    targetHandRegions[role][key].Length - target.Rig.Rest.Point(role),
+                                    Quaternion.Inverse(target.Rig.Rest.Orientation[target.Rig.Roles[role]]))
+                        }).ToArray(),
+                    SourceLowestJointFromHand = sourcePose.Point(sourceLowestJoint) - sourcePose.Point(role),
+                    SourceLowestJointRestFromHand = source.Rig.Rest.Point(sourceLowestJoint) -
+                        source.Rig.Rest.Point(role),
+                    TargetMappedJointFromHand = lowestMapping == null ? Vector3.Zero :
+                        native.Point(lowestMapping.TargetIndex) - native.Point(role),
+                    TargetMappedJointRestFromHand = lowestMapping == null ? Vector3.Zero :
+                        target.Rig.Rest.Point(lowestMapping.TargetIndex) - target.Rig.Rest.Point(role),
                     SourcePatchFromHandJoint = sourcePatch.Point - sourcePose.Point(role),
                     SourcePatchOffsetChangeFromRest = sourcePatch.Point - sourcePose.Point(role) -
                         sourceRestHandOffsets[role],

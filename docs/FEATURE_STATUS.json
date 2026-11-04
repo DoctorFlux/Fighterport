@@ -833,6 +833,11 @@
         "path": "docs/RETARGET_ANATOMICAL_POSE_FEASIBILITY_2026-11-04.md",
         "revision": "HEAD+diff:6a2ee34081c64bbe9e66db3f3926b3766178c9404d13f5a946fafbf45e77f6e4",
         "coverage": "Hand-only continuation from 2b7ba98: stable whole-hand centroid and lowest-patch motion witness on the exact Sonic-to-Mario native fixture; centroid wrist-goal and extra-shoulder trials failed unchanged hand/body or skin gates and were reverted. No corrected motion accepted."
+      },
+      {
+        "path": "docs/RETARGET_HAND_GEOMETRY_CONTINUATION_2026-11-04.md",
+        "revision": "HEAD+diff:d9d0f8ef05511cc6a4887af9d9c73f4e374c8a256709d4dfa9e7d266e650a428",
+        "coverage": "General proximal-digit bind-axis correction and 97 procedural checks; Sonic-to-Mario CHR0 freshly reopened with improved but failing hand gate; authentic DownStandU/LandingAirN and terminal contact regressions pass. Offline continuous hand-height path meets quarter/eighth samples but has no native or 3D/full-body qualification; full hand fix remains open."
         }
       ],
       "references": {
@@ -876,7 +881,8 @@
           "docs/RETARGET_HAND_CONTACT_CHECKPOINT_2026-11-03.md",
           "docs/RETARGET_HAND_POSE_REVIEW_CHECKPOINT_2026-11-04.md",
           "docs/RETARGET_COUPLED_HAND_TRIALS_2026-11-04.md",
-          "docs/RETARGET_ANATOMICAL_POSE_FEASIBILITY_2026-11-04.md"
+          "docs/RETARGET_ANATOMICAL_POSE_FEASIBILITY_2026-11-04.md",
+          "docs/RETARGET_HAND_GEOMETRY_CONTINUATION_2026-11-04.md"
         ]
       },
       "verification": {
@@ -1018,9 +1024,9 @@
         "Reviewed Sonic AttackS3S to Mario now maps one source neck and reopens a native result, but a HatN-weighted target vertex and visible head/hat/body cross the bind-plane guide around frames 5–12. Supported contacts do not validate that whole-mesh interval or gameplay collision.",
         "The exact Sonic donor snapshot with nonzero scaling rule now reopens; the earlier exact same-rig copy failure remains historical evidence for a different path. Private-desktop review and Use/import/Undo pass on the named fixture; physical human input and runtime remain unverified.",
         "Single-cranial-joint review is source-side and session-only. Target-side merged head/neck and one-versus-two shoulder chain transfer still need reviewed topology composition and bidirectional tests.",
-    "Source-derived hand support is a proposal, not a reviewed planted contact. The accepted own-limb reserve fixes one measured hand-depth residual; the Sonic forward-tilt hand/body gate still fails. Six scalar-height/upper-arm trials, five split-shoulder/native-guard trials, a centroid wrist-goal trial and a parent-shoulder trial were rejected and reverted. The lowest skinned hand patch changes vertex/shape relative to the stable whole-hand centroid and cannot be copied as a 3D wrist goal. Generated target-only joints need explicit solver/baker/track-membership provenance; admitting them alone worsened hand quality. No independently qualified shoulder-seam acceptance bound exists."
+        "Source-derived hand support is a proposal, not a reviewed planted contact. The own-limb reserve fixes one measured hand-depth residual. The generic proximal-digit axis change improves the Sonic forward-tilt thumb but the combined palm, forearm and trunk gates still fail. A continuous hand-height path exists only as an offline quarter/eighth-frame trial. A later 31,500-pose frame-7 grid found no simultaneous hand/forearm/trunk pass in its sampled space and does not prove global infeasibility. Arm segment axes already align closely. Its 3D region motion, shoulder attachment, native reopen and full clip are not qualified. Generated target-only joints need explicit solver/baker/track provenance; no shoulder-seam acceptance bound exists."
       ],
-  "next_step": "Build a bounded temporally continuous 3D skinned-region and torso/shoulder-attachment correction candidate from stable whole-hand motion and reviewed geometry; first prove the pinned unequal-rig case under unchanged root, hand, trunk and full-skin constraints. Qualify seam bounds before generated-joint/scale native integration; serialize/reopen and reject incompatible constraints explicitly."
+      "next_step": "Add explicit reviewed hand support plane/interval/skinned marker/anchor context and a bounded coupled 3D hand/body solve with shoulder attachment and temporal checks. Produce and freshly reopen an independent native candidate under unchanged root, hand, trunk and full-skin gates. Reject incompatible constraints explicitly rather than inventing floor context."
     },
     {
       "id": "FP-ROOT-MOTION",

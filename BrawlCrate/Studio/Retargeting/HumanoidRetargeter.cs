@@ -27,7 +27,7 @@ namespace BrawlCrate.Studio.Retargeting
 
     public sealed class HumanoidRetargeter
     {
-        public const string Algorithm = "bind-world-fk-body-contact-ik-v11";
+        public const string Algorithm = "bind-world-fk-body-contact-ik-v12";
         public const string MotionControlPolicy = "source-local-controls-v1";
         public int[] SourceMotionControls { get; }
         public int[] TargetMotionControls { get; }
@@ -52,6 +52,7 @@ namespace BrawlCrate.Studio.Retargeting
         private readonly CranialSurfaceMetric targetCranialSurface;
         public string[] TopologyAdaptations {get;}
         private readonly Dictionary<int,Tuple<Quaternion,Quaternion>> localFrames=new Dictionary<int,Tuple<Quaternion,Quaternion>>();
+        private readonly Dictionary<int,Quaternion> proximalDigitFrames=new Dictionary<int,Quaternion>();
 
         public HumanoidRetargeter(Rig source, Rig target):this(source,target,null){}
 
@@ -163,6 +164,34 @@ namespace BrawlCrate.Studio.Retargeting
                 int sp=Source.Joints[map.SourceIndex].Parent,tp=Target.Joints[map.TargetIndex].Parent;
                 if(sp<0||tp<0||TargetMotionControls.Contains(map.TargetIndex)||TargetMotionControls.Contains(tp)||
                     !_byTarget.TryGetValue(tp,out var parent)||parent.SourceIndex!=sp)continue;
+                // A source and target digit can grow in different directions from
+                // their palms. The ordinary world-bind delta rotates around the
+                // same axis on both, which can fold a target digit the opposite
+                // way. Align the measured proximal segment axes in parent-local
+                // space before transferring its authored rotation. This is a
+                // geometry rule, not a bone-name or character-specific offset.
+                if(map.Role.EndsWith(".a",StringComparison.Ordinal) &&
+                    map.Role.IndexOf(".finger",StringComparison.Ordinal)>=0)
+                {
+                    string tipRole=map.Role.Substring(0,map.Role.Length-1)+"b";
+                    if(Source.Roles.TryGetValue(tipRole,out int sourceTip) &&
+                        Target.Roles.TryGetValue(tipRole,out int targetTip) &&
+                        Source.Ancestors[sourceTip][map.SourceIndex] &&
+                        Target.Ancestors[targetTip][map.TargetIndex])
+                    {
+                        Vector3 sourceAxis=Vector3.Transform(Source.Rest.Point(sourceTip)-
+                            Source.Rest.Point(map.SourceIndex),Quaternion.Inverse(Source.Rest.Orientation[sp]));
+                        Vector3 targetAxis=Vector3.Transform(Target.Rest.Point(targetTip)-
+                            Target.Rest.Point(map.TargetIndex),Quaternion.Inverse(Target.Rest.Orientation[tp]));
+                        if(sourceAxis.LengthSquared()>1e-8f && targetAxis.LengthSquared()>1e-8f)
+                        {
+                            Quaternion parentFrame=Quaternion.Normalize(
+                                Quaternion.Inverse(Target.Rest.Orientation[tp])*Calibration*Source.Rest.Orientation[sp]);
+                            Quaternion axis=RigMath.FromTo(Vector3.Transform(sourceAxis,parentFrame),targetAxis);
+                            proximalDigitFrames.Add(map.TargetIndex,Quaternion.Normalize(axis*parentFrame));
+                        }
+                    }
+                }
                 var left=Quaternion.Normalize(Quaternion.Inverse(Target.Rest.Orientation[tp])*Calibration*Source.Rest.Orientation[sp]);
                 var right=Quaternion.Normalize(Quaternion.Inverse(Source.Rest.Orientation[map.SourceIndex])*Quaternion.Inverse(Calibration)*Target.Rest.Orientation[map.TargetIndex]);
                 localFrames.Add(map.TargetIndex,Tuple.Create(left,right));
@@ -249,7 +278,16 @@ namespace BrawlCrate.Studio.Retargeting
                     target.UpdateJoint(t);
                     continue;
                 }
-                if(localFrames.TryGetValue(t,out var localFrame))
+                if(proximalDigitFrames.TryGetValue(t,out Quaternion digitFrame))
+                {
+                    int sp=Source.Joints[s].Parent,tp=Target.Joints[t].Parent;
+                    Quaternion sourceRestRelative=Quaternion.Normalize(Quaternion.Inverse(Source.Rest.Orientation[sp])*Source.Rest.Orientation[s]);
+                    Quaternion sourcePoseRelative=Quaternion.Normalize(Quaternion.Inverse(source.Orientation[sp])*source.Orientation[s]);
+                    Quaternion delta=Quaternion.Normalize(sourcePoseRelative*Quaternion.Inverse(sourceRestRelative));
+                    Quaternion targetRestRelative=Quaternion.Normalize(Quaternion.Inverse(Target.Rest.Orientation[tp])*Target.Rest.Orientation[t]);
+                    target.Local[t].Rotation=Quaternion.Normalize(digitFrame*delta*Quaternion.Inverse(digitFrame)*targetRestRelative);
+                }
+                else if(localFrames.TryGetValue(t,out var localFrame))
                     target.Local[t].Rotation=source.Local[s].Rotation==Source.Joints[s].Bind.Rotation?Target.Joints[t].Bind.Rotation:
                         Quaternion.Normalize(localFrame.Item1*source.Local[s].Rotation*localFrame.Item2);
                 else
