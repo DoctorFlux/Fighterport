@@ -818,6 +818,11 @@
           "path": "docs/RETARGET_COUPLED_HAND_TRIALS_2026-11-04.md",
           "revision": "HEAD+diff:e76f091c5f6307343610c37b25d84537c0a2e5197e7761a7aa057c679a778069",
           "coverage": "Six exact Sonic-to-Mario body/hand candidates: best reopened palm 0.141779, forearm 0.259013 and trunk 0.000021; hand/forearm and provisional shoulder-seam limits fail. One trial failed native translation validation. Only v6 has a retained source diff; all solver code was reverted."
+        },
+        {
+          "path": "docs/RETARGET_COUPLED_HAND_TRIALS_2026-11-04.md",
+          "revision": "HEAD+diff:cbfc0edb2e66a8658128881ef4a3f93e934f717001fe19bcb6d54130af53d99b",
+          "coverage": "Follow-up shoulder-chain trials from e57ddd9: native baker and target-only guard require explicit generated-joint provenance. Shoulder-only and combined CHR0s reopen but fail palm, forearm and provisional seam checks; scale-based reach attempt stops at existing preservation guard. All trial code reverted."
         }
       ],
       "references": {
@@ -911,6 +916,11 @@
               "path": "docs/RETARGET_COUPLED_HAND_TRIALS_2026-11-04.md",
               "revision": "HEAD+diff:e76f091c5f6307343610c37b25d84537c0a2e5197e7761a7aa057c679a778069",
               "coverage": "Six isolated exact-fixture trials were reverted: best reopened palm/forearm 0.141779/0.259013 versus 0.05/0.10; both provisional shoulder-seam diagnostics fail. One trial fails unchanged native translation validation."
+            },
+            {
+              "path": "docs/RETARGET_COUPLED_HAND_TRIALS_2026-11-04.md",
+              "revision": "HEAD+diff:cbfc0edb2e66a8658128881ef4a3f93e934f717001fe19bcb6d54130af53d99b",
+              "coverage": "Generated shoulder admission reveals a native track-membership boundary. Combined candidate reopens but measures palm/forearm 0.125936/0.250546 versus unchanged 0.05/0.10, with both provisional seam diagnostics failing."
             }
           ]
         },
@@ -997,9 +1007,9 @@
         "Reviewed Sonic AttackS3S to Mario now maps one source neck and reopens a native result, but a HatN-weighted target vertex and visible head/hat/body cross the bind-plane guide around frames 5–12. Supported contacts do not validate that whole-mesh interval or gameplay collision.",
         "The exact Sonic donor snapshot with nonzero scaling rule now reopens; the earlier exact same-rig copy failure remains historical evidence for a different path. Private-desktop review and Use/import/Undo pass on the named fixture; physical human input and runtime remain unverified.",
         "Single-cranial-joint review is source-side and session-only. Target-side merged head/neck and one-versus-two shoulder chain transfer still need reviewed topology composition and bidirectional tests.",
-        "Source-derived hand support is a proposal, not a reviewed planted contact. The accepted own-limb reserve fixes one measured hand-depth residual; the Sonic forward-tilt hand/body gate still fails. Six later isolated scalar-height and upper-arm reach trials also failed combined hand/forearm or native gates and were reverted; a separate body lift makes target hands hover, while earlier hand-only mapped-arm trials leave trunk and whole-skin quality unresolved. No independently qualified shoulder-seam acceptance bound exists."
+        "Source-derived hand support is a proposal, not a reviewed planted contact. The accepted own-limb reserve fixes one measured hand-depth residual; the Sonic forward-tilt hand/body gate still fails. Six scalar-height/upper-arm trials and five follow-up split-shoulder/native-guard trials were rejected and reverted. Generated target-only joints need explicit solver/baker/track-membership provenance; admitting them alone worsened hand quality. No independently qualified shoulder-seam acceptance bound exists."
       ],
-      "next_step": "Develop a deterministic offline three-dimensional skinned palm/forearm and target-only shoulder-chain trajectory for the pinned Sonic-to-Mario case. Independently qualify shoulder-seam/attachment bounds; verify hand, trunk, full skin and native fractional/post-decode gates together, with exact source roots and supported contacts. Qualify split/merged anatomy separately."
+      "next_step": "Test pose-level feasibility of a three-dimensional skinned palm/forearm and shoulder-attachment target under fixed root/bind/weight/scale contracts. Qualify seam bounds, then introduce explicit generated-joint provenance through solver, native baker and track guard only for a passing candidate. Verify full skin, contacts and native fractional reopen; report incompatible constraints."
     },
     {
       "id": "FP-ROOT-MOTION",
@@ -4684,6 +4694,11 @@
           "path": "docs/RETARGET_COUPLED_HAND_TRIALS_2026-11-04.md",
           "revision": "HEAD+diff:e76f091c5f6307343610c37b25d84537c0a2e5197e7761a7aa057c679a778069",
           "coverage": "Five trial CHR0s reopen and retain protected roots, but every candidate fails hand/forearm quality and provisional seam diagnostics; one additional trial fails native validation before output. No production motion change."
+        },
+        {
+          "path": "docs/RETARGET_COUPLED_HAND_TRIALS_2026-11-04.md",
+          "revision": "HEAD+diff:cbfc0edb2e66a8658128881ef4a3f93e934f717001fe19bcb6d54130af53d99b",
+          "coverage": "Narrow generated shoulder trial and combined body/hand trial reopen at 296960 and 354476 bytes but fail palm/forearm and provisional seam gates; scale trial is blocked by preserved native-scale contract."
         }
       ],
       "verification": {
@@ -4719,6 +4734,11 @@
               "path": "docs/RETARGET_COUPLED_HAND_TRIALS_2026-11-04.md",
               "revision": "HEAD+diff:e76f091c5f6307343610c37b25d84537c0a2e5197e7761a7aa057c679a778069",
               "coverage": "Five isolated trial CHR0s reopened with unchanged roots/support but failed hand/forearm and provisional shoulder-seam measurements; a sixth was rejected by native translation validation. Trials were reverted."
+            },
+            {
+              "path": "docs/RETARGET_COUPLED_HAND_TRIALS_2026-11-04.md",
+              "revision": "HEAD+diff:cbfc0edb2e66a8658128881ef4a3f93e934f717001fe19bcb6d54130af53d99b",
+              "coverage": "Shoulder-only and combined native CHR0 trials reopened but failed hand and provisional shoulder-seam checks; all five follow-up trial source files restored to clean e57ddd9."
             }
           ]
         },
@@ -4784,9 +4804,9 @@
         "The reviewed source-side Sonic one-joint cranial route produces a reopened target without mapping a quill as head, but full-mesh HatN/head/body clearance and actual floor/contact interpretation remain unresolved despite passing supported-contact samples.",
         "The review is session-only and requires exact source rig/skin evidence; target-side merged head/neck, one-versus-two shoulder chains, broad anatomy and game runtime remain unqualified.",
         "The source-derived hand-support correction is bounded to finite named fixtures and is not a reviewed Hand.* contact interval or proof of game-floor placement.",
-        "Sonic forward-tilt hand/body quarter-frame gate fails; the UI warning is diagnostic and the animation was not corrected. Six exact-fixture source-relative body/hand trials were rejected and reverted; scalar palm-height plus direct upper-arm translation does not preserve forearm and shoulder attachment quality."
+        "Sonic forward-tilt hand/body quarter-frame gate fails; the UI warning is diagnostic and the animation was not corrected. Six body/hand trials and five split-shoulder/native-guard trials were rejected and reverted. Narrow generated-shoulder admission can reopen but does not satisfy hand or provisional seam quality; scale reach violates the current native-scale contract."
       ],
-      "next_step": "Develop an offline three-dimensional skinned palm/forearm and target-only shoulder-chain solve for pinned Sonic-to-Mario. Qualify shoulder-seam/attachment bounds and pass hand, trunk, full-skin, native fractional/post-decode, root and support gates together; qualify split/merged anatomy separately."
+      "next_step": "Test pose-level feasibility of three-dimensional skinned palm/forearm and shoulder-attachment goals under fixed root/bind/weight/scale contracts. Qualify seam bounds and explicit generated-joint provenance before native baking; pass full skin, contacts, fractional reopen and protected roots together or report incompatible constraints."
     },
     {
       "id": "CAP-CONTACT-GROUND",
